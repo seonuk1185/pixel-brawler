@@ -37,7 +37,10 @@
       anchors: anchors,
       anims: {
         idle:   { frames: seq(p + 'idle_', 4),   fps: 6,  loop: true },
-        walk:   { frames: seq(p + 'walk_', 8),   fps: 12, loop: true },
+        // 걷기: 시간 대신 「걸은 거리」로 그림을 넘긴다. stride = 8장 한 바퀴(두 걸음) 동안 가는 도트 수.
+        //   그림 속 보폭에 맞춘 값이라 발이 바닥에서 미끄러지지 않는다(좌우 90도트/초 → 약 6.4장/초).
+        //   depthStrideMul = 위아래(안쪽) 이동일 때 거리를 이만큼 크게 쳐서, 느린 위아래 이동에도 다리가 자연스럽게 움직이게.
+        walk:   { frames: seq(p + 'walk_', 8),   fps: 12, loop: true, stride: 112, depthStrideMul: 1.6 },
         attack: { frames: seq(p + 'attack_', 5), fps: 14, loop: false },
         hurt:   { frames: seq(p + 'hurt_', 3),   fps: 10, loop: false }
       }

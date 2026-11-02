@@ -8,6 +8,7 @@
     this.dir = 1;
     this.state = 'idle';
     this.animT = 0;
+    this.walkPhase = 0;       // 걷기 진행도(0~1 = 한 사이클). 시간이 아니라 「걸은 거리」로 넘김 → 발이 미끄러지지 않음
     this.atk = null;          // 공격 중 정보
     this.comboStep = 0;       // 다음에 나갈 콤보 번호
     this.comboIdleT = 0;
@@ -26,6 +27,7 @@
     var a = this.state === 'walk' ? 'walk' : 'idle';
     var A = def.anims[a];
     var n = A.frames.length;
+    if (a === 'walk' && A.stride) return { anim: a, idx: Math.floor(this.walkPhase * n) % n };
     return { anim: a, idx: Math.floor(this.animT * A.fps) % n };
   };
 
@@ -50,11 +52,16 @@
       } else {
         var ax = Input.axis(cfg);
         var dt = dtMs / 1000;
-        this.x += ax.x * cfg.player.speedX * dt;
-        this.y += ax.y * cfg.player.speedY * dt;
+        var mx = ax.x * cfg.player.speedX * dt, my = ax.y * cfg.player.speedY * dt;
+        this.x += mx;
+        this.y += my;
+        // 걷기 그림은 걸은 거리만큼 넘긴다(stride = 한 사이클(8장) 동안 가는 도트 수).
+        // 위아래(안쪽) 이동은 화면상 짧게 보이므로 depthStrideMul 배로 쳐서 다리가 너무 느리게 움직이지 않게 함
+        var wA = this.char && this.char.def.anims.walk;
+        if (wA && wA.stride) this.walkPhase = (this.walkPhase + Math.hypot(mx, my * (wA.depthStrideMul || 1)) / wA.stride) % 1;
         if (ax.x > 0.1) this.dir = 1; else if (ax.x < -0.1) this.dir = -1;
         var moving = Math.abs(ax.x) > 0.05 || Math.abs(ax.y) > 0.05;
-        if (moving && this.state !== 'walk') { this.state = 'walk'; this.animT = 0; }
+        if (moving && this.state !== 'walk') { this.state = 'walk'; this.animT = 0; this.walkPhase = 0; }
         if (!moving && this.state !== 'idle') { this.state = 'idle'; this.animT = 0; }
       }
     }

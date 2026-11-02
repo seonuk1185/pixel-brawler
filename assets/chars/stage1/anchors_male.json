@@ -247,162 +247,90 @@
   },
   "walk_01": {
    "hand": [
-    101,
-    82
-   ],
-   "angle": -28,
-   "layer": "back",
-   "check": {
-    "align": [
-     18,
-     0
-    ],
-    "refFist": [
-     81.3,
-     82.8
-    ],
-    "fistShift": 1.5,
-    "bladeOverBody": 0.01
-   }
-  },
-  "walk_02": {
-   "hand": [
-    90,
-    90
-   ],
-   "angle": -29,
-   "layer": "back",
-   "check": {
-    "align": [
-     7,
-     0
-    ],
-    "refFist": [
-     82,
-     90.7
-    ],
-    "fistShift": 0.7,
-    "bladeOverBody": 0.01
-   }
-  },
-  "walk_03": {
-   "hand": [
-    68,
+    93,
     80
    ],
    "angle": -27,
    "layer": "back",
    "check": {
-    "align": [
-     -20,
-     0
-    ],
-    "refFist": [
-     85.3,
-     79.2
-    ],
-    "fistShift": 2.5,
-    "bladeOverBody": 0.05
+    "note": "walk v3 (2026-11-03): fist blob centre measured directly, angle fixed"
    }
   },
-  "walk_04": {
+  "walk_02": {
    "hand": [
-    98,
-    81
-   ],
-   "angle": -25,
-   "layer": "back",
-   "check": {
-    "align": [
-     11,
-     0
-    ],
-    "refFist": [
-     86.6,
-     82.5
-    ],
-    "fistShift": 1.7,
-    "bladeOverBody": 0
-   }
-  },
-  "walk_05": {
-   "hand": [
-    103,
-    84
+    92,
+    80
    ],
    "angle": -27,
    "layer": "back",
    "check": {
-    "align": [
-     17,
-     0
-    ],
-    "refFist": [
-     84.6,
-     82.2
-    ],
-    "fistShift": 1.9,
-    "bladeOverBody": 0
+    "note": "walk v3 (2026-11-03): fist blob centre measured directly, angle fixed"
+   }
+  },
+  "walk_03": {
+   "hand": [
+    85,
+    78
+   ],
+   "angle": -27,
+   "layer": "back",
+   "check": {
+    "note": "walk v3 (2026-11-03): fist blob centre measured directly, angle fixed"
+   }
+  },
+  "walk_04": {
+   "hand": [
+    91,
+    79
+   ],
+   "angle": -27,
+   "layer": "back",
+   "check": {
+    "note": "walk v3 (2026-11-03): fist blob centre measured directly, angle fixed"
+   }
+  },
+  "walk_05": {
+   "hand": [
+    96,
+    79
+   ],
+   "angle": -27,
+   "layer": "back",
+   "check": {
+    "note": "walk v3 (2026-11-03): fist blob centre measured directly, angle fixed"
    }
   },
   "walk_06": {
    "hand": [
-    95,
-    95
+    94,
+    79
    ],
-   "angle": -29,
+   "angle": -27,
    "layer": "back",
    "check": {
-    "align": [
-     11,
-     0
-    ],
-    "refFist": [
-     82.3,
-     93.3
-    ],
-    "fistShift": 1.9,
-    "bladeOverBody": 0
+    "note": "walk v3 (2026-11-03): fist blob centre measured directly, angle fixed"
    }
   },
   "walk_07": {
    "hand": [
-    73,
-    79
+    85,
+    78
    ],
-   "angle": -24,
+   "angle": -27,
    "layer": "back",
    "check": {
-    "align": [
-     -12,
-     0
-    ],
-    "refFist": [
-     83.5,
-     80.3
-    ],
-    "fistShift": 1.8,
-    "bladeOverBody": 0.07
+    "note": "walk v3 (2026-11-03): fist blob centre measured directly, angle fixed"
    }
   },
   "walk_08": {
    "hand": [
-    100,
-    83
+    94,
+    79
    ],
-   "angle": -24,
+   "angle": -27,
    "layer": "back",
    "check": {
-    "align": [
-     13,
-     0
-    ],
-    "refFist": [
-     86.2,
-     81.4
-    ],
-    "fistShift": 1.6,
-    "bladeOverBody": 0
+    "note": "walk v3 (2026-11-03): fist blob centre measured directly, angle fixed"
    }
   }
  }
