@@ -27,6 +27,27 @@
     return (this.char && this.char.def.combo) || this.cfg.combo.steps;
   };
 
+  // 한 타 안의 판정 구간 목록. 보통은 1개(그 타 자체), hits 가 있으면 여러 번 벤다(예: 여자 3타 X자 베기 = 2번).
+  // hits 의 각 항목은 그 타의 값(reach·fx·dmg 등)을 덮어쓴다.
+  function hitWindows(st) {
+    if (!st.hits) return [st];
+    if (!st._win) st._win = st.hits.map(function (h) {
+      var w = {}, k;
+      for (k in st) if (k !== 'hits' && k !== '_win') w[k] = st[k];
+      for (k in h) w[k] = h[k];
+      return w;
+    });
+    return st._win;
+  }
+
+  // 지금 판정이 나는 구간 번호(없으면 -1)
+  Player.prototype.activeWindow = function () {
+    if (this.state !== 'attack' || !this.atk) return -1;
+    var ws = hitWindows(this.comboSteps()[this.atk.step]), i = this.atk.i;
+    for (var k = 0; k < ws.length; k++) if (i >= ws[k].active[0] && i <= ws[k].active[ws[k].active.length - 1]) return k;
+    return -1;
+  };
+
   Player.prototype.currentFrame = function () {
     var def = this.char.def;
     if (this.state === 'attack') {
@@ -42,7 +63,7 @@
 
   Player.prototype.startAttack = function (step) {
     this.state = 'attack';
-    this.atk = { step: step, i: 0, t: 0, hitDone: false, slashed: false, queued: false };
+    this.atk = { step: step, i: 0, t: 0, hitDone: {}, slashed: {}, queued: false };   // hitDone/slashed = 판정 구간별
     this.comboStep = (step + 1) % this.comboSteps().length;
   };
 
@@ -98,14 +119,17 @@
           this.state = 'idle'; this.atk = null; this.animT = 0; this.comboIdleT = 0;
           break;
         }
-        if (a.i === st.active[0]) {
-          this.x += st.lunge * this.dir;          // 앞으로 살짝 내딛기
-        }
+        hitWindows(st).forEach(function (w) {
+          if (a.i === w.active[0]) this.x += (w.lunge || 0) * this.dir;   // 판정 시작 때 앞으로 살짝 내딛기
+        }, this);
       }
       if (this.atk) {
-        var active = a.i >= st.active[0] && a.i <= st.active[st.active.length - 1];
-        if (active && !a.slashed) { a.slashed = true; ev.slash = { step: st }; }
-        if (active && !a.hitDone) ev.hitCheck = { step: st, stepIndex: a.step };
+        var wi = this.activeWindow();
+        if (wi >= 0) {
+          var w = hitWindows(st)[wi];
+          if (!a.slashed[wi]) { a.slashed[wi] = true; ev.slash = { step: w }; }
+          if (!a.hitDone[wi]) ev.hitCheck = { step: w, stepIndex: a.step, win: wi };
+        }
       }
     }
 
@@ -118,7 +142,8 @@
   Player.prototype.hitbox = function () {
     var h = this.cfg.player.hitbox;
     if (this.state === 'attack' && this.atk) {      // 타마다 판정 범위가 다름(config MOVES 의 reach)
-      var r = this.comboSteps()[this.atk.step].reach;
+      var st = this.comboSteps()[this.atk.step], wi = this.activeWindow();
+      var r = (wi >= 0 ? hitWindows(st)[wi] : st).reach;
       if (r) h = { x0: r.x0, x1: r.x1, yTop: r.yTop, yBot: r.yBot, depth: r.depth || h.depth };
     }
     var xa = this.x + h.x0 * this.dir, xb = this.x + h.x1 * this.dir;

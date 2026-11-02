@@ -53,7 +53,7 @@
           fx: { type: 'slash', x: 52, y: -52, sx: 1.35, sy: 1.35 }, arc: { from: -130, to: 70, r: 58, w: 12 } }
       ]
     },
-    // 여자: 빠르고 가볍고 우아한 검술. 1타 앞으로 찌르기 → 2타 한 바퀴 돌며 가로 베기 → 3타 살짝 뛰어 내려베기
+    // 여자: 빠르고 가볍고 우아한 검술. 1타 앞으로 찌르기 → 2타 한 바퀴 돌며 가로 베기 → 3타 낮게 파고들며 X자 베기(두 번 판정)
     female: {
       stride: 96, attack1Prefix: 'attack1_', attack1Count: 4, attack2Count: 5, attack3Count: 6,
       combo: [
@@ -65,10 +65,18 @@
           reach: { x0: -20, x1: 100, yTop: -96, yBot: -40 },
           dmg: 1.05, hitstop: 1.0, knock: 1.1, shake: 1.0,
           fx: { type: 'slash', x: 40, y: -72, rot: 90, sx: 0.6, sy: 1.15 }, arc: { from: -20, to: 20, r: 50, w: 8 } },
-        { anim: 'attack3', f: [0, 1, 2, 3, 4, 5], d: [40, 60, 60, 40, 130, 110], active: [3, 4], cancel: 99, lunge: 10,
-          reach: { x0: 10, x1: 96, yTop: -110, yBot: -4 },
-          dmg: 1.6, hitstop: 1.6, knock: 2.2, shake: 2.0, finisher: true,
-          fx: { type: 'slash', x: 40, y: -50, sx: 1.2, sy: 1.2 }, arc: { from: -130, to: 70, r: 56, w: 11 } }
+        // 3타 = 낮게 파고들며 X자 베기: 장 0 파고들기 → 장 1 대각선 내려베기(1번째 판정, 가볍게)
+        //   → 장 2 아래로 감기 → 장 3 반대 대각선 올려베기(2번째 판정 = 마무리, 가장 셈) → 장 4·5 칼 앞으로 뻗은 마무리 자세
+        //   hits = 한 타 안에서 두 번 판정(각각 위 값들을 덮어씀). 그림 속에서 이미 앞으로 파고드므로 lunge 는 작게(합 7도트)
+        { anim: 'attack3', f: [0, 1, 2, 3, 4, 5], d: [55, 50, 45, 50, 150, 120], cancel: 99,
+          reach: { x0: 10, x1: 98, yTop: -100, yBot: -10 },
+          hits: [
+            { active: [1, 1], lunge: 4, dmg: 0.7, hitstop: 0.9, knock: 0.5, shake: 0.9,
+              fx: { type: 'slash', x: 42, y: -62, rot: -70, sx: 0.95, sy: 1.05 }, arc: { from: -120, to: 30, r: 50, w: 9 } },
+            { active: [3, 3], lunge: 3, dmg: 1.6, hitstop: 1.9, knock: 2.4, shake: 2.3, finisher: true,
+              reach: { x0: 10, x1: 100, yTop: -112, yBot: -10 },
+              fx: { type: 'slash', x: 46, y: -66, rot: 20, sx: 1.25, sy: 1.25 }, arc: { from: 60, to: -100, r: 56, w: 11 } }
+          ] }
       ]
     }
   };

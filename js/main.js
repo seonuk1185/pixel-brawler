@@ -143,7 +143,7 @@
       }
     }
     if (ev.hitCheck && overlap(p.hitbox(), G.dummy.hurtbox())) {
-      p.atk.hitDone = true;
+      p.atk.hitDone[ev.hitCheck.win] = true;   // 판정 구간마다 한 번씩 맞음
       onHit(ev.hitCheck.step, ev.hitCheck.stepIndex);
     }
     G.dummy.update(dt);
@@ -183,9 +183,7 @@
   function drawDebug(camX) {
     var p = G.player;
     rectStroke(G.dummy.hurtbox(), camX, '#3cf');
-    var active = p.state === 'attack' && p.atk && (function () {
-      var st = p.comboSteps()[p.atk.step]; return p.atk.i >= st.active[0] && p.atk.i <= st.active[st.active.length - 1];
-    })();
+    var active = p.activeWindow() >= 0;
     rectStroke(p.hitbox(), camX, active ? '#f33' : 'rgba(255,80,80,0.35)');
     ctx.fillStyle = 'rgba(255,255,0,0.25)';
     ctx.fillRect(0, world.laneTop, LW, 1); ctx.fillRect(0, world.laneBottom, LW, 1);

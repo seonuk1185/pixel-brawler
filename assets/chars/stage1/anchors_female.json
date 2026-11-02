@@ -270,10 +270,10 @@
   },
   "attack3_01": {
    "hand": [
-    81,
-    90
+    106,
+    47
    ],
-   "angle": -20,
+   "angle": -120,
    "layer": "back",
    "check": {
     "manual": true
@@ -281,30 +281,8 @@
   },
   "attack3_02": {
    "hand": [
-    65,
-    15
-   ],
-   "angle": -110,
-   "layer": "back",
-   "check": {
-    "manual": true
-   }
-  },
-  "attack3_03": {
-   "hand": [
-    50,
-    8
-   ],
-   "angle": 150,
-   "layer": "back",
-   "check": {
-    "manual": true
-   }
-  },
-  "attack3_04": {
-   "hand": [
-    92,
-    77
+    108,
+    105
    ],
    "angle": 30,
    "layer": "back",
@@ -312,12 +290,34 @@
     "manual": true
    }
   },
+  "attack3_03": {
+   "hand": [
+    66,
+    88
+   ],
+   "angle": 155,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "attack3_04": {
+   "hand": [
+    100,
+    31
+   ],
+   "angle": -75,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
   "attack3_05": {
    "hand": [
-    98,
-    119
+    112,
+    61
    ],
-   "angle": 12,
+   "angle": -5,
    "layer": "back",
    "check": {
     "manual": true
@@ -325,10 +325,10 @@
   },
   "attack3_06": {
    "hand": [
-    90,
-    75
+    104,
+    63
    ],
-   "angle": -40,
+   "angle": 0,
    "layer": "back",
    "check": {
     "manual": true
