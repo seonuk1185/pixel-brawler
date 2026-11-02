@@ -130,11 +130,14 @@
     p.weaponKey = G.weaponKey;
     var ev = p.update(dt, world);
     if (ev.slash) {
-      var W = CFG.weapons[p.weaponKey], a = ev.slash.step.arc;
+      var W = CFG.weapons[p.weaponKey], st0 = ev.slash.step, a = st0.arc, sfx = st0.fx;
       var fxs = G.assets.fx && G.assets.fx.slash && G.assets.fx.slash.length ? G.assets.fx.slash : null;
-      if (fxs) {   // 그림 효과: 캐릭터 앞에 놓기
-        var off = CFG.art.fx.slashOffset;
-        FX.slash(p.x + p.dir * off.x, p.y + off.y, p.dir, a, W.arcColor, J.slashMs * (ev.slash.step.finisher ? 1.5 : 1), fxs);
+      var ms = J.slashMs * (st0.finisher ? 1.5 : 1);
+      if (sfx && sfx.type === 'thrust') {   // 찌르기: 짧은 직선 궤적(코드로 그림)
+        FX.thrust(p.x + p.dir * sfx.x, p.y + sfx.y, p.dir, sfx.len || 40, W.arcColor, ms);
+      } else if (fxs) {   // 그림 효과: 캐릭터 앞에 놓기 (타마다 위치·회전·뒤집기 다름)
+        var off = sfx || CFG.art.fx.slashOffset;
+        FX.slash(p.x + p.dir * off.x, p.y + off.y, p.dir, a, W.arcColor, ms, fxs, sfx);
       } else {     // 코드로 그린 궤적
         FX.slash(p.x + p.dir * 18, p.y - 56, p.dir, a, W.arcColor, J.slashMs, null);
       }
@@ -181,7 +184,7 @@
     var p = G.player;
     rectStroke(G.dummy.hurtbox(), camX, '#3cf');
     var active = p.state === 'attack' && p.atk && (function () {
-      var st = CFG.combo.steps[p.atk.step]; return p.atk.i >= st.active[0] && p.atk.i <= st.active[st.active.length - 1];
+      var st = p.comboSteps()[p.atk.step]; return p.atk.i >= st.active[0] && p.atk.i <= st.active[st.active.length - 1];
     })();
     rectStroke(p.hitbox(), camX, active ? '#f33' : 'rgba(255,80,80,0.35)');
     ctx.fillStyle = 'rgba(255,255,0,0.25)';

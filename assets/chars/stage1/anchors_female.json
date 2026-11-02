@@ -1,409 +1,337 @@
 {
- "note": "hand=[x,y] grip position in frame pixels (176x136 frame, feet baseline y=130); angle in degrees, 0 = weapon pointing right, positive = clockwise on screen (y down); draw weapon so its grip pixel lands on hand, rotated by angle; layer back = draw weapon before the character, front = after",
  "frameSize": [
   176,
   136
  ],
  "frames": {
-  "attack_01": {
-   "hand": [
-    96,
-    80
-   ],
-   "angle": -35,
-   "layer": "back",
-   "check": {
-    "align": [
-     10,
-     -2
-    ],
-    "refFist": [
-     85.5,
-     76.8
-    ],
-    "fistShift": 3.5,
-    "bladeOverBody": 0
-   }
-  },
-  "attack_02": {
-   "hand": [
-    62,
-    35
-   ],
-   "angle": -35,
-   "layer": "back",
-   "check": {
-    "align": [
-     8,
-     0
-    ],
-    "refFist": [
-     52,
-     31
-    ],
-    "fistShift": 2.6,
-    "bladeOverBody": 0.06
-   }
-  },
-  "attack_03": {
-   "hand": [
-    104,
-    68
-   ],
-   "angle": -138,
-   "layer": "back",
-   "check": {
-    "align": [
-     9,
-     -1
-    ],
-    "refFist": [
-     96.5,
-     64.7
-    ],
-    "fistShift": 2,
-    "bladeOverBody": 0
-   }
-  },
-  "attack_04": {
-   "hand": [
-    125,
-    86
-   ],
-   "angle": 15,
-   "layer": "back",
-   "check": {
-    "align": [
-     9,
-     0
-    ],
-    "refFist": [
-     112.1,
-     81.2
-    ],
-    "fistShift": 7.4,
-    "bladeOverBody": 0.21,
-    "manualFix": "fist found by hand at (125,86); auto-detect picked forearm"
-   }
-  },
-  "attack_05": {
-   "hand": [
-    96,
-    81
-   ],
-   "angle": -37,
-   "layer": "back",
-   "check": {
-    "align": [
-     11,
-     -1
-    ],
-    "refFist": [
-     85,
-     78.5
-    ],
-    "fistShift": 2,
-    "bladeOverBody": 0
-   }
-  },
-  "hurt_01": {
-   "hand": [
-    92,
-    66
-   ],
-   "angle": -40,
-   "layer": "back",
-   "check": {
-    "align": [
-     8,
-     0
-    ],
-    "refFist": [
-     85.1,
-     64.1
-    ],
-    "fistShift": 1.3,
-    "bladeOverBody": 0
-   }
-  },
-  "hurt_02": {
-   "hand": [
-    94,
-    90
-   ],
-   "angle": 25,
-   "layer": "back",
-   "check": {
-    "align": [
-     9,
-     0
-    ],
-    "refFist": [
-     86.2,
-     85.9
-    ],
-    "fistShift": 1.9,
-    "bladeOverBody": 0
-   }
-  },
-  "hurt_03": {
-   "hand": [
-    98,
-    87
-   ],
-   "angle": 28,
-   "layer": "back",
-   "check": {
-    "align": [
-     11,
-     -3
-    ],
-    "refFist": [
-     86.4,
-     86.4
-    ],
-    "fistShift": 3.2,
-    "bladeOverBody": 0.04
-   }
-  },
   "idle_01": {
    "hand": [
-    93,
-    77
+    94,
+    73
    ],
    "angle": -40,
    "layer": "back",
    "check": {
-    "align": [
-     11,
-     -2
-    ],
-    "refFist": [
-     84.1,
-     76.4
-    ],
-    "fistShift": 0.6,
-    "bladeOverBody": 0
+    "manual": true
    }
   },
   "idle_02": {
    "hand": [
-    92,
-    77
+    93,
+    72
    ],
-   "angle": -39,
+   "angle": -40,
    "layer": "back",
    "check": {
-    "align": [
-     9,
-     0
-    ],
-    "refFist": [
-     85.4,
-     74.8
-    ],
-    "fistShift": 0.4,
-    "bladeOverBody": 0
+    "manual": true
    }
   },
   "idle_03": {
    "hand": [
-    93,
-    78
+    92,
+    73
    ],
    "angle": -40,
    "layer": "back",
    "check": {
-    "align": [
-     9,
-     -1
-    ],
-    "refFist": [
-     84.4,
-     77.7
-    ],
-    "fistShift": 1.1,
-    "bladeOverBody": 0
+    "manual": true
    }
   },
   "idle_04": {
    "hand": [
-    92,
-    77
+    93,
+    74
    ],
    "angle": -40,
    "layer": "back",
    "check": {
-    "align": [
-     9,
-     -1
-    ],
-    "refFist": [
-     85.8,
-     75.2
-    ],
-    "fistShift": 1.3,
-    "bladeOverBody": 0
+    "manual": true
    }
   },
   "walk_01": {
    "hand": [
-    105,
-    81
+    91,
+    74
    ],
-   "angle": -28,
+   "angle": -40,
    "layer": "back",
    "check": {
-    "align": [
-     20,
-     -3
-    ],
-    "refFist": [
-     81.3,
-     82.8
-    ],
-    "fistShift": 5.4,
-    "bladeOverBody": 0.12
+    "manual": true
    }
   },
   "walk_02": {
    "hand": [
-    93,
-    91
+    87,
+    75
    ],
-   "angle": -29,
+   "angle": -38,
    "layer": "back",
    "check": {
-    "align": [
-     10,
-     -1
-    ],
-    "refFist": [
-     82,
-     90.7
-    ],
-    "fistShift": 2.6,
-    "bladeOverBody": 0.11
+    "manual": true
    }
   },
   "walk_03": {
    "hand": [
-    69,
-    78
+    80,
+    80
    ],
-   "angle": -27,
+   "angle": -34,
    "layer": "back",
    "check": {
-    "align": [
-     -19,
-     -4
-    ],
-    "refFist": [
-     85.3,
-     79.2
-    ],
-    "fistShift": 4.5,
-    "bladeOverBody": 0.13
+    "manual": true
    }
   },
   "walk_04": {
    "hand": [
-    102,
-    81
+    83,
+    76
    ],
-   "angle": -25,
+   "angle": -38,
    "layer": "back",
    "check": {
-    "align": [
-     13,
-     -3
-    ],
-    "refFist": [
-     86.6,
-     82.5
-    ],
-    "fistShift": 4.6,
-    "bladeOverBody": 0.12
+    "manual": true
    }
   },
   "walk_05": {
    "hand": [
-    103,
-    81
+    91,
+    74
    ],
-   "angle": -27,
+   "angle": -40,
    "layer": "back",
    "check": {
-    "align": [
-     16,
-     -4
-    ],
-    "refFist": [
-     84.6,
-     82.2
-    ],
-    "fistShift": 4,
-    "bladeOverBody": 0.09
+    "manual": true
    }
   },
   "walk_06": {
    "hand": [
-    95,
-    89
+    83,
+    76
    ],
-   "angle": -29,
+   "angle": -38,
    "layer": "back",
    "check": {
-    "align": [
-     12,
-     -5
-    ],
-    "refFist": [
-     82.3,
-     93.3
-    ],
-    "fistShift": 2.3,
-    "bladeOverBody": 0
+    "manual": true
    }
   },
   "walk_07": {
    "hand": [
-    70,
-    80
+    80,
+    79
    ],
-   "angle": -24,
+   "angle": -34,
    "layer": "back",
    "check": {
-    "align": [
-     -16,
-     -4
-    ],
-    "refFist": [
-     83.5,
-     80.3
-    ],
-    "fistShift": 4.4,
-    "bladeOverBody": 0.09
+    "manual": true
    }
   },
   "walk_08": {
    "hand": [
-    102,
-    80
+    87,
+    75
    ],
-   "angle": -24,
+   "angle": -38,
    "layer": "back",
    "check": {
-    "align": [
-     14,
-     -4
-    ],
-    "refFist": [
-     86.2,
-     81.4
-    ],
-    "fistShift": 3.7,
-    "bladeOverBody": 0.09
+    "manual": true
+   }
+  },
+  "hurt_01": {
+   "hand": [
+    34,
+    79
+   ],
+   "angle": 150,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "hurt_02": {
+   "hand": [
+    37,
+    74
+   ],
+   "angle": 110,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "hurt_03": {
+   "hand": [
+    93,
+    56
+   ],
+   "angle": -60,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "attack1_01": {
+   "hand": [
+    81,
+    77
+   ],
+   "angle": -10,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "attack1_02": {
+   "hand": [
+    130,
+    65
+   ],
+   "angle": 0,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "attack1_03": {
+   "hand": [
+    134,
+    65
+   ],
+   "angle": 0,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "attack1_04": {
+   "hand": [
+    85,
+    76
+   ],
+   "angle": -20,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "attack2_01": {
+   "hand": [
+    52,
+    54
+   ],
+   "angle": 190,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "attack2_02": {
+   "hand": [
+    32,
+    58
+   ],
+   "angle": 180,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "attack2_03": {
+   "hand": [
+    101,
+    58
+   ],
+   "angle": 0,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "attack2_04": {
+   "hand": [
+    98,
+    52
+   ],
+   "angle": -20,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "attack2_05": {
+   "hand": [
+    79,
+    75
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "attack3_01": {
+   "hand": [
+    81,
+    90
+   ],
+   "angle": -20,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "attack3_02": {
+   "hand": [
+    65,
+    15
+   ],
+   "angle": -110,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "attack3_03": {
+   "hand": [
+    50,
+    8
+   ],
+   "angle": 150,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "attack3_04": {
+   "hand": [
+    92,
+    77
+   ],
+   "angle": 30,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "attack3_05": {
+   "hand": [
+    98,
+    119
+   ],
+   "angle": 12,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "attack3_06": {
+   "hand": [
+    90,
+    75
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "manual": true
    }
   }
  }

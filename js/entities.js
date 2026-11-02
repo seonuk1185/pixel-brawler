@@ -16,13 +16,22 @@
     this.weaponKey = 'sword';
   }
 
-  Player.prototype.setCharacter = function (charAssets) { this.char = charAssets; this.animT = 0; };
+  Player.prototype.setCharacter = function (charAssets) {
+    this.char = charAssets; this.animT = 0;
+    if (this.state === 'attack') { this.state = 'idle'; this.atk = null; }   // 공격 도중 캐릭터를 바꾸면 그 공격은 끊는다
+    this.comboStep = 0;
+  };
+
+  // 지금 캐릭터의 콤보 목록: stage1 캐릭터는 자기 것(def.combo), 예전 견습 그림은 공통(cfg.combo.steps)
+  Player.prototype.comboSteps = function () {
+    return (this.char && this.char.def.combo) || this.cfg.combo.steps;
+  };
 
   Player.prototype.currentFrame = function () {
     var def = this.char.def;
     if (this.state === 'attack') {
-      var st = this.cfg.combo.steps[this.atk.step];
-      return { anim: 'attack', idx: st.f[this.atk.i] };
+      var st = this.comboSteps()[this.atk.step];
+      return { anim: st.anim || 'attack', idx: st.f[this.atk.i] };
     }
     var a = this.state === 'walk' ? 'walk' : 'idle';
     var A = def.anims[a];
@@ -34,7 +43,7 @@
   Player.prototype.startAttack = function (step) {
     this.state = 'attack';
     this.atk = { step: step, i: 0, t: 0, hitDone: false, slashed: false, queued: false };
-    this.comboStep = (step + 1) % this.cfg.combo.steps.length;
+    this.comboStep = (step + 1) % this.comboSteps().length;
   };
 
   // 돌려주는 값: 이번 프레임에 생긴 일 { slash, hitCheck }
@@ -67,11 +76,12 @@
     }
 
     if (this.state === 'attack') {
-      var st = C.steps[this.atk.step];
+      var steps = this.comboSteps();
+      var st = steps[this.atk.step];
       var a = this.atk;
       a.t += dtMs * W.speed;
       // 미리 눌러 둔 다음 공격 기억
-      if (!a.queued && a.i >= 1 && Input.peekAttack(C.bufferMs) && this.atk.step < C.steps.length - 1) {
+      if (!a.queued && a.i >= 1 && Input.peekAttack(C.bufferMs) && this.atk.step < steps.length - 1) {
         Input.takeAttack(C.bufferMs); a.queued = true;
       }
       while (a.t >= st.d[a.i]) {
@@ -84,6 +94,7 @@
           return this.update(0, world);
         }
         if (a.i >= st.f.length) {               // 공격 끝
+          if (st.endAdvance) this.x += st.endAdvance * this.dir;   // 그림 속에서 앞으로 나간 만큼 몸 위치를 옮김
           this.state = 'idle'; this.atk = null; this.animT = 0; this.comboIdleT = 0;
           break;
         }
@@ -106,6 +117,10 @@
 
   Player.prototype.hitbox = function () {
     var h = this.cfg.player.hitbox;
+    if (this.state === 'attack' && this.atk) {      // 타마다 판정 범위가 다름(config MOVES 의 reach)
+      var r = this.comboSteps()[this.atk.step].reach;
+      if (r) h = { x0: r.x0, x1: r.x1, yTop: r.yTop, yBot: r.yBot, depth: r.depth || h.depth };
+    }
     var xa = this.x + h.x0 * this.dir, xb = this.x + h.x1 * this.dir;
     return { x0: Math.min(xa, xb), x1: Math.max(xa, xb), y0: this.y + h.yTop, y1: this.y + h.yBot, z: this.y, depth: h.depth };
   };

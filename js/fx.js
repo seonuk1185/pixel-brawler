@@ -63,9 +63,14 @@
     },
 
     // 베기 궤적: 중심(cx,cy), 바라보는 방향 dir(1/-1)
-    slash: function (cx, cy, dir, arc, color, ms, sprites) {
+    // look = { rot(도), sx, sy, flipY } 타마다 다른 방향으로 그림을 돌리고 뒤집기
+    slash: function (cx, cy, dir, arc, color, ms, sprites, look) {
       // 맞는 순간 화면이 멈추므로, 궤적은 이미 거의 그어진 상태로 시작한다
-      list.push({ type: 'slash', x: cx, y: cy, dir: dir, arc: arc, color: color, t: ms * 0.28, life: ms, sprites: sprites });
+      list.push({ type: 'slash', x: cx, y: cy, dir: dir, arc: arc, color: color, t: ms * 0.28, life: ms, sprites: sprites, look: look || null });
+    },
+    // 찌르기: 앞쪽으로 뻗는 짧은 직선 (cx,cy = 시작점, len = 길이)
+    thrust: function (cx, cy, dir, len, color, ms) {
+      list.push({ type: 'thrust', x: cx, y: cy, dir: dir, len: len, color: color, t: ms * 0.2, life: ms });
     },
     impact: function (x, y, dir, color, count, big, sprites) {
       var parts = [];
@@ -97,6 +102,7 @@
       list.forEach(function (f) {
         var k = f.t / f.life, x = Math.round(f.x - camX), y = Math.round(f.y);
         if (f.type === 'slash') drawSlash(ctx, f, x, y, k);
+        else if (f.type === 'thrust') drawThrust(ctx, f, x, y, k);
         else if (f.type === 'impact') drawImpact(ctx, f, x, y, k);
         else if (f.type === 'dmg') {
           // 처음엔 크게 튀어나왔다가 작아지며 떠오름
@@ -115,7 +121,10 @@
     if (!fr) return false;
     ctx.save();
     ctx.translate(x, y);
-    ctx.scale(f.dir < 0 ? -1 : 1, f.arc && f.arc.flipY ? -1 : 1);
+    var L = f.look || {};
+    ctx.scale(f.dir < 0 ? -1 : 1, 1);                       // 왼쪽 보면 좌우 뒤집기
+    if (L.rot) ctx.rotate(L.rot * Math.PI / 180);           // 휘두르는 방향에 맞게 돌리기
+    ctx.scale(L.sx || 1, ((L.flipY || (f.arc && f.arc.flipY)) ? -1 : 1) * (L.sy || 1));
     ctx.drawImage(fr, -Math.round(fr.width / 2), -Math.round(fr.height / 2));
     ctx.restore();
     return true;
@@ -147,6 +156,22 @@
       }
     }
     ctx.globalAlpha = 1;
+  }
+
+  // 찌르기 궤적: 빠르게 앞으로 뻗고 뒤쪽부터 사라지는 가는 직선(흰 심 + 무기 색 테두리)
+  function drawThrust(ctx, f, x, y, k) {
+    var grow = Math.min(1, k * 4), tail = Math.max(0, (k - 0.35) / 0.65);
+    var a = Math.round(f.len * tail), b = Math.round(f.len * grow);
+    for (var i = a; i <= b; i++) {
+      var s = i / f.len, th = Math.max(1, Math.round(3 * Math.sin(Math.PI * Math.min(1, s * 1.1 + 0.05))));
+      var px = Math.round(x + i * f.dir);
+      ctx.globalAlpha = 0.9;
+      ctx.fillStyle = f.color; ctx.fillRect(px, y - th, 1, th * 2 + 1);
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(px, y - (th > 1 ? 1 : 0), 1, th > 1 ? 3 : 1);
+    }
+    // 끝에 작은 반짝임
+    if (k < 0.5) { var tx = Math.round(x + b * f.dir); ctx.fillStyle = '#ffffff'; ctx.fillRect(tx - 1, y - 3, 3, 7); ctx.fillRect(tx - 3, y - 1, 7, 3); }
   }
 
   function drawImpact(ctx, f, x, y, k) {

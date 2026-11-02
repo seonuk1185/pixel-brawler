@@ -26,9 +26,58 @@
   };
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
 
+  // ---------- 캐릭터별 3타 콤보 ----------
+  // anim = 쓸 그림 묶음, f = 그 묶음의 몇 번째 장(0부터) 순서, d = 각 장의 시간(ms)
+  // active = 판정 나는 장(f 순서 기준), cancel = 다음 타로 넘어갈 수 있는 장, lunge = 판정 시작 때 앞으로 내딛는 도트
+  // endAdvance = 동작이 끝날 때 몸 위치를 앞으로 옮기는 도트(그림 속에서 앞으로 나간 만큼 → 서기 그림으로 돌아갈 때 뒤로 튀지 않게)
+  // reach = 판정 상자(발 기준, 오른쪽 볼 때). 없으면 player.hitbox
+  // dmg/hitstop/knock/shake = 배율(무기 배율과 곱함), finisher = 마무리 타(크게)
+  // fx = 베기 효과: type 'slash'(초승달 그림) / 'thrust'(짧은 직선), x,y = 발 기준 위치, rot = 돌리기(도, 시계방향 +),
+  //      sx,sy = 크기 배율, flipY = 위아래 뒤집기(아래→위로 올려 베기), len = 찌르기 길이
+  var MOVES = {
+    // 남자: 힘 있는 검술. 1타 대각선 내려베기 → 2타 아래에서 위로 되받아 베기 → 3타 크게 들어 내리찍기
+    male: {
+      stride: 112, attack1Prefix: 'attack_', attack1Count: 5, attack2Count: 5, attack3Count: 6,
+      combo: [
+        { anim: 'attack1', f: [0, 1, 2, 3, 4], d: [40, 70, 35, 90, 90], active: [2, 3], cancel: 3, lunge: 4,
+          reach: { x0: 8, x1: 92, yTop: -100, yBot: -18 },
+          dmg: 1.0, hitstop: 1.0, knock: 1.0, shake: 1.0,
+          fx: { type: 'slash', x: 40, y: -60 }, arc: { from: -100, to: 40, r: 46, w: 9 } },
+        { anim: 'attack2', f: [0, 1, 2, 3, 4], d: [40, 60, 40, 100, 90], active: [2, 3], cancel: 4, lunge: 6,
+          reach: { x0: 8, x1: 94, yTop: -112, yBot: -30 },
+          dmg: 1.15, hitstop: 1.1, knock: 1.3, shake: 1.1,
+          fx: { type: 'slash', x: 42, y: -66, flipY: true, rot: -15 }, arc: { from: 60, to: -80, r: 50, w: 8 } },
+        { anim: 'attack3', f: [0, 1, 2, 3, 4, 5], d: [50, 90, 70, 40, 150, 120], active: [4, 4], cancel: 99, lunge: 4, endAdvance: 22,
+          reach: { x0: 10, x1: 104, yTop: -110, yBot: -4 },
+          dmg: 1.8, hitstop: 1.9, knock: 2.6, shake: 2.4, finisher: true,
+          fx: { type: 'slash', x: 52, y: -52, sx: 1.35, sy: 1.35 }, arc: { from: -130, to: 70, r: 58, w: 12 } }
+      ]
+    },
+    // 여자: 빠르고 가볍고 우아한 검술. 1타 앞으로 찌르기 → 2타 한 바퀴 돌며 가로 베기 → 3타 살짝 뛰어 내려베기
+    female: {
+      stride: 96, attack1Prefix: 'attack1_', attack1Count: 4, attack2Count: 5, attack3Count: 6,
+      combo: [
+        { anim: 'attack1', f: [0, 1, 2, 3], d: [45, 40, 80, 70], active: [1, 2], cancel: 3, lunge: 6,
+          reach: { x0: 20, x1: 108, yTop: -82, yBot: -44 },
+          dmg: 0.9, hitstop: 0.8, knock: 0.8, shake: 0.7,
+          fx: { type: 'thrust', x: 66, y: -65, len: 46 }, arc: { from: -10, to: 10, r: 50, w: 6 } },
+        { anim: 'attack2', f: [0, 1, 2, 3, 4], d: [40, 45, 35, 70, 80], active: [2, 3], cancel: 4, lunge: 5,
+          reach: { x0: -20, x1: 100, yTop: -96, yBot: -40 },
+          dmg: 1.05, hitstop: 1.0, knock: 1.1, shake: 1.0,
+          fx: { type: 'slash', x: 40, y: -72, rot: 90, sx: 0.6, sy: 1.15 }, arc: { from: -20, to: 20, r: 50, w: 8 } },
+        { anim: 'attack3', f: [0, 1, 2, 3, 4, 5], d: [40, 60, 60, 40, 130, 110], active: [3, 4], cancel: 99, lunge: 10,
+          reach: { x0: 10, x1: 96, yTop: -110, yBot: -4 },
+          dmg: 1.6, hitstop: 1.6, knock: 2.2, shake: 2.0, finisher: true,
+          fx: { type: 'slash', x: 40, y: -50, sx: 1.2, sy: 1.2 }, arc: { from: -130, to: 70, r: 56, w: 11 } }
+      ]
+    }
+  };
+
   // 새 그림(art\stage1): 빈손 남/여 + 손 위치 json → 무기를 코드로 손에 붙인다
+  // 콤보 3타는 캐릭터마다 자기 그림(attack1/attack2/attack3)과 자기 수치를 쓴다 (위 MOVES)
   function stage1(who, anchors) {
     var p = 'assets/chars/stage1/' + who + '/';
+    var M = MOVES[who];
     return {
       label: who === 'male' ? '남' : '여',
       frameW: 176, frameH: 136,
@@ -36,14 +85,18 @@
       bakedWeapon: false,
       anchors: anchors,
       anims: {
-        idle:   { frames: seq(p + 'idle_', 4),   fps: 6,  loop: true },
+        idle:    { frames: seq(p + 'idle_', 4),   fps: 6,  loop: true },
         // 걷기: 시간 대신 「걸은 거리」로 그림을 넘긴다. stride = 8장 한 바퀴(두 걸음) 동안 가는 도트 수.
-        //   그림 속 보폭에 맞춘 값이라 발이 바닥에서 미끄러지지 않는다(좌우 90도트/초 → 약 6.4장/초).
+        //   그림 속 보폭에 맞춘 값이라 발이 바닥에서 미끄러지지 않는다. 캐릭터마다 보폭이 달라 MOVES 에 따로 둔다
+        //   (남 112, 여 96 → 좌우 90도트/초에서 약 6.4 / 7.5장/초).
         //   depthStrideMul = 위아래(안쪽) 이동일 때 거리를 이만큼 크게 쳐서, 느린 위아래 이동에도 다리가 자연스럽게 움직이게.
-        walk:   { frames: seq(p + 'walk_', 8),   fps: 12, loop: true, stride: 112, depthStrideMul: 1.6 },
-        attack: { frames: seq(p + 'attack_', 5), fps: 14, loop: false },
-        hurt:   { frames: seq(p + 'hurt_', 3),   fps: 10, loop: false }
-      }
+        walk:    { frames: seq(p + 'walk_', 8),   fps: 12, loop: true, stride: M.stride, depthStrideMul: 1.6 },
+        attack1: { frames: seq(p + M.attack1Prefix, M.attack1Count), fps: 14, loop: false },
+        attack2: { frames: seq(p + 'attack2_', M.attack2Count), fps: 14, loop: false },
+        attack3: { frames: seq(p + 'attack3_', M.attack3Count), fps: 14, loop: false },
+        hurt:    { frames: seq(p + 'hurt_', 3),   fps: 10, loop: false }
+      },
+      combo: M.combo
     };
   }
 
@@ -112,7 +165,8 @@
       axe:   { damage: [19, 26], hitstopMul: 1.6, shakeMul: 1.8, knockMul: 1.6, speed: 0.78, arcColor: '#ffc27a', sparkColor: '#ffb347' }
     },
 
-    // ---------- 3타 콤보 (같은 공격 그림을 순서·속도 바꿔 재사용) ----------
+    // ---------- 3타 콤보: 입력 기억 시간(공통) + 예전 견습 그림(?art=novice)용 콤보 ----------
+    // stage1 캐릭터(남/여)는 위 MOVES 의 자기 콤보를 쓴다. 아래 steps 는 칼 박힌 예전 그림(공격 그림 1묶음)에서만 쓴다.
     combo: {
       bufferMs: 260,        // 공격 중 미리 눌러 둔 입력을 기억하는 시간
       resetMs: 450,         // 이 시간 넘게 안 누르면 1타부터

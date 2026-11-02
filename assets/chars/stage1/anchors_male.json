@@ -332,6 +332,127 @@
    "check": {
     "note": "walk v3 (2026-11-03): fist blob centre measured directly, angle fixed"
    }
+  },
+  "attack2_01": {
+   "hand": [
+    109,
+    102
+   ],
+   "angle": 45,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "attack2_02": {
+   "hand": [
+    57,
+    78
+   ],
+   "angle": 150,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "attack2_03": {
+   "hand": [
+    108,
+    72
+   ],
+   "angle": -30,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "attack2_04": {
+   "hand": [
+    105,
+    20
+   ],
+   "angle": -85,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "attack2_05": {
+   "hand": [
+    99,
+    71
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "attack3_01": {
+   "hand": [
+    50,
+    92
+   ],
+   "angle": 160,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "attack3_02": {
+   "hand": [
+    52,
+    31
+   ],
+   "angle": 120,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "attack3_03": {
+   "hand": [
+    72,
+    22
+   ],
+   "angle": 180,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "attack3_04": {
+   "hand": [
+    100,
+    48
+   ],
+   "angle": -60,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "attack3_05": {
+   "hand": [
+    114,
+    125
+   ],
+   "angle": 3,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "attack3_06": {
+   "hand": [
+    111,
+    121
+   ],
+   "angle": 10,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
   }
  }
 }
