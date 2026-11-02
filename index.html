@@ -17,15 +17,17 @@
 <div class="game">
   <canvas id="screen"></canvas>
 
-  <!-- 위: 캐릭터·무기 고르기 -->
+  <!-- 위: 캐릭터·직업 고르기 (견습 = 전직 전 맨손, 기사 = 검) -->
   <div class="topbar">
     <div class="seg" aria-label="캐릭터">
       <button type="button" data-char="male" class="on">남</button>
       <button type="button" data-char="female">여</button>
     </div>
-    <div class="seg" aria-label="무기">
-      <button type="button" data-weapon="sword" class="on">검</button>
-      <button type="button" data-weapon="axe">도끼</button>
+    <div class="seg" aria-label="직업">
+      <button type="button" data-class="novice" class="on">견습(맨손)</button>
+      <button type="button" data-class="knight">기사(검)</button>
+      <!-- 도끼 다시 켜기: 아래 주석을 풀고 js/config.js 의 classes 에서 axe 줄 주석도 푼다 -->
+      <!-- <button type="button" data-class="axe">도끼</button> -->
     </div>
   </div>
   <div class="combo" id="combo" hidden></div>

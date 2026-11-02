@@ -72,7 +72,8 @@
     thrust: function (cx, cy, dir, len, color, ms) {
       list.push({ type: 'thrust', x: cx, y: cy, dir: dir, len: len, color: color, t: ms * 0.2, life: ms });
     },
-    impact: function (x, y, dir, color, count, big, sprites) {
+    // scale = 불똥 그림 크기 배율(맨손은 작게, 없으면 1)
+    impact: function (x, y, dir, color, count, big, sprites, scale) {
       var parts = [];
       for (var i = 0; i < count; i++) {
         var a = (Math.random() * 1.6 - 0.8) + (dir > 0 ? 0 : Math.PI) + (Math.random() < 0.3 ? Math.PI : 0) * 0.6;
@@ -81,7 +82,8 @@
       }
       var life = big ? 260 : 200, spr = sprites && sprites.length ? sprites : null;
       // 그림 효과는 2번째 장(가장 크게 터진 장)부터 → 멈춘 순간에 크게 보임
-      list.push({ type: 'impact', x: x, y: y, dir: dir, color: color, t: spr ? life / spr.length : 0, life: life, parts: parts, big: big, sprites: spr });
+      list.push({ type: 'impact', x: x, y: y, dir: dir, color: color, t: spr ? life / spr.length : 0, life: life, parts: parts, big: big, sprites: spr,
+        look: scale && scale !== 1 ? { sx: scale, sy: scale } : null });
     },
     damage: function (x, y, n, crit, J) {
       list.push({ type: 'dmg', x: x + (Math.random() * 8 - 4), y: y, n: String(n) + (crit ? '!' : ''), crit: crit, t: 0, life: J.dmgMs, rise: J.dmgRise });
@@ -122,6 +124,7 @@
     ctx.save();
     ctx.translate(x, y);
     var L = f.look || {};
+    if (L.alpha != null) ctx.globalAlpha = L.alpha * (k > 0.6 ? Math.max(0, 1 - (k - 0.6) / 0.4) : 1);   // 흐리게(발차기 바람)
     ctx.scale(f.dir < 0 ? -1 : 1, 1);                       // 왼쪽 보면 좌우 뒤집기
     if (L.rot) ctx.rotate(L.rot * Math.PI / 180);           // 휘두르는 방향에 맞게 돌리기
     ctx.scale(L.sx || 1, ((L.flipY || (f.arc && f.arc.flipY)) ? -1 : 1) * (L.sy || 1));

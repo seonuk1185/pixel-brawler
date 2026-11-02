@@ -86,7 +86,7 @@
   var G = window.GAME = {
     cfg: CFG, assets: null, player: null, dummy: null,
     hitstop: 0, hits: 0, comboHits: 0, comboT: 0, totalDmg: 0, camX: 0,
-    charKey: 'male', weaponKey: 'sword', debug: DEBUG
+    charKey: 'male', classKey: CFG.defaultClass || 'knight', weaponKey: 'sword', moveSet: 'sword', debug: DEBUG
   };
 
   function rand(a, b) { return a + Math.floor(Math.random() * (b - a + 1)); }
@@ -102,8 +102,9 @@
     G.hitstop = J.hitstopMs * W.hitstopMul * st.hitstop;
     FX.shake(J.shakePx * W.shakeMul * st.shake, J.shakeMs * (st.finisher ? 1.5 : 1));
     d.hit(p.dir, J.knockback * W.knockMul * st.knock, J.wobble * (st.finisher ? 1.4 : 1), J.flashMs);
-    var hx = d.x - p.dir * 6, hy = p.y - 52;
-    FX.impact(hx, hy, p.dir, W.sparkColor, Math.round(J.sparkCount * (st.finisher ? 1.6 : 1)), !!st.finisher, G.assets.fx && G.assets.fx.impact);
+    // hitY = 주먹·발이 닿는 높이(맨손 콤보), spark = 불똥 그림 크기(맨손은 작게)
+    var hx = d.x - p.dir * 6, hy = p.y + (st.hitY != null ? st.hitY : -52), sc = st.spark || 1;
+    FX.impact(hx, hy, p.dir, W.sparkColor, Math.round(J.sparkCount * (st.finisher ? 1.6 : 1) * (sc < 1 ? 0.7 : 1)), !!st.finisher, G.assets.fx && G.assets.fx.impact, sc);
     FX.damage(d.x, d.y - 96, dmg, !!st.finisher, J);
     if (J.vibrateMs > 0 && navigator.vibrate) { try { navigator.vibrate(Math.round(J.vibrateMs * (st.finisher ? 2 : 1))); } catch (e) {} }
     G.hits++; G.totalDmg += dmg;
@@ -128,12 +129,17 @@
     if (G.comboT > 0) { G.comboT -= dt; if (G.comboT <= 0) comboEl.hidden = true; }
     var p = G.player;
     p.weaponKey = G.weaponKey;
+    p.setMoveSet(G.moveSet);
     var ev = p.update(dt, world);
     if (ev.slash) {
       var W = CFG.weapons[p.weaponKey], st0 = ev.slash.step, a = st0.arc, sfx = st0.fx;
       var fxs = G.assets.fx && G.assets.fx.slash && G.assets.fx.slash.length ? G.assets.fx.slash : null;
       var ms = J.slashMs * (st0.finisher ? 1.5 : 1);
-      if (sfx && sfx.type === 'thrust') {   // 찌르기: 짧은 직선 궤적(코드로 그림)
+      if (sfx && sfx.type === 'none') {
+        // 맨손 주먹: 궤적 없음 (맞으면 불똥만)
+      } else if (sfx && sfx.type === 'whoosh') {   // 발차기: 베기 그림을 흐리고 납작하게 → 바람 가르는 느낌
+        if (fxs) FX.slash(p.x + p.dir * sfx.x, p.y + sfx.y, p.dir, a, '#ffffff', ms, fxs, sfx);
+      } else if (sfx && sfx.type === 'thrust') {   // 찌르기: 짧은 직선 궤적(코드로 그림)
         FX.thrust(p.x + p.dir * sfx.x, p.y + sfx.y, p.dir, sfx.len || 40, W.arcColor, ms);
       } else if (fxs) {   // 그림 효과: 캐릭터 앞에 놓기 (타마다 위치·회전·뒤집기 다름)
         var off = sfx || CFG.art.fx.slashOffset;
@@ -194,8 +200,8 @@
     document.querySelectorAll('[data-char]').forEach(function (b) {
       b.addEventListener('click', function () { setChar(b.dataset.char); b.blur(); });
     });
-    document.querySelectorAll('[data-weapon]').forEach(function (b) {
-      b.addEventListener('click', function () { setWeapon(b.dataset.weapon); b.blur(); });
+    document.querySelectorAll('[data-class]').forEach(function (b) {
+      b.addEventListener('click', function () { setClass(b.dataset.class); b.blur(); });
     });
   }
   function setChar(k) {
@@ -203,11 +209,18 @@
     G.charKey = k; G.player.setCharacter(G.assets.characters[k]);
     document.querySelectorAll('[data-char]').forEach(function (b) { b.classList.toggle('on', b.dataset.char === k); });
   }
-  function setWeapon(k) {
-    G.weaponKey = k;
-    document.querySelectorAll('[data-weapon]').forEach(function (b) { b.classList.toggle('on', b.dataset.weapon === k); });
+  // 직업 고르기: 견습(맨손) / 기사(검). 직업이 무기와 콤보 묶음을 정한다 (config classes)
+  function setClass(k) {
+    var c = CFG.classes && CFG.classes[k];
+    if (!c) return;
+    G.classKey = k; G.weaponKey = c.weapon; G.moveSet = c.moves;
+    if (G.player) { G.player.weaponKey = c.weapon; G.player.setMoveSet(c.moves); }
+    document.querySelectorAll('[data-class]').forEach(function (b) { b.classList.toggle('on', b.dataset.class === k); });
   }
+  // 무기만 바꾸기(디버그·나중용): 콤보 묶음은 그대로
+  function setWeapon(k) { if (CFG.weapons[k]) G.weaponKey = k; }
   G.setChar = function (k) { setChar(k); };
+  G.setClass = function (k) { setClass(k); };
   G.setWeapon = function (k) { setWeapon(k); };
 
   // 여자 그림이 오기 전: 남자 그림 색만 바꿔 임시로 씀 (한 번만 미리 구워 둠)
@@ -279,7 +292,7 @@
     G.player.y = Math.round((world.laneTop + world.laneBottom) / 2);
     G.dummy.y = G.player.y;
     G.camX = Math.max(0, G.player.x - LW * 0.42);
-    setChar('male'); setWeapon('sword');
+    setChar('male'); setClass(CFG.defaultClass || 'novice');
     bindToggles();
     Input.init(CFG);
     if (DEBUG && window.Debug) Debug.init(G);

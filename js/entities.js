@@ -14,6 +14,7 @@
     this.comboIdleT = 0;
     this.char = null;         // 불러온 캐릭터 그림 묶음
     this.weaponKey = 'sword';
+    this.moveSet = 'sword';   // 콤보 묶음: 'fist'(견습 맨손) / 'sword'(기사)
   }
 
   Player.prototype.setCharacter = function (charAssets) {
@@ -22,9 +23,20 @@
     this.comboStep = 0;
   };
 
-  // 지금 캐릭터의 콤보 목록: stage1 캐릭터는 자기 것(def.combo), 예전 견습 그림은 공통(cfg.combo.steps)
+  // 직업(견습/기사)이 바뀌면 콤보 묶음도 바뀐다. 공격 도중이면 그 공격은 끊는다
+  Player.prototype.setMoveSet = function (k) {
+    if (this.moveSet === k) return;
+    this.moveSet = k;
+    if (this.state === 'attack') { this.state = 'idle'; this.atk = null; this.animT = 0; }
+    this.comboStep = 0;
+  };
+
+  // 지금 캐릭터의 콤보 목록: stage1 캐릭터는 직업에 맞는 자기 것(def.combos[moveSet]),
+  // 없으면 def.combo(검), 예전 견습 그림은 공통(cfg.combo.steps)
   Player.prototype.comboSteps = function () {
-    return (this.char && this.char.def.combo) || this.cfg.combo.steps;
+    var def = this.char && this.char.def;
+    if (def && def.combos && def.combos[this.moveSet]) return def.combos[this.moveSet];
+    return (def && def.combo) || this.cfg.combo.steps;
   };
 
   // 한 타 안의 판정 구간 목록. 보통은 1개(그 타 자체), hits 가 있으면 여러 번 벤다(예: 여자 3타 X자 베기 = 2번).

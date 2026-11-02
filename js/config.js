@@ -81,8 +81,47 @@
     }
   };
 
+  // ---------- 견습(맨손) 3타 콤보 (전직 전) ----------
+  // 그림 묶음 fist1/fist2/fist3. 칼보다 판정이 짧고(reach) 데미지가 약간 낮다(무기 'fist' 배율).
+  // fx: type 'none' = 궤적 없음(주먹), 'whoosh' = 베기 그림을 흐리게(alpha) 납작하게 써서 발차기 바람 소리 느낌
+  // hitY = 불똥이 터지는 높이(발 기준, 주먹·발이 닿는 곳), spark = 불똥 그림 크기 배율
+  // 그림 속에서 이미 앞으로 디딘 동작(발차기·무릎)은 endAdvance 로 끝날 때 몸 위치를 옮긴다
+  var FIST = {
+    // 남자: 힘 있는 막싸움. 1타 잽 → 2타 몸통 훅 → 3타 돌려차기(마무리)
+    male: [
+      { anim: 'fist1', f: [0, 1, 2, 3], d: [35, 40, 80, 70], active: [1, 2], cancel: 3, lunge: 3,
+        reach: { x0: 10, x1: 62, yTop: -92, yBot: -56 },
+        dmg: 1.0, hitstop: 0.8, knock: 0.7, shake: 0.7, hitY: -75, spark: 0.6,
+        fx: { type: 'none' }, arc: { from: -10, to: 10, r: 30, w: 4 } },
+      { anim: 'fist2', f: [0, 1, 2, 3, 4], d: [40, 55, 40, 90, 80], active: [2, 3], cancel: 4, lunge: 5,
+        reach: { x0: 10, x1: 58, yTop: -80, yBot: -36 },
+        dmg: 1.2, hitstop: 1.1, knock: 1.2, shake: 1.1, hitY: -58, spark: 0.75,
+        fx: { type: 'none' }, arc: { from: -10, to: 10, r: 30, w: 4 } },
+      { anim: 'fist3', f: [0, 1, 2, 3, 4, 5], d: [50, 50, 50, 130, 80, 110], active: [3, 4], cancel: 99, lunge: 2, endAdvance: 15,
+        reach: { x0: 16, x1: 78, yTop: -100, yBot: -50 },
+        dmg: 1.8, hitstop: 1.9, knock: 2.6, shake: 2.3, finisher: true, hitY: -80, spark: 1.0,
+        fx: { type: 'whoosh', x: 50, y: -80, rot: 0, sx: 0.85, sy: 0.55, alpha: 0.45 }, arc: { from: -60, to: 30, r: 46, w: 6 } }
+    ],
+    // 여자: 빠르고 우아한 무술. 1타 손바닥 치기 → 2타 돌려차기 → 3타 파고드는 무릎차기(마무리), 땅에서만
+    female: [
+      { anim: 'fist1', f: [0, 1, 2, 3], d: [30, 35, 75, 60], active: [1, 2], cancel: 3, lunge: 5,
+        reach: { x0: 10, x1: 56, yTop: -90, yBot: -58 },
+        dmg: 0.9, hitstop: 0.75, knock: 0.8, shake: 0.6, hitY: -74, spark: 0.6,
+        fx: { type: 'none' }, arc: { from: -10, to: 10, r: 30, w: 4 } },
+      { anim: 'fist2', f: [0, 1, 2, 3, 4], d: [35, 40, 110, 50, 70], active: [2, 2], cancel: 3, lunge: 4,
+        reach: { x0: 10, x1: 72, yTop: -86, yBot: -48 },
+        dmg: 1.1, hitstop: 1.1, knock: 1.4, shake: 1.1, hitY: -67, spark: 0.8,
+        fx: { type: 'whoosh', x: 46, y: -68, rot: 0, sx: 0.75, sy: 0.45, alpha: 0.4 }, arc: { from: -40, to: 20, r: 40, w: 5 } },
+      { anim: 'fist3', f: [0, 1, 2, 3, 4], d: [40, 45, 140, 60, 100], active: [2, 2], cancel: 99, lunge: 8, endAdvance: 14,
+        reach: { x0: 6, x1: 46, yTop: -86, yBot: -40 },
+        dmg: 1.7, hitstop: 2.0, knock: 2.5, shake: 2.3, finisher: true, hitY: -66, spark: 1.0,
+        fx: { type: 'none' }, arc: { from: -10, to: 10, r: 30, w: 4 } }
+    ]
+  };
+
   // 새 그림(art\stage1): 빈손 남/여 + 손 위치 json → 무기를 코드로 손에 붙인다
   // 콤보 3타는 캐릭터마다 자기 그림(attack1/attack2/attack3)과 자기 수치를 쓴다 (위 MOVES)
+  // 직업(견습/기사)에 따라 콤보 묶음이 바뀐다: combos.fist = 맨손(FIST), combos.sword = 검(MOVES)
   function stage1(who, anchors) {
     var p = 'assets/chars/stage1/' + who + '/';
     var M = MOVES[who];
@@ -102,9 +141,13 @@
         attack1: { frames: seq(p + M.attack1Prefix, M.attack1Count), fps: 14, loop: false },
         attack2: { frames: seq(p + 'attack2_', M.attack2Count), fps: 14, loop: false },
         attack3: { frames: seq(p + 'attack3_', M.attack3Count), fps: 14, loop: false },
-        hurt:    { frames: seq(p + 'hurt_', 3),   fps: 10, loop: false }
+        hurt:    { frames: seq(p + 'hurt_', 3),   fps: 10, loop: false },
+        fist1:   { frames: seq(p + 'fist1_', 4),  fps: 14, loop: false },
+        fist2:   { frames: seq(p + 'fist2_', 5),  fps: 14, loop: false },
+        fist3:   { frames: seq(p + 'fist3_', who === 'male' ? 6 : 5), fps: 14, loop: false }
       },
-      combo: M.combo
+      combo: M.combo,
+      combos: { sword: M.combo, fist: FIST[who] }
     };
   }
 
@@ -167,8 +210,20 @@
       hitbox: { x0: 8, x1: 92, yTop: -100, yBot: -18, depth: 14 } // 발 기준, 오른쪽 볼 때
     },
 
-    // ---------- 무기별 손맛 (검 = 스윽 빠르게, 도끼 = 쾅 무겁게) ----------
+    // ---------- 직업 (위쪽 버튼) ----------
+    // weapon = 쓰는 무기(무기별 손맛 + 손에 붙일 그림, 'fist' 는 그림 없음), moves = 콤보 묶음(combos 의 이름)
+    // 견습 = 전직 전 맨손, 기사 = 검. 처음 켤 때는 defaultClass.
+    // 도끼를 다시 켜려면: 아래 axe 줄의 주석(//)을 풀고, index.html 의 도끼 버튼 주석(<!-- -->)도 푼다.
+    classes: {
+      novice: { label: '견습(맨손)', weapon: 'fist',  moves: 'fist' },
+      knight: { label: '기사(검)',   weapon: 'sword', moves: 'sword' }
+      // , axe: { label: '도끼', weapon: 'axe', moves: 'sword' }
+    },
+    defaultClass: 'novice',
+
+    // ---------- 무기별 손맛 (맨손 = 가볍게 툭, 검 = 스윽 빠르게, 도끼 = 쾅 무겁게) ----------
     weapons: {
+      fist:  { damage: [8, 11],  hitstopMul: 0.9, shakeMul: 0.85, knockMul: 0.85, speed: 1.0, arcColor: '#ffffff', sparkColor: '#ffe6a0' },
       sword: { damage: [11, 15], hitstopMul: 1.0, shakeMul: 1.0, knockMul: 1.0, speed: 1.0,  arcColor: '#cfe8ff', sparkColor: '#fff3b0' },
       axe:   { damage: [19, 26], hitstopMul: 1.6, shakeMul: 1.8, knockMul: 1.6, speed: 0.78, arcColor: '#ffc27a', sparkColor: '#ffb347' }
     },
