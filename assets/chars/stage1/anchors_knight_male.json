@@ -253,51 +253,51 @@
    "angle": -27,
    "layer": "back",
    "check": {
-    "walk2": "2026-11-03 redrawn walk: hand = front gauntlet centre"
+    "walk3": "2026-11-03 legs redrawn (v3): hand = front gauntlet centre"
    }
   },
   "walk_02": {
    "hand": [
-    96,
+    95,
     66
    ],
    "angle": -27,
    "layer": "back",
    "check": {
-    "walk2": "2026-11-03 redrawn walk: hand = front gauntlet centre"
+    "walk3": "2026-11-03 legs redrawn (v3): hand = front gauntlet centre"
    }
   },
   "walk_03": {
    "hand": [
     95,
-    63
-   ],
-   "angle": -27,
-   "layer": "back",
-   "check": {
-    "walk2": "2026-11-03 redrawn walk: hand = front gauntlet centre"
-   }
-  },
-  "walk_04": {
-   "hand": [
-    98,
-    60
-   ],
-   "angle": -27,
-   "layer": "back",
-   "check": {
-    "walk2": "2026-11-03 redrawn walk: hand = front gauntlet centre"
-   }
-  },
-  "walk_05": {
-   "hand": [
-    98,
     62
    ],
    "angle": -27,
    "layer": "back",
    "check": {
-    "walk2": "2026-11-03 redrawn walk: hand = front gauntlet centre"
+    "walk3": "2026-11-03 legs redrawn (v3): hand = front gauntlet centre"
+   }
+  },
+  "walk_04": {
+   "hand": [
+    100,
+    59
+   ],
+   "angle": -27,
+   "layer": "back",
+   "check": {
+    "walk3": "2026-11-03 legs redrawn (v3): hand = front gauntlet centre"
+   }
+  },
+  "walk_05": {
+   "hand": [
+    97,
+    62
+   ],
+   "angle": -27,
+   "layer": "back",
+   "check": {
+    "walk3": "2026-11-03 legs redrawn (v3): hand = front gauntlet centre"
    }
   },
   "walk_06": {
@@ -308,29 +308,29 @@
    "angle": -27,
    "layer": "back",
    "check": {
-    "walk2": "2026-11-03 redrawn walk: hand = front gauntlet centre"
+    "walk3": "2026-11-03 legs redrawn (v3): hand = front gauntlet centre"
    }
   },
   "walk_07": {
    "hand": [
-    95,
-    62
+    94,
+    61
    ],
    "angle": -27,
    "layer": "back",
    "check": {
-    "walk2": "2026-11-03 redrawn walk: hand = front gauntlet centre"
+    "walk3": "2026-11-03 legs redrawn (v3): hand = front gauntlet centre"
    }
   },
   "walk_08": {
    "hand": [
-    98,
+    100,
     60
    ],
    "angle": -27,
    "layer": "back",
    "check": {
-    "walk2": "2026-11-03 redrawn walk: hand = front gauntlet centre"
+    "walk3": "2026-11-03 legs redrawn (v3): hand = front gauntlet centre"
    }
   },
   "attack2_01": {
