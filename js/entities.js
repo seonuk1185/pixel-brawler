@@ -25,21 +25,64 @@
     this.god = false;         // 시험용 무적
   }
 
-  // 적에게 맞음. dir = 밀려나는 방향(1 = 오른쪽). 맞았으면 true
-  Player.prototype.takeHit = function (dmg, dir, knock, flinchMs) {
-    if (this.state === 'dead' || this.invulnT > 0) return false;
+  // 장마다 시간(d, ms) 목록에서 t 일 때 몇 번째 장인지. 마지막 장을 넘기면 마지막 장(done = true)
+  function seqAt(d, t) {
+    for (var i = 0; i < d.length; i++) { if (t < d[i]) return { idx: i, done: false }; t -= d[i]; }
+    return { idx: d.length, done: true };
+  }
+  function sum(d) { var s = 0; for (var i = 0; i < d.length; i++) s += d[i]; return s; }
+
+  // 넘어짐 그림(knockdown/getup)이 있는 캐릭터인지 (예전 견습 그림 ?art=novice 에는 없음)
+  Player.prototype.hasDownArt = function () {
+    var A = this.char && this.char.def.anims;
+    return !!(A && A.knockdown && A.getup && this.char.anims.knockdown && this.char.anims.knockdown[0]);
+  };
+  Player.prototype.hasHurt2 = function () {
+    var A = this.char && this.char.def.anims;
+    return !!(A && A.hurt2 && this.char.anims.hurt2 && this.char.anims.hurt2[0]);
+  };
+
+  // 적에게 맞음. dir = 밀려나는 방향(1 = 오른쪽). heavy = 무거운 공격(넘어짐). 맞았으면 true
+  Player.prototype.takeHit = function (dmg, dir, knock, flinchMs, heavy) {
+    if (this.state === 'dead' || this.state === 'down' || this.invulnT > 0) return false;
     var H = this.cfg.hero;
     if (!this.god) this.hp = Math.max(0, this.hp - dmg);
     this.atk = null;
     this.vx = dir * (knock || 0) * (H.knockMul || 1) * 9;
     this.dir = -dir;                         // 때린 쪽을 본다
     this.animT = 0;
-    if (this.hp <= 0) { this.state = 'dead'; this.deadT = 0; this.invulnT = 0; return true; }
-    this.state = 'hurt';
-    this.hurtT = flinchMs || H.flinchMs;
-    this.invulnT = H.invulnMs;
     this.comboStep = 0;
+    var downArt = this.hasDownArt();
+    if (this.hp <= 0) {                      // 쓰러짐: 넘어짐 그림 → 누운 채로
+      this.state = 'dead'; this.deadT = 0; this.invulnT = 0; this.downT = 0;
+      if (downArt) this.vx = 0;              // 밀림은 넘어짐 그림에 맞춰(slide)
+      return true;
+    }
+    if (heavy && downArt) {                  // 무거운 공격: 넘어짐 → 누움 → 일어남 (내내 무적)
+      this.state = 'down'; this.downT = 0; this.vx = 0; this.invulnT = 0;
+      return true;
+    }
+    this.state = 'hurt';
+    this.hurtT = this.hurtDur = flinchMs || H.flinchMs;
+    this.hurtAnim = this.hurtAlt && this.hasHurt2() ? 'hurt2' : 'hurt';   // 움찔 그림 번갈아
+    this.hurtAlt = !this.hurtAlt;
+    this.invulnT = H.invulnMs;
     return true;
+  };
+
+  // 넘어짐 그림 동안 뒤로 밀리기: slide = 장 1~4 시작 때의 거리, 그 사이는 고르게. t0 → t1 사이에 움직일 거리
+  Player.prototype.slideBetween = function (t0, t1) {
+    var D = this.cfg.hero.down, d = this.char.def.anims.knockdown.d, s = D.slide;
+    function off(t) {
+      var st = 0;
+      for (var i = 0; i < s.length - 1; i++) {
+        var len = d[i] || 1;
+        if (t < st + len) return s[i] + (s[i + 1] - s[i]) * (t - st) / len;
+        st += len;
+      }
+      return s[s.length - 1];
+    }
+    return (off(t1) - off(t0)) * (D.slideMul || 1);
   };
   Player.prototype.hurtbox = function () {
     var h = this.cfg.hero.hurtbox;
@@ -92,7 +135,19 @@
 
   Player.prototype.currentFrame = function () {
     var def = this.char.def;
-    if (this.state === 'hurt' || this.state === 'dead') {
+    // 넘어짐/쓰러짐: knockdown 그림(마지막 장 = 누움) → (넘어짐이면) getup 그림
+    if ((this.state === 'down' || this.state === 'dead') && this.hasDownArt()) {
+      var KD = def.anims.knockdown.d, t = this.state === 'dead' ? this.deadT : this.downT;
+      var kdEnd = sum(KD) + (this.state === 'down' ? this.cfg.hero.down.lyingMs : 1e12);
+      if (t < kdEnd) return { anim: 'knockdown', idx: Math.min(def.anims.knockdown.frames.length - 1, seqAt(KD, t).idx) };
+      return { anim: 'getup', idx: Math.min(def.anims.getup.frames.length - 1, seqAt(def.anims.getup.d, t - kdEnd).idx) };
+    }
+    if (this.state === 'hurt' && this.hurtAnim === 'hurt2') {
+      // 두 번째 움찔: 그림 시간(d)을 움찔 시간에 맞춰 늘이거나 줄여서 끝까지 보여 줌
+      var H2 = def.anims.hurt2, k = sum(H2.d) / Math.max(1, this.hurtDur);
+      return { anim: 'hurt2', idx: Math.min(H2.frames.length - 1, seqAt(H2.d, (this.hurtDur - this.hurtT) * k).idx) };
+    }
+    if (this.state === 'hurt' || this.state === 'dead' || this.state === 'down') {
       var HA = def.anims.hurt, hn = HA.frames.length;
       return { anim: 'hurt', idx: Math.min(hn - 1, Math.floor(this.animT * HA.fps)) };
     }
@@ -120,12 +175,22 @@
     this.animT += dtMs / 1000;
     if (this.invulnT > 0) this.invulnT -= dtMs;
 
-    // 맞고 움찔 / 쓰러짐: 조작 안 됨, 밀려나기만
-    if (this.state === 'hurt' || this.state === 'dead') {
+    // 맞고 움찔 / 넘어짐 / 쓰러짐: 조작 안 됨, 밀려나기만
+    if (this.state === 'hurt' || this.state === 'dead' || this.state === 'down') {
       this.x += this.vx * dtMs / 1000;
       this.vx *= Math.exp(-dtMs / 1000 * 9);
-      if (this.state === 'dead') this.deadT += dtMs;
-      else if ((this.hurtT -= dtMs) <= 0) { this.state = 'idle'; this.animT = 0; this.vx = 0; }
+      var downArt = this.hasDownArt();
+      if (this.state === 'dead') {
+        if (downArt) this.x -= this.dir * this.slideBetween(this.deadT, this.deadT + dtMs);
+        this.deadT += dtMs;
+      } else if (this.state === 'down') {
+        var D = cfg.hero.down, A = this.char.def.anims;
+        this.x -= this.dir * this.slideBetween(this.downT, this.downT + dtMs);   // 뒤(바라보는 반대쪽)로 밀림
+        this.downT += dtMs;
+        if (this.downT >= sum(A.knockdown.d) + D.lyingMs + sum(A.getup.d)) {     // 다 일어남 → 잠깐 깜빡이며 무적
+          this.state = 'idle'; this.animT = 0; this.vx = 0; this.invulnT = D.getupBlinkMs;
+        }
+      } else if ((this.hurtT -= dtMs) <= 0) { this.state = 'idle'; this.animT = 0; this.vx = 0; }
       this.clamp(world);
       return ev;
     }
@@ -220,21 +285,23 @@
     var x = Math.round(this.x - camX), y = Math.round(this.y);
     drawShadow(ctx, x, y, 22);
     // 맞은 뒤 무적: 깜빡임
-    if (this.invulnT > 0 && this.state !== 'hurt' && Math.floor(this.invulnT / 70) % 2 === 0) return;
+    if (this.invulnT > 0 && this.state !== 'hurt' && this.state !== 'down' && this.state !== 'dead' && Math.floor(this.invulnT / 70) % 2 === 0) return;
     ctx.save();
     ctx.translate(x, y);
     ctx.scale(this.dir, 1);
-    // 쓰러짐: 움찔 그림을 잠깐 보인 뒤 뒤로 눕힌다(발을 축으로 90도)
-    if (this.state === 'dead' && this.deadT > 300) {
+    // 쓰러짐(넘어짐 그림이 없는 예전 견습 그림만): 움찔 그림을 잠깐 보인 뒤 뒤로 눕힌다(발을 축으로 90도)
+    if (this.state === 'dead' && this.deadT > 300 && !this.hasDownArt()) {
       ctx.rotate(-Math.PI / 2);
       ctx.globalAlpha = Math.max(0.35, 1 - (this.deadT - 300) / 2500);
     }
-    var hurtFlash = this.state === 'hurt' && img && this.animT < 0.08;
+    var hurtFlash = img && ((this.state === 'hurt' && this.animT < 0.08) ||
+      ((this.state === 'down' || this.state === 'dead') && this.animT < 0.08));
 
-    // 무기 붙이기 (그림에 칼이 박혀 있지 않은 캐릭터만)
+    // 무기 붙이기 (그림에 칼이 박혀 있지 않은 캐릭터만). hide = 넘어져서 손에서 놓친 장 → 안 그림
     var anc = null, wDef = null, wImg = null;
     if (!def.bakedWeapon && this.char.anchors && this.char.anchors[fr.anim]) {
       anc = this.char.anchors[fr.anim][fr.idx];
+      if (anc && anc.hide) anc = null;
       wDef = this.cfg.art.weapons[this.weaponKey];
       wImg = weaponImgs[this.weaponKey];
     }

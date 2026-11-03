@@ -603,6 +603,190 @@
     "match": 0.988,
     "match0": 0.942
    }
+  },
+  "getup_03": {
+   "hand": [
+    93,
+    88
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     93,
+     87
+    ],
+    "shift": [
+     0,
+     1
+    ],
+    "match": 0.966,
+    "match0": 0.928
+   }
+  },
+  "getup_04": {
+   "hand": [
+    91,
+    73
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     92,
+     73
+    ],
+    "shift": [
+     -1,
+     0
+    ],
+    "match": 0.964,
+    "match0": 0.95
+   }
+  },
+  "hurt2_01": {
+   "hand": [
+    72,
+    79
+   ],
+   "angle": 60,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     72,
+     79
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.981,
+    "match0": 0.981
+   }
+  },
+  "hurt2_02": {
+   "hand": [
+    82,
+    89
+   ],
+   "angle": 80,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     82,
+     89
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.968,
+    "match0": 0.968
+   }
+  },
+  "hurt2_03": {
+   "hand": [
+    95,
+    69
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     95,
+     69
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.974,
+    "match0": 0.974
+   }
+  },
+  "knockdown_01": {
+   "hand": [
+    68,
+    128
+   ],
+   "angle": 0,
+   "layer": "back",
+   "hide": true,
+   "check": {
+    "note": "weapon not drawn (dropped/hidden); hand = drop point on the ground"
+   }
+  },
+  "knockdown_02": {
+   "hand": [
+    68,
+    128
+   ],
+   "angle": 0,
+   "layer": "back",
+   "hide": true,
+   "check": {
+    "note": "weapon not drawn (dropped/hidden); hand = drop point on the ground"
+   }
+  },
+  "knockdown_03": {
+   "hand": [
+    68,
+    128
+   ],
+   "angle": 0,
+   "layer": "back",
+   "hide": true,
+   "check": {
+    "note": "weapon not drawn (dropped/hidden); hand = drop point on the ground"
+   }
+  },
+  "knockdown_04": {
+   "hand": [
+    68,
+    128
+   ],
+   "angle": 0,
+   "layer": "back",
+   "hide": true,
+   "check": {
+    "note": "weapon not drawn (dropped/hidden); hand = drop point on the ground"
+   }
+  },
+  "knockdown_05": {
+   "hand": [
+    68,
+    128
+   ],
+   "angle": 0,
+   "layer": "back",
+   "hide": true,
+   "check": {
+    "note": "weapon not drawn (dropped/hidden); hand = drop point on the ground"
+   }
+  },
+  "getup_01": {
+   "hand": [
+    68,
+    128
+   ],
+   "angle": 0,
+   "layer": "back",
+   "hide": true,
+   "check": {
+    "note": "weapon not drawn (dropped/hidden); hand = drop point on the ground"
+   }
+  },
+  "getup_02": {
+   "hand": [
+    68,
+    128
+   ],
+   "angle": 0,
+   "layer": "back",
+   "hide": true,
+   "check": {
+    "note": "weapon not drawn (dropped/hidden); hand = drop point on the ground"
+   }
   }
  }
 }

@@ -32,7 +32,8 @@
       var ang = +a.angle || 0;
       var deg = raw.angleUnit !== 'rad';   // 기본: 도(degree), 시계방향 +
       var x = a.hand ? a.hand[0] : a.x, y = a.hand ? a.hand[1] : a.y;   // {hand:[x,y]} 또는 {x,y}
-      return { x: +x, y: +y, angle: deg ? ang * Math.PI / 180 : ang, layer: a.layer || a.z || null };
+      // hide = 이 장에서는 무기를 안 그림(넘어져서 손에서 놓침)
+      return { x: +x, y: +y, angle: deg ? ang * Math.PI / 180 : ang, layer: a.layer || a.z || null, hide: !!a.hide };
     }
     Object.keys(anims).forEach(function (name) {
       var v = src[name];

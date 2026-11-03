@@ -29,7 +29,35 @@
     this.staggerCd = 0;
     this.enraged = false;
     this.wave = -1;
+    // 맞음 반응
+    this.clock = 0;                    // 이 적의 시계(ms, 멈춤·슬로모션 반영)
+    this.hitAlt = false;               // hit / hit2 번갈아
+    this.hitAnim = 'hit';
+    this.recentHits = [];              // 최근 맞은 시각(연속으로 맞으면 넘어짐)
+    this.downT = 0;                    // 넘어진 뒤 지난 시간
+    this.stagT = 0;                    // 휘청 지난 시간 (보스)
+    this.stagDone = {};                // 이미 휘청한 체력 문턱
   }
+
+  function sum(d) { var s = 0; for (var i = 0; i < d.length; i++) s += d[i]; return s; }
+
+  // 지금 맞을 수 있나 (넘어짐~일어남 동안은 무적)
+  Enemy.prototype.canBeHit = function () { return this.alive() && this.state !== 'down'; };
+  Enemy.prototype.hasAnim = function (name) { return !!(this.T.anims[name] && this.art[name] && this.art[name][0]); };
+
+  // 넘어짐 그림 길이 / 그중 밀려나는 시간(첫 누운 그림 전까지)
+  Enemy.prototype.downTimes = function () {
+    var A = this.T.anims.knockdown, step = 1000 / A.fps, pb = A.playback || null;
+    var kd = (pb ? pb.length : this.art.knockdown.length) * step;
+    var lie = (this.T.down && this.T.down.lyingFrames) ? this.T.down.lyingFrames[0] : 3;
+    var k = pb ? pb.indexOf(lie) : lie - 1;
+    var G = this.T.anims.getup, gl = ((G.playback ? G.playback.length : this.art.getup.length) * 1000 / G.fps);
+    return { kd: kd, slide: Math.max(step, (k < 0 ? 3 : k) * step), lying: this.cfg.ai.react.lyingMs, getup: gl };
+  };
+
+  Enemy.prototype.startStagger = function () {
+    this.state = 'stagger'; this.stagT = 0; this.animT = 0; this.atk = null; this.vx = 0;
+  };
 
   // 그림 한 장 고르기: playback(1부터 번호) + fps
   Enemy.prototype.frameAt = function (name, tMs) {
@@ -57,23 +85,53 @@
     return { x0: Math.min(xa, xb), x1: Math.max(xa, xb), y0: this.y + r.yTop, y1: this.y + r.yBot, z: this.y, depth: depth };
   };
 
-  // 플레이어에게 맞음. dir = 밀려나는 방향. 돌려주는 값: 'dead' / 'stagger' / 'armor'
-  Enemy.prototype.takeHit = function (dmg, dir, knockPx, finisher) {
+  // 플레이어에게 맞음. dir = 밀려나는 방향. opts = { heavy: 무거운 타, force: 넘어져 있어도 맞음(보스 쓰러질 때 졸개 정리) }
+  // 돌려주는 값: 'dead' / 'down'(넘어짐) / 'stagger'(움찔·휘청) / 'armor'(번쩍이기만) / null(무적이라 안 맞음)
+  Enemy.prototype.takeHit = function (dmg, dir, knockPx, finisher, opts) {
+    opts = opts || {};
     if (!this.alive()) return null;
-    var T = this.T, AI = this.cfg.ai;
+    if (this.state === 'down' && !opts.force) return null;
+    var T = this.T, AI = this.cfg.ai, R = AI.react;
+    var before = this.hp / this.maxHp;
     this.hp = Math.max(0, this.hp - dmg);
     this.flashT = this.cfg.juice.flashMs;
     var kv = dir * knockPx * AI.enemyKnockMul * (T.knockResist != null ? T.knockResist : 1) * 10;
     if (this.hp <= 0) {
+      if (this.state === 'down') {     // 누워 있다가 죽음: 일어나지 않고 그 자리에 누운 채로
+        this.deadImg = this.currentImg();
+        this.state = 'dead'; this.deadT = 0; this.atk = null; this.vx = 0;
+        return 'dead';
+      }
       this.state = 'dead'; this.animT = 0; this.deadT = 0; this.atk = null;
       this.vx = dir * T.deathKnock;
       this.dir = -dir;
       return 'dead';
     }
+    if (T.boss) {
+      // 체력 문턱(66%·33%)을 지나면 휘청: 공격 중이어도 끊긴다(때릴 기회)
+      var S = T.stagger, after = this.hp / this.maxHp, crossed = false;
+      if (S && this.hasAnim('stagger')) S.at.forEach(function (a) {
+        if (!this.stagDone[a] && before >= a && after < a) { this.stagDone[a] = true; crossed = true; }
+      }, this);
+      if (crossed) { this.startStagger(); return 'stagger'; }
+      if (this.state === 'stagger') return 'armor';
+    } else {
+      // 잡몹: 콤보 마지막 타 / 무거운 타 / 짧은 시간에 여러 번 맞으면 넘어짐
+      var now = this.clock;
+      this.recentHits = this.recentHits.filter(function (t) { return now - t <= R.juggleWindowMs; });
+      this.recentHits.push(now);
+      if (this.hasAnim('knockdown') && (finisher || opts.heavy || this.recentHits.length >= R.juggleHits)) {
+        this.state = 'down'; this.downT = 0; this.animT = 0; this.atk = null; this.vx = 0;
+        this.dir = -dir; this.recentHits = [];
+        return 'down';
+      }
+    }
     // 보스: 공격 중이거나 방금 움찔했으면 안 끊김(번쩍이기만)
     var armored = (T.superArmor && this.state === 'attack') || this.staggerCd > 0;
     if (armored) { this.vx += kv * 0.15; return 'armor'; }
     this.state = 'hit'; this.animT = 0; this.atk = null;
+    this.hitAnim = this.hitAlt && this.hasAnim('hit2') ? 'hit2' : 'hit';   // 맞는 그림 번갈아
+    this.hitAlt = !this.hitAlt;
     this.vx = kv;
     this.dir = -dir;
     if (T.staggerCdMs) this.staggerCd = T.staggerCdMs;
@@ -94,6 +152,7 @@
   Enemy.prototype.update = function (dtMs, ctx) {
     var T = this.T, dt = dtMs / 1000, p = ctx.player;
     this.animT += dtMs;
+    this.clock += dtMs;
     if (this.flashT > 0) this.flashT -= dtMs;
     if (this.staggerCd > 0) this.staggerCd -= dtMs;
     if (this.retreatT > 0) this.retreatT -= dtMs;
@@ -114,7 +173,32 @@
       return;
     }
     if (this.state === 'hit') {
-      if (this.frameAt('hit', this.animT).done) { this.state = 'idle'; this.animT = 0; }
+      if (this.frameAt(this.hitAnim, this.animT).done) { this.state = 'idle'; this.animT = 0; }
+      this.keepInView(ctx);
+      return;
+    }
+    // 넘어짐: 날아가며 밀려남(처음엔 빠르게, 첫 누운 그림에서 멈춤) → 누워 있음 → 일어남
+    if (this.state === 'down') {
+      var DT = this.downTimes(), slide = (T.down && T.down.slide) || 75;
+      var u0 = Math.min(1, this.downT / DT.slide), u1 = Math.min(1, (this.downT + dtMs) / DT.slide);
+      var ease = function (u) { return 1 - (1 - u) * (1 - u); };
+      this.x -= this.dir * slide * (ease(u1) - ease(u0));     // 바라보는 반대쪽(맞은 방향)으로
+      this.downT += dtMs;
+      if (this.downT >= DT.kd + DT.lying + DT.getup) {
+        this.state = 'idle'; this.animT = 0;
+        this.cool = Math.max(this.cool, this.cfg.ai.react.getupCoolMs);
+      }
+      this.keepInView(ctx);
+      return;
+    }
+    // 보스 휘청: 정해진 시간 동안 무릎 꿇고 있음(맞아도 번쩍이기만)
+    if (this.state === 'stagger') {
+      this.stagT += dtMs;
+      if (this.stagT >= sum(T.stagger.d)) {
+        this.state = 'idle'; this.animT = 0;
+        if (T.staggerCdMs) this.staggerCd = T.staggerCdMs;
+        this.cool = Math.max(this.cool, 400);
+      }
       this.keepInView(ctx);
       return;
     }
@@ -234,13 +318,18 @@
       if (a.dustT <= 0) { a.dustT = s.dustMs; ctx.dust(this.x - this.dir * 34, this.y, this.dir); }
       this.tryHitPlayer(s, s.bodyReach, ctx);
       var edge = this.dir > 0 ? this.x >= ctx.view.x1 - 40 : this.x <= ctx.view.x0 + 40;
-      if (a.ran >= s.dist || edge) { a.phase = 'impact'; a.t = 0; ctx.shake(s.shake * 0.6); ctx.dust(this.x + this.dir * 30, this.y, this.dir); }
+      if (a.ran >= s.dist || edge) { a.phase = 'impact'; a.t = 0; a.wall = edge; ctx.shake(s.shake * 0.6); ctx.dust(this.x + this.dir * 30, this.y, this.dir); }
       return;
     }
     if (a.phase === 'impact') {
       this.x += this.dir * 40 * dt;
       this.tryHitPlayer(s, s.reach, ctx);
-      if (a.t >= s.impactMs) { a.phase = 'recover'; a.t = 0; }
+      if (a.t >= s.impactMs) {
+        // 헛치고 벽(화면 끝)에 박혔으면 휘청 = 때릴 기회
+        var S = this.T.stagger;
+        if (a.wall && !a.hit && S && S.onWall && this.hasAnim('stagger')) { this.startStagger(); this.cool = randi(this.T.cooldown); return; }
+        a.phase = 'recover'; a.t = 0;
+      }
       return;
     }
     if (a.t >= s.recoverMs) this.endAttack();
@@ -249,8 +338,18 @@
   // 지금 보여줄 그림
   Enemy.prototype.currentImg = function () {
     var T = this.T;
-    if (this.state === 'dead') return this.frameAt('death', this.deadT).img;
-    if (this.state === 'hit') return this.frameAt('hit', this.animT).img;
+    if (this.state === 'dead') return this.deadImg || this.frameAt('death', this.deadT).img;
+    if (this.state === 'hit') return this.frameAt(this.hitAnim, this.animT).img;
+    if (this.state === 'down') {
+      var DT = this.downTimes();
+      if (this.downT < DT.kd + DT.lying) return this.frameAt('knockdown', this.downT).img;   // 마지막 장(누움)에서 멈춤
+      return this.frameAt('getup', this.downT - DT.kd - DT.lying).img;
+    }
+    if (this.state === 'stagger') {
+      var d = T.stagger.d, t = this.stagT, i = 0;
+      while (i < d.length - 1 && t >= d[i]) { t -= d[i]; i++; }
+      return this.art.stagger[i];
+    }
     if (this.state === 'attack') {
       var a = this.atk, s = a.spec, imgs = this.art[s.anim];
       if (s.type === 'charge') {

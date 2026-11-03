@@ -152,7 +152,13 @@
         attack1: { frames: seq(p + M.attack1Prefix, M.attack1Count), fps: 14, loop: false },
         attack2: { frames: seq(p + 'attack2_', M.attack2Count), fps: 14, loop: false },
         attack3: { frames: seq(p + 'attack3_', M.attack3Count), fps: 14, loop: false },
-        hurt:    { frames: seq(p + 'hurt_', 3),   fps: 10, loop: false }
+        hurt:    { frames: seq(p + 'hurt_', 3),   fps: 10, loop: false },
+        // 맞음 반응 (2026-11-03): d = 각 장의 시간(ms). hurt2 = 두 번째 움찔(hurt 와 번갈아),
+        //   knockdown = 크게 맞고 날아가 눕기(마지막 장은 누워 있는 동안 계속), getup = 일어나기
+        //   knockdown 1~5, getup 1~2 장은 손 위치 json 에 "hide" → 무기를 안 그린다(손에서 놓침)
+        hurt2:     { frames: seq(p + 'hurt2_', 3),     d: [130, 170, 150], loop: false },
+        knockdown: { frames: seq(p + 'knockdown_', 5), d: [110, 160, 110, 110], loop: false },   // 장 1~4 시간, 5(누움)는 계속
+        getup:     { frames: seq(p + 'getup_', 4),     d: [220, 180, 160, 140], loop: false }
       },
       combo: M.combo,
       combos: { sword: M.combo }
@@ -306,7 +312,12 @@
       flinchMs: 300,
       invulnMs: 1000,
       knockMul: 1.0,
-      radius: 14
+      radius: 14,
+      // 가벼운 공격 = hurt / hurt2 번갈아 움찔. 무거운 공격(heavy: 보스 내려찍기·어깨 돌진) = 넘어짐:
+      //   knockdown 그림(slide = 장 1~4 시작 때 뒤로 밀린 거리 × slideMul) → lyingMs 누워 있음 → getup → getupBlinkMs 깜빡임.
+      //   넘어짐~깜빡임 동안 무적. 쓰러짐(체력 0) = knockdown 뒤 마지막 장(누움)에 그대로 → deathOverMs 뒤 GAME OVER
+      down: { slide: [0, 10, 20, 24], slideMul: 1.5, lyingMs: 600, getupBlinkMs: 700 },
+      deathOverMs: 1800
     },
 
     // ---------- 적끼리 공통 ----------
@@ -316,7 +327,16 @@
       enemyKnockMul: 1.6,   // 플레이어 공격으로 적이 밀려나는 거리 배율 (허수아비보다 크게)
       sepDepth: 12,         // 위아래 거리가 이보다 가까우면 몸끼리 밀어냄
       deathHoldMs: 700,     // 쓰러진 뒤 누워 있는 시간
-      deathFadeMs: 600      // 그다음 깜빡이며 사라지는 시간
+      deathFadeMs: 600,     // 그다음 깜빡이며 사라지는 시간
+      // 잡몹 맞음 반응: 보통 맞으면 hit/hit2 번갈아. 아래 중 하나면 넘어짐(knockdown):
+      //   콤보 마지막 타(finisher) / 무거운 타(그 타 knock × 무기 knockMul ≥ heavyKnock) / juggleWindowMs 안에 juggleHits 번째 맞음
+      //   넘어지면 down.slide 만큼 밀려나며 날아감 → lyingMs 더 누워 있음 → 일어남. 넘어짐~일어남 동안 무적(누운 적 때리기 없음)
+      react: {
+        heavyKnock: 2.0,
+        juggleHits: 4, juggleWindowMs: 1500,
+        lyingMs: 500,         // 넘어짐 그림이 끝난 뒤 더 누워 있는 시간
+        getupCoolMs: 600      // 일어난 뒤 바로 공격하지 않는 시간
+      }
     },
 
     // ---------- 적 종류 ----------
@@ -325,7 +345,8 @@
     // range = 이 거리 안에서 공격 시작 [최소, 최대], alignY = 위아래가 이만큼 맞아야 공격, cooldown = 공격 사이 쉬는 시간 [최소, 최대]
     // 공격: anim = 그림, active = 판정 나는 그림 번호, reach = 판정 상자(앞 = +), depth = 위아래 판정 폭,
     //   dmg = 데미지 [최소, 최대], knock = 플레이어 밀림(도트), flinchMs = 플레이어 움찔 시간(없으면 hero.flinchMs),
-    //   move = 공격 중 앞으로 이동 { frames: 그림 번호들, dist: 도트 }, telegraph = 바닥에 빨간 예고 표시할 그림 번호
+    //   move = 공격 중 앞으로 이동 { frames: 그림 번호들, dist: 도트 }, telegraph = 바닥에 빨간 예고 표시할 그림 번호,
+    //   heavy = 무거운 공격(맞으면 플레이어가 넘어짐)
     enemies: {
       goblin: {
         label: '고블린', frameW: 176, frameH: 136, pivot: { x: 92, y: 130 },
@@ -333,9 +354,14 @@
           idle: [4, 6, true], walk: [8, 10, true],
           attack: [5, 10, false, [1, 2, 2, 2, 3, 4, 4, 5]],   // 1 들기 · 2 치켜듦(예고 300ms) · 3 맞음 · 4 내려침 · 5 복귀
           hit: [3, 10, false, [1, 2, 2, 3]],
+          hit2: [3, 10, false, [1, 1, 2, 2, 3]],                  // 배 맞음 (hit 와 번갈아)
+          knockdown: [5, 10, false, [1, 2, 2, 3, 4, 5, 4, 5]],    // 날아감 → 등으로 떨어짐 → 튕김 → 누움(5)
+          getup: [3, 8, false, [1, 1, 2, 2, 3]],                  // 팔꿈치 → 한 무릎 → 섬
           death: [5, 8, false, [1, 2, 3, 4, 5]]
         }),
         walkAnim: 'walk',
+        // 넘어짐: slide = 날아가며 밀려나는 거리(도트), lyingFrames = 누운 그림 번호(밀림은 첫 누운 그림에서 끝남)
+        down: { slide: 80, lyingFrames: [3, 4, 5] },
         hp: 65, speedX: 44, speedY: 30, radius: 15, height: 84,
         hurtbox: { x0: -15, x1: 26, yTop: -80, yBot: 0 },
         engage: 50, hover: [100, 150], range: [24, 68], alignY: 7, cooldown: [1100, 2100], firstCooldown: [500, 1600],
@@ -351,9 +377,13 @@
           idle: [4, 6, true], run: [6, 12, true],
           attack: [5, 12, false, [1, 1, 1, 2, 3, 3, 4, 5]],   // 1 웅크림(예고) · 2 도약 · 3 물기 · 4 착지 · 5 복귀
           hit: [3, 10, false, [1, 2, 2, 3]],
+          hit2: [3, 10, false, [1, 1, 2, 2, 3]],
+          knockdown: [4, 10, false, [1, 2, 2, 3, 4, 4, 4]],       // 비명 → 공중에서 뒤집힘 → 떨어짐 → 누움(4)
+          getup: [3, 8, false, [1, 1, 2, 2, 3]],
           death: [5, 8, false, [1, 2, 3, 4, 5]]
         }),
         walkAnim: 'run',
+        down: { slide: 70, lyingFrames: [3, 4] },
         hp: 48, speedX: 100, speedY: 55, radius: 26, height: 66,
         hurtbox: { x0: -50, x1: 51, yTop: -66, yBot: 0 },
         engage: 84, hover: [150, 200], range: [55, 112], alignY: 8, cooldown: [1300, 2300], firstCooldown: [300, 1200],
@@ -372,6 +402,8 @@
           attack2: [5, 9, false, [1, 1, 1, 2, 3, 4, 4, 5]],         // 가로 휘두르기: 1 뒤로 젖힘(예고) → 3 쭉 뻗음
           special: [5, 10, false, null],                             // 어깨 돌진: 코드에서 단계별로 재생(아래 charge)
           hit: [3, 8, false, [1, 2, 2, 3]],
+          hit2: [3, 8, false, [1, 1, 2, 2, 3]],
+          stagger: [4, 7, false, null],                              // 휘청: 장마다 시간은 아래 stagger.d
           death: [5, 6, false, [1, 1, 2, 2, 3, 4, 5]]
         }),
         walkAnim: 'walk',
@@ -380,19 +412,22 @@
         engage: 70, hover: [70, 90], range: [40, 160], alignY: 10, cooldown: [900, 1700], firstCooldown: [1200, 1500],
         knockResist: 0.25, deathKnock: 60,
         staggerCdMs: 2200,       // 한 번 움찔하면 이 시간 동안은 안 움찔함(계속 맞아도 번쩍이기만) → 무한 콤보 방지
-        superArmor: true,        // 공격 동작 중에는 맞아도 안 끊김
+        superArmor: true,        // 공격 동작 중에는 맞아도 안 끊김. 보스는 절대 안 넘어짐(knockdown 없음)
+        // 휘청(stagger): 체력이 at 비율 아래로 내려갈 때(공격 중이어도 끊김) + 어깨 돌진이 헛치고 화면 끝(벽)에 박혔을 때(onWall).
+        //   d = 그림 1~4 각각 시간(ms). 3번(도끼 짚고 무릎 꿇고 헐떡임) 800ms = 때릴 기회. 휘청 중 맞으면 번쩍이기만
+        stagger: { at: [0.66, 0.33], onWall: true, d: [280, 140, 800, 280] },
         enrageAt: 0.5,           // 체력이 이 비율 아래로 떨어지면 화남: 빨라지고 고블린 부름
         enrage: { speedMul: 1.3, cooldownMul: 0.65, summon: ['goblin', 'goblin'] },
         attacks: {
           slam:  { anim: 'attack1', active: [3, 4], reach: { x0: 40, x1: 104, yTop: -120, yBot: 0 }, depth: 16,
-                   dmg: [18, 22], knock: 34, flinchMs: 450, telegraph: [2], shake: 2.5, when: [40, 100], weight: 3 },
+                   dmg: [18, 22], knock: 34, flinchMs: 450, telegraph: [2], shake: 2.5, when: [40, 100], weight: 3, heavy: true },
           sweep: { anim: 'attack2', active: [3, 4], reach: { x0: 30, x1: 160, yTop: -120, yBot: -30 }, depth: 14,
                    dmg: [14, 18], knock: 30, flinchMs: 400, telegraph: [1], shake: 1.6, when: [60, 160], weight: 3 },
           // 어깨 돌진: windMs 동안 웅크리고 소리침(예고, 플레이어 줄로 천천히 맞춤) → speed 로 dist 만큼 미끄러지며 돌진
           //   → 부딪힘(그림 5). 몸통 판정 bodyReach, 마지막 어깨 판정 reach. dustMs 마다 먼지 효과
           charge: { type: 'charge', anim: 'special', windMs: 750, stepMs: 100, speed: 260, dist: 260, impactMs: 260, recoverMs: 300,
                     bodyReach: { x0: 10, x1: 84, yTop: -150, yBot: 0 }, reach: { x0: 40, x1: 128, yTop: -145, yBot: 0 }, depth: 16,
-                    dmg: [20, 24], knock: 46, flinchMs: 550, shake: 3, dustMs: 110, when: [130, 400], weight: 2 }
+                    dmg: [20, 24], knock: 46, flinchMs: 550, shake: 3, dustMs: 110, when: [130, 400], weight: 2, heavy: true }
         }
       }
     },

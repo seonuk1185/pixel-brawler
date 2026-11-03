@@ -192,7 +192,9 @@
       target.hit(p.dir, knock, J.wobble * (st.finisher ? 1.4 : 1), J.flashMs);
       hx = target.x - p.dir * 6; topY = target.y - 96;
     } else {
-      var res = target.takeHit(dmg, p.dir, knock, !!st.finisher);
+      // 무거운 타(타 knock × 무기 knockMul 이 크면) = 잡몹 넘어짐 (config ai.react.heavyKnock)
+      var heavy = !!st.knockdown || st.knock * W.knockMul >= CFG.ai.react.heavyKnock;
+      var res = target.takeHit(dmg, p.dir, knock, !!st.finisher, { heavy: heavy });
       var hb = target.hurtbox();
       // 불똥은 맞은 몸의 가장자리(플레이어 쪽)에서
       hx = p.dir > 0 ? Math.max(hb.x0 + 4, Math.min(hb.x1 - 4, p.x + 30)) : Math.min(hb.x1 - 4, Math.max(hb.x0 + 4, p.x - 30));
@@ -217,7 +219,7 @@
     var p = G.player;
     var dmg = rand(spec.dmg[0], spec.dmg[1]);
     var dir = p.x >= e.x ? 1 : -1;
-    if (!p.takeHit(dmg, dir, spec.knock, spec.flinchMs)) return;
+    if (!p.takeHit(dmg, dir, spec.knock, spec.flinchMs, !!spec.heavy)) return;   // heavy = 넘어짐
     G.hitstop = Math.max(G.hitstop, J.hitstopMs * (e.T.boss ? 1.3 : 0.8));
     FX.shake(J.shakePx * (spec.shake || 1.2), J.shakeMs * 1.3);
     FX.impact(p.x - dir * 4, p.y - 60, -dir, '#ff6a5a', Math.round(J.sparkCount * 0.8), e.T.boss, null, 0.8);
@@ -268,7 +270,7 @@
     G.slowT = 1400;                    // 보스 쓰러질 때 슬로모션
     FX.shake(J.shakePx * 3, 500);
     // 남은 졸개들도 같이 쓰러짐
-    G.enemies.forEach(function (e) { if (e !== boss && e.alive()) e.takeHit(9999, e.x > boss.x ? 1 : -1, 10, true); });
+    G.enemies.forEach(function (e) { if (e !== boss && e.alive()) e.takeHit(9999, e.x > boss.x ? 1 : -1, 10, true, { force: true }); });
   }
 
   function stageStep(dt) {
@@ -317,7 +319,7 @@
     // 보스 쓰러짐 → 잠시 뒤 클리어 화면
     if (S.bossDownT >= 0 && !S.result) { S.bossDownT += dt; if (S.bossDownT > 2600) showResult('clear'); }
     // 플레이어 쓰러짐 → 게임 오버
-    if (p.state === 'dead' && !S.result) { S.overT += dt; if (S.overT > 1800) showResult('over'); }
+    if (p.state === 'dead' && !S.result) { S.overT += dt; if (S.overT > (CFG.hero.deathOverMs || 1800)) showResult('over'); }
   }
 
   // 적 수만큼 몸끼리 밀어내기 (서로 겹쳐 서지 않게). 오크는 무거워서 거의 안 밀림, 돌진 중엔 안 밀림
@@ -325,7 +327,7 @@
     var p = G.player, AI = CFG.ai, list = [];
     if (p.state !== 'dead') list.push({ o: p, r: CFG.hero.radius, m: 1 });
     G.enemies.forEach(function (e) {
-      if (!e.alive()) return;
+      if (!e.alive() || e.state === 'down') return;   // 넘어진 적은 밟고 지나갈 수 있음
       var charging = e.state === 'attack' && e.atk && e.atk.spec.type === 'charge';
       list.push({ o: e, r: e.T.radius, m: charging ? 0 : (e.T.boss ? 0.08 : 1) });
     });
@@ -348,7 +350,7 @@
     var p = G.player, best = null, bd = 1e9;
     G.enemies.forEach(function (e) {
       if (!e.alive() || !e.entered) return;
-      var d = Math.abs(e.x - p.x) + Math.abs(e.y - p.y) * 2;
+      var d = Math.abs(e.x - p.x) + Math.abs(e.y - p.y) * 2 + (e.canBeHit() ? 0 : 400);   // 넘어진 적은 나중에
       if (d < bd) { bd = d; best = e; }
     });
     var ax = { x: 0, y: 0 };
@@ -402,7 +404,7 @@
       var targets = MODE === 'stage' ? G.enemies : [G.dummy];
       targets.forEach(function (t) {
         var id = t.id || 'dummy';
-        if (done[id] || (t.alive && !t.alive())) return;
+        if (done[id] || (t.canBeHit && !t.canBeHit())) return;   // 죽었거나 넘어져 있으면(무적) 안 맞음
         if (overlap(hb, t.hurtbox())) { done[id] = true; onHit(ev.hitCheck.step, t); }   // 판정 구간마다 대상별 한 번
       });
     }
@@ -627,7 +629,7 @@
 
   // ---------- 시험용 (콘솔에서 GAME.test.xxx) ----------
   G.test = {
-    killAll: function () { G.enemies.forEach(function (e) { if (e.alive()) { if (e.T.boss) { e.takeHit(99999, 1, 10, true); onBossDown(e); } else e.takeHit(9999, 1, 10, true); } }); },
+    killAll: function () { G.enemies.forEach(function (e) { if (e.alive()) { if (e.T.boss) { e.takeHit(99999, 1, 10, true); onBossDown(e); } else e.takeHit(9999, 1, 10, true, { force: true }); } }); },
     // 보스 방 바로 앞으로: 남은 웨이브는 건너뜀
     toBoss: function () {
       var S = G.stage, waves = CFG.stage.waves;
@@ -637,7 +639,7 @@
       S.camMin = at - 40; G.camX = at - 40;
       G.player.x = at - 40 + LW * 0.42 - 4;
     },
-    hurt: function (n) { var p = G.player; p.invulnT = 0; p.takeHit(n || 10, -p.dir, 10); },
+    hurt: function (n, heavy) { var p = G.player; p.invulnT = 0; p.takeHit(n || 10, -p.dir, 10, 0, !!heavy); },
     god: function (on) { G.player.god = on !== false; },
     bot: function (on) { G.bot = on !== false; if (!G.bot) Input.setOverride(null); },
     retry: function () { resetStage(); },
