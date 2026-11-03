@@ -2,6 +2,7 @@
 // 기본 = 1단계 판(웨이브 + 보스). 주소 뒤 ?mode=practice = 예전 허수아비 연습장
 (function () {
   var CFG = window.CFG, J = CFG.juice;
+  var AS = CFG.actorScale || 1;   // 캐릭터 크기: 코드에 바로 적힌 거리·높이와 손맛의 밀림 거리(juice.knockback)에 곱한다
   var params = new URLSearchParams(location.search);
   var DEBUG = params.get('debug') === '1';
   var MODE = params.get('mode') === 'practice' ? 'practice' : 'stage';
@@ -74,7 +75,7 @@
     var b = btn.getBoundingClientRect(), c = canvas.getBoundingClientRect();
     if (!c.width || !c.height) return 0;
     var ky = c.height / LH;
-    var laneT = c.top + world.laneTop * ky - 100 * ky, laneB = c.top + world.laneBottom * ky;   // 키 큰 몸(100도트)까지
+    var laneT = c.top + world.laneTop * ky - 100 * AS * ky, laneB = c.top + world.laneBottom * ky;   // 키 큰 몸(100도트)까지
     if (b.top >= laneB || b.bottom <= laneT || b.left >= c.right) return 0;
     var pad = Math.ceil((c.right - b.left + 4) * LW / c.width);
     return Math.max(0, Math.min(Math.round(LW * 0.3), pad));
@@ -188,11 +189,11 @@
     var dmg = Math.round(rand(W.damage[0], W.damage[1]) * st.dmg);
     G.hitstop = Math.max(G.hitstop, J.hitstopMs * W.hitstopMul * st.hitstop);
     FX.shake(J.shakePx * W.shakeMul * st.shake, J.shakeMs * (st.finisher ? 1.5 : 1));
-    var knock = J.knockback * W.knockMul * st.knock;
+    var knock = J.knockback * AS * W.knockMul * st.knock;
     var hx, topY;
     if (target === G.dummy) {
       target.hit(dir, knock, J.wobble * (st.finisher ? 1.4 : 1), J.flashMs);
-      hx = target.x - dir * 6; topY = target.y - 96;
+      hx = target.x - dir * 6 * AS; topY = target.y - 96 * AS;
     } else {
       // 무거운 타(타 knock × 무기 knockMul 이 크면) = 잡몹 넘어짐 (config ai.react.heavyKnock)
       var heavy = !!st.knockdown || st.knock * W.knockMul >= CFG.ai.react.heavyKnock;
@@ -200,13 +201,13 @@
       var hb = target.hurtbox();
       // 불똥은 맞은 몸의 가장자리(플레이어 쪽)에서. 마법은 맞은 곳에서 가장 가까운 몸 위치
       if (src) hx = clamp(src.x, hb.x0 + 4, hb.x1 - 4);
-      else hx = p.dir > 0 ? Math.max(hb.x0 + 4, Math.min(hb.x1 - 4, p.x + 30)) : Math.min(hb.x1 - 4, Math.max(hb.x0 + 4, p.x - 30));
+      else hx = p.dir > 0 ? Math.max(hb.x0 + 4, Math.min(hb.x1 - 4, p.x + 30 * AS)) : Math.min(hb.x1 - 4, Math.max(hb.x0 + 4, p.x - 30 * AS));
       topY = target.y - target.T.height - 8;
       if (res === 'dead' && target.T.boss) onBossDown(target);
       else if (res === 'dead') G.hitstop = Math.max(G.hitstop, J.hitstopMs * 1.6);
     }
     // hitY = 주먹·발이 닿는 높이(맨손 콤보), spark = 불똥 그림 크기(맨손은 작게)
-    var hy = p.y + (st.hitY != null ? st.hitY : -52), sc = st.spark || 1;
+    var hy = p.y + (st.hitY != null ? st.hitY : -52 * AS), sc = st.spark || 1;
     if (src) { var tb = target.hurtbox(); hy = clamp(src.y, tb.y0 + 6, tb.y1 - 6); }
     // impactFx = 불똥 대신 쓸 그림(법사 = magic_spark)
     var impSpr = G.assets.fx && ((st.impactFx && G.assets.fx[st.impactFx]) || G.assets.fx.impact);
@@ -265,8 +266,8 @@
     if (!p.takeHit(dmg, dir, spec.knock, spec.flinchMs, !!spec.heavy)) return;   // heavy = 넘어짐
     G.hitstop = Math.max(G.hitstop, J.hitstopMs * (e.T.boss ? 1.3 : 0.8));
     FX.shake(J.shakePx * (spec.shake || 1.2), J.shakeMs * 1.3);
-    FX.impact(p.x - dir * 4, p.y - 60, -dir, '#ff6a5a', Math.round(J.sparkCount * 0.8), e.T.boss, null, 0.8);
-    FX.damage(p.x, p.y - 112, dmg, false, J, '#ff5a4a');
+    FX.impact(p.x - dir * 4, p.y - 60 * AS, -dir, '#ff6a5a', Math.round(J.sparkCount * 0.8), e.T.boss, null, 0.8);
+    FX.damage(p.x, p.y - 112 * AS, dmg, false, J, '#ff5a4a');
     vibrate(Math.round(J.vibrateMs * 2.5));
     G.comboT = 0; comboEl.hidden = true;
   }
@@ -399,14 +400,14 @@
     var ax = { x: 0, y: 0 };
     if (!best) { if (!G.stage.locked) ax.x = 1; Input.setOverride(ax); return; }
     var side = best.x > p.x ? 1 : -1;
-    var want = { goblin: 42, wolf: 58, orc: 72 }[best.type] || 50;
+    var want = ({ goblin: 42, wolf: 58, orc: 72 }[best.type] || 50) * AS;
     var tx = best.x - side * want, ty = best.y;
     var ex = tx - p.x, ey = ty - p.y;
     if (Math.abs(ex) > 6) ax.x = Math.sign(ex);
     if (Math.abs(ey) > 3) ax.y = Math.sign(ey);
     Input.setOverride(ax);
     botAtkT -= dt;
-    if (Math.abs(ey) <= 6 && Math.abs(ex) <= 22 && botAtkT <= 0) {
+    if (Math.abs(ey) <= 6 && Math.abs(ex) <= 22 * AS && botAtkT <= 0) {
       if (p.state !== 'attack') p.dir = side;
       Input.pressAttack(); botAtkT = 140;
     }
@@ -430,7 +431,7 @@
       var off = sfx || CFG.art.fx.slashOffset;
       FX.slash(p.x + p.dir * off.x, p.y + off.y, p.dir, a, W.arcColor, ms, fxs, sfx);
     } else {     // 코드로 그린 궤적
-      FX.slash(p.x + p.dir * 18, p.y - 56, p.dir, a, W.arcColor, J.slashMs, null);
+      FX.slash(p.x + p.dir * 18 * AS, p.y - 56 * AS, p.dir, a, W.arcColor, J.slashMs, null);
     }
   }
 
@@ -657,8 +658,8 @@
       }
       var y = (i / 4 / w) | 0;
       var nh = null;
-      if (y < pivotY - 72 && hue >= 5 && hue <= 38 && l < 0.5 && s > 0.3) nh = 325;           // 머리카락
-      else if (hue >= 28 && hue <= 60 && l > 0.5 && s < 0.6 && y < pivotY - 25) nh = 195;     // 옷
+      if (y < pivotY - 72 * AS && hue >= 5 && hue <= 38 && l < 0.5 && s > 0.3) nh = 325;           // 머리카락
+      else if (hue >= 28 && hue <= 60 && l > 0.5 && s < 0.6 && y < pivotY - 25 * AS) nh = 195;     // 옷
       if (nh === null) continue;
       var q = l < 0.5 ? l * (1 + s) : l + s - l * s, pp = 2 * l - q, hk = nh / 360;
       [hk + 1 / 3, hk, hk - 1 / 3].forEach(function (t, j) {

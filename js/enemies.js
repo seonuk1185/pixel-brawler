@@ -5,6 +5,8 @@
   function rand(a, b) { return a + Math.random() * (b - a); }
   function randi(a) { return Math.round(rand(a[0], a[1])); }
   function inList(list, n) { return !!list && list.indexOf(n) >= 0; }
+  // 캐릭터 크기(config actorScale): 코드에 바로 적힌 거리에 곱한다 (config 수치는 scaleActors 가 이미 줄여 둠)
+  function AS() { return (window.CFG && window.CFG.actorScale) || 1; }
 
   function Enemy(type, cfg, art, x, y) {
     this.id = 'e' + (++uid);
@@ -210,7 +212,7 @@
     var dx = p.x - this.x, dy = p.y - this.y, adx = Math.abs(dx);
     if (p.state === 'dead') { this.setMove(0, 0); this.keepInView(ctx); return; }
     if (adx > 2) this.dir = dx > 0 ? 1 : -1;
-    if (!this.side || adx > 30) this.side = this.x < p.x ? -1 : 1;
+    if (!this.side || adx > 30 * AS()) this.side = this.x < p.x ? -1 : 1;
 
     var pick = this.cool <= 0 && this.retreatT <= 0 && this.entered ? this.chooseAttack(adx, Math.abs(dy), ctx) : null;
     if (pick) { this.startAttack(pick, ctx); this.keepInView(ctx); return; }
@@ -219,13 +221,14 @@
     var tx, ty;
     if (wantAttack) { tx = p.x + this.side * T.engage; ty = p.y; }
     else { tx = p.x + this.side * this.hoverD; ty = p.y + this.yOff; }
-    if (this.retreatT > 0) { tx = p.x + this.side * (T.engage + 90); ty = p.y + this.yOff; }
+    if (this.retreatT > 0) { tx = p.x + this.side * (T.engage + 90 * AS()); ty = p.y + this.yOff; }
     ty = Math.max(ctx.world.laneTop, Math.min(ctx.world.laneBottom, ty));
     var mx = tx - this.x, my = ty - this.y;
     var vx = Math.abs(mx) > 4 ? Math.sign(mx) * T.speedX * this.speedMul() : 0;
     var vy = Math.abs(my) > 3 ? Math.sign(my) * T.speedY * this.speedMul() : 0;
     // 목표 근처에서는 천천히
-    if (Math.abs(mx) < 14) vx *= Math.abs(mx) / 14;
+    var slowD = 14 * AS();
+    if (Math.abs(mx) < slowD) vx *= Math.abs(mx) / slowD;
     this.setMove(vx, vy);
     this.x += vx * dt; this.y += vy * dt;
     // 뒤로 물러날 때도 플레이어 쪽을 본다
@@ -257,7 +260,7 @@
     var opts = [], sum = 0;
     Object.keys(T.attacks).forEach(function (k) {
       var a = T.attacks[k];
-      var yOk = a.type === 'charge' ? ady <= 40 : ady <= T.alignY;
+      var yOk = a.type === 'charge' ? ady <= 40 * AS() : ady <= T.alignY;
       if (yOk && adx >= a.when[0] && adx <= a.when[1]) { opts.push(k); sum += a.weight; }
     });
     if (!opts.length) return null;
@@ -315,14 +318,14 @@
       var step = s.speed * dt * this.speedMul();
       this.x += this.dir * step; a.ran += step;
       a.dustT -= dtMs;
-      if (a.dustT <= 0) { a.dustT = s.dustMs; ctx.dust(this.x - this.dir * 34, this.y, this.dir); }
+      if (a.dustT <= 0) { a.dustT = s.dustMs; ctx.dust(this.x - this.dir * 34 * AS(), this.y, this.dir); }
       this.tryHitPlayer(s, s.bodyReach, ctx);
-      var edge = this.dir > 0 ? this.x >= ctx.view.x1 - 40 : this.x <= ctx.view.x0 + 40;
-      if (a.ran >= s.dist || edge) { a.phase = 'impact'; a.t = 0; a.wall = edge; ctx.shake(s.shake * 0.6); ctx.dust(this.x + this.dir * 30, this.y, this.dir); }
+      var wallD = 40 * AS(), edge = this.dir > 0 ? this.x >= ctx.view.x1 - wallD : this.x <= ctx.view.x0 + wallD;
+      if (a.ran >= s.dist || edge) { a.phase = 'impact'; a.t = 0; a.wall = edge; ctx.shake(s.shake * 0.6); ctx.dust(this.x + this.dir * 30 * AS(), this.y, this.dir); }
       return;
     }
     if (a.phase === 'impact') {
-      this.x += this.dir * 40 * dt;
+      this.x += this.dir * 40 * AS() * dt;
       this.tryHitPlayer(s, s.reach, ctx);
       if (a.t >= s.impactMs) {
         // 헛치고 벽(화면 끝)에 박혔으면 휘청 = 때릴 기회
@@ -367,7 +370,7 @@
   // 화면 밖으로 못 나감(들어온 뒤로)
   Enemy.prototype.keepInView = function (ctx) {
     var w = ctx.world;
-    var x0 = ctx.view.x0 + 12, x1 = ctx.view.x1 - 12;
+    var x0 = ctx.view.x0 + 12 * AS(), x1 = ctx.view.x1 - 12 * AS();
     if (!this.entered && this.x > x0 && this.x < x1) this.entered = true;
     if (this.entered) this.x = Math.max(x0, Math.min(x1, this.x));
     this.y = Math.max(w.laneTop, Math.min(w.laneBottom, this.y));
@@ -379,7 +382,7 @@
     var a = this.atk, s = a.spec, r = null, k = 0;
     if (s.type === 'charge') {
       if (a.phase !== 'wind') return;
-      r = { x0: 0, x1: s.dist + 90 }; k = a.t / s.windMs;
+      r = { x0: 0, x1: s.dist + 90 * AS() }; k = a.t / s.windMs;
     } else if (s.telegraph && this.T.boss) {
       // 공격 시작 ~ 첫 판정 그림 직전까지
       var A = this.T.anims[s.anim], firstMs = A.playback.indexOf(s.active[0]) * 1000 / A.fps;
@@ -389,7 +392,7 @@
     if (!r) return;
     var xa = this.x + r.x0 * this.dir, xb = this.x + r.x1 * this.dir;
     var x0 = Math.round(Math.min(xa, xb) - camX), w = Math.round(Math.abs(xb - xa));
-    var d = s.depth || 12, y0 = Math.round(this.y - d / 2), h = d;
+    var d = s.depth || 12 * AS(), y0 = Math.round(this.y - d / 2), h = Math.round(d);
     var blink = Math.floor(performance.now() / 90) % 2;
     g.fillStyle = 'rgba(255,40,30,' + (0.18 + 0.22 * Math.min(1, k) + (blink ? 0.08 : 0)) + ')';
     g.fillRect(x0, y0, w, h);
@@ -421,7 +424,8 @@
     g.restore();
     // 보스 화남: 머리 위 빨간 김
     if (this.enraged && this.alive() && Math.floor(performance.now() / 160) % 2) {
-      g.fillStyle = '#ff4a3a'; g.fillRect(x - 2 + this.dir * 14, y - T.height - 6, 3, 3); g.fillRect(x + 4 + this.dir * 14, y - T.height - 10, 2, 2);
+      var hx = Math.round(this.dir * 14 * AS());
+      g.fillStyle = '#ff4a3a'; g.fillRect(x - 2 + hx, y - Math.round(T.height) - 6, 3, 3); g.fillRect(x + 4 + hx, y - Math.round(T.height) - 10, 2, 2);
     }
     if (debug) {
       var hb = this.hurtbox();

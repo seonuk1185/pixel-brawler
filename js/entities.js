@@ -1,5 +1,7 @@
 // 등장인물: 플레이어(견습 모험가) + 허수아비
 (function () {
+  // 캐릭터 크기(config actorScale): 코드에 바로 적힌 거리(그림자 폭 등)에 곱한다
+  function AS() { return (window.CFG && window.CFG.actorScale) || 1; }
 
   // ================= 플레이어 =================
   function Player(cfg) {
@@ -284,7 +286,7 @@
     var def = this.char.def;
     var img = this.char.anims[fr.anim][fr.idx];
     var x = Math.round(this.x - camX), y = Math.round(this.y);
-    drawShadow(ctx, x, y, 22);
+    drawShadow(ctx, x, y, Math.round(22 * AS()));
     // 맞은 뒤 무적: 깜빡임
     if (this.invulnT > 0 && this.state !== 'hurt' && this.state !== 'down' && this.state !== 'dead' && Math.floor(this.invulnT / 70) % 2 === 0) return;
     ctx.save();
@@ -333,9 +335,10 @@
   }
 
   function drawShadow(ctx, x, y, w) {
+    var e = Math.max(2, Math.round(w * 0.18));   // 가운데 두꺼운 부분이 양 끝에서 들어간 정도(원래 크기 22 → 4)
     ctx.fillStyle = 'rgba(0,0,0,0.35)';
     ctx.fillRect(x - w, y - 1, w * 2, 3);
-    ctx.fillRect(x - w + 4, y - 2, w * 2 - 8, 5);
+    ctx.fillRect(x - w + e, y - 2, w * 2 - e * 2, 5);
   }
 
   // ================= 허수아비 =================
@@ -371,15 +374,20 @@
 
   function Dummy(cfg, art) {
     this.cfg = cfg;
-    this.homeX = cfg.player.startX + 110; this.x = this.homeX; this.y = 0;
+    this.homeX = cfg.player.startX + Math.round(110 * AS()); this.x = this.homeX; this.y = 0;
     this.offV = 0; this.ang = 0; this.angV = 0;
     this.flashT = 0; this.hitT = 0;
     this.art = art;          // 그림 있으면 { idle:[], hit:[] }
     this.placeholder = makeDummyArt();
+    if (window.Assets && AS() !== 1) {   // 코드로 그린 허수아비도 같은 배율로 줄임
+      var sh = Assets.shrink(this.placeholder.img, AS(), this.placeholder.pivot);
+      this.placeholder = { img: sh.img, pivot: { x: Math.round(22 * AS()), y: Math.round(98 * AS()) } };
+    }
     this.animT = 0;
   }
   Dummy.prototype.hurtbox = function () {
-    return { x0: this.x - 12, x1: this.x + 12, y0: this.y - 88, y1: this.y - 4, z: this.y };
+    var s = AS();
+    return { x0: this.x - 12 * s, x1: this.x + 12 * s, y0: this.y - 88 * s, y1: this.y - 4 * s, z: this.y };
   };
   Dummy.prototype.hit = function (dir, knock, wobble, flashMs) {
     this.offV += dir * knock * 14;           // 밀려나는 속도
@@ -417,7 +425,7 @@
   Dummy.prototype.draw = function (ctx, camX, debug) {
     var f = this.frame();
     var x = Math.round(this.x - camX), y = Math.round(this.y);
-    drawShadow(ctx, Math.round(this.homeX - camX), y, 14);
+    drawShadow(ctx, Math.round(this.homeX - camX), y, Math.round(14 * AS()));
     ctx.save();
     ctx.translate(x, y);
     // 각도를 몇 단계로만 → 도트가 덜 뭉개짐

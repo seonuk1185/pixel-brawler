@@ -163,9 +163,9 @@
       stride: 84, attack1Count: 4, attack2Count: 5, attack3Count: 6,
       combo: [
         { anim: 'attack1', f: [0, 1, 2, 3], d: [60, 60, 110, 90], active: [2, 2], cancel: 3, lunge: 3,
-          reach: { x0: 40, x1: 98, yTop: -82, yBot: -56 },
+          reach: { x0: 40, x1: 110, yTop: -82, yBot: -56 },   // x1: 지팡이가 0.7배로 커져서 끝(약 109)까지
           dmg: 0.95, hitstop: 0.8, knock: 0.8, shake: 0.7, hitY: -69, spark: 0.8, impactFx: 'magic_spark',
-          fx: { type: 'spark', x: 94, y: -69, scale: 1.0 } },
+          fx: { type: 'spark', x: 108, y: -69, scale: 1.0 } },
         { anim: 'attack2', f: [0, 1, 2, 3, 4], d: [70, 90, 60, 130, 110], active: [3, 3], cancel: 4, lunge: 4,
           reach: { x0: 30, x1: 78, yTop: -120, yBot: -5 },
           dmg: 1.1, hitstop: 1.1, knock: 1.3, shake: 1.1, hitY: -34, spark: 0.9, impactFx: 'magic_spark',
@@ -293,6 +293,16 @@
     version: 'stage1-proto-2',
     artSet: artSet,
 
+    // ---------- 캐릭터 크기 ----------
+    // 플레이어(모든 옷)·적·보스·무기·마법·베기 효과·그림자를 이 배율로 작게 그린다(배경은 그대로). 1 = 원래 크기
+    // (2026-11-03: 1 → 0.7 → 0.55, 메이플처럼 작은 캐릭터). 0.6 / 0.7 처럼 숫자 하나만 바꾸면 된다.
+    // 아래 수치(판정 상자·거리·보폭 등)는 전부 「원래 그림 크기(1배)」 기준 그대로 적어 두고, 맨 아래 scaleActors 가 한 번에 줄인다.
+    // 이동 속도는 배율의 제곱근만큼만 줄인다(0.7 → 약 0.84배): 화면을 가로지르는 시간이 너무 늘지 않게
+    actorScale: 0.55,
+    // 무기만 몸보다 조금 크게(원래 그림의 이 배율). 0.55 로 줄이면 가는 칼이 3도트 두께로 뭉개져서 살짝 과장한다(2026-11-03).
+    //   손잡이는 그대로 손 위치에 붙는다. 공격 판정 상자(reach)는 무기 크기와 상관없이 그대로(actorScale 만 따름)
+    weaponScale: 0.7,
+
     // ---------- 화면 ----------
     view: {
       targetH: 240,        // 논리 화면 높이 목표(도트 기준). 실제 배율은 정수로만
@@ -405,6 +415,24 @@
       slashMs: 120,         // 베기 궤적 보이는 시간
       vibrateMs: 18,        // 폰 진동(ms). 0이면 끔
       timeScale: 1.0        // 전체 속도(디버그용 슬로모션)
+    },
+
+    // ---------- 데미지 숫자 모양 (그리는 곳·글꼴 모양: fx.js 의 FONTS) ----------
+    // font = 'small'(4x6) / 'big'(5x7) / 'large'(6x8) / 'mid'(6x10) / 'huge'(6x12) 둥근 숫자(large·mid·huge 는 획이 2도트로 두꺼움),
+    // scale = 정수 배율(1 = 1도트), bold = 굵게(옆으로 1도트 더)
+    // top = 글자 색(위 2/3), bottom = 아래 1/3 색(살짝 입체), outline = 1도트 테두리(대각선은 안 칠해 둥글게),
+    // shadow = 1도트 아래 그림자, pop = 처음 popK(전체 시간 중 비율) 동안만 바꿔 쓰는 값(튀어나오는 느낌)
+    // normal = 보통 타, crit = 마무리 타(「22!」). 플레이어가 맞은 숫자는 top 을 빨강, bottom 을 hurtBottom 으로
+    // (2026-11-03: 예전 3x5 각진 숫자 2~4배(높이 10~15도트) + 검은 테두리 → 둥근 숫자 1배 + 갈색 테두리.
+    //  폰에서 작다는 의견으로 보통 숫자 7 → 10도트(mid), 마무리 12도트(huge, 굵게))
+    damageText: {
+      normal: { font: 'mid', scale: 1, top: '#ffffff', bottom: '#ffe1c2', outline: '#4a2a1e', shadow: 'rgba(30,12,8,0.35)',
+                pop: { bold: true } },
+      crit:   { font: 'huge', scale: 1, bold: true, top: '#ffe066', bottom: '#ffa83a', outline: '#5a2a14', shadow: 'rgba(30,12,8,0.4)',
+                pop: { top: '#fffbe0', bottom: '#ffe066' } },
+      hurtBottom: '#b82c26',
+      popK: 0.12,
+      lift: 14              // 숫자가 처음 뜨는 높이(머리 위에서 몇 도트 더, actorScale 곱함)
     },
 
     // ================================================================
@@ -582,4 +610,63 @@
       jump: ['KeyK', 'KeyX', 'Space'] // 아직 안 씀(자리만)
     }
   };
+
+  // ---------- 캐릭터 크기(actorScale) 적용: 몸 크기에 묶인 거리 수치를 한 번에 줄인다 ----------
+  // 그림·기준점(pivot)·손 위치·무기 손잡이는 assets.js 가 불러올 때 줄인다. 손맛 수치(juice)는 디버그 조절판 값이 바뀌지 않게
+  // 여기서 안 건드리고 쓰는 곳(main.js·fx.js)에서 곱한다.
+  (function scaleActors(C) {
+    var S = C.actorScale || 1, MV = Math.sqrt(S);   // MV = 이동 속도 배율
+    if (S === 1) return;
+    var done = [];   // 같은 콤보를 여러 캐릭터가 같이 쓰므로 한 번만 줄인다
+    function once(o) { if (!o || done.indexOf(o) >= 0) return false; done.push(o); return true; }
+    function mul(o, keys, k) { if (o) keys.forEach(function (n) { if (typeof o[n] === 'number') o[n] *= k; }); }
+    function box(r) { if (once(r)) mul(r, ['x0', 'x1', 'yTop', 'yBot', 'depth'], S); }
+    function arr(a) { if (once(a)) for (var i = 0; i < a.length; i++) a[i] *= S; }
+    // 콤보 한 타: 내딛기·판정 상자·불똥 높이·효과 위치·마법(위치·속도·거리·크기)
+    function step(st) {
+      if (!once(st)) return;
+      mul(st, ['lunge', 'endAdvance', 'hitY'], S);
+      box(st.reach);
+      (Array.isArray(st.fx) ? st.fx : [st.fx]).forEach(function (f) { if (once(f)) mul(f, ['x', 'y', 'len'], S); });
+      if (once(st.arc)) mul(st.arc, ['r', 'w'], S);
+      var c = st.cast;
+      if (once(c)) {
+        mul(c, ['x', 'y', 'speed', 'range', 'depth', 'backReach'], S);
+        if (c.box) mul(c.box, ['w', 'h'], S);
+        if (c.burst) mul(c.burst, ['r', 'depth'], S);
+      }
+      (st.hits || []).forEach(step);
+    }
+    Object.keys(C.art.characters).forEach(function (k) {
+      var d = C.art.characters[k];
+      if (d.anims.walk && d.anims.walk.stride) d.anims.walk.stride *= S;   // 보폭 = 그림 속 거리 → 그림과 같이 줄여야 발이 안 미끄러짐
+      (d.combo || []).forEach(step);
+      Object.keys(d.combos || {}).forEach(function (m) { d.combos[m].forEach(step); });
+    });
+    C.combo.steps.forEach(step);
+    if (C.art.fx) mul(C.art.fx.slashOffset, ['x', 'y'], S);
+    mul(C.player, ['speedX', 'speedY'], MV);
+    box(C.player.hitbox);
+    box(C.hero.hurtbox);
+    mul(C.hero, ['radius'], S);
+    arr(C.hero.down.slide);
+    mul(C.ai, ['sepDepth'], S);
+    Object.keys(C.enemies).forEach(function (k) {
+      var T = C.enemies[k];
+      mul(T, ['radius', 'height', 'engage', 'alignY', 'deathKnock'], S);
+      mul(T, ['speedX', 'speedY'], MV);
+      // 적 걷기 그림은 시간으로 넘긴다 → 속도를 덜 줄인 만큼 그림도 빠르게(발과 바닥의 관계가 원래와 같게)
+      var wa = T.anims[T.walkAnim];
+      if (wa) wa.fps *= MV / S;
+      box(T.hurtbox); arr(T.hover); arr(T.range);
+      if (T.down) mul(T.down, ['slide'], S);
+      Object.keys(T.attacks).forEach(function (n) {
+        var a = T.attacks[n];
+        box(a.reach); box(a.bodyReach);
+        mul(a, ['depth', 'knock', 'speed', 'dist'], S);   // 돌진 speed·dist 둘 다 줄임 → 돌진 시간은 원래와 같음
+        if (a.move) mul(a.move, ['dist'], S);
+        arr(a.when);
+      });
+    });
+  })(window.CFG);
 })();

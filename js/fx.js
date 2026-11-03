@@ -2,29 +2,122 @@
 (function () {
   var list = [];          // 떠 있는 효과들
   var shake = { t: 0, dur: 1, mag: 0, x: 0, y: 0 };
+  // 캐릭터 크기(config actorScale): 불똥 튀는 거리·코드로 그린 번쩍 크기·데미지 숫자 떠오르는 높이에 곱한다(숫자 글자 모양·크기는 config damageText)
+  function AS() { return (window.CFG && window.CFG.actorScale) || 1; }
 
-  // ----- 3x5 도트 숫자 글꼴 -----
-  var DIGITS = {
-    '0': '111101101101111', '1': '010110010010111', '2': '111001111100111', '3': '111001111001111',
-    '4': '101101111001001', '5': '111100111001111', '6': '111100111101111', '7': '111001010010010',
-    '8': '111101111101111', '9': '111101111001111', '!': '010010010000010'
+  // ----- 데미지 숫자 도트 글꼴 (2026-11-03 새로 그림: 모서리를 둥글게 깎은 숫자) -----
+  // small = 4x6, big = 5x7, large = 6x8 두꺼운 획, mid = 6x10 두꺼운 획(보통 타), huge = 6x12(마무리 타). 글자 사이 1도트
+  // 모양 바꾸기: '#' = 칠함, '.' = 빈칸. 크기·색·테두리는 config.js 의 damageText
+  var FONTS = {
+    small: { h: 6, g: {
+      '0': ['.##.', '#..#', '#..#', '#..#', '#..#', '.##.'],
+      '1': ['..#.', '.##.', '..#.', '..#.', '..#.', '.###'],
+      '2': ['.##.', '#..#', '...#', '..#.', '.#..', '####'],
+      '3': ['.##.', '#..#', '..#.', '...#', '#..#', '.##.'],
+      '4': ['#..#', '#..#', '#..#', '.###', '...#', '...#'],
+      '5': ['####', '#...', '###.', '...#', '#..#', '.##.'],
+      '6': ['.##.', '#...', '###.', '#..#', '#..#', '.##.'],
+      '7': ['####', '...#', '..#.', '..#.', '.#..', '.#..'],
+      '8': ['.##.', '#..#', '.##.', '#..#', '#..#', '.##.'],
+      '9': ['.##.', '#..#', '#..#', '.###', '...#', '.##.'],
+      '!': ['#', '#', '#', '#', '.', '#'] } },
+    big: { h: 7, g: {
+      '0': ['.###.', '#...#', '#...#', '#...#', '#...#', '#...#', '.###.'],
+      '1': ['..#..', '.##..', '..#..', '..#..', '..#..', '..#..', '.###.'],
+      '2': ['.###.', '#...#', '....#', '...#.', '..#..', '.#...', '#####'],
+      '3': ['.###.', '#...#', '....#', '..##.', '....#', '#...#', '.###.'],
+      '4': ['...#.', '..##.', '.#.#.', '#..#.', '#####', '...#.', '...#.'],
+      '5': ['#####', '#....', '####.', '....#', '....#', '#...#', '.###.'],
+      '6': ['..##.', '.#...', '#....', '####.', '#...#', '#...#', '.###.'],
+      '7': ['#####', '....#', '...#.', '..#..', '..#..', '.#...', '.#...'],
+      '8': ['.###.', '#...#', '#...#', '.###.', '#...#', '#...#', '.###.'],
+      '9': ['.###.', '#...#', '#...#', '.####', '....#', '...#.', '.##..'],
+      '!': ['#', '#', '#', '#', '#', '.', '#'] } },
+    // large = 6x8 두꺼운 획(2도트) 숫자: 마무리 타 「22!」 전용
+    large: { h: 8, g: {
+      '0': ['.####.', '##..##', '##..##', '##..##', '##..##', '##..##', '##..##', '.####.'],
+      '1': ['..##..', '.###..', '..##..', '..##..', '..##..', '..##..', '..##..', '.####.'],
+      '2': ['.####.', '##..##', '....##', '...##.', '..##..', '.##...', '##....', '######'],
+      '3': ['.####.', '##..##', '....##', '..###.', '....##', '....##', '##..##', '.####.'],
+      '4': ['...##.', '..###.', '.####.', '##.##.', '######', '...##.', '...##.', '...##.'],
+      '5': ['######', '##....', '#####.', '....##', '....##', '....##', '##..##', '.####.'],
+      '6': ['..###.', '.##...', '##....', '#####.', '##..##', '##..##', '##..##', '.####.'],
+      '7': ['######', '....##', '...##.', '...##.', '..##..', '..##..', '.##...', '.##...'],
+      '8': ['.####.', '##..##', '##..##', '.####.', '##..##', '##..##', '##..##', '.####.'],
+      '9': ['.####.', '##..##', '##..##', '##..##', '.#####', '....##', '...##.', '.###..'],
+      '!': ['##', '##', '##', '##', '##', '..', '##', '##'] } },
+    // mid = 6x10 두꺼운 획(2도트) 둥근 숫자: 보통 타 (폰에서도 잘 읽히게, 2026-11-03)
+    mid: { h: 10, g: {
+      '0': ['.####.', '##..##', '##..##', '##..##', '##..##', '##..##', '##..##', '##..##', '##..##', '.####.'],
+      '1': ['..##..', '.###..', '..##..', '..##..', '..##..', '..##..', '..##..', '..##..', '..##..', '.####.'],
+      '2': ['.####.', '##..##', '....##', '....##', '...##.', '..##..', '.##...', '##....', '##....', '######'],
+      '3': ['.####.', '##..##', '....##', '....##', '..###.', '....##', '....##', '....##', '##..##', '.####.'],
+      '4': ['...##.', '..###.', '.####.', '##.##.', '##.##.', '######', '...##.', '...##.', '...##.', '...##.'],
+      '5': ['######', '##....', '##....', '#####.', '....##', '....##', '....##', '....##', '##..##', '.####.'],
+      '6': ['..###.', '.##...', '##....', '##....', '#####.', '##..##', '##..##', '##..##', '##..##', '.####.'],
+      '7': ['######', '....##', '....##', '...##.', '...##.', '..##..', '..##..', '.##...', '.##...', '.##...'],
+      '8': ['.####.', '##..##', '##..##', '##..##', '.####.', '##..##', '##..##', '##..##', '##..##', '.####.'],
+      '9': ['.####.', '##..##', '##..##', '##..##', '##..##', '.#####', '....##', '....##', '...##.', '.###..'],
+      '!': ['##', '##', '##', '##', '##', '##', '..', '..', '##', '##'] } }
   };
-  function drawPixelText(ctx, str, x, y, s, color, outline) {
-    var w = str.length * 4 * s - s;
-    x = Math.round(x - w / 2); y = Math.round(y);
-    function pass(ox, oy, col) {
-      ctx.fillStyle = col;
-      for (var i = 0; i < str.length; i++) {
-        var g = DIGITS[str[i]]; if (!g) continue;
-        for (var p = 0; p < 15; p++) if (g[p] === '1')
-          ctx.fillRect(x + i * 4 * s + (p % 3) * s + ox, y + ((p / 3) | 0) * s + oy, s, s);
+  // huge = mid 를 세로로 늘린 6x12 (윗부분·아랫부분의 곧은 줄을 한 줄씩 더): 마무리 타
+  FONTS.huge = { h: 12, g: {} };
+  Object.keys(FONTS.mid.g).forEach(function (c) {
+    var g = FONTS.mid.g[c], o = [];
+    g.forEach(function (row, i) { o.push(row); if (i === 2 || i === 7) o.push(row); });
+    FONTS.huge.g[c] = o;
+  });
+  // 글자 → 작은 그림(캔버스)으로 한 번 만들어 두고 재사용
+  //   st = { font, scale, bold, top, bottom(아래 1/3 색 → 살짝 입체), outline(1도트 테두리, 대각선은 안 칠해 둥글게), shadow(1도트 아래 그림자) }
+  var textCache = {}, textCacheN = 0;
+  function textSprite(str, st) {
+    var key = str + '|' + JSON.stringify(st);
+    if (textCache[key]) return textCache[key];
+    if (textCacheN > 300) { textCache = {}; textCacheN = 0; }
+    var F = FONTS[st.font] || FONTS.small, bold = st.bold ? 1 : 0;
+    // 1) 칠할 점(글자 1배 기준)
+    var pts = [], W = 0;
+    for (var i = 0; i < str.length; i++) {
+      var g = F.g[str[i]]; if (!g) continue;
+      var gw = g[0].length;
+      for (var r = 0; r < F.h; r++) for (var c = 0; c < gw; c++) if (g[r][c] === '#') {
+        pts.push([W + c, r]); if (bold) pts.push([W + c + 1, r]);
       }
+      W += gw + bold + 1;
     }
-    if (outline) {
-      pass(-s, 0, outline); pass(s, 0, outline); pass(0, -s, outline); pass(0, s, outline);
-      pass(s, s, outline);
+    W = Math.max(1, W - 1);
+    var pad = 2, cw = W + pad * 2, ch = F.h + pad * 2 + 1;
+    var m = new Uint8Array(cw * ch);
+    pts.forEach(function (p) { m[(p[1] + pad) * cw + p[0] + pad] = 1; });
+    // 2) 테두리 = 위아래좌우 한 칸만(대각선은 비움 → 모서리가 둥글게 보임)
+    var o = new Uint8Array(cw * ch);
+    for (var y = 0; y < ch; y++) for (var x = 0; x < cw; x++) {
+      if (m[y * cw + x]) continue;
+      if ((x > 0 && m[y * cw + x - 1]) || (x < cw - 1 && m[y * cw + x + 1]) ||
+          (y > 0 && m[(y - 1) * cw + x]) || (y < ch - 1 && m[(y + 1) * cw + x])) o[y * cw + x] = 1;
     }
-    pass(0, 0, color);
+    var k = Math.max(1, st.scale | 0);
+    var cv = document.createElement('canvas'); cv.width = cw * k; cv.height = ch * k;
+    var g2 = cv.getContext('2d');
+    function put(mask, col, dy) {
+      if (!col) return;
+      g2.fillStyle = col;
+      for (var y = 0; y < ch; y++) for (var x = 0; x < cw; x++) if (mask[y * cw + x]) g2.fillRect(x * k, (y + dy) * k, k, k);
+    }
+    // 3) 그림자(테두리+글자를 1도트 아래로) → 테두리 → 글자(위 2/3 = top 색, 아래 1/3 = bottom 색)
+    if (st.shadow) { var u = new Uint8Array(cw * ch); for (var q = 0; q < u.length; q++) u[q] = m[q] | o[q]; put(u, st.shadow, 1); }
+    put(o, st.outline, 0);
+    var split = pad + Math.ceil(F.h * 2 / 3), mt = new Uint8Array(cw * ch), mb = new Uint8Array(cw * ch);
+    for (var q2 = 0; q2 < m.length; q2++) if (m[q2]) { if (((q2 / cw) | 0) < split) mt[q2] = 1; else mb[q2] = 1; }
+    put(mt, st.top, 0); put(mb, st.bottom || st.top, 0);
+    var res = { img: cv, w: cw * k, pad: pad * k };
+    textCache[key] = res; textCacheN++;
+    return res;
+  }
+  // 글자 가운데 = x, 글자 윗줄 = y
+  function drawPixelText(ctx, str, x, y, st) {
+    var t = textSprite(str, st);
+    ctx.drawImage(t.img, Math.round(x - t.w / 2), Math.round(y) - t.pad);
   }
 
   // ----- 하얀 실루엣 (맞은 순간 번쩍) -----
@@ -77,8 +170,8 @@
       var parts = [];
       for (var i = 0; i < count; i++) {
         var a = (Math.random() * 1.6 - 0.8) + (dir > 0 ? 0 : Math.PI) + (Math.random() < 0.3 ? Math.PI : 0) * 0.6;
-        var sp = 60 + Math.random() * (big ? 160 : 110);
-        parts.push({ x: 0, y: 0, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 40, s: Math.random() < 0.35 ? 2 : 1 });
+        var sp = (60 + Math.random() * (big ? 160 : 110)) * AS();
+        parts.push({ x: 0, y: 0, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 40 * AS(), s: Math.random() < 0.35 ? 2 : 1 });
       }
       var life = big ? 260 : 200, spr = sprites && sprites.length ? sprites : null;
       // 그림 효과는 2번째 장(가장 크게 터진 장)부터 → 멈춘 순간에 크게 보임
@@ -87,7 +180,7 @@
     },
     // color = 숫자 색(없으면 흰색/치명타 노랑). 플레이어가 맞으면 빨강
     damage: function (x, y, n, crit, J, color) {
-      list.push({ type: 'dmg', x: x + (Math.random() * 8 - 4), y: y, n: String(n) + (crit ? '!' : ''), crit: crit, t: 0, life: J.dmgMs, rise: J.dmgRise, color: color || null });
+      list.push({ type: 'dmg', x: x + (Math.random() * 8 - 4), y: y, n: String(n) + (crit ? '!' : ''), crit: crit, t: 0, life: J.dmgMs, rise: J.dmgRise * AS(), color: color || null });
     },
     // 그림 여러 장을 한 번 재생하는 효과(오크 돌진 먼지). pivot = 그림 속 기준점(바닥 가운데), flip = 좌우 뒤집기
     // under = true 면 캐릭터보다 뒤(바닥)에 그림, scale = 크기 배율(없으면 1, 법사 마법 터짐·반짝임)
@@ -100,7 +193,8 @@
         var f = list[i]; f.t += dtMs;
         if (f.type === 'impact') {
           var dt = dtMs / 1000;
-          f.parts.forEach(function (p) { p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 420 * dt; p.vx *= 0.92; });
+          var grav = 420 * AS();
+          f.parts.forEach(function (p) { p.x += p.vx * dt; p.y += p.vy * dt; p.vy += grav * dt; p.vx *= 0.92; });
         }
         if (f.t >= f.life) list.splice(i, 1);
       }
@@ -128,11 +222,19 @@
     else if (f.type === 'thrust') drawThrust(ctx, f, x, y, k);
     else if (f.type === 'impact') drawImpact(ctx, f, x, y, k);
     else if (f.type === 'dmg') {
-      // 처음엔 크게 튀어나왔다가 작아지며 떠오름
-      var s = f.crit ? (k < 0.12 ? 4 : 3) : (k < 0.12 ? 3 : 2);
+      // 처음엔 pop 모양(한 단계 크게/밝게)으로 튀어나왔다가 제 모양으로 돌아오며 떠오름 → 끝에서 서서히 사라짐
+      var D = (window.CFG && window.CFG.damageText) || {};
+      var st = (f.crit ? D.crit : D.normal) || { font: 'small', top: '#ffffff', outline: '#2a1020' };
+      if ((k < (D.popK || 0.12) && st.pop) || f.color) {
+        var st2 = {}, kk;
+        for (kk in st) if (kk !== 'pop') st2[kk] = st[kk];
+        if (k < (D.popK || 0.12) && st.pop) for (kk in st.pop) st2[kk] = st.pop[kk];
+        if (f.color) { st2.top = f.color; st2.bottom = D.hurtBottom || f.color; }   // 플레이어가 맞은 숫자 = 빨강
+        st = st2;
+      }
       var ease = 1 - Math.pow(1 - Math.min(1, k * 1.6), 3);
       ctx.globalAlpha = k > 0.7 ? Math.max(0, 1 - (k - 0.7) / 0.3) : 1;
-      drawPixelText(ctx, f.n, x, y - 20 - ease * f.rise, s, f.color || (f.crit ? '#ffd23f' : '#ffffff'), '#2a1020');
+      drawPixelText(ctx, f.n, x, y - (D.lift != null ? D.lift : 20) * AS() - ease * f.rise, st);
       ctx.globalAlpha = 1;
     }
   }
@@ -205,7 +307,7 @@
     // 가운데 번쩍(처음 몇 장)
     if (k < 0.3) {
       // 별 모양: 어두운 테두리 → 색 → 흰 심 (하얗게 번쩍인 대상 위에서도 보이게)
-      var r = Math.round((f.big ? 16 : 12) * (1 - k / 0.3 * 0.4));
+      var r = Math.round((f.big ? 16 : 12) * AS() * (1 - k / 0.3 * 0.4));
       var d = Math.round(r * 0.55);
       function star(col, grow, w) {
         ctx.fillStyle = col;
@@ -224,7 +326,7 @@
       star('#ffffff', -0, 0);
     } else if (k < 0.5) {
       // 퍼지는 고리
-      var rr = Math.round(6 + (k - 0.3) * 60);
+      var rr = Math.round((6 + (k - 0.3) * 60) * AS());
       ctx.fillStyle = f.color;
       for (var a = 0; a < 16; a++) {
         var an = a / 16 * Math.PI * 2;
