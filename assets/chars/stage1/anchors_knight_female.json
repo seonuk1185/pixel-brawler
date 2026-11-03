@@ -414,122 +414,68 @@
   },
   "attack3_01": {
    "hand": [
-    104,
-    47
+    61,
+    31
    ],
-   "angle": -120,
+   "angle": -170,
    "layer": "back",
    "check": {
-    "fromNovice": [
-     106,
-     47
-    ],
-    "shift": [
-     -2,
-     0
-    ],
-    "match": 0.973,
-    "match0": 0.926
+    "v2": "2026-11-03 hit3 v2 restored"
    }
   },
   "attack3_02": {
    "hand": [
-    108,
-    105
+    116,
+    85
    ],
-   "angle": 30,
+   "angle": 50,
    "layer": "back",
    "check": {
-    "fromNovice": [
-     108,
-     105
-    ],
-    "shift": [
-     0,
-     0
-    ],
-    "match": 0.938,
-    "match0": 0.938
+    "v2": "2026-11-03 hit3 v2 restored"
    }
   },
   "attack3_03": {
    "hand": [
-    66,
-    88
+    100,
+    101
    ],
-   "angle": 155,
+   "angle": 165,
    "layer": "back",
    "check": {
-    "fromNovice": [
-     66,
-     88
-    ],
-    "shift": [
-     0,
-     0
-    ],
-    "match": 0.852,
-    "match0": 0.851
+    "v2": "2026-11-03 hit3 v2 restored"
    }
   },
   "attack3_04": {
    "hand": [
-    100,
-    32
+    116,
+    49
    ],
-   "angle": -75,
+   "angle": -45,
    "layer": "back",
    "check": {
-    "fromNovice": [
-     100,
-     31
-    ],
-    "shift": [
-     0,
-     1
-    ],
-    "match": 0.98,
-    "match0": 0.965
+    "v2": "2026-11-03 hit3 v2 restored"
    }
   },
   "attack3_05": {
    "hand": [
-    110,
-    61
+    72,
+    24
    ],
-   "angle": -5,
+   "angle": -150,
    "layer": "back",
    "check": {
-    "fromNovice": [
-     112,
-     61
-    ],
-    "shift": [
-     -2,
-     0
-    ],
-    "match": 0.981,
-    "match0": 0.96
+    "v2": "2026-11-03 hit3 v2 restored"
    }
   },
   "attack3_06": {
    "hand": [
-    103,
-    62
+    76,
+    25
    ],
-   "angle": 0,
+   "angle": -160,
    "layer": "back",
    "check": {
-    "fromNovice": [
-     104,
-     63
-    ],
-    "shift": [
-     -1,
-     -1
-    ],
-    "match": 0.988,
-    "match0": 0.942
+    "v2": "2026-11-03 hit3 v2 restored"
    }
   },
   "getup_03": {

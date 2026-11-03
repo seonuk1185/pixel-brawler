@@ -77,7 +77,24 @@
               reach: { x0: 10, x1: 100, yTop: -112, yBot: -10 },
               fx: { type: 'slash', x: 46, y: -66, rot: 20, sx: 1.25, sy: 1.25 }, arc: { from: 60, to: -100, r: 56, w: 11 } }
           ] }
-      ]
+      ],
+      // 기사 옷만 따로 쓰는 타(knightCombo): 번호(0부터) = 바꿀 타. 없는 타는 위 combo 를 그대로 쓴다.
+      // 기사 여자 3타는 그림을 새로 그려서(2026-11-03, 솟구치는 X자 마무리) 견습 여자 3타와 동작이 다르다
+      knightCombo: {
+        // 3타 = 솟구치는 X자 마무리: 장 0 앞발 딛고 칼을 어깨 위로 크게 젖힘 → 장 1 대각선 내려베기(1번째 판정)
+        //   → 장 2 칼을 무릎 옆 뒤쪽으로 뒤집기 → 장 3 반대 대각선 올려베기(2번째 판정 = 마무리, X자 완성)
+        //   → 장 4·5 칼을 머리 위 뒤로 치켜든 마무리 자세. 그림 속에서 앞으로 약 20도트 디디므로 lunge 는 작게
+        2: { anim: 'attack3', f: [0, 1, 2, 3, 4, 5], d: [70, 55, 45, 60, 160, 120], cancel: 99, endAdvance: 4,
+             reach: { x0: 8, x1: 80, yTop: -110, yBot: -12 },
+             hits: [
+               { active: [1, 1], lunge: 2, dmg: 0.7, hitstop: 0.9, knock: 0.5, shake: 0.9,
+                 reach: { x0: 8, x1: 76, yTop: -106, yBot: -14 },
+                 fx: { type: 'slash', x: 44, y: -62, rot: -45, sx: 1.0, sy: 1.1 }, arc: { from: -135, to: 50, r: 52, w: 10 } },
+               { active: [3, 3], lunge: 2, dmg: 1.6, hitstop: 1.9, knock: 2.4, shake: 2.3, finisher: true,
+                 reach: { x0: 6, x1: 80, yTop: -112, yBot: -12 },
+                 fx: { type: 'slash', x: 46, y: -64, rot: 120, sx: 1.2, sy: 1.15, flipY: true }, arc: { from: 150, to: -60, r: 56, w: 12 } }
+             ] }
+      }
     }
   };
 
@@ -132,10 +149,15 @@
   // 콤보 3타는 캐릭터마다 자기 그림(attack1/attack2/attack3)과 자기 수치를 쓴다 (위 MOVES)
   // 직업(견습/기사)에 따라 콤보 묶음이 바뀐다: combos.fist = 맨손(FIST), combos.sword = 검(MOVES)
   // outfit = 옷 그림 묶음('knight' = 기사 갑옷). 없으면 견습 옷. 기사 옷 그림은 검 콤보 그림만 있고 맨손(fist) 그림은 없다
-  //   (파일 이름·장 수·발 위치가 견습 그림과 똑같아서 MOVES 수치를 그대로 쓴다)
+  //   (파일 이름·장 수·발 위치가 견습 그림과 똑같아서 MOVES 수치를 그대로 쓴다. 단 MOVES.<성별>.knightCombo 에 있는 타는 기사만 따로)
   function stage1(who, anchors, outfit) {
     var p = 'assets/chars/stage1/' + (outfit ? outfit + '_' : '') + who + '/';
     var M = MOVES[who];
+    // 검 콤보: 기사 옷이면 knightCombo 에 있는 타만 바꿔 끼운다(나머지 타는 견습과 같은 수치)
+    var swordCombo = M.combo;
+    if (outfit === 'knight' && M.knightCombo) {
+      swordCombo = M.combo.map(function (st, i) { return M.knightCombo[i] || st; });
+    }
     var def = {
       label: who === 'male' ? '남' : '여',
       frameW: 176, frameH: 136,
@@ -161,8 +183,8 @@
         knockdown: { frames: seq(p + 'knockdown_', 5), d: [110, 160, 110, 110], loop: false },   // 장 1~4 시간, 5(누움)는 계속
         getup:     { frames: seq(p + 'getup_', 4),     d: [220, 180, 160, 140], loop: false }
       },
-      combo: M.combo,
-      combos: { sword: M.combo }
+      combo: swordCombo,
+      combos: { sword: swordCombo }
     };
     if (!outfit) {   // 견습 옷만 맨손 콤보 그림이 있다
       def.anims.fist1 = { frames: seq(p + 'fist1_', 4),  fps: 14, loop: false };
