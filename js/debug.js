@@ -42,7 +42,9 @@
         var p = G.player;
         info.textContent = 'fps ' + fps + '\nstate ' + p.state + (p.atk ? ' (콤보 ' + (p.atk.step + 1) + '타, 장 ' + p.atk.i + ')' : '') +
           '\npos ' + Math.round(p.x) + ',' + Math.round(p.y) + '\n캐릭 ' + G.charKey + ' / 무기 ' + G.weaponKey +
-          '\n맞힌 수 ' + G.hits + ' / 총 데미지 ' + G.totalDmg;
+          '\n맞힌 수 ' + G.hits + ' / 총 데미지 ' + G.totalDmg +
+          (G.stage ? '\nHP ' + p.hp + '/' + p.maxHp + ' · 웨이브 ' + G.stage.next + (G.stage.locked ? ' (고정)' : '') +
+            ' · 적 ' + G.enemies.filter(function (e) { return e.alive(); }).length + ' · ' + Math.round(G.stage.time / 1000) + '초' : '');
       }
     }
   };

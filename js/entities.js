@@ -15,7 +15,37 @@
     this.char = null;         // 불러온 캐릭터 그림 묶음
     this.weaponKey = 'sword';
     this.moveSet = 'sword';   // 콤보 묶음: 'fist'(견습 맨손) / 'sword'(기사)
+    // 체력·맞음 (1단계 판)
+    var H = cfg.hero || { hp: 100 };
+    this.maxHp = H.hp; this.hp = H.hp;
+    this.invulnT = 0;         // 맞은 뒤 무적(깜빡임) 남은 시간
+    this.hurtT = 0;           // 움찔 남은 시간
+    this.vx = 0;              // 밀려나는 속도
+    this.deadT = 0;           // 쓰러진 뒤 지난 시간
+    this.god = false;         // 시험용 무적
   }
+
+  // 적에게 맞음. dir = 밀려나는 방향(1 = 오른쪽). 맞았으면 true
+  Player.prototype.takeHit = function (dmg, dir, knock, flinchMs) {
+    if (this.state === 'dead' || this.invulnT > 0) return false;
+    var H = this.cfg.hero;
+    if (!this.god) this.hp = Math.max(0, this.hp - dmg);
+    this.atk = null;
+    this.vx = dir * (knock || 0) * (H.knockMul || 1) * 9;
+    this.dir = -dir;                         // 때린 쪽을 본다
+    this.animT = 0;
+    if (this.hp <= 0) { this.state = 'dead'; this.deadT = 0; this.invulnT = 0; return true; }
+    this.state = 'hurt';
+    this.hurtT = flinchMs || H.flinchMs;
+    this.invulnT = H.invulnMs;
+    this.comboStep = 0;
+    return true;
+  };
+  Player.prototype.hurtbox = function () {
+    var h = this.cfg.hero.hurtbox;
+    var xa = this.x + h.x0 * this.dir, xb = this.x + h.x1 * this.dir;
+    return { x0: Math.min(xa, xb), x1: Math.max(xa, xb), y0: this.y + h.yTop, y1: this.y + h.yBot, z: this.y };
+  };
 
   Player.prototype.setCharacter = function (charAssets) {
     this.char = charAssets; this.animT = 0;
@@ -62,6 +92,10 @@
 
   Player.prototype.currentFrame = function () {
     var def = this.char.def;
+    if (this.state === 'hurt' || this.state === 'dead') {
+      var HA = def.anims.hurt, hn = HA.frames.length;
+      return { anim: 'hurt', idx: Math.min(hn - 1, Math.floor(this.animT * HA.fps)) };
+    }
     if (this.state === 'attack') {
       var st = this.comboSteps()[this.atk.step];
       return { anim: st.anim || 'attack', idx: st.f[this.atk.i] };
@@ -84,6 +118,17 @@
     var cfg = this.cfg, C = cfg.combo, ev = {};
     var W = cfg.weapons[this.weaponKey];
     this.animT += dtMs / 1000;
+    if (this.invulnT > 0) this.invulnT -= dtMs;
+
+    // 맞고 움찔 / 쓰러짐: 조작 안 됨, 밀려나기만
+    if (this.state === 'hurt' || this.state === 'dead') {
+      this.x += this.vx * dtMs / 1000;
+      this.vx *= Math.exp(-dtMs / 1000 * 9);
+      if (this.state === 'dead') this.deadT += dtMs;
+      else if ((this.hurtT -= dtMs) <= 0) { this.state = 'idle'; this.animT = 0; this.vx = 0; }
+      this.clamp(world);
+      return ev;
+    }
 
     if (this.state !== 'attack') {
       this.comboIdleT += dtMs;
@@ -140,15 +185,21 @@
         if (wi >= 0) {
           var w = hitWindows(st)[wi];
           if (!a.slashed[wi]) { a.slashed[wi] = true; ev.slash = { step: w }; }
-          if (!a.hitDone[wi]) ev.hitCheck = { step: w, stepIndex: a.step, win: wi };
+          // 판정 구간마다 맞은 대상 기록(같은 대상은 한 구간에 한 번만, 여러 적은 한꺼번에 맞음)
+          ev.hitCheck = { step: w, stepIndex: a.step, win: wi, done: a.hitDone[wi] || (a.hitDone[wi] = {}) };
         }
       }
     }
 
-    // 무대 밖으로 못 나감
-    this.x = Math.max(20, Math.min(world.width - 20, this.x));
-    this.y = Math.max(world.laneTop, Math.min(world.laneBottom, this.y));
+    this.clamp(world);
     return ev;
+  };
+
+  // 무대 밖으로 못 나감 (1단계 판에서는 지금 보이는 화면 밖으로도 못 나감: world.minX/maxX)
+  Player.prototype.clamp = function (world) {
+    var x0 = world.minX != null ? world.minX : 20, x1 = world.maxX != null ? world.maxX : world.width - 20;
+    this.x = Math.max(x0, Math.min(x1, this.x));
+    this.y = Math.max(world.laneTop, Math.min(world.laneBottom, this.y));
   };
 
   Player.prototype.hitbox = function () {
@@ -168,9 +219,17 @@
     var img = this.char.anims[fr.anim][fr.idx];
     var x = Math.round(this.x - camX), y = Math.round(this.y);
     drawShadow(ctx, x, y, 22);
+    // 맞은 뒤 무적: 깜빡임
+    if (this.invulnT > 0 && this.state !== 'hurt' && Math.floor(this.invulnT / 70) % 2 === 0) return;
     ctx.save();
     ctx.translate(x, y);
     ctx.scale(this.dir, 1);
+    // 쓰러짐: 움찔 그림을 잠깐 보인 뒤 뒤로 눕힌다(발을 축으로 90도)
+    if (this.state === 'dead' && this.deadT > 300) {
+      ctx.rotate(-Math.PI / 2);
+      ctx.globalAlpha = Math.max(0.35, 1 - (this.deadT - 300) / 2500);
+    }
+    var hurtFlash = this.state === 'hurt' && img && this.animT < 0.08;
 
     // 무기 붙이기 (그림에 칼이 박혀 있지 않은 캐릭터만)
     var anc = null, wDef = null, wImg = null;
@@ -183,6 +242,11 @@
     if (back) drawWeapon(ctx, def, anc, wDef, wImg);
     if (img) ctx.drawImage(img, -def.pivot.x, -def.pivot.y);
     if (anc && wImg && !back) drawWeapon(ctx, def, anc, wDef, wImg);
+    if (hurtFlash) {   // 맞는 순간 하얗게 번쩍
+      var sil = FX.whiteSilhouette(img, 0, 0, img.width, img.height, 1);
+      ctx.globalAlpha = 0.7; ctx.drawImage(sil, 0, 0, img.width, img.height, -def.pivot.x, -def.pivot.y, img.width, img.height);
+      ctx.globalAlpha = 1;
+    }
 
     if (debug) {
       ctx.fillStyle = '#0f0'; ctx.fillRect(-1, -1, 3, 3); // 발 기준점
@@ -304,5 +368,6 @@
   };
 
   window.Player = Player;
+  window.drawShadow = drawShadow;
   window.Dummy = Dummy;
 })();

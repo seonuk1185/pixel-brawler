@@ -74,6 +74,20 @@
           out.dummy = { idle: r[0].filter(Boolean), hit: r[1].filter(Boolean) };
         }));
       }
+      // 적 그림: { goblin: { idle: [img...], walk: [...] }, ... }
+      out.enemies = {};
+      Object.keys(cfg.enemies || {}).forEach(function (k) {
+        var A = cfg.enemies[k].anims, names = Object.keys(A);
+        jobs.push(Promise.all(names.map(function (n) { return loadList(A[n].frames); })).then(function (lists) {
+          var o = {}; names.forEach(function (n, i) { o[n] = lists[i]; }); out.enemies[k] = o;
+        }));
+      });
+      // 배경 3장 + 먼지 효과
+      out.bg = {};
+      if (cfg.bg) ['far', 'mid', 'ground'].forEach(function (k) {
+        jobs.push(loadImage(cfg.bg[k].img).then(function (im) { out.bg[k] = im; }));
+      });
+      if (cfg.dust) jobs.push(loadList(cfg.dust.frames).then(function (l) { out.dust = l.filter(Boolean); }));
       if (art.fx) {
         jobs.push(Promise.all([loadList(art.fx.slash), loadList(art.fx.impact)]).then(function (r) {
           out.fx = { slash: r[0].filter(Boolean), impact: r[1].filter(Boolean) };

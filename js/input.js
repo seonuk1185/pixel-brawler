@@ -69,7 +69,9 @@
     });
   }
 
+  var override = null;   // 시험용 자동 조종(?bot=1)이 넣는 방향
   function axis(cfg) {
+    if (override) return { x: override.x, y: override.y };
     var K = cfg.keys, x = 0, y = 0;
     function any(list) { for (var i = 0; i < list.length; i++) if (keysDown[list[i]]) return true; return false; }
     if (any(K.left)) x -= 1;
@@ -95,6 +97,7 @@
       return false;
     },
     peekAttack: function (bufferMs) { return attackQueued && performance.now() - attackQueued <= bufferMs; },
-    pressAttack: function () { attackQueued = performance.now(); } // 시험용
+    pressAttack: function () { attackQueued = performance.now(); }, // 시험용
+    setOverride: function (ax) { override = ax; }                    // 시험용(자동 조종). null 이면 원래대로
   };
 })();

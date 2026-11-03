@@ -172,13 +172,26 @@
     female = stage1('female', 'assets/chars/stage1/anchors_female.json');
   }
 
+  // ---------- 적 그림 (art\stage1-enemies 에서 복사, 그림은 전부 「왼쪽을 봄」) ----------
+  // playback = 그림 번호(1부터) 재생 순서, fps = 1초에 몇 칸. 순서를 늘리면 그 장면이 길어진다(예: 몽둥이 치켜든 장면 = 예고)
+  var EN = 'assets/enemies/';
+  function enemyAnims(name, list) {
+    var out = {};
+    Object.keys(list).forEach(function (k) {
+      var a = list[k];
+      out[k] = { frames: seq(EN + name + '/' + k + '_', a[0]), fps: a[1], loop: !!a[2], playback: a[3] || null };
+    });
+    return out;
+  }
+
   window.CFG = {
-    version: 'stage1-proto-1',
+    version: 'stage1-proto-2',
     artSet: artSet,
 
     // ---------- 화면 ----------
     view: {
       targetH: 240,        // 논리 화면 높이 목표(도트 기준). 실제 배율은 정수로만
+      portraitTargetW: 280,// 세로 화면(폰 세로)일 때: 가로 폭을 이 도트 수 근처로 맞추고 게임 화면은 위쪽, 조작은 아래쪽
       bg: '#14121c'
     },
 
@@ -266,6 +279,143 @@
       vibrateMs: 18,        // 폰 진동(ms). 0이면 끔
       timeScale: 1.0        // 전체 속도(디버그용 슬로모션)
     },
+
+    // ================================================================
+    //  1단계 판 (기본 화면). 연습장(허수아비)은 주소 뒤 ?mode=practice
+    // ================================================================
+
+    // ---------- 플레이어 체력·맞았을 때 ----------
+    // hurtbox = 몸 판정(발 기준, 오른쪽 볼 때), flinchMs = 맞고 움찔하는 시간(조작 불가),
+    // invulnMs = 맞은 뒤 무적 시간(깜빡임), knockMul = 밀려나는 거리 배율, radius = 몸끼리 겹치지 않는 반지름
+    hero: {
+      hp: 150,
+      hurtbox: { x0: -14, x1: 14, yTop: -96, yBot: -4 },
+      flinchMs: 300,
+      invulnMs: 1000,
+      knockMul: 1.0,
+      radius: 14
+    },
+
+    // ---------- 적끼리 공통 ----------
+    ai: {
+      maxAttackers: 2,      // 동시에 공격 동작 중인 잡몹 최대 수 (보스는 제외)
+      attackGapMs: 450,     // 잡몹 공격 시작 사이 최소 간격
+      enemyKnockMul: 1.6,   // 플레이어 공격으로 적이 밀려나는 거리 배율 (허수아비보다 크게)
+      sepDepth: 12,         // 위아래 거리가 이보다 가까우면 몸끼리 밀어냄
+      deathHoldMs: 700,     // 쓰러진 뒤 누워 있는 시간
+      deathFadeMs: 600      // 그다음 깜빡이며 사라지는 시간
+    },
+
+    // ---------- 적 종류 ----------
+    // hp, speedX/speedY = 1초에 도트, radius = 몸 반지름(겹침 방지), height = 키(데미지 숫자 위치),
+    // hurtbox = 몸 판정(발 기준, 앞 = +), engage = 공격하러 붙는 거리, hover = 차례 기다릴 때 거리,
+    // range = 이 거리 안에서 공격 시작 [최소, 최대], alignY = 위아래가 이만큼 맞아야 공격, cooldown = 공격 사이 쉬는 시간 [최소, 최대]
+    // 공격: anim = 그림, active = 판정 나는 그림 번호, reach = 판정 상자(앞 = +), depth = 위아래 판정 폭,
+    //   dmg = 데미지 [최소, 최대], knock = 플레이어 밀림(도트), flinchMs = 플레이어 움찔 시간(없으면 hero.flinchMs),
+    //   move = 공격 중 앞으로 이동 { frames: 그림 번호들, dist: 도트 }, telegraph = 바닥에 빨간 예고 표시할 그림 번호
+    enemies: {
+      goblin: {
+        label: '고블린', frameW: 176, frameH: 136, pivot: { x: 92, y: 130 },
+        anims: enemyAnims('goblin', {
+          idle: [4, 6, true], walk: [8, 10, true],
+          attack: [5, 10, false, [1, 2, 2, 2, 3, 4, 4, 5]],   // 1 들기 · 2 치켜듦(예고 300ms) · 3 맞음 · 4 내려침 · 5 복귀
+          hit: [3, 10, false, [1, 2, 2, 3]],
+          death: [5, 8, false, [1, 2, 3, 4, 5]]
+        }),
+        walkAnim: 'walk',
+        hp: 65, speedX: 44, speedY: 30, radius: 15, height: 84,
+        hurtbox: { x0: -15, x1: 26, yTop: -80, yBot: 0 },
+        engage: 50, hover: [100, 150], range: [24, 68], alignY: 7, cooldown: [1100, 2100], firstCooldown: [500, 1600],
+        knockResist: 1.0, deathKnock: 220,
+        attacks: {
+          club: { anim: 'attack', active: [3, 4], reach: { x0: 16, x1: 80, yTop: -80, yBot: -30 }, depth: 12,
+                  dmg: [6, 9], knock: 14, telegraph: [2] }
+        }
+      },
+      wolf: {
+        label: '늑대', frameW: 208, frameH: 112, pivot: { x: 104, y: 106 },
+        anims: enemyAnims('wolf', {
+          idle: [4, 6, true], run: [6, 12, true],
+          attack: [5, 12, false, [1, 1, 1, 2, 3, 3, 4, 5]],   // 1 웅크림(예고) · 2 도약 · 3 물기 · 4 착지 · 5 복귀
+          hit: [3, 10, false, [1, 2, 2, 3]],
+          death: [5, 8, false, [1, 2, 3, 4, 5]]
+        }),
+        walkAnim: 'run',
+        hp: 48, speedX: 100, speedY: 55, radius: 26, height: 66,
+        hurtbox: { x0: -50, x1: 51, yTop: -66, yBot: 0 },
+        engage: 84, hover: [150, 200], range: [55, 112], alignY: 8, cooldown: [1300, 2300], firstCooldown: [300, 1200],
+        retreatMs: 900,           // 물고 난 뒤 뒤로 빠지는 시간 (치고 빠지기)
+        knockResist: 1.2, deathKnock: 240,
+        attacks: {
+          bite: { anim: 'attack', active: [2, 3], reach: { x0: 36, x1: 84, yTop: -64, yBot: -10 }, depth: 12,
+                  dmg: [5, 7], knock: 12, move: { frames: [2, 3], dist: 36 } }
+        }
+      },
+      orc: {
+        label: '오크 족장', boss: true, frameW: 320, frameH: 232, pivot: { x: 168, y: 226 },
+        anims: enemyAnims('orc', {
+          idle: [4, 5, true], walk: [6, 8, true],
+          attack1: [5, 8, false, [1, 2, 2, 2, 2, 3, 4, 4, 4, 5]],   // 내려찍기: 2 치켜듦(예고 500ms) → 4 땅에 박힘
+          attack2: [5, 9, false, [1, 1, 1, 2, 3, 4, 4, 5]],         // 가로 휘두르기: 1 뒤로 젖힘(예고) → 3 쭉 뻗음
+          special: [5, 10, false, null],                             // 어깨 돌진: 코드에서 단계별로 재생(아래 charge)
+          hit: [3, 8, false, [1, 2, 2, 3]],
+          death: [5, 6, false, [1, 1, 2, 2, 3, 4, 5]]
+        }),
+        walkAnim: 'walk',
+        hp: 1000, speedX: 34, speedY: 26, radius: 40, height: 152,
+        hurtbox: { x0: -27, x1: 50, yTop: -152, yBot: 0 },
+        engage: 70, hover: [70, 90], range: [40, 160], alignY: 10, cooldown: [900, 1700], firstCooldown: [1200, 1500],
+        knockResist: 0.25, deathKnock: 60,
+        staggerCdMs: 2200,       // 한 번 움찔하면 이 시간 동안은 안 움찔함(계속 맞아도 번쩍이기만) → 무한 콤보 방지
+        superArmor: true,        // 공격 동작 중에는 맞아도 안 끊김
+        enrageAt: 0.5,           // 체력이 이 비율 아래로 떨어지면 화남: 빨라지고 고블린 부름
+        enrage: { speedMul: 1.3, cooldownMul: 0.65, summon: ['goblin', 'goblin'] },
+        attacks: {
+          slam:  { anim: 'attack1', active: [3, 4], reach: { x0: 40, x1: 104, yTop: -120, yBot: 0 }, depth: 16,
+                   dmg: [18, 22], knock: 34, flinchMs: 450, telegraph: [2], shake: 2.5, when: [40, 100], weight: 3 },
+          sweep: { anim: 'attack2', active: [3, 4], reach: { x0: 30, x1: 160, yTop: -120, yBot: -30 }, depth: 14,
+                   dmg: [14, 18], knock: 30, flinchMs: 400, telegraph: [1], shake: 1.6, when: [60, 160], weight: 3 },
+          // 어깨 돌진: windMs 동안 웅크리고 소리침(예고, 플레이어 줄로 천천히 맞춤) → speed 로 dist 만큼 미끄러지며 돌진
+          //   → 부딪힘(그림 5). 몸통 판정 bodyReach, 마지막 어깨 판정 reach. dustMs 마다 먼지 효과
+          charge: { type: 'charge', anim: 'special', windMs: 750, stepMs: 100, speed: 260, dist: 260, impactMs: 260, recoverMs: 300,
+                    bodyReach: { x0: 10, x1: 84, yTop: -150, yBot: 0 }, reach: { x0: 40, x1: 128, yTop: -145, yBot: 0 }, depth: 16,
+                    dmg: [20, 24], knock: 46, flinchMs: 550, shake: 3, dustMs: 110, when: [130, 400], weight: 2 }
+        }
+      }
+    },
+
+    // ---------- 1단계 판 ----------
+    // width = 판 전체 길이(도트). waves = 화면이 멈추는 곳(at = 카메라 왼쪽 끝 위치, 'end' = 맨 끝 보스방)
+    //   spawn = [종류, 나오는 쪽('L'/'R'), 몇 ms 뒤에] 순서대로. 다 잡으면 「GO →」
+    // healOnClear = 웨이브를 깰 때마다 체력 회복
+    stage: {
+      name: 'STAGE 1  숲길',
+      width: 2880,
+      healOnClear: 15,
+      bgTop: '#7fb2e5',           // 화면이 배경보다 높을 때 위쪽 하늘 색 (실제로는 배경 맨 윗줄을 늘려 씀)
+      waves: [
+        { at: 120,  spawn: [['goblin', 'R', 0], ['goblin', 'R', 600], ['goblin', 'L', 2200]] },
+        { at: 500,  spawn: [['wolf', 'R', 0], ['goblin', 'L', 400], ['wolf', 'R', 1800], ['goblin', 'R', 2600]] },
+        { at: 880,  spawn: [['goblin', 'R', 0], ['goblin', 'R', 300], ['goblin', 'L', 900], ['goblin', 'R', 3800], ['goblin', 'L', 4300]] },
+        { at: 1260, spawn: [['wolf', 'R', 0], ['wolf', 'L', 500], ['goblin', 'R', 1200], ['wolf', 'R', 3400], ['goblin', 'L', 3800]] },
+        { at: 1650, spawn: [['goblin', 'R', 0], ['goblin', 'L', 200], ['wolf', 'R', 1000], ['goblin', 'R', 3600], ['wolf', 'L', 4000], ['goblin', 'R', 4800], ['wolf', 'R', 5400]] },
+        { at: 2040, spawn: [['wolf', 'R', 0], ['wolf', 'R', 300], ['goblin', 'L', 700], ['goblin', 'R', 2800], ['goblin', 'L', 3200], ['wolf', 'R', 4200]] },
+        { at: 'end', boss: true, spawn: [['orc', 'R', 0]] }
+      ]
+    },
+
+    // ---------- 1단계 배경 (art\stage1-bg 에서 복사) ----------
+    // 뒤 → 앞 순서. parallax = 카메라가 1 움직일 때 그 층이 움직이는 비율. mid 는 판 끝에서 그림이 딱 끝나게 자동으로 맞춤(최대 0.5)
+    // floorY = 그림 속 바닥(풀 경계)이 시작하는 높이, laneTop/laneBottom = 그림 속 걸을 수 있는 길(흙길)
+    bg: {
+      far:    { img: 'assets/bg/stage1/far.png',    w: 512,  tile: true,  parallax: 0.15 },
+      mid:    { img: 'assets/bg/stage1/mid.png',    w: 1658, tile: false, parallax: 0.5 },
+      ground: { img: 'assets/bg/stage1/ground.png', w: 723,  tile: true,  parallax: 1.0 },
+      height: 240, floorY: 144, laneTop: 158, laneBottom: 230
+    },
+
+    // 먼지 효과(오크 돌진): 112x64, 바닥 가운데 기준
+    dust: { frames: seq('assets/fx/dust_', 5), pivot: { x: 56, y: 60 }, fps: 12 },
 
     // ---------- 조작 ----------
     keys: {

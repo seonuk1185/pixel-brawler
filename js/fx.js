@@ -85,8 +85,14 @@
       list.push({ type: 'impact', x: x, y: y, dir: dir, color: color, t: spr ? life / spr.length : 0, life: life, parts: parts, big: big, sprites: spr,
         look: scale && scale !== 1 ? { sx: scale, sy: scale } : null });
     },
-    damage: function (x, y, n, crit, J) {
-      list.push({ type: 'dmg', x: x + (Math.random() * 8 - 4), y: y, n: String(n) + (crit ? '!' : ''), crit: crit, t: 0, life: J.dmgMs, rise: J.dmgRise });
+    // color = 숫자 색(없으면 흰색/치명타 노랑). 플레이어가 맞으면 빨강
+    damage: function (x, y, n, crit, J, color) {
+      list.push({ type: 'dmg', x: x + (Math.random() * 8 - 4), y: y, n: String(n) + (crit ? '!' : ''), crit: crit, t: 0, life: J.dmgMs, rise: J.dmgRise, color: color || null });
+    },
+    // 그림 여러 장을 한 번 재생하는 효과(오크 돌진 먼지). pivot = 그림 속 기준점(바닥 가운데), flip = 좌우 뒤집기
+    // under = true 면 캐릭터보다 뒤(바닥)에 그림
+    sprite: function (x, y, frames, fps, pivot, flip, under) {
+      list.push({ type: 'sprite', x: x, y: y, frames: frames, step: 1000 / fps, pivot: pivot, flip: !!flip, under: !!under, t: 0, life: frames.length * 1000 / fps });
     },
 
     update: function (dtMs) {
@@ -100,10 +106,18 @@
       }
     },
 
-    draw: function (ctx, camX) {
+    // under = true: 바닥 효과만(캐릭터 뒤), false/없음: 나머지(캐릭터 앞)
+    draw: function (ctx, camX, under) {
       list.forEach(function (f) {
+        if (!!f.under !== !!under) return;
         var k = f.t / f.life, x = Math.round(f.x - camX), y = Math.round(f.y);
-        if (f.type === 'slash') drawSlash(ctx, f, x, y, k);
+        if (f.type === 'sprite') {
+          var im = f.frames[Math.min(f.frames.length - 1, Math.floor(f.t / f.step))];
+          if (!im) return;
+          ctx.save(); ctx.translate(x, y); if (f.flip) ctx.scale(-1, 1);
+          ctx.drawImage(im, -f.pivot.x, -f.pivot.y); ctx.restore();
+        }
+        else if (f.type === 'slash') drawSlash(ctx, f, x, y, k);
         else if (f.type === 'thrust') drawThrust(ctx, f, x, y, k);
         else if (f.type === 'impact') drawImpact(ctx, f, x, y, k);
         else if (f.type === 'dmg') {
@@ -111,7 +125,7 @@
           var s = f.crit ? (k < 0.12 ? 4 : 3) : (k < 0.12 ? 3 : 2);
           var ease = 1 - Math.pow(1 - Math.min(1, k * 1.6), 3);
           ctx.globalAlpha = k > 0.7 ? Math.max(0, 1 - (k - 0.7) / 0.3) : 1;
-          drawPixelText(ctx, f.n, x, y - 20 - ease * f.rise, s, f.crit ? '#ffd23f' : '#ffffff', '#2a1020');
+          drawPixelText(ctx, f.n, x, y - 20 - ease * f.rise, s, f.color || (f.crit ? '#ffd23f' : '#ffffff'), '#2a1020');
           ctx.globalAlpha = 1;
         }
       });

@@ -21,6 +21,66 @@ html, body {
   border: 0; padding: 6px 11px; cursor: pointer;
 }
 .seg button.on { background: #f2c14e; color: #2a1a12; }
+.modebtn {
+  font-size: 13px; font-weight: 700; color: #ddd; background: #0006; border: 2px solid #0008; border-radius: 6px;
+  padding: 6px 10px; text-decoration: none; white-space: nowrap;
+}
+.modebtn:hover { color: #fff; }
+
+/* 1단계 판 글자들 (게임 화면 위에 겹침, 위치·크기는 main.js 가 게임 화면에 맞춤) */
+.hud { position: absolute; left: 0; top: 0; pointer-events: none; z-index: 3; overflow: hidden; }
+.hud .bar { position: relative; height: 12px; background: #2a1020; border: 2px solid #120a14; border-radius: 3px; overflow: hidden; }
+.hud .bar i, .hud .bar em { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; }
+.hud .bar em { background: #f6e7c8; transition: width .6s ease-in .15s; }
+.hud .bar i { background: linear-gradient(#7be07b, #3fae4a); transition: width .08s; }
+.hud .bar i.low { background: linear-gradient(#ff8a6a, #d9432f); }
+.php {
+  position: absolute; left: max(10px, env(safe-area-inset-left)); top: 50px;
+  display: flex; align-items: center; gap: 6px; font-weight: 800; text-shadow: 2px 2px 0 #2a1020;
+}
+.php .lbl { color: #ffd23f; font-size: 14px; }
+.php .bar { width: 150px; }
+.php .num { font-size: 13px; min-width: 28px; }
+.stageinfo {
+  position: absolute; left: max(10px, env(safe-area-inset-left)); top: 72px;
+  font-size: 11px; font-weight: 700; color: #fffc; text-shadow: 1px 1px 0 #2a1020; white-space: nowrap;
+}
+.bossbar {
+  position: absolute; left: 50%; bottom: 38px; transform: translateX(-50%); width: min(58%, 380px);
+  font-weight: 800; font-size: 13px; color: #ffd0c0; text-shadow: 2px 2px 0 #2a1020;
+}
+.bossbar .bar { height: 14px; margin-top: 2px; }
+.bossbar .bar i { background: linear-gradient(#ff7a5a, #c22f22); }
+.go {
+  position: absolute; right: max(18px, env(safe-area-inset-right)); top: 40%;
+  font-size: 34px; font-weight: 900; color: #ffd23f; text-shadow: 3px 3px 0 #2a1020; animation: goblink .7s steps(2) infinite;
+}
+@keyframes goblink { 50% { opacity: .25; transform: translateX(8px); } }
+.banner {
+  position: absolute; left: 0; right: 0; top: 32%; text-align: center;
+  font-size: 34px; font-weight: 900; letter-spacing: 2px; color: #fff; text-shadow: 3px 3px 0 #2a1020;
+}
+.banner.show { animation: bannerin .25s ease-out; }
+.banner.boss { color: #ff6a4a; font-size: 40px; }
+.banner.small { font-size: 26px; color: #ffd23f; }
+.banner.title { font-size: 28px; color: #f2e6c8; }
+@keyframes bannerin { from { transform: scale(1.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+/* 결과 화면 (클리어 / 게임 오버) */
+.result { position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; background: #0a0812b0; }
+.result[hidden] { display: none; }
+.result .box { text-align: center; padding: 22px 28px; background: #1c1628ee; border: 3px solid #0008; border-radius: 10px; max-width: 92vw; }
+.result h2 { margin: 0 0 10px; font-size: 34px; letter-spacing: 2px; text-shadow: 3px 3px 0 #2a1020; }
+.result.clear h2 { color: #ffd23f; }
+.result.over h2 { color: #ff6a4a; }
+.result p { margin: 0 0 16px; font-size: 14px; color: #ddd; }
+.result p b { color: #fff; }
+.rbtns { display: flex; gap: 10px; justify-content: center; }
+.rbtns button, .rbtns a {
+  font: inherit; font-size: 16px; font-weight: 800; padding: 10px 18px; border-radius: 8px; border: 2px solid #0008; cursor: pointer; text-decoration: none;
+}
+.rbtns button { background: #f2c14e; color: #2a1a12; }
+.rbtns a { background: #3a3350; color: #eee; }
 
 .combo {
   position: absolute; top: max(10px, env(safe-area-inset-top)); right: max(14px, env(safe-area-inset-right));
@@ -65,14 +125,19 @@ html, body {
   .btn.jump { right: 100px; bottom: 54px; width: 64px; height: 64px; font-size: 13px; background: #555; opacity: .45; }
 }
 
-/* 세로 화면 안내 (폰) */
-.rotate { display: none; }
-@media (pointer: coarse) and (orientation: portrait) {
-  .rotate {
-    display: flex; position: fixed; inset: 0; z-index: 50; align-items: center; justify-content: center;
-    background: #14121cf2; color: #fff; font-size: 18px; text-align: center; padding: 20px;
-  }
-  .rotate b { color: #f2c14e; }
+/* 세로 화면(폰 세로): 게임 화면은 위(고르기 버튼 아래), 조작은 아래 빈 곳 (main.js 가 body 에 portrait 를 붙임) */
+.portrait .php { top: 6px; }
+.portrait .combo { top: 58px; }
+.portrait .stageinfo { top: 26px; }
+.portrait .bossbar { bottom: 6px; width: 70%; }
+.portrait .go { font-size: 26px; }
+.portrait .banner { font-size: 26px; }
+.portrait .banner.boss { font-size: 30px; }
+@media (pointer: coarse) {
+  .portrait .joyzone { height: 60%; width: 55%; }
+  .portrait .joy { bottom: 60px; left: 36px; }
+  .portrait .btns { bottom: 56px; right: 24px; }
+  .portrait .btn.atk { width: 104px; height: 104px; }
 }
 
 /* 디버그 판 */

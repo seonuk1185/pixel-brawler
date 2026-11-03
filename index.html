@@ -7,7 +7,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Pixel Brawler - 한 방 손맛</title>
+<title>Pixel Brawler - 1단계</title>
 <link rel="icon" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="manifest" href="manifest.webmanifest">
@@ -29,6 +29,24 @@
       <!-- 도끼 다시 켜기: 아래 주석을 풀고 js/config.js 의 classes 에서 axe 줄 주석도 푼다 -->
       <!-- <button type="button" data-class="axe">도끼</button> -->
     </div>
+    <!-- 연습장(허수아비) ↔ 1단계 판 -->
+    <a class="modebtn" id="modeBtn" href="?mode=practice">연습장</a>
+  </div>
+
+  <!-- 1단계 판 화면 위 글자: 체력 막대, 보스 막대, GO, 알림 (게임 화면 크기에 맞춰 main.js 가 위치를 잡음) -->
+  <div class="hud" id="hud" hidden>
+    <div class="php"><span class="lbl">HP</span><div class="bar"><em id="pHpLag"></em><i id="pHp"></i></div><span class="num" id="pHpNum">150</span></div>
+    <div class="stageinfo" id="stageInfo"></div>
+    <div class="bossbar" id="bossBar" hidden><span id="bossName">오크 족장</span><div class="bar"><em id="bHpLag"></em><i id="bHp"></i></div></div>
+    <div class="go" id="goPrompt" hidden>GO →</div>
+    <div class="banner" id="banner" hidden></div>
+  </div>
+  <div class="result" id="result" hidden>
+    <div class="box">
+      <h2 id="resTitle">STAGE CLEAR!</h2>
+      <p id="resStats"></p>
+      <div class="rbtns"><button type="button" id="btnRetry">다시 하기</button><a id="resPractice" href="?mode=practice">연습장</a></div>
+    </div>
   </div>
   <div class="combo" id="combo" hidden></div>
   <div class="keyhint">이동 ←↑↓→ / WASD · 공격 J / Z (연타 3타)</div>
@@ -41,8 +59,6 @@
     <button type="button" class="btn jump" id="btnJump" disabled aria-label="점프(준비 중)">점프</button>
     <button type="button" class="btn atk" id="btnAtk" aria-label="공격">공격</button>
   </div>
-
-  <div class="rotate"><p>휴대폰을 <b>가로</b>로 돌려 주세요</p></div>
 </div>
 
 <script src="js/config.js"></script>
@@ -50,6 +66,7 @@
 <script src="js/input.js"></script>
 <script src="js/fx.js"></script>
 <script src="js/entities.js"></script>
+<script src="js/enemies.js"></script>
 <script src="js/debug.js"></script>
 <script src="js/main.js"></script>
 </body>
