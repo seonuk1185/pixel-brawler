@@ -17,8 +17,12 @@
   //   플레이어·적이 그 밑으로 못 들어가고, 카메라도 남은 폭 기준으로 따라간다. 버튼이 게임 화면 밖이면(세로 화면·PC) 0
   var controlPad = 0;
   var bgCache = null;
+  // 매끈한 2배(HD, 2026-11-03): 캔버스 실제 점 = 논리 화면(도트) x RS. 게임 계산은 전부 도트 그대로(240줄),
+  //   그릴 때만 RS 배로 키워서 그림(HD 그림 1점 = 0.5 도트, 부드럽게). 주소 뒤 ?rs=1 이면 예전처럼 도트 1:1(그림도 예전 작은 도트 그림)
+  var RS = Math.max(1, +(params.get('rs') || CFG.view.renderScale || 1));
+  CFG.view.renderScale = RS;
 
-  // ---------- 화면 크기: 정수 배율로만 키운다(도트 선명) ----------
+  // ---------- 화면 크기: 논리 화면(도트)은 예전처럼 정수 배율 기준(보이는 범위·캐릭터 크기 그대로), 캔버스 점은 그 RS 배 ----------
   // 가로 화면: 높이를 240도트 근처로 맞춤. 세로 화면(폰 세로): 폭을 portraitTargetW 근처로 맞추고
   // 게임 화면은 위쪽(고르기 버튼 아래), 조이스틱·공격 버튼은 아래 빈 곳에 둔다.
   function resize() {
@@ -36,7 +40,8 @@
       SCALE = Math.max(1, Math.floor(ph / CFG.view.targetH));
       LW = Math.ceil(pw / SCALE); LH = Math.ceil(ph / SCALE);
     }
-    canvas.width = LW; canvas.height = LH;
+    canvas.width = Math.round(LW * RS); canvas.height = Math.round(LH * RS);
+    document.body.classList.toggle('smooth', RS > 1);
     var cssW = LW * SCALE / dpr, cssH = LH * SCALE / dpr;
     canvas.style.width = cssW + 'px';
     canvas.style.height = cssH + 'px';
@@ -46,7 +51,7 @@
       hudEl.style.width = Math.min(cw, cssW) + 'px';
       hudEl.style.height = Math.min(ch - topCss, cssH) + 'px';
     }
-    ctx.imageSmoothingEnabled = false;
+    setSmooth();
     world.floorY = Math.round(LH * CFG.world.floorTopRatio);
     if (MODE === 'stage') {
       var B = CFG.bg;
@@ -85,11 +90,19 @@
     return Math.max(0, Math.min(Math.round(LW * 0.3), pad));
   }
 
+  function setSmooth() {
+    ctx.imageSmoothingEnabled = RS > 1;
+    if (RS > 1) ctx.imageSmoothingQuality = 'high';
+  }
+  // 캔버스 점 단위로 반올림(2배면 0.5 도트까지 → 카메라·움직임이 더 부드럽다)
+  function snap(v) { return Math.round(v * RS) / RS; }
+
   // ---------- 연습장 배경 (코드로 그린 돌벽 + 바닥 타일) ----------
   function buildBackground() {
     var c = document.createElement('canvas');
-    c.width = world.width; c.height = LH;
+    c.width = world.width * RS; c.height = LH * RS;   // 캔버스 점 크기로(2배면 또렷하게)
     var g = c.getContext('2d');
+    g.scale(RS, RS);
     function r(col, x, y, w, h) { g.fillStyle = col; g.fillRect(x, y, w, h); }
     var fy = world.floorY;
     r('#1b1830', 0, 0, c.width, fy);
@@ -134,14 +147,14 @@
     if (off > 0) { ctx.fillStyle = skyColor(); ctx.fillRect(0, 0, LW, off); }
     if (I.far) tileLayer(I.far, camX * B.far.parallax, off);
     if (I.mid) {
-      var camMax = Math.max(1, world.width - LW);
-      var par = Math.min(B.mid.parallax, (I.mid.width - LW) / camMax);   // 판 끝에서 마을 그림이 딱 끝나게
-      ctx.drawImage(I.mid, -Math.round(camX * par), off);
+      var camMax = Math.max(1, world.width - LW), mk = I.mid._k || 1;
+      var par = Math.min(B.mid.parallax, (I.mid.width * mk - LW) / camMax);   // 판 끝에서 마을 그림이 딱 끝나게
+      ctx.drawImage(I.mid, -snap(camX * par), off, I.mid.width * mk, I.mid.height * mk);
     }
     if (I.ground) {
       tileLayer(I.ground, camX * B.ground.parallax, off);
       var below = LH - (off + H);
-      if (below > 0) ctx.drawImage(I.ground, 0, H - 1, I.ground.width, 1, 0, off + H, LW, below);
+      if (below > 0) ctx.drawImage(I.ground, 0, I.ground.height - 1, I.ground.width, 1, 0, off + H - 0.5, LW, below + 0.5);
     }
   }
   // 하늘 맨 윗줄에서 가장 많이 쓰인 색 (구름 줄무늬가 안 생기게 한 가지 색으로 채움). 못 읽으면 config 의 stage.bgTop
@@ -158,9 +171,10 @@
     return sky;
   }
   function tileLayer(img, sx, y) {
-    var w = img.width, x = -Math.round(sx) % w;
+    var k = img._k || 1, w = img.width * k, h = img.height * k, x = -(snap(sx) % w);
     if (x > 0) x -= w;
-    for (; x < LW; x += w) ctx.drawImage(img, x, y);
+    // 이음매에 머리카락 같은 틈이 안 생기게 한 칸씩 1/RS 겹쳐 그림
+    for (; x < LW; x += w) ctx.drawImage(img, x, y, w + (RS > 1 ? 1 / RS : 0), h);
   }
 
   // ---------- 상태 ----------
@@ -193,6 +207,8 @@
     var dmg = Math.round(rand(W.damage[0], W.damage[1]) * st.dmg);
     G.hitstop = Math.max(G.hitstop, J.hitstopMs * W.hitstopMul * st.hitstop);
     FX.shake(J.shakePx * W.shakeMul * st.shake, J.shakeMs * (st.finisher ? 1.5 : 1));
+    // 콤보 마무리 타: 짧은 화면 번쩍(2026-11-03 HD). 기술은 자기 flash 를 따로 씀
+    if (st.finisher && !st.damageStyle && CFG.view.renderScale > 1) Skills.flash({ color: '#fff8e8', alpha: 0.2, ms: 90 });
     var knock = J.knockback * AS * W.knockMul * st.knock;
     var hx, topY;
     if (target === G.dummy) {
@@ -498,15 +514,16 @@
   // ---------- 그리기 ----------
   function render() {
     var sh = FX.updateShake(0);
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.imageSmoothingEnabled = false;
+    ctx.setTransform(RS, 0, 0, RS, 0, 0);
+    setSmooth();
     ctx.fillStyle = CFG.view.bg; ctx.fillRect(0, 0, LW, LH);
     ctx.translate(sh.x, sh.y);
-    var camX = Math.round(G.camX);
+    var camX = snap(G.camX);
     if (MODE === 'stage') drawStageBg(camX);
     else {
       if (!bgCache) bgCache = buildBackground();
-      ctx.drawImage(bgCache, -camX, 0);
+      ctx.drawImage(bgCache, -camX, 0, bgCache.width / RS, bgCache.height / RS);
+
     }
     Skills.drawBackdrop(ctx, LW, LH, G.player);   // 기술 쓰는 동안 배경만 어둡게
 
@@ -627,36 +644,64 @@
       b.addEventListener('click', function () { setClass(b.dataset.class); b.blur(); });
     });
   }
-  // 지금 성별 + 직업 옷에 맞는 그림 묶음 (기사 = knight_male / knight_female, 없으면 견습 옷)
-  function outfitAssets() {
-    var c = CFG.classes && CFG.classes[G.classKey], C = G.assets.characters;
-    return (c && c.outfit && C[c.outfit + '_' + G.charKey]) || C[G.charKey];
+  // 지금 성별 + 직업 옷에 맞는 그림 묶음 이름 (기사 = knight_male / knight_female, 없으면 견습 옷)
+  function outfitKey() {
+    var c = CFG.classes && CFG.classes[G.classKey], A = CFG.art.characters;
+    var k = c && c.outfit ? c.outfit + '_' + G.charKey : G.charKey;
+    return A[k] ? k : G.charKey;
   }
+  // 그 그림 묶음 (아직 안 불러왔으면 지금 플레이어 그림 그대로)
+  function outfitAssets() {
+    var C = G.assets.characters;
+    return C[outfitKey()] || (G.player && G.player.char) || C[G.charKey] || C[Object.keys(C)[0]];
+  }
+  // 옷 그림 묶음을 (필요하면 불러와서) 플레이어에 입힘. 불러오는 동안은 예전 옷 그대로 + 작은 로딩 표시
+  function wearOutfit() {
+    var k = outfitKey(), a = G.assets.characters[k];
+    function put(a) { if (a && G.player && G.player.char !== a) G.player.setCharacter(a); }
+    if (a) { put(a); return Promise.resolve(a); }
+    loading(true);
+    return Assets.ensureChar(k).then(function (a) {
+      bakeFilter(a);
+      loading(false);
+      if (outfitKey() === k) put(a);
+      return a;
+    });
+  }
+  // 로딩 막대: 처음엔 화면 가운데 큰 막대, 옷 바꿀 때는 작은 표시(mini)
+  var loadEl = document.getElementById('loading');
+  function loading(on) {
+    if (!loadEl || !document.body.classList.contains('ready')) return;
+    loadEl.classList.add('mini'); loadEl.hidden = !on;
+  }
+  G.wearOutfit = wearOutfit;
   // 직업의 무기: 성별마다 다를 수 있음(법사 = 남 staff / 여 wand)
   function classWeapon(c) { var w = c.weapon; return w && typeof w === 'object' ? (w[G.charKey] || w.male) : w; }
   function setChar(k) {
-    if (!G.assets.characters[k]) return;
-    G.charKey = k; G.player.setCharacter(outfitAssets());
+    if (!CFG.art.characters[k]) return Promise.resolve(null);
+    G.charKey = k;
     var c = CFG.classes && CFG.classes[G.classKey];
     if (c) { G.weaponKey = classWeapon(c); G.player.weaponKey = G.weaponKey; }
     document.querySelectorAll('[data-char]').forEach(function (b) { b.classList.toggle('on', b.dataset.char === k); });
+    return wearOutfit();
   }
   // 직업 고르기: 견습(맨손) / 기사(검). 직업이 무기와 콤보 묶음을 정한다 (config classes)
   function setClass(k) {
     var c = CFG.classes && CFG.classes[k];
     if (!c) return;
     G.classKey = k; G.weaponKey = classWeapon(c); G.moveSet = c.moves;
+    var pr = Promise.resolve(null);
     if (G.player) {
-      var a = outfitAssets();
-      if (a && G.player.char !== a) G.player.setCharacter(a);   // 옷이 바뀔 때만 그림 묶음 교체
+      pr = wearOutfit();   // 옷이 바뀔 때만 그림 묶음 교체
       G.player.weaponKey = G.weaponKey; G.player.setMoveSet(c.moves);
     }
     document.querySelectorAll('[data-class]').forEach(function (b) { b.classList.toggle('on', b.dataset.class === k); });
+    return pr;
   }
   // 무기만 바꾸기(디버그·나중용): 콤보 묶음은 그대로
   function setWeapon(k) { if (CFG.weapons[k]) G.weaponKey = k; }
-  G.setChar = function (k) { setChar(k); };
-  G.setClass = function (k) { setClass(k); };
+  G.setChar = function (k) { return setChar(k); };
+  G.setClass = function (k) { return setClass(k); };
   G.setWeapon = function (k) { setWeapon(k); };
 
 
@@ -689,8 +734,9 @@
     g.putImageData(d, 0, 0);
   }
   function bakeFilter(charAssets) {
-    var def = charAssets.def;
-    if (!def.placeholderFilter) return;
+    var def = charAssets && charAssets.def;
+    if (!def || !def.placeholderFilter || charAssets._filtered) return;
+    charAssets._filtered = true;
     Object.keys(charAssets.anims).forEach(function (n) {
       charAssets.anims[n] = charAssets.anims[n].map(function (img) {
         if (!img) return img;
@@ -729,7 +775,8 @@
     retry: function () { resetStage(); },
     info: function () {
       var S = G.stage, p = G.player;
-      return { mode: MODE, LW: LW, LH: LH, scale: SCALE, controlPad: controlPad, char: G.player.char && G.player.char.def.anims.idle.frames[0], camX: Math.round(G.camX), wave: S ? S.next : null, locked: S ? S.locked : null,
+      return { mode: MODE, LW: LW, LH: LH, scale: SCALE, rs: RS, hd: Assets.isHD(),
+ controlPad: controlPad, char: G.player.char && G.player.char.def.anims.idle.frames[0], camX: Math.round(G.camX), wave: S ? S.next : null, locked: S ? S.locked : null,
         waveIdx: S ? S.waveIdx : null, time: S ? Math.round(S.time) : null, result: S ? S.result : null,
         player: { hp: p.hp, state: p.state, x: Math.round(p.x), y: Math.round(p.y), skill: p.sk ? p.sk.d.key + '@' + Math.round(p.sk.t) : null, cd: p.skillCd },
         enemies: G.enemies.map(function (e) { return e.type + ':' + e.state + ':' + e.hp + '@' + Math.round(e.x) + ',' + Math.round(e.y); }),
@@ -762,7 +809,14 @@
     if (r) { var q2 = new URLSearchParams(location.search); q2.set('mode', 'practice'); r.href = location.pathname + '?' + q2.toString(); }
   }
 
-  Assets.loadAll(CFG).then(function (assets) {
+  // 처음 불러올 것: 지금 고른 옷 하나(나머지 옷은 시작한 뒤 뒤에서 하나씩). 예전 견습 그림(?art=novice)은 둘 다
+  G.classKey = CFG.defaultClass || 'novice';
+  var firstChars = CFG.artSet === 'novice' ? Object.keys(CFG.art.characters) : [outfitKey()];
+  if (loadEl) {
+    var lbar = loadEl.querySelector('i');
+    Assets.progress.onChange = function (got, want) { if (lbar) lbar.style.width = Math.round(100 * got / Math.max(1, want)) + '%'; };
+  }
+  Assets.loadAll(CFG, firstChars).then(function (assets) {
     G.assets = assets;
     // 기술(skills.js)이 쓰는 도구: 맞히기·대상 목록·먼지·효과 그림·멈춤·슬로모션
     Skills.init(CFG, {
@@ -793,6 +847,8 @@
     Input.init(CFG);
     if (DEBUG && window.Debug) Debug.init(G);
     document.body.classList.add('ready');
+    if (loadEl) { loadEl.hidden = true; Assets.progress.onChange = null; }
+    setTimeout(function () { Assets.loadRest(); }, 800);   // 나머지 옷 그림은 뒤에서 하나씩
     requestAnimationFrame(frame);
   });
   window.addEventListener('resize', function () { if (G.player) resize(); });

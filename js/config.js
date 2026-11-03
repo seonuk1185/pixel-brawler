@@ -237,6 +237,7 @@
   //   (skills.js 가 동작의 ms 로 「기술 시작부터 몇 ms」로 바꿔서 쓴다. 장 번호 대신 ms 로 직접 적어도 됨: at: [시작, 끝])
   //   name = 이름, icon = 버튼 글자, cooldownMs = 쿨타임, motion = 동작 이름(MOTIONS), motionMs = 이 기술만 동작 시간 바꾸기(없으면 MOTIONS 의 ms)
   //   damageStyle = 데미지 숫자 모양(CFG.damageText), darken = 시작 때 배경 어둡게 { ms, alpha }
+  //   (효과 그림 fx 의 scale = 그 효과만 크기 배율. 모든 기술 효과는 이미 skillFxScale(2)배 → 회전 고리는 0.75 를 곱해 1.5배: 몸을 감싸는 크기)
   //   iframes = 무적 { frames: [첫 장, 끝 장] }
   //   move = 돌진 { frames: [첫 장, 끝 장], dist = 도트 }: 처음 빠르게 → 끝에서 느리게. 끝에 적 몸 안이면 뚫고 나감
   //   trail = 잔상(몸 실루엣) { frames, everyMs, lifeMs, alpha, color }
@@ -262,12 +263,14 @@
   //   male / female = 그 성별만 바꿀 값(그 키를 통째로 덮어씀)
   // 얕은 복사 + 덮어쓰기 (같은 판정 값을 여러 기술·성별이 나눠 쓸 때)
   function merge(a, b) { var o = {}, k; for (k in a) o[k] = a[k]; for (k in b) o[k] = b[k]; return o; }
-  var KNIGHT_DASH_HIT = { reach: { x0: -20, x1: 100, yTop: -112, yBot: -4, depth: 20 },
+  // 2026-11-03 HD: 기술 효과 그림이 2배로 커져서 판정도 보이는 크기만큼 조금 넓힘(돌진 x1 100 → 116, 회전 ±84/±92 → ±100/±110,
+  //   화염구 탄 40x34 → 56x46, 터짐 r 64 → 92·depth 40 → 50, 번개 r 26 → 34·depth 28 → 32). 데미지·쿨타임은 그대로
+  var KNIGHT_DASH_HIT = { reach: { x0: -20, x1: 116, yTop: -112, yBot: -4, depth: 20 },
                           dmg: 1.9, hitstop: 0.55, knock: 1.4, shake: 1.3, knockdown: true, spark: 1.3, big: true, hitY: -62 };
   var KNIGHT_DASH_FINALE = { ifHit: true, hitstopMs: 120, shake: 2.8, slowMs: 260, flash: { color: '#d8ecff', alpha: 0.4, ms: 140 } };
-  var SPIN_REACH = { x0: -84, x1: 84, yTop: -108, yBot: -6, depth: 20 };
+  var SPIN_REACH = { x0: -100, x1: 100, yTop: -108, yBot: -6, depth: 20 };
   var SPIN_HIT = { reach: SPIN_REACH, away: true, dmg: 0.8, hitstop: 0.7, knock: 0.7, shake: 1.2, spark: 1.1, hitY: -60 };
-  var SPIN_LAST = { reach: { x0: -92, x1: 92, yTop: -112, yBot: -4, depth: 22 }, away: true,
+  var SPIN_LAST = { reach: { x0: -110, x1: 110, yTop: -112, yBot: -4, depth: 22 }, away: true,
                     dmg: 1.6, hitstop: 2.2, knock: 2.6, shake: 3.0, knockdown: true, spark: 1.5, big: true, hitY: -60,
                     flash: { color: '#e6f2ff', alpha: 0.45, ms: 150 }, slowMs: 280 };
   // 불·번개 기술은 법사 보라 반짝임(impactFx) 대신 기본 불똥(노랑·흰색)이 효과 색과 어울림
@@ -275,7 +278,7 @@
                    flash: { color: '#ffb060', alpha: 0.4, ms: 160 }, slowMs: 240 };
   // 터짐 판정 = 보이는 폭발 크기(fire_explosion 가장 큰 장 반지름 약 57~64 → r 64), 위아래(안쪽) 폭 40
   //   (위아래로 살짝 어긋나 서 있는 바로 뒤 적도 맞게, 2026-11-03 예전 r 56 / depth 24 는 뒤 적이 자주 빠짐)
-  var FIRE_BURST = { r: 64, depth: 40, art: 'fire_explosion', fromFrame: 1, scale: 1.7, tint: '#ff6a10', tintK: 0.6 };
+  var FIRE_BURST = { r: 92, depth: 50, art: 'fire_explosion', fromFrame: 1, scale: 1.7, tint: '#ff6a10', tintK: 0.6 };
   var BOLT_HIT = { dmg: 1.05, hitstop: 1.2, knock: 0.4, shake: 1.8, stunMs: 450, spark: 1.2, big: true,
                    flash: { color: '#e8ffff', alpha: 0.3, ms: 90 } };
   var BOLT_HITS = [ BOLT_HIT, merge(BOLT_HIT, {}),
@@ -287,7 +290,7 @@
   //     떨어지기 lockMs(기본 90ms) 전에 자리를 고정
   //   찾는 적이 없으면 xs = 법사 앞 고정 거리(가까운 곳 → 먼 곳)
   function strikesOf(gapMs, xs) {
-    return { frame: 3, gapMs: gapMs, x: xs, aim: { range: 200, depth: 60 }, markMs: 240, r: 26, depth: 28, ms: 220,
+    return { frame: 3, gapMs: gapMs, x: xs, aim: { range: 200, depth: 60 }, markMs: 240, r: 34, depth: 32, ms: 220,
              art: 'lightning_bolt', hitArt: 'lightning_impact', hitFromFrame: 1, color: '#59e6ff', core: '#ffffff', glow: '#fff27a', hits: BOLT_HITS };
   }
   var SKILLS = {
@@ -313,7 +316,7 @@
         female: {
           iframes: { frames: [0, 4] },
           trail: { frames: [1, 2], everyMs: 30, lifeMs: 180, alpha: 0.35, color: '#9cc8ff' },
-          hits: [ merge(KNIGHT_DASH_HIT, { frames: [1, 3], reach: { x0: -20, x1: 100, yTop: -124, yBot: -4, depth: 20 } }) ],
+          hits: [ merge(KNIGHT_DASH_HIT, { frames: [1, 3], reach: { x0: -20, x1: 116, yTop: -124, yBot: -4, depth: 20 } }) ],
           finale: merge(KNIGHT_DASH_FINALE, { frame: 4 }),
           fx: [
             { frame: 1, type: 'dust' },
@@ -331,7 +334,7 @@
         iframes: { frames: [0, 5] },
         hits: [ merge(SPIN_HIT, { frame: 1 }), merge(SPIN_HIT, { frame: 3 }), merge(SPIN_LAST, { frame: 5 }) ],
         fx: [
-          { frame: 1, type: 'art', fx: 'spin_ring', x: 0, y: -50, follow: true, split: true, alpha: 0.7,
+          { frame: 1, type: 'art', fx: 'spin_ring', x: 0, y: -50, follow: true, split: true, alpha: 0.7, scale: 0.75,
             ph: { type: 'ring', y: -58, r: 70, ms: 300, color: '#cfe8ff' } },
           { frame: 5, type: 'ring', y: -56, r: 86, ms: 220, color: '#ffffff' },
           { frame: 5, type: 'dust' }
@@ -339,7 +342,7 @@
         placeholder: { anim: 'attack2', f: [0, 2, 3, 2, 3, 2, 3, 4], d: [90, 75, 75, 75, 75, 75, 125, 130], spin: [90, 560], everyMs: 75 },
         female: {
           fx: [
-            { frame: 1, type: 'art', fx: 'spin_ring', x: 0, y: -56, follow: true, split: true, alpha: 0.7, fps: 22,
+            { frame: 1, type: 'art', fx: 'spin_ring', x: 0, y: -56, follow: true, split: true, alpha: 0.7, scale: 0.75, fps: 22,
               ph: { type: 'ring', y: -58, r: 70, ms: 260, color: '#cfe8ff' } },
             { frame: 5, type: 'ring', y: -56, r: 86, ms: 220, color: '#ffffff' },
             { frame: 5, type: 'dust' }
@@ -355,12 +358,12 @@
         name: '화염구', icon: '화', cooldownMs: 4500, damageStyle: 'skill_fire', motion: 'motion_cast_forward',
         darken: { ms: 480, alpha: 0.4 },
         iframes: { frames: [0, 3] },
-        cast: { frame: 3, x: 127, y: -65, speed: 260, range: 240, box: { w: 40, h: 34 }, depth: 18, backReach: 110,
+        cast: { frame: 3, x: 127, y: -65, speed: 260, range: 240, box: { w: 56, h: 46 }, depth: 18, backReach: 110,
                 art: 'fireball', scale: 1.7, tint: '#ff7a1a', tintK: 0.78, emberMs: 45, burst: FIRE_BURST, hit: FIRE_HIT },
         fx: [ { frame: 3, type: 'spark', x: 127, y: -65, scale: 1.5, tint: '#ffa040' } ],
         placeholder: { anim: 'attack3', f: [0, 1, 2, 3, 4, 5], d: [80, 90, 60, 150, 110, 110] },
         female: {
-          cast: { frame: 2, x: 85, y: -75, speed: 340, range: 220, box: { w: 40, h: 34 }, depth: 18, backReach: 75,
+          cast: { frame: 2, x: 85, y: -75, speed: 340, range: 220, box: { w: 56, h: 46 }, depth: 18, backReach: 75,
                   art: 'fireball', scale: 1.7, tint: '#ff7a1a', tintK: 0.78, emberMs: 40, burst: FIRE_BURST, hit: FIRE_HIT },
           fx: [ { frame: 2, type: 'spark', x: 85, y: -75, scale: 1.5, tint: '#ffa040' } ],
           placeholder: { anim: 'attack3', f: [0, 1, 2, 3, 4], d: [70, 90, 150, 140, 150] }
@@ -483,7 +486,12 @@
 
     // ---------- 화면 ----------
     view: {
+      // 매끈한 2배(HD, 2026-11-03): 게임 계산은 전부 240줄 도트 그대로 두고, 캔버스는 이 배수로 크게 만들어 부드럽게 그린다.
+      //   2 = 480줄(HD 그림 assets/hd, 그림 1점 = 0.5 도트, 테두리 매끈·원래 색). 1 = 예전 도트 화면(작은 도트 그림 assets/s055).
+      //   주소 뒤 ?rs=1 로 예전 화면을 잠깐 볼 수 있다. HD 그림은 pipeline/ai-sprite/hd_bake.py 로 굽는다(art/stage1/README 「매끈한 2배 버전」)
+      renderScale: 2,
       targetH: 240,        // 논리 화면 높이 목표(도트 기준). 실제 배율은 정수로만
+
       portraitTargetW: 280,// 세로 화면(폰 세로)일 때: 가로 폭을 이 도트 수 근처로 맞추고 게임 화면은 위쪽, 조작은 아래쪽
       bg: '#14121c'
     },
@@ -806,7 +814,10 @@
     // ---------- 기술 효과 그림 (art\stage1\skills\fx 에서 복사 → assets/fx/skill/<이름>_01.png …, 크기·기준점은 fx.json) ----------
     // count = 장 수(0 = 그림 없음 → 기존 그림을 물들여 쓰거나 코드로 그림), fps = 1초에 장 수, pivot = 그림 속 기준점(원래 크기), loop = 반복
     // 불러올 때 CFG.magic 에 'skill_<이름>' 으로 등록된다 → 굽기(shrink.js)·불러오기(assets.js)가 기준점을 정확히 줄여 줌
+    // 기술 효과 그림 크기 배율 (2026-11-03 HD: 메이플처럼 크고 화려하게 2배). HD 그림은 이 크기로 구워 둠(hd_bake.py FXBOOST 와 같게)
+    skillFxScale: 2,
     skillFx: {
+
       dash_trail:       { count: 4, fps: 16, pivot: { x: 134, y: 24 } },   // 돌진 잔상(기준 = 오른쪽 앞끝 → 몸 뒤에 붙임)
       slash_wave:       { count: 4, fps: 16, pivot: { x: 56, y: 56 } },    // 가로 베기 파동(오른쪽으로 볼록)
       spin_ring:        { count: 6, fps: 18, pivot: { x: 88, y: 68 } },    // 360 회전 고리(기준 = 고리 가운데 → 허리)

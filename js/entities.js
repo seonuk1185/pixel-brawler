@@ -321,8 +321,8 @@
     var fr = this.currentFrame();
     var def = this.char.def;
     var img = this.char.anims[fr.anim][fr.idx];
-    var x = Math.round(this.x - camX), y = Math.round(this.y);
-    drawShadow(ctx, x, y, Math.round(22 * AS()));
+    var x = snapPx(this.x - camX), y = snapPx(this.y);
+    drawShadow(ctx, x, y, 22 * AS());
     // 맞은 뒤 무적: 깜빡임
     if (this.invulnT > 0 && this.state !== 'hurt' && this.state !== 'down' && this.state !== 'dead' && Math.floor(this.invulnT / 70) % 2 === 0) return;
     ctx.save();
@@ -346,37 +346,57 @@
       wImg = weaponImgs[this.weaponKey];
     }
     var back = anc && wImg && (anc.layer ? anc.layer === 'back' : wDef.layer === 'back');
-    if (back) drawWeapon(ctx, def, anc, wDef, wImg);
-    if (img) ctx.drawImage(img, -def.pivot.x, -def.pivot.y);
-    if (anc && wImg && !back) drawWeapon(ctx, def, anc, wDef, wImg);
+    var k = (img && img._k) || 1;   // 그림 점 → 도트 (HD 0.5, 예전 도트 그림 1). 손 위치·기준점은 그림 점 단위
+    if (back) drawWeapon(ctx, def, anc, wDef, wImg, k);
+    if (img) Assets.blit(ctx, img, def.pivot.x, def.pivot.y);
+    if (anc && wImg && !back) drawWeapon(ctx, def, anc, wDef, wImg, k);
     if (hurtFlash) {   // 맞는 순간 하얗게 번쩍
       var sil = FX.whiteSilhouette(img, 0, 0, img.width, img.height, 1);
-      ctx.globalAlpha = 0.7; ctx.drawImage(sil, 0, 0, img.width, img.height, -def.pivot.x, -def.pivot.y, img.width, img.height);
+      ctx.globalAlpha = 0.7; Assets.blit(ctx, img, def.pivot.x, def.pivot.y, sil);
       ctx.globalAlpha = 1;
     }
 
     if (debug) {
       ctx.fillStyle = '#0f0'; ctx.fillRect(-1, -1, 3, 3); // 발 기준점
-      if (anc) { ctx.fillStyle = '#f0f'; ctx.fillRect(anc.x - def.pivot.x - 1, anc.y - def.pivot.y - 1, 3, 3); }
+      if (anc) { ctx.fillStyle = '#f0f'; ctx.fillRect((anc.x - def.pivot.x) * k - 1, (anc.y - def.pivot.y) * k - 1, 3, 3); }
     }
     ctx.restore();
   };
 
-  function drawWeapon(ctx, def, anc, wDef, wImg) {
+  // k = 몸 그림 점 → 도트 (손 위치를 도트로 바꿈). 무기 그림은 자기 배율(Assets.blit)
+  function drawWeapon(ctx, def, anc, wDef, wImg, k) {
     if (!anc) return;
+    k = k || 1;
     ctx.save();
-    ctx.translate(anc.x - def.pivot.x, anc.y - def.pivot.y);
+    ctx.translate((anc.x - def.pivot.x) * k, (anc.y - def.pivot.y) * k);
     ctx.rotate(anc.angle - (wDef.baseAngle || 0) * Math.PI / 180);
-    ctx.drawImage(wImg, -wDef.grip.x, -wDef.grip.y);
+    Assets.blit(ctx, wImg, wDef.grip.x, wDef.grip.y);
     ctx.restore();
   }
 
+  // 발밑 그림자: 매끈한 화면(renderScale > 1)이면 가장자리가 흐린 타원, 예전 도트 화면이면 도트 두 줄
+  var shadowCache = null;
   function drawShadow(ctx, x, y, w) {
+    if ((window.CFG && CFG.view.renderScale || 1) > 1) {
+      if (!shadowCache) {   // 한 번만 만든 부드러운 타원(64x16) 을 늘려 그림
+        var c = document.createElement('canvas'); c.width = 64; c.height = 16;
+        var g = c.getContext('2d'), gr = g.createRadialGradient(32, 8, 0, 32, 8, 32);
+        gr.addColorStop(0, 'rgba(0,0,0,0.5)'); gr.addColorStop(0.6, 'rgba(0,0,0,0.36)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+        g.setTransform(1, 0, 0, 0.25, 0, 6); g.fillStyle = gr; g.fillRect(0, -24, 64, 64);
+        shadowCache = c;
+      }
+      ctx.drawImage(shadowCache, x - w * 1.15, y - w * 0.29, w * 2.3, w * 0.58);
+      return;
+    }
+    w = Math.round(w); x = Math.round(x); y = Math.round(y);
     var e = Math.max(2, Math.round(w * 0.18));   // 가운데 두꺼운 부분이 양 끝에서 들어간 정도(원래 크기 22 → 4)
     ctx.fillStyle = 'rgba(0,0,0,0.35)';
     ctx.fillRect(x - w, y - 1, w * 2, 3);
     ctx.fillRect(x - w + e, y - 2, w * 2 - e * 2, 5);
   }
+  // 캔버스 점 단위 반올림(renderScale 2 면 0.5 도트까지)
+  function snapPx(v) { var R = (window.CFG && CFG.view.renderScale) || 1; return Math.round(v * R) / R; }
+  window.snapPx = snapPx;
 
   // ================= 허수아비 =================
   function makeDummyArt() {
@@ -461,22 +481,23 @@
   };
   Dummy.prototype.draw = function (ctx, camX, debug) {
     var f = this.frame();
-    var x = Math.round(this.x - camX), y = Math.round(this.y);
-    drawShadow(ctx, Math.round(this.homeX - camX), y, Math.round(14 * AS()));
+    var x = snapPx(this.x - camX), y = snapPx(this.y);
+    drawShadow(ctx, snapPx(this.homeX - camX), y, 14 * AS());
     ctx.save();
     ctx.translate(x, y);
     // 각도를 몇 단계로만 → 도트가 덜 뭉개짐
     var step = Math.PI / 90;
     ctx.rotate(Math.round(this.ang / step) * step);
     if (f.mirror) ctx.scale(-1, 1);
-    ctx.drawImage(f.img, -f.pivot.x, -f.pivot.y);
+    Assets.blit(ctx, f.img, f.pivot.x, f.pivot.y);
     if (this.flashT > 0) {
       var alpha = Math.min(1, this.flashT / (this.cfg.juice.flashMs * 0.5));
       var s = FX.whiteSilhouette(f.img, 0, 0, f.img.width, f.img.height, 1);
       ctx.globalAlpha = alpha;
-      ctx.drawImage(s, 0, 0, f.img.width, f.img.height, -f.pivot.x, -f.pivot.y, f.img.width, f.img.height);
+      Assets.blit(ctx, f.img, f.pivot.x, f.pivot.y, s);
       ctx.globalAlpha = 1;
     }
+
     ctx.restore();
   };
 

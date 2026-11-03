@@ -9,6 +9,19 @@ html, body {
   position: absolute; left: 0; top: 0;
   image-rendering: pixelated; image-rendering: crisp-edges;
 }
+/* 매끈한 2배(HD) 화면: 캔버스를 화면 크기로 늘릴 때도 부드럽게 */
+body.smooth #screen { image-rendering: auto; }
+/* 데미지 숫자 글꼴: Fredoka Bold(숫자와 ! 만, OFL — fonts/OFL-Fredoka.txt) */
+@font-face { font-family: DmgFont; src: url(../fonts/dmg.woff2) format('woff2'); font-weight: 700; font-display: block; }
+
+/* 그림 불러오는 막대 (처음: 가운데 큰 막대 / 옷 바꿀 때: 위 오른쪽 작은 표시 .mini) */
+.loading { position: fixed; inset: 0; z-index: 40; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; background: #14121c; color: #cfc8e6; font-size: 14px; font-weight: 700; }
+.loading[hidden] { display: none; }
+.loading .lbar { width: min(260px, 60vw); height: 10px; border-radius: 6px; background: #2a2440; overflow: hidden; border: 2px solid #0008; }
+.loading .lbar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #f2c14e, #ffe08a); transition: width 0.15s; }
+.loading.mini { inset: auto; top: max(48px, calc(env(safe-area-inset-top) + 40px)); right: 12px; background: #0009; padding: 6px 10px; border-radius: 8px; flex-direction: row; font-size: 12px; pointer-events: none; }
+.loading.mini .lbar { display: none; }
+
 
 /* 위: 고르기 버튼 */
 .topbar {

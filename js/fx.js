@@ -126,10 +126,56 @@
     textCache[key] = res; textCacheN++;
     return res;
   }
-  // 글자 가운데 = x, 글자 윗줄 = y
+  // 글자 가운데 = x, 글자 윗줄 = y. 매끈한 화면(renderScale > 1)이면 둥근 글꼴(Fredoka)로 그린 부드러운 숫자
   function drawPixelText(ctx, str, x, y, st) {
+    var R = (window.CFG && CFG.view.renderScale) || 1;
+    if (R > 1) { drawSmoothText(ctx, str, x, y, st, R); return; }
     var t = textSprite(str, st);
     ctx.drawImage(t.img, Math.round(x - t.w / 2), Math.round(y) - t.pad);
+  }
+
+  // ----- 매끈한 데미지 숫자 (2026-11-03 HD): 도트 글꼴과 같은 높이·색·테두리·그림자, 둥근 굵은 글꼴 -----
+  //   글꼴 = game/fonts/dmg.woff2 (Fredoka Bold, 숫자와 ! 만 남긴 2KB, OFL). 아직 안 불러왔으면 굵은 기본 글꼴
+  //   높이(도트) = 도트 글꼴 높이(mid 10, huge 12, giant 14 …), 테두리 1도트 바깥, 아래 1/3 은 bottom 색(살짝 입체)
+  var FONT_H = { small: 6, big: 7, large: 8, mid: 10, huge: 12, giant: 14 };
+  var fontReady = false, smoothCache = {}, smoothN = 0;
+  if (document.fonts && document.fonts.load) {
+    document.fonts.load('700 20px DmgFont', '0123456789!').then(function (l) { if (l && l.length) { fontReady = true; smoothCache = {}; smoothN = 0; } }).catch(function () {});
+  }
+  function smoothSprite(str, st, R) {
+    var key = str + '|' + JSON.stringify(st) + '|' + R + '|' + fontReady;
+    if (smoothCache[key]) return smoothCache[key];
+    if (smoothN > 300) { smoothCache = {}; smoothN = 0; }
+    var h = (FONT_H[st.font] || 8) * Math.max(1, st.scale || 1);   // 숫자 높이(도트)
+    var size = h / 0.72 * (st.bold ? 1.08 : 1);                   // 글꼴 크기(도트): 숫자 높이 ≈ 0.72em
+    var ol = st.outline ? 1.15 : 0, sh = st.shadow ? 1 : 0, pad = 3 + ol;
+    var fam = fontReady ? 'DmgFont' : '"Arial Black", "Arial Rounded MT Bold", sans-serif';
+    var c = document.createElement('canvas'), g = c.getContext('2d');
+    var font = '700 ' + (size * R).toFixed(2) + 'px ' + fam;
+    g.font = font;
+    var tw = g.measureText(str).width / R + (st.bold ? size * 0.04 : 0);
+    var w = tw + pad * 2, hh = h + pad * 2 + sh;
+    c.width = Math.ceil(w * R); c.height = Math.ceil(hh * R);
+    g = c.getContext('2d'); g.scale(R, R);
+    g.font = '700 ' + size.toFixed(2) + 'px ' + fam;
+    g.textAlign = 'center'; g.textBaseline = 'alphabetic';
+    var bx = w / 2, by = pad + h;   // 글자 바닥(숫자 아래 끝)
+    g.lineJoin = 'round'; g.miterLimit = 2;
+    if (st.shadow) { g.fillStyle = st.shadow; g.strokeStyle = st.shadow; g.lineWidth = ol * 2; g.strokeText(str, bx, by + sh); g.fillText(str, bx, by + sh); }
+    if (st.outline) { g.strokeStyle = st.outline; g.lineWidth = ol * 2 + (st.bold ? 0.4 : 0); g.strokeText(str, bx, by); }
+    var gr = g.createLinearGradient(0, pad, 0, pad + h);
+    gr.addColorStop(0, st.top); gr.addColorStop(0.58, st.top);
+    gr.addColorStop(0.72, st.bottom || st.top); gr.addColorStop(1, st.bottom || st.top);
+    g.fillStyle = gr;
+    if (st.bold) { g.strokeStyle = gr; g.lineWidth = size * 0.05; g.strokeText(str, bx, by); }
+    g.fillText(str, bx, by);
+    var res = { img: c, w: w, h: hh, pad: pad };
+    smoothCache[key] = res; smoothN++;
+    return res;
+  }
+  function drawSmoothText(ctx, str, x, y, st, R) {
+    var t = smoothSprite(str, st, R);
+    ctx.drawImage(t.img, x - t.w / 2, y - t.pad, t.w, t.h);
   }
 
   // ----- 하얀 실루엣 (맞은 순간 번쩍) -----
@@ -217,16 +263,19 @@
         g.drawImage(im, 0, 0);
         g.globalCompositeOperation = 'source-atop'; g.globalAlpha = k == null ? 0.6 : k;
         g.fillStyle = color; g.fillRect(0, 0, c.width, c.height);
-        return c;
+        return Assets.copyMeta(im, c);
       });
       frames._tint[key] = out;
       return out;
     },
     // 그림 여러 장을 한 번 재생하는 효과(오크 돌진 먼지). pivot = 그림 속 기준점(바닥 가운데), flip = 좌우 뒤집기
     // under = true 면 캐릭터보다 뒤(바닥)에 그림, scale = 크기 배율(없으면 1, 법사 마법 터짐·반짝임)
-    sprite: function (x, y, frames, fps, pivot, flip, under, scale) {
-      list.push({ type: 'sprite', x: x, y: y, frames: frames, step: 1000 / fps, pivot: pivot, flip: !!flip, under: !!under, t: 0, life: frames.length * 1000 / fps, scale: scale || 1 });
+    // opt = { alpha, add(true = 빛 더하기) }
+    sprite: function (x, y, frames, fps, pivot, flip, under, scale, opt) {
+      list.push({ type: 'sprite', x: x, y: y, frames: frames, step: 1000 / fps, pivot: pivot, flip: !!flip, under: !!under, t: 0, life: frames.length * 1000 / fps, scale: scale || 1,
+                  alpha: opt && opt.alpha != null ? opt.alpha : null, add: !!(opt && opt.add) });
     },
+
 
     update: function (dtMs) {
       for (var i = list.length - 1; i >= 0; i--) {
@@ -251,12 +300,14 @@
   function drawOne(ctx, camX, under, f, topPass) {
     if (!!f.under !== !!under) return;
     if (!!(f.look && f.look.top) !== topPass) return;
-    var k = f.t / f.life, x = Math.round(f.x - camX), y = Math.round(f.y);
+    var k = f.t / f.life, x = snapPx(f.x - camX), y = snapPx(f.y);
     if (f.type === 'sprite') {
       var im = f.frames[Math.min(f.frames.length - 1, Math.floor(f.t / f.step))];
       if (!im) return;
       ctx.save(); ctx.translate(x, y); ctx.scale(f.flip ? -f.scale : f.scale, f.scale);
-      ctx.drawImage(im, -f.pivot.x, -f.pivot.y); ctx.restore();
+      if (f.alpha != null) ctx.globalAlpha = f.alpha;
+      if (f.add) ctx.globalCompositeOperation = 'lighter';
+      Assets.blit(ctx, im, f.pivot.x, f.pivot.y); ctx.restore();
     }
     else if (f.type === 'slash') drawSlash(ctx, f, x, y, k);
     else if (f.type === 'thrust') drawThrust(ctx, f, x, y, k);
@@ -293,7 +344,8 @@
     ctx.scale(f.dir < 0 ? -1 : 1, 1);                       // 왼쪽 보면 좌우 뒤집기
     if (L.rot) ctx.rotate(L.rot * Math.PI / 180);           // 휘두르는 방향에 맞게 돌리기
     ctx.scale(L.sx || 1, ((L.flipY || (f.arc && f.arc.flipY)) ? -1 : 1) * (L.sy || 1));
-    ctx.drawImage(fr, -Math.round(fr.width / 2), -Math.round(fr.height / 2));
+    var c = Assets.centerOf(fr);
+    Assets.blit(ctx, fr, c.x, c.y);
     ctx.restore();
     return true;
   }
@@ -373,14 +425,25 @@
         ctx.fillRect(Math.round(x + Math.cos(an) * rr), Math.round(y + Math.sin(an) * rr * 0.8), 2, 2);
       }
     }
-    // 불똥
+    // 불똥 (매끈한 화면: 빛나는 작은 줄 = 날아가는 방향으로 늘어진 불티)
+    var smooth = ((window.CFG && CFG.view.renderScale) || 1) > 1;
     ctx.fillStyle = f.color;
     f.parts.forEach(function (p) {
       if (k > 0.85 && Math.random() < 0.5) return;
-      ctx.fillStyle = k < 0.4 ? '#ffffff' : f.color;
+      var col = k < 0.4 ? '#ffffff' : f.color;
+      if (smooth) {
+        var sp = Math.hypot(p.vx, p.vy) || 1, L = Math.min(6, 1 + sp * 0.02) * (1 - k * 0.6), w = p.s * 0.75;
+        ctx.save(); ctx.globalCompositeOperation = 'lighter';
+        ctx.strokeStyle = col; ctx.lineWidth = w; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(x + p.x, y + p.y); ctx.lineTo(x + p.x - p.vx / sp * L, y + p.y - p.vy / sp * L); ctx.stroke();
+        ctx.restore();
+        return;
+      }
+      ctx.fillStyle = col;
       ctx.fillRect(Math.round(x + p.x), Math.round(y + p.y), p.s, p.s);
     });
   }
+
 
   window.FX = FX;
 })();

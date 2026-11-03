@@ -7,6 +7,27 @@
   var CFG = null, H = null;      // H = main.js 가 넘겨주는 도구 { onHit, targets, dust, fx, hitstop, slow }
   var cache = {};
   var bolts = [], rings = [], ghosts = [], arts = [];   // arts = 효과 그림(따라다니기·돌리기·날아가기·캐릭터 뒤)
+  // 2026-11-03 HD 화려하게: waves = 퍼지는 충격파 고리(땅 = 납작한 타원 / 공중 = 원), parts = 튀는 파편·불티(중력), glows = 번쩍 빛(더하기)
+  var waves = [], parts = [], glows = [];
+  function SM() { return ((CFG && CFG.view.renderScale) || 1) > 1; }   // 매끈한 화면이면 코드로 그린 효과도 부드럽게
+  // 충격파: x,y = 가운데, r = 끝 반지름(도트), flat = 세로 비율(땅 고리 0.3, 공중 1), w = 굵기, ms, color, ground = 캐릭터 밑에 그림
+  function wave(x, y, r, o) {
+    o = o || {};
+    waves.push({ x: x, y: y, r: r, flat: o.flat == null ? 0.3 : o.flat, w: o.w || 3, t: 0, life: o.ms || 320, color: o.color || '#ffffff',
+                 glow: o.glow || o.color || '#ffffff', ground: !!o.ground, r0: o.r0 || r * 0.15 });
+  }
+  // 파편 n 개: x,y 에서 위·옆으로 튐, floor = 떨어지는 땅 높이(그 밑으로 안 감), cols = 색 목록, size = 크기(도트), sp = 속도
+  function debris(x, y, floor, n, o) {
+    o = o || {};
+    for (var i = 0; i < n; i++) {
+      var a = -Math.PI / 2 + (Math.random() * 2 - 1) * (o.spread || 1.25), sp = (o.sp || 150) * (0.45 + Math.random() * 0.75) * AS() / 0.55;
+      parts.push({ x: x + (Math.random() * 2 - 1) * 4, y: y + (Math.random() * 2 - 1) * 4, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, floor: floor,
+                   g: (o.g || 520) * AS() / 0.55, t: 0, life: (o.ms || 650) * (0.6 + Math.random() * 0.5),
+                   size: (o.size || 2.2) * (0.6 + Math.random() * 0.8), col: o.cols[i % o.cols.length], glow: !!o.glow, rot: Math.random() * 6, vr: (Math.random() * 2 - 1) * 14 });
+    }
+  }
+  // 둥근 빛(더하기 합성): r = 반지름(도트), ms 동안 커지며 사라짐
+  function glow(x, y, r, color, ms, a) { glows.push({ x: x, y: y, r: r, color: color, t: 0, life: ms || 220, a: a == null ? 0.8 : a }); }
   var flash = null;              // 화면 번쩍 { color, alpha, t, life } (진짜 시간으로 줄어듦 → 멈춤 중에도 보임)
   var tintImgCache = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
   function AS() { return (CFG && CFG.actorScale) || 1; }
@@ -79,7 +100,7 @@
     FX.sprite(x, y, fr, fps, pivot, flip, false, scale);
     if (from) FX.list[FX.list.length - 1].t = Math.min(fr.length - 1, from) * 1000 / fps;
   }
-  function centerPivot(fr) { return { x: Math.round(fr[0].width / 2), y: Math.round(fr[0].height / 2) }; }
+  function centerPivot(fr) { return Assets.centerOf(fr[0]); }
 
   // ---------- 시작 ----------
   // 눌린 기술 중 쓸 수 있는 것(쿨타임 끝남) 하나. 이 직업에 없는 기술은 입력을 버림. 쿨타임 중이면 입력을 잠깐 기억(버퍼)
@@ -150,6 +171,10 @@
         if (F.hitstopMs) H.hitstop(F.hitstopMs);
         if (F.shake) FX.shake(CFG.juice.shakePx * F.shake, CFG.juice.shakeMs * 1.6);
         impact(F);
+        // 끝맺음: 앞쪽에 크게 번쩍 + 땅 충격파
+        var fx0 = p.x + p.dir * 40 * AS();
+        glow(fx0, p.y - 50 * AS(), 70 * AS(), '#bfe0ff', 260, 0.75);
+        wave(fx0, p.y, 120 * AS(), { flat: 0.28, w: 4, ms: 360, color: '#e8f4ff', glow: '#7fb8ff', ground: true });
       }
     }
     if (d.cast && !s.cast && t1 >= d.cast.at) { s.cast = true; castFireball(p, d); }
@@ -297,6 +322,7 @@
     var c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
     var g = c.getContext('2d'); g.drawImage(img, 0, 0);
     g.globalCompositeOperation = 'source-atop'; g.globalAlpha = 0.85; g.fillStyle = color || '#ffffff'; g.fillRect(0, 0, c.width, c.height);
+    Assets.copyMeta(img, c);
     if (tintImgCache) { m = m || {}; m[color] = c; tintImgCache.set(img, m); }
     return c;
   }
@@ -304,7 +330,11 @@
     var dir = f.back ? -p.dir : p.dir, x = p.x + dir * (f.x || 0), y = p.y + (f.y || 0);
     if (f.type === 'dust') { H.dust(p.x - p.dir * 10 * AS(), p.y, p.dir); return; }
     if (f.type === 'thrust') { FX.thrust(x, y, dir, f.len || 60, f.color || '#ffffff', f.ms || 200); return; }
-    if (f.type === 'ring') { rings.push({ x: p.x, y: y, r: f.r || 60, t: 0, life: f.ms || 160, color: f.color || '#ffffff' }); return; }
+    if (f.type === 'ring') {
+      rings.push({ x: p.x, y: y, r: f.r || 60, t: 0, life: f.ms || 160, color: f.color || '#ffffff' });
+      if (SM()) { wave(p.x, p.y, (f.r || 60) * 1.25, { flat: 0.3, w: 4, ms: (f.ms || 160) * 1.6, color: '#ffffff', glow: '#8fc4ff', ground: true }); glow(p.x, y, (f.r || 60) * 0.8, '#cfe6ff', 200, 0.6); }
+      return;
+    }
     if (f.type === 'art') {   // 효과 그림: 없으면 ph(대신 쓸 효과)
       var A = fxArt(f.fx, f.fps);
       if (!A) { if (f.ph) playFx(p, f.ph); return; }
@@ -332,15 +362,31 @@
       burstAtEnd: true, backReach: c.backReach || 0, frames: fr, fps: real ? real.fps : B.fps,
       pivot: real ? real.pivot : B.pivot, scale: real ? 1 : (c.scale || 1),
       skill: { d: d, c: c, wk: p.weaponKey, emberT: 0 },
+      glow: SM() ? fireGlow : null,
+
       onImpact: function (pr, t) { fireBurst(pr, t); } });
     FX.shake(CFG.juice.shakePx * 0.8, CFG.juice.shakeMs);
   }
+  // 날아가는 화염구 뒤 주황 빛(더하기, 깜빡이며 숨쉬듯)
+  function fireGlow(ctx) {
+    var r = 30 * AS() * (1 + 0.12 * Math.sin(performance.now() / 45));
+    var g = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+    g.addColorStop(0, 'rgba(255,200,90,0.85)'); g.addColorStop(0.45, 'rgba(255,120,30,0.45)'); g.addColorStop(1, 'rgba(255,60,0,0)');
+    ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = g; ctx.fillRect(-r, -r, r * 2, r * 2); ctx.restore();
+  }
   function fireBurst(pr, direct) {
+
     var S = pr.skill, c = S.c, b = c.burst, real = fxArt(b.art), M = CFG.magic.burst;
     if (real) spriteFrom(pr.x, pr.y, real.fr, real.fps, real.pivot, pr.dir < 0, 1, b.fromFrame);
     else { var fr = tintFx(M.frames, b.tint, b.tintK); if (fr) spriteFrom(pr.x, pr.y, fr, M.fps, M.pivot, pr.dir < 0, b.scale || 1, b.fromFrame); }
     FX.shake(CFG.juice.shakePx * 2.2, CFG.juice.shakeMs * 1.6);
     doFlash(c.hit.flash || { color: '#ffb060', alpha: 0.3, ms: 120 });
+    // 크고 화려하게(2026-11-03 HD): 불빛 → 공중 충격파 고리 + 땅 충격파 + 불티·돌 파편
+    glow(pr.x, pr.y, b.r * 1.5, '#ffb050', 320, 0.9);
+    wave(pr.x, pr.y, b.r * 1.35, { flat: 0.75, w: 5, ms: 340, color: '#fff2c0', glow: '#ff7a1a' });
+    wave(pr.x, pr.z, b.r * 1.7, { flat: 0.3, w: 4, ms: 420, color: '#ffd28a', glow: '#ff5a10', ground: true });
+    debris(pr.x, pr.y, pr.z, 16, { cols: ['#ffd27a', '#ff8a2a', '#ff5a1e', '#fff4d0'], glow: true, sp: 210, size: 2, ms: 600 });
+    debris(pr.x, pr.y + 6 * AS(), pr.z, 9, { cols: ['#5a3a26', '#7a5236', '#3e2a1e'], sp: 170, size: 2.6, ms: 800 });
     var st = stOf(c.hit, S.d), any = false;
     H.targets().forEach(function (t) {
       if (!t || (t.canBeHit && !t.canBeHit())) return;
@@ -365,6 +411,10 @@
     if (hitA) spriteFrom(x, z, hitA.fr, hitA.fps, hitA.pivot, s.dir < 0, 1, K.hitFromFrame);   // 땅 번쩍(기준 = 아래 가운데)
     else { var fr = tintFx(M.frames, K.glow || '#fff27a', 0.55); if (fr) spriteFrom(x, z - 6 * AS(), fr, M.fps, M.pivot, false, 1.8, K.hitFromFrame); }
     H.dust(x, z, 1);
+    // 땅 충격파 + 기둥 빛 + 전기 불티 (2026-11-03 HD)
+    wave(x, z, K.r * 2.6, { flat: 0.3, w: 4, ms: 360, color: '#f4ffff', glow: K.color || '#59e6ff', ground: true });
+    glow(x, z - 20 * AS(), K.r * 1.9, '#9ff4ff', 240, 0.85);
+    debris(x, z - 4 * AS(), z, 10, { cols: ['#ffffff', '#bff8ff', '#fff6a0'], glow: true, sp: 190, size: 1.6, ms: 420, spread: 1.4 });
     FX.shake(CFG.juice.shakePx * (h.shake || 1.5), CFG.juice.shakeMs);
     if (h.flash) doFlash(h.flash);
     var st = stOf(h, d), any = false;
@@ -382,8 +432,13 @@
 
   // ---------- 매 장면 (효과들 시간 흐름) ----------
   function update(dt) {
-    [bolts, rings, ghosts, arts].forEach(function (L) {
+    [bolts, rings, ghosts, arts, waves, parts, glows].forEach(function (L) {
       for (var i = L.length - 1; i >= 0; i--) { L[i].t += dt; if (L[i].t >= L[i].life) L.splice(i, 1); }
+    });
+    var ds = dt / 1000;
+    parts.forEach(function (q) {
+      q.vy += q.g * ds; q.x += q.vx * ds; q.y += q.vy * ds; q.rot += q.vr * ds;
+      if (q.y > q.floor) { q.y = q.floor; q.vy *= -0.3; q.vx *= 0.6; q.vr *= 0.5; }   // 땅에 떨어지면 살짝 튕김
     });
     arts.forEach(function (a) { if (!a.follow && a.vx) a.x += a.dir * a.vx * dt / 1000; });   // 앞으로 날아가는 베기 파동
     // 날아가는 화염구: 불씨를 흘림
@@ -415,10 +470,21 @@
   }
   // 바닥: 번개 떨어질 자리 표시(깜빡이는 타원)
   function drawUnder(ctx, camX, p) {
+    waves.forEach(function (w) { if (w.ground) drawWave(ctx, camX, w); });
     var s = p && p.state === 'skill' && p.sk, K = s && s.d.strikes;
     if (!K) return;
     K.at.forEach(function (at, k) {
       if (s.strikeDone[k] || s.t < at - (K.markMs || 200)) return;
+      if (SM()) {   // 매끈한 화면: 깜빡이는 빛 타원 + 가운데 점
+        var mx = s.sx[k] - camX, my = s.sz[k], mrx = K.r * 1.1, mry = Math.max(2, K.depth * 0.4), bl = Math.floor(s.t / 60) % 2;
+        ctx.save();
+        ctx.globalAlpha = bl ? 0.75 : 0.5;
+        ctx.strokeStyle = bl ? '#fff27a' : '#5ae6ff'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.ellipse(mx, my, mrx, mry, 0, 0, Math.PI * 2); ctx.stroke();
+        ctx.globalAlpha = 0.25; ctx.fillStyle = bl ? '#fff27a' : '#5ae6ff'; ctx.fill();
+        ctx.restore();
+        return;
+      }
       var x = Math.round(s.sx[k] - camX), y = Math.round(s.sz[k]), rx = Math.round(K.r), ry = Math.max(2, Math.round(K.depth * 0.35));
       var blink = Math.floor(s.t / 60) % 2;
       ctx.fillStyle = blink ? 'rgba(255,240,120,0.55)' : 'rgba(90,230,255,0.45)';
@@ -438,15 +504,20 @@
     var im = A.fr[i]; if (!im) return;
     var dir = a.follow ? a.p.dir : a.dir, x = a.follow ? a.p.x + dir * a.ox : a.x, y = a.follow ? a.p.y + a.oy : a.y;
     ctx.save();
-    ctx.translate(Math.round(x - camX), Math.round(y));
+    ctx.translate(snapPx(x - camX), snapPx(y));
     ctx.scale(dir, 1);
     if (a.rot) ctx.rotate(a.rot * Math.PI / 180);
     if (a.scale !== 1) ctx.scale(a.scale, a.scale);
     if (a.alpha !== 1) ctx.globalAlpha = a.alpha;
+    if (a.add) ctx.globalCompositeOperation = 'lighter';
     if (half) {
-      var py = A.pivot.y, top = half === 'top', sy = top ? 0 : py, sh = top ? py : im.height - py;
-      if (sh > 0) ctx.drawImage(im, 0, sy, im.width, sh, -A.pivot.x, sy - py, im.width, sh);
-    } else ctx.drawImage(im, -A.pivot.x, -A.pivot.y);
+      // 기준점 위쪽(먼 쪽) / 아래쪽(가까운 쪽) 반만. HD 그림은 잘라낸 여백(_oy)만큼 그림 속 줄이 밀려 있음
+      var k = im._k || 1, ox = im._ox || 0, oy = im._oy || 0, px = A.pivot.x, py = A.pivot.y;
+      var cut = clamp(Math.round(py - oy), 0, im.height), top = half === 'top';
+      ctx.scale(k, k);
+      if (top && cut > 0) ctx.drawImage(im, 0, 0, im.width, cut, ox - px, oy - py, im.width, cut);
+      if (!top && cut < im.height) ctx.drawImage(im, 0, cut, im.width, im.height - cut, ox - px, oy - py + cut, im.width, im.height - cut);
+    } else Assets.blit(ctx, im, A.pivot.x, A.pivot.y);
     ctx.restore();
   }
   // 잔상 + 캐릭터 뒤 효과(돌진 잔상 그림) (캐릭터 그리기 전에)
@@ -456,9 +527,9 @@
       var k = g.t / g.life;
       ctx.save();
       ctx.globalAlpha = g.alpha * (1 - k);
-      ctx.translate(Math.round(g.x - camX), Math.round(g.y));
+      ctx.translate(snapPx(g.x - camX), snapPx(g.y));
       ctx.scale(g.dir, 1);
-      ctx.drawImage(g.img, -g.pivot.x, -g.pivot.y);
+      Assets.blit(ctx, g.img, g.pivot.x, g.pivot.y);
       ctx.restore();
     });
   }
@@ -469,11 +540,20 @@
     if (SH) H.targets().forEach(function (e) {
       if (!e || !e.T || !(e.stunT > 0) || e.state !== 'hit') return;
       var im = SH.fr[Math.floor(e.clock * SH.fps / 1000) % SH.fr.length], k = clamp(e.T.height / (100 * AS()), 0.6, 1.4);
-      ctx.save(); ctx.translate(Math.round(e.x - camX), Math.round(e.y - e.T.height * 0.55)); ctx.scale(k, k);
-      ctx.globalAlpha = 0.9; ctx.drawImage(im, -SH.pivot.x, -SH.pivot.y); ctx.restore();
+      // 감전 그림은 기술 효과 배율(skillFxScale)로 커졌으므로 그만큼 되돌려 적 몸 크기에 맞춤
+      k /= (CFG.skillFxScale || 1);
+      ctx.save(); ctx.translate(snapPx(e.x - camX), snapPx(e.y - e.T.height * 0.55)); ctx.scale(k, k);
+      ctx.globalAlpha = 0.9; Assets.blit(ctx, im, SH.pivot.x, SH.pivot.y); ctx.restore();
     });
     rings.forEach(function (r) {
       var k = r.t / r.life, rr = r.r * (0.55 + 0.45 * ease(Math.min(1, k * 1.6))), x = Math.round(r.x - camX), y = Math.round(r.y);
+      if (SM()) {   // 매끈한 화면: 빛나는 타원 띠
+        ctx.save(); ctx.globalAlpha = Math.max(0, 1 - k) * 0.9; ctx.globalCompositeOperation = 'lighter';
+        ctx.strokeStyle = r.color; ctx.lineWidth = 3 * (1 - k * 0.6); ctx.shadowColor = '#8fc4ff'; ctx.shadowBlur = 6 * ((CFG.view.renderScale) || 1);
+        ctx.beginPath(); ctx.ellipse(r.x - camX, r.y, rr, rr * 0.32, 0, 0, Math.PI * 2); ctx.stroke();
+        ctx.restore();
+        return;
+      }
       ctx.globalAlpha = Math.max(0, 1 - k) * 0.9;
       ctx.fillStyle = r.color;
       var n = Math.max(24, Math.round(rr * 1.2));
@@ -484,6 +564,40 @@
       ctx.globalAlpha = 1;
     });
     bolts.forEach(function (b) { drawBolt(ctx, camX, b); });
+    waves.forEach(function (w) { if (!w.ground) drawWave(ctx, camX, w); });
+    // 번쩍 빛(더하기)
+    glows.forEach(function (gl) {
+      var k = gl.t / gl.life, r = gl.r * (0.6 + 0.6 * ease(Math.min(1, k * 2))), x = gl.x - camX;
+      var g = ctx.createRadialGradient(x, gl.y, 0, x, gl.y, r);
+      g.addColorStop(0, gl.color); g.addColorStop(0.35, gl.color); g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = gl.a * (1 - k) * (1 - k);
+      ctx.fillStyle = g; ctx.fillRect(x - r, gl.y - r, r * 2, r * 2); ctx.restore();
+    });
+    // 파편·불티
+    parts.forEach(function (q) {
+      var k = q.t / q.life, x = q.x - camX;
+      ctx.save(); ctx.globalAlpha = k > 0.7 ? (1 - k) / 0.3 : 1;
+      if (q.glow) {
+        ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = q.col; ctx.lineWidth = q.size; ctx.lineCap = 'round';
+        var sp = Math.hypot(q.vx, q.vy) || 1, L = Math.min(7, 1 + sp * 0.025);
+        ctx.beginPath(); ctx.moveTo(x, q.y); ctx.lineTo(x - q.vx / sp * L, q.y - q.vy / sp * L); ctx.stroke();
+      } else {
+        ctx.translate(x, q.y); ctx.rotate(q.rot); ctx.fillStyle = q.col;
+        ctx.fillRect(-q.size / 2, -q.size / 2, q.size, q.size * 0.8);
+      }
+      ctx.restore();
+    });
+  }
+  // 충격파 고리 한 개: 빠르게 퍼지고(처음 빠르게) 굵기·투명도가 줄어듦. 바깥 빛(glow 색) + 흰 심
+  function drawWave(ctx, camX, w) {
+    var k = w.t / w.life, e = ease(Math.min(1, k * 1.3)), r = w.r0 + (w.r - w.r0) * e, x = w.x - camX;
+    var a = Math.max(0, 1 - k), lw = w.w * (1 - k * 0.7);
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = a * 0.55; ctx.strokeStyle = w.glow; ctx.lineWidth = lw * 2.6;
+    ctx.beginPath(); ctx.ellipse(x, w.y, r, r * w.flat, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha = a * 0.9; ctx.strokeStyle = w.color; ctx.lineWidth = lw;
+    ctx.beginPath(); ctx.ellipse(x, w.y, r, r * w.flat, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
   }
   function drawBolt(ctx, camX, b) {
     var K = b.K, k = b.t / b.life, x = Math.round(b.x - camX), gy = Math.round(b.z - 2);
@@ -491,15 +605,18 @@
     if (A) {
       // 번개 그림: 기준점(아래 끝)을 땅에 딱 붙이고 원래 크기로 그림. 그림 위로 화면이 더 남으면
       //   그림 윗부분(30%)만 세로로 늘려 화면 맨 위까지 이어 붙인다(땅 쪽 모양은 그대로)
-      var im = A.fr[Math.min(A.fr.length - 1, Math.floor(b.t * A.fps / 1000))], gy2 = Math.round(b.z);
-      var left = x - A.pivot.x, top = gy2 - A.pivot.y, sh = Math.max(1, Math.round(im.height * 0.3));
+      //   (그림 점 → 도트 배율 ik, 잘라낸 여백 ox/oy 를 넣어서 도트 단위로 계산)
+      var im = A.fr[Math.min(A.fr.length - 1, Math.floor(b.t * A.fps / 1000))], gy2 = b.z;
+      var ik = im._k || 1, ox = im._ox || 0, oy = im._oy || 0, W = im.width * ik, Hh = im.height * ik;
+      var left = x - (A.pivot.x - ox) * ik, top = gy2 - (A.pivot.y - oy) * ik, sh = Math.max(1, Math.round(im.height * 0.3));
       ctx.globalAlpha = k > 0.7 ? Math.max(0, 1 - (k - 0.7) / 0.3) : 1;
       if (top > 0) {
-        ctx.drawImage(im, 0, sh, im.width, im.height - sh, left, top + sh, im.width, im.height - sh);
-        ctx.drawImage(im, 0, 0, im.width, sh, left, 0, im.width, top + sh);
-      } else ctx.drawImage(im, left, top);
+        ctx.drawImage(im, 0, sh, im.width, im.height - sh, left, top + sh * ik, W, Hh - sh * ik);
+        ctx.drawImage(im, 0, 0, im.width, sh, left, 0, W, top + sh * ik);
+      } else ctx.drawImage(im, left, top, W, Hh);
       ctx.globalAlpha = 1;
       return;
+
     }
     // 코드로 그린 번개: 지그재그 기둥(바깥 색 + 흰 심), 처음에는 넓은 빛 → 깜빡이며 가늘어짐
     if (k > 0.55 && Math.floor(b.t / 40) % 2) return;   // 끝 무렵 깜빡임
@@ -603,7 +720,10 @@
     update: update, tickReal: tickReal,
     drawBackdrop: drawBackdrop, drawUnder: drawUnder, drawGhosts: drawGhosts, drawOver: drawOver, drawFlash: drawFlash, drawDebug: drawDebug,
     ui: ui,
-    clear: function () { bolts.length = 0; rings.length = 0; ghosts.length = 0; arts.length = 0; flash = null; },
+    clear: function () { bolts.length = 0; rings.length = 0; ghosts.length = 0; arts.length = 0; waves.length = 0; parts.length = 0; glows.length = 0; flash = null; },
+    // 화면 번쩍(콤보 마무리 타도 씀): { color, alpha, ms }
+    flash: function (f) { doFlash(f); },
+
     state: function () { return { bolts: bolts.length, rings: rings.length, ghosts: ghosts.length, arts: arts.length, flash: !!flash }; }
   };
 })();

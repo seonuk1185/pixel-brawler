@@ -405,25 +405,26 @@
 
   Enemy.prototype.draw = function (g, camX, debug) {
     var T = this.T, img = this.currentImg();
-    var x = Math.round(this.x - camX), y = Math.round(this.y);
+    var x = snapPx(this.x - camX), y = snapPx(this.y);
     var AI = this.cfg.ai;
     var alpha = 1;
     if (this.state === 'dead') {
       var len = this.frameAt('death', 0).len, t = this.deadT - len - AI.deathHoldMs;
       if (t > 0) { if (Math.floor(t / 70) % 2 === 0) return; alpha = Math.max(0.2, 1 - t / AI.deathFadeMs); }
     }
-    window.drawShadow(g, x, y, Math.round(T.radius * 1.1));
+    window.drawShadow(g, x, y, T.radius * 1.1);
     if (!img) return;
     g.save();
     g.globalAlpha = alpha;
     g.translate(x, y);
     g.scale(-this.dir, 1);        // 그림이 왼쪽을 보므로 반대로
-    g.drawImage(img, -T.pivot.x, -T.pivot.y);
+    Assets.blit(g, img, T.pivot.x, T.pivot.y);
     if (this.flashT > 0) {
       var s = FX.whiteSilhouette(img, 0, 0, img.width, img.height, 1);
       g.globalAlpha = alpha * Math.min(1, this.flashT / (this.cfg.juice.flashMs * 0.5));
-      g.drawImage(s, 0, 0, img.width, img.height, -T.pivot.x, -T.pivot.y, img.width, img.height);
+      Assets.blit(g, img, T.pivot.x, T.pivot.y, s);
     }
+
     g.restore();
     // 보스 화남: 머리 위 빨간 김
     if (this.enraged && this.alive() && Math.floor(performance.now() / 160) % 2) {

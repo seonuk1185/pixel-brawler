@@ -12,10 +12,14 @@
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="stylesheet" href="css/style.css">
+<link rel="preload" href="fonts/dmg.woff2" as="font" type="font/woff2" crossorigin>
+
 </head>
 <body>
 <div class="game">
   <canvas id="screen"></canvas>
+  <!-- 그림 불러오는 막대 (main.js: 처음 + 옷 바꿀 때 작은 표시) -->
+  <div class="loading" id="loading"><div class="lbar"><i></i></div><span>그림 불러오는 중…</span></div>
 
   <!-- 위: 캐릭터·직업 고르기 (견습 = 전직 전 맨손, 기사 = 검, 법사 = 지팡이). 좁은 폰 화면에서는 괄호 부분(.sub)을 숨김 -->
   <div class="topbar">

@@ -60,17 +60,19 @@
   function draw(ctx, camX) {
     list.forEach(function (p) {
       var fr = p.frames && p.frames.length ? p.frames[Math.floor(p.t / 1000 * (p.fps || 12)) % p.frames.length] : null;
-      var x = Math.round(p.x - camX), y = Math.round(p.y);
+      var x = snapPx(p.x - camX), y = snapPx(p.y);
       if (!fr) {   // 그림이 없으면 보라색 동그라미
         ctx.fillStyle = '#c99bff'; ctx.fillRect(x - 5, y - 4, 10, 8);
         ctx.fillStyle = '#ffffff'; ctx.fillRect(x - 2, y - 2, 4, 4);
         return;
       }
-      var pv = p.pivot || { x: fr.width / 2, y: fr.height / 2 };
+      var pv = p.pivot || Assets.centerOf(fr);
       ctx.save(); ctx.translate(x, y); if (p.dir < 0) ctx.scale(-1, 1);   // 그림은 오른쪽으로 날아감
       if (p.scale && p.scale !== 1) ctx.scale(p.scale, p.scale);        // 크기 배율(기술 화염구 = 마법탄 그림을 크게)
-      ctx.drawImage(fr, -pv.x, -pv.y);
+      if (p.glow) p.glow(ctx);                                           // 그림 뒤 빛(화염구)
+      Assets.blit(ctx, fr, pv.x, pv.y);
       ctx.restore();
+
     });
   }
 
