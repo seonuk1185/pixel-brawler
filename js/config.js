@@ -247,6 +247,8 @@
   //   finale = 끝맺음 { frame, ifHit = 하나라도 맞았을 때만, hitstopMs, shake, slowMs, flash }
   //   fx = 효과 { frame, type, x, y (발 기준, 원래 크기 도트) }:
   //         type 'art' = 효과 그림(fx = CFG.skillFx 이름). layer 'back' = 캐릭터 뒤, follow = 캐릭터를 따라감,
+  //                      split = 고리처럼 몸을 감싸는 그림: 기준점 위쪽(먼 쪽 반)은 캐릭터 뒤, 아래쪽(가까운 쪽 반)은 앞에 그림,
+  //                      alpha = 투명도(1 = 불투명, 회전 고리 0.7 → 기사가 비쳐 보임),
   //                      rot = 돌리기(도, 시계 +), vx = 앞으로 날아가는 속도(도트/초), fps = 재생 속도 바꾸기, ph = 그림이 없을 때 대신 쓸 효과
   //         'slash'(기존 베기 그림을 tint 색으로) / 'thrust'(직선 바람) / 'dust'(먼지) / 'spark'(반짝임) / 'ring'(코드로 그린 원)
   //   cast = 화염구 { frame = 발사 장, x,y = 나오는 곳, speed = 1초에 도트, range = 최대 거리, box = 탄 크기, depth = 위아래 폭,
@@ -271,15 +273,21 @@
   // 불·번개 기술은 법사 보라 반짝임(impactFx) 대신 기본 불똥(노랑·흰색)이 효과 색과 어울림
   var FIRE_HIT = { dmg: 2.8, hitstop: 2.0, knock: 2.4, shake: 3.0, knockdown: true, spark: 1.4, big: true,
                    flash: { color: '#ffb060', alpha: 0.4, ms: 160 }, slowMs: 240 };
-  var FIRE_BURST = { r: 56, depth: 24, art: 'fire_explosion', fromFrame: 1, scale: 1.7, tint: '#ff6a10', tintK: 0.6 };
+  // 터짐 판정 = 보이는 폭발 크기(fire_explosion 가장 큰 장 반지름 약 57~64 → r 64), 위아래(안쪽) 폭 40
+  //   (위아래로 살짝 어긋나 서 있는 바로 뒤 적도 맞게, 2026-11-03 예전 r 56 / depth 24 는 뒤 적이 자주 빠짐)
+  var FIRE_BURST = { r: 64, depth: 40, art: 'fire_explosion', fromFrame: 1, scale: 1.7, tint: '#ff6a10', tintK: 0.6 };
   var BOLT_HIT = { dmg: 1.05, hitstop: 1.2, knock: 0.4, shake: 1.8, stunMs: 450, spark: 1.2, big: true,
                    flash: { color: '#e8ffff', alpha: 0.3, ms: 90 } };
   var BOLT_HITS = [ BOLT_HIT, merge(BOLT_HIT, {}),
     { dmg: 1.7, hitstop: 2.2, knock: 2.2, shake: 3.2, knockdown: true, spark: 1.5, big: true,
       flash: { color: '#ffffff', alpha: 0.5, ms: 150 }, slowMs: 260 } ];
-  // 번개 3줄기: 첫 번개 = 3장(내리꽂기) 시작, 그 뒤 gapMs 마다. xs = 법사 앞 거리(가까운 곳 → 먼 곳)
+  // 번개 3줄기: 첫 번개 = 3장(내리꽂기) 시작, 그 뒤 gapMs 마다.
+  //   aim = 앞쪽 가까운 적을 겨눔: range = 법사 앞 최대 거리, depth = 위아래(안쪽) 몇 도트까지 찾나.
+  //     1번 번개 = 가장 가까운 적, 2·3번 = 그다음 가까운 적(적이 하나뿐이면 같은 적). 바닥 표시(markMs 전부터)가 그 적 발밑을 따라가다가
+  //     떨어지기 lockMs(기본 90ms) 전에 자리를 고정
+  //   찾는 적이 없으면 xs = 법사 앞 고정 거리(가까운 곳 → 먼 곳)
   function strikesOf(gapMs, xs) {
-    return { frame: 3, gapMs: gapMs, x: xs, markMs: 240, r: 26, depth: 28, ms: 220,
+    return { frame: 3, gapMs: gapMs, x: xs, aim: { range: 200, depth: 60 }, markMs: 240, r: 26, depth: 28, ms: 220,
              art: 'lightning_bolt', hitArt: 'lightning_impact', hitFromFrame: 1, color: '#59e6ff', core: '#ffffff', glow: '#fff27a', hits: BOLT_HITS };
   }
   var SKILLS = {
@@ -323,7 +331,7 @@
         iframes: { frames: [0, 5] },
         hits: [ merge(SPIN_HIT, { frame: 1 }), merge(SPIN_HIT, { frame: 3 }), merge(SPIN_LAST, { frame: 5 }) ],
         fx: [
-          { frame: 1, type: 'art', fx: 'spin_ring', x: 0, y: -50, follow: true,
+          { frame: 1, type: 'art', fx: 'spin_ring', x: 0, y: -50, follow: true, split: true, alpha: 0.7,
             ph: { type: 'ring', y: -58, r: 70, ms: 300, color: '#cfe8ff' } },
           { frame: 5, type: 'ring', y: -56, r: 86, ms: 220, color: '#ffffff' },
           { frame: 5, type: 'dust' }
@@ -331,7 +339,7 @@
         placeholder: { anim: 'attack2', f: [0, 2, 3, 2, 3, 2, 3, 4], d: [90, 75, 75, 75, 75, 75, 125, 130], spin: [90, 560], everyMs: 75 },
         female: {
           fx: [
-            { frame: 1, type: 'art', fx: 'spin_ring', x: 0, y: -56, follow: true, fps: 22,
+            { frame: 1, type: 'art', fx: 'spin_ring', x: 0, y: -56, follow: true, split: true, alpha: 0.7, fps: 22,
               ph: { type: 'ring', y: -58, r: 70, ms: 260, color: '#cfe8ff' } },
             { frame: 5, type: 'ring', y: -56, r: 86, ms: 220, color: '#ffffff' },
             { frame: 5, type: 'dust' }
@@ -877,7 +885,7 @@
         if (once(c.burst)) mul(c.burst, ['r', 'depth'], S);
       }
       var k = d.strikes;
-      if (once(k)) { arr(k.x); mul(k, ['r', 'depth'], S); }
+      if (once(k)) { arr(k.x); mul(k, ['r', 'depth'], S); if (k.aim) mul(k.aim, ['range', 'depth'], S); }
       if (d.male) skill(d.male);
       if (d.female) skill(d.female);
     }

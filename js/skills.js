@@ -101,7 +101,11 @@
     p.state = 'skill'; p.atk = null; p.animT = 0; p.comboStep = 0;
     var s = p.sk = { d: d, t: 0, x0: p.x, z: p.y, dir: p.dir, done: {}, hitWin: {}, fxDone: {}, hitAny: false,
                      finaleDone: false, cast: false, strikeDone: {}, ghostT: 0, boxes: [], exitT: 0 };
-    if (d.strikes) s.sx = d.strikes.x.map(function (x) { return p.x + p.dir * x; });
+    if (d.strikes) {
+      s.sx = d.strikes.x.map(function (x) { return p.x + p.dir * x; });   // 적이 없을 때 고정 자리
+      s.sz = d.strikes.x.map(function () { return p.y; });
+      s.aimT = aimTargets(p, d.strikes);
+    }
     p.skillCd[d.key] = d.cooldownMs;
   }
 
@@ -151,11 +155,39 @@
     if (d.cast && !s.cast && t1 >= d.cast.at) { s.cast = true; castFireball(p, d); }
     if (d.strikes) {
       var K = d.strikes;
+      lockStrikes(s, K);
       K.at.forEach(function (at, k) {
         if (!s.strikeDone[k] && t1 >= at) { s.strikeDone[k] = true; strike(p, d, k); }
       });
     }
     return t1 >= d.ms;
+  }
+
+  // 번개가 겨눌 적: 앞쪽(바라보는 쪽) range 안, 위아래 aim.depth 안, 가까운 순. 1번 = 가장 가까운 적, 2·3번 = 그다음(적이 모자라면 마지막 적 다시)
+  function aimTargets(p, K) {
+    var A = K.aim; if (!A) return null;
+    var list = [];
+    H.targets().forEach(function (t) {
+      if (!t || (t.canBeHit && !t.canBeHit()) || (t.alive && !t.alive())) return;
+      var dx = (t.x - p.x) * p.dir;
+      if (dx < -6 * AS() || dx > A.range || Math.abs(t.y - p.y) > A.depth) return;
+      list.push({ t: t, d: Math.abs(dx) + Math.abs(t.y - p.y) * 0.5 });
+    });
+    if (!list.length) return null;
+    list.sort(function (a, b) { return a.d - b.d; });
+    return K.x.map(function (x, k) { return list[Math.min(k, list.length - 1)].t; });
+  }
+  // 번개 자리: 바닥 표시가 뜨면(markMs 전) 겨눈 적의 발밑을 따라가다가, 떨어지기 lockMs 전에 고정(그 뒤로는 안 움직임 → 피할 틈)
+  function lockStrikes(s, K) {
+    if (!s.aimT) return;
+    var lockMs = K.lockMs != null ? K.lockMs : 90;
+    K.at.forEach(function (at, k) {
+      if (s.locked && s.locked[k]) return;
+      if (s.t < at - (K.markMs || 200)) return;
+      var t = s.aimT[k];
+      if (t && (!t.alive || t.alive())) { s.sx[k] = t.x; s.sz[k] = t.y; }
+      if (s.t >= at - lockMs) { s.locked = s.locked || {}; s.locked[k] = true; }
+    });
   }
 
   // 지금 시각이 무적 구간인지
@@ -277,7 +309,8 @@
       var A = fxArt(f.fx, f.fps);
       if (!A) { if (f.ph) playFx(p, f.ph); return; }
       arts.push({ A: A, p: p, follow: !!f.follow, ox: f.x || 0, oy: f.y || 0, x: x, y: y, dir: dir, rot: f.rot || 0, vx: f.vx || 0,
-                  back: f.layer === 'back', scale: f.scale || 1, t: 0, life: A.loop ? (f.ms || 600) : A.fr.length * 1000 / A.fps });
+                  back: f.layer === 'back', split: !!f.split, alpha: f.alpha == null ? 1 : f.alpha,
+                  scale: f.scale || 1, t: 0, life: A.loop ? (f.ms || 600) : A.fr.length * 1000 / A.fps });
       return;
     }
     if (f.type === 'spark') {
@@ -324,9 +357,9 @@
     if (any && c.hit.slowMs) H.slow(c.hit.slowMs);
   }
 
-  // 번개 한 줄기: 정해 둔 바닥 자리(sx[k], 법사 발 줄)에 화면 맨 위에서 내리꽂힘
+  // 번개 한 줄기: 정해 둔 바닥 자리(sx[k], sz[k] = 겨눈 적 발밑 또는 법사 앞 고정 자리)에 화면 맨 위에서 내리꽂힘
   function strike(p, d, k) {
-    var s = p.sk, K = d.strikes, x = s.sx[k], z = s.z, h = K.hits[Math.min(k, K.hits.length - 1)];
+    var s = p.sk, K = d.strikes, x = s.sx[k], z = s.sz[k], h = K.hits[Math.min(k, K.hits.length - 1)];
     bolts.push({ x: x, z: z, t: 0, life: K.ms || 200, K: K, seed: Math.random() * 1000 });
     var hitA = fxArt(K.hitArt), M = CFG.magic.spark;
     if (hitA) spriteFrom(x, z, hitA.fr, hitA.fps, hitA.pivot, s.dir < 0, 1, K.hitFromFrame);   // 땅 번쩍(기준 = 아래 가운데)
@@ -386,7 +419,7 @@
     if (!K) return;
     K.at.forEach(function (at, k) {
       if (s.strikeDone[k] || s.t < at - (K.markMs || 200)) return;
-      var x = Math.round(s.sx[k] - camX), y = Math.round(s.z), rx = Math.round(K.r), ry = Math.max(2, Math.round(K.depth * 0.35));
+      var x = Math.round(s.sx[k] - camX), y = Math.round(s.sz[k]), rx = Math.round(K.r), ry = Math.max(2, Math.round(K.depth * 0.35));
       var blink = Math.floor(s.t / 60) % 2;
       ctx.fillStyle = blink ? 'rgba(255,240,120,0.55)' : 'rgba(90,230,255,0.45)';
       for (var a = 0; a < 24; a++) {
@@ -398,7 +431,8 @@
     });
   }
   // 효과 그림 한 장: 따라다니면 지금 캐릭터 위치(+ox,oy), 아니면 처음 놓인 곳(+날아간 거리)
-  function drawArt(ctx, camX, a) {
+  //   half = 'top' / 'bottom': 기준점(pivot) 위쪽 / 아래쪽 반만 그림 (split 그림을 캐릭터 뒤·앞으로 나눠 그릴 때)
+  function drawArt(ctx, camX, a, half) {
     var A = a.A, n = A.fr.length, i = Math.floor(a.t * A.fps / 1000);
     i = A.loop ? i % n : Math.min(n - 1, i);
     var im = A.fr[i]; if (!im) return;
@@ -408,12 +442,16 @@
     ctx.scale(dir, 1);
     if (a.rot) ctx.rotate(a.rot * Math.PI / 180);
     if (a.scale !== 1) ctx.scale(a.scale, a.scale);
-    ctx.drawImage(im, -A.pivot.x, -A.pivot.y);
+    if (a.alpha !== 1) ctx.globalAlpha = a.alpha;
+    if (half) {
+      var py = A.pivot.y, top = half === 'top', sy = top ? 0 : py, sh = top ? py : im.height - py;
+      if (sh > 0) ctx.drawImage(im, 0, sy, im.width, sh, -A.pivot.x, sy - py, im.width, sh);
+    } else ctx.drawImage(im, -A.pivot.x, -A.pivot.y);
     ctx.restore();
   }
   // 잔상 + 캐릭터 뒤 효과(돌진 잔상 그림) (캐릭터 그리기 전에)
   function drawGhosts(ctx, camX) {
-    arts.forEach(function (a) { if (a.back) drawArt(ctx, camX, a); });
+    arts.forEach(function (a) { if (a.split) drawArt(ctx, camX, a, 'top'); else if (a.back) drawArt(ctx, camX, a); });
     ghosts.forEach(function (g) {
       var k = g.t / g.life;
       ctx.save();
@@ -426,7 +464,7 @@
   }
   // 캐릭터 위: 효과 그림(앞), 번개 기둥, 회전 원, 감전(멈춘 적)
   function drawOver(ctx, camX) {
-    arts.forEach(function (a) { if (!a.back) drawArt(ctx, camX, a); });
+    arts.forEach(function (a) { if (a.split) drawArt(ctx, camX, a, 'bottom'); else if (!a.back) drawArt(ctx, camX, a); });
     var SH = fxArt('shock');
     if (SH) H.targets().forEach(function (e) {
       if (!e || !e.T || !(e.stunT > 0) || e.state !== 'hit') return;
@@ -519,7 +557,7 @@
       (s.d.hits || []).forEach(function (h) { if (s.t < h.at[0]) rect(boxOf(p, h.reach), 'rgba(255,80,80,0.35)'); });
       var K = s.d.strikes;
       if (K) K.at.forEach(function (at, k) {
-        rect({ x0: s.sx[k] - K.r, x1: s.sx[k] + K.r, y0: s.z - 100 * AS(), y1: s.z }, s.strikeDone[k] ? 'rgba(255,240,80,0.4)' : '#ffe94a');
+        rect({ x0: s.sx[k] - K.r, x1: s.sx[k] + K.r, y0: s.sz[k] - 100 * AS(), y1: s.sz[k] }, s.strikeDone[k] ? 'rgba(255,240,80,0.4)' : '#ffe94a');
       });
     }
     Projectiles.list.forEach(function (pr) {
