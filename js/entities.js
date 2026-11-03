@@ -25,6 +25,10 @@
     this.vx = 0;              // 밀려나는 속도
     this.deadT = 0;           // 쓰러진 뒤 지난 시간
     this.god = false;         // 시험용 무적
+    // 기술 (skills.js): sk = 지금 쓰는 기술 진행, skillCd = 기술별 남은 쿨타임(ms, 키 = '직업.A'),
+    // classKey/gender = 지금 직업·성별(main.js 가 매 장면 넣음)
+    this.sk = null; this.skillCd = {};
+    this.classKey = null; this.gender = 'male';
   }
 
   // 장마다 시간(d, ms) 목록에서 t 일 때 몇 번째 장인지. 마지막 장을 넘기면 마지막 장(done = true)
@@ -47,6 +51,8 @@
   // 적에게 맞음. dir = 밀려나는 방향(1 = 오른쪽). heavy = 무거운 공격(넘어짐). 맞았으면 true
   Player.prototype.takeHit = function (dmg, dir, knock, flinchMs, heavy) {
     if (this.state === 'dead' || this.state === 'down' || this.invulnT > 0) return false;
+    if (this.state === 'skill' && window.Skills && Skills.invulnerable(this)) return false;   // 기술 무적 구간
+    this.sk = null;                          // 기술 도중(무적 구간 밖)에 맞으면 기술은 끊김
     var H = this.cfg.hero;
     if (!this.god) this.hp = Math.max(0, this.hp - dmg);
     this.atk = null;
@@ -94,7 +100,7 @@
 
   Player.prototype.setCharacter = function (charAssets) {
     this.char = charAssets; this.animT = 0;
-    if (this.state === 'attack') { this.state = 'idle'; this.atk = null; }   // 공격 도중 캐릭터를 바꾸면 그 공격은 끊는다
+    if (this.state === 'attack' || this.state === 'skill') { this.state = 'idle'; this.atk = null; this.sk = null; }   // 공격·기술 도중 캐릭터를 바꾸면 끊는다
     this.comboStep = 0;
   };
 
@@ -102,8 +108,17 @@
   Player.prototype.setMoveSet = function (k) {
     if (this.moveSet === k) return;
     this.moveSet = k;
-    if (this.state === 'attack') { this.state = 'idle'; this.atk = null; this.animT = 0; }
+    if (this.state === 'attack' || this.state === 'skill') { this.state = 'idle'; this.atk = null; this.sk = null; this.animT = 0; }
     this.comboStep = 0;
+  };
+
+  // 보통 콤보 타에서 기술로 끊을 수 있나: 판정 장 도중은 안 됨, 그 타의 (첫) 판정이 시작된 뒤의 장(회복)부터 됨
+  Player.prototype.canSkillCancel = function () {
+    var S = this.cfg.skills;
+    if (this.state !== 'attack' || !this.atk || !S || !S.cancelAfterHit) return false;
+    if (this.activeWindow() >= 0) return false;
+    var ws = hitWindows(this.comboSteps()[this.atk.step]);
+    return this.atk.i > ws[0].active[0];
   };
 
   // 지금 캐릭터의 콤보 목록: stage1 캐릭터는 직업에 맞는 자기 것(def.combos[moveSet]),
@@ -157,6 +172,7 @@
       var st = this.comboSteps()[this.atk.step];
       return { anim: st.anim || 'attack', idx: st.f[this.atk.i] };
     }
+    if (this.state === 'skill' && this.sk && window.Skills) return Skills.frame(this);   // 기술 그림(없으면 placeholder)
     var a = this.state === 'walk' ? 'walk' : 'idle';
     var A = def.anims[a];
     var n = A.frames.length;
@@ -176,6 +192,7 @@
     var W = cfg.weapons[this.weaponKey];
     this.animT += dtMs / 1000;
     if (this.invulnT > 0) this.invulnT -= dtMs;
+    for (var ck in this.skillCd) if (this.skillCd[ck] > 0) this.skillCd[ck] -= dtMs;   // 기술 쿨타임
 
     // 맞고 움찔 / 넘어짐 / 쓰러짐: 조작 안 됨, 밀려나기만
     if (this.state === 'hurt' || this.state === 'dead' || this.state === 'down') {
@@ -195,6 +212,20 @@
       } else if ((this.hurtT -= dtMs) <= 0) { this.state = 'idle'; this.animT = 0; this.vx = 0; }
       this.clamp(world);
       return ev;
+    }
+
+    // 기술 쓰는 중: 조작 안 됨(이동·판정·효과는 skills.js)
+    if (this.state === 'skill') {
+      if (!this.sk || Skills.advance(this, dtMs)) {
+        this.state = 'idle'; this.sk = null; this.animT = 0; this.comboIdleT = 0; this.comboStep = 0;
+      }
+      this.clamp(world);
+      return ev;
+    }
+    // 기술 시작: 서 있거나 걷는 중, 또는 공격의 회복 장(canSkillCancel)
+    if (window.Skills && this.cfg.skills && (this.state !== 'attack' || this.canSkillCancel())) {
+      var sd = Skills.pick(this);
+      if (sd) { Skills.start(this, sd); return this.update(0, world); }
     }
 
     if (this.state !== 'attack') {
@@ -231,6 +262,11 @@
       }
       while (a.t >= st.d[a.i]) {
         a.t -= st.d[a.i]; a.i++;
+        // 미리 눌러 둔 기술이 있으면 회복 장에 들어서는 순간 바로 끊고 나감
+        if (window.Skills && this.canSkillCancel()) {
+          var sd2 = Skills.pick(this);
+          if (sd2) { Skills.start(this, sd2); return this.update(0, world); }
+        }
         if (a.queued && a.i >= st.cancel) {   // 다음 타로 끊고 이어감
           var nx = Input.axis(cfg).x;
           if (nx > 0.3) this.dir = 1; else if (nx < -0.3) this.dir = -1;
@@ -291,7 +327,8 @@
     if (this.invulnT > 0 && this.state !== 'hurt' && this.state !== 'down' && this.state !== 'dead' && Math.floor(this.invulnT / 70) % 2 === 0) return;
     ctx.save();
     ctx.translate(x, y);
-    ctx.scale(this.dir, 1);
+    // 기술 중에는 skills.js 가 정한 방향(회전베기 placeholder = 좌우를 번갈아 뒤집어 도는 것처럼)
+    ctx.scale(this.state === 'skill' && window.Skills ? Skills.facing(this) : this.dir, 1);
     // 쓰러짐(넘어짐 그림이 없는 예전 견습 그림만): 움찔 그림을 잠깐 보인 뒤 뒤로 눕힌다(발을 축으로 90도)
     if (this.state === 'dead' && this.deadT > 300 && !this.hasDownArt()) {
       ctx.rotate(-Math.PI / 2);

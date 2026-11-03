@@ -87,7 +87,8 @@
     return { x0: Math.min(xa, xb), x1: Math.max(xa, xb), y0: this.y + r.yTop, y1: this.y + r.yBot, z: this.y, depth: depth };
   };
 
-  // 플레이어에게 맞음. dir = 밀려나는 방향. opts = { heavy: 무거운 타, force: 넘어져 있어도 맞음(보스 쓰러질 때 졸개 정리) }
+  // 플레이어에게 맞음. dir = 밀려나는 방향. opts = { heavy: 무거운 타, force: 넘어져 있어도 맞음(보스 쓰러질 때 졸개 정리),
+  //   stunMs: 맞은 그림이 끝나도 이만큼 더 멈춰 있음(번개 기술) }
   // 돌려주는 값: 'dead' / 'down'(넘어짐) / 'stagger'(움찔·휘청) / 'armor'(번쩍이기만) / null(무적이라 안 맞음)
   Enemy.prototype.takeHit = function (dmg, dir, knockPx, finisher, opts) {
     opts = opts || {};
@@ -134,6 +135,7 @@
     this.state = 'hit'; this.animT = 0; this.atk = null;
     this.hitAnim = this.hitAlt && this.hasAnim('hit2') ? 'hit2' : 'hit';   // 맞는 그림 번갈아
     this.hitAlt = !this.hitAlt;
+    this.stunT = opts.stunMs || 0;
     this.vx = kv;
     this.dir = -dir;
     if (T.staggerCdMs) this.staggerCd = T.staggerCdMs;
@@ -175,7 +177,8 @@
       return;
     }
     if (this.state === 'hit') {
-      if (this.frameAt(this.hitAnim, this.animT).done) { this.state = 'idle'; this.animT = 0; }
+      if (this.stunT > 0) this.stunT -= dtMs;   // 번개 기술: 맞은 그림 마지막 장에서 더 멈춰 있음
+      if (this.frameAt(this.hitAnim, this.animT).done && !(this.stunT > 0)) { this.state = 'idle'; this.animT = 0; }
       this.keepInView(ctx);
       return;
     }

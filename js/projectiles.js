@@ -43,12 +43,13 @@
             var d = (t.x - p.x) * p.dir;          // 앞쪽으로 가장 가까운 대상 먼저
             if (d < best) { best = d; hit = t; }
           });
+          // 탄마다 자기 onImpact 가 있으면 그것(기술 화염구), 없으면 공통(법사 3타 마법탄)
           if (hit) {   // 터지는 곳 = 맞은 몸 안(뒤쪽 확인으로 맞았으면 몸 쪽으로 당김)
             var hb = hit.hurtbox();
             p.x = Math.max(hb.x0, Math.min(hb.x1, p.x));
-            p.dead = true; onImpact(p, hit);
+            p.dead = true; (p.onImpact || onImpact)(p, hit);
           }
-          else if (p.trav >= p.range - 0.01) { p.dead = true; if (p.burstAtEnd) onImpact(p, null); }
+          else if (p.trav >= p.range - 0.01) { p.dead = true; if (p.burstAtEnd) (p.onImpact || onImpact)(p, null); }
         }
         p.t += dtMs;
       }
@@ -67,6 +68,7 @@
       }
       var pv = p.pivot || { x: fr.width / 2, y: fr.height / 2 };
       ctx.save(); ctx.translate(x, y); if (p.dir < 0) ctx.scale(-1, 1);   // 그림은 오른쪽으로 날아감
+      if (p.scale && p.scale !== 1) ctx.scale(p.scale, p.scale);        // 크기 배율(기술 화염구 = 마법탄 그림을 크게)
       ctx.drawImage(fr, -pv.x, -pv.y);
       ctx.restore();
     });

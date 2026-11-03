@@ -68,16 +68,20 @@
     }
   }
 
-  // 공격 버튼이 덮는 게임 화면 오른쪽 폭(도트). 버튼이 안 보이거나 걷는 길과 안 겹치면 0
+  // 공격 버튼(+ 기술 버튼 2개)이 덮는 게임 화면 오른쪽 폭(도트). 버튼이 안 보이거나 걷는 길과 안 겹치면 0
   function measureControlPad() {
-    var btn = document.getElementById('btnAtk');
-    if (!btn || !btn.offsetParent) return 0;
-    var b = btn.getBoundingClientRect(), c = canvas.getBoundingClientRect();
+    var c = canvas.getBoundingClientRect();
     if (!c.width || !c.height) return 0;
     var ky = c.height / LH;
     var laneT = c.top + world.laneTop * ky - 100 * AS * ky, laneB = c.top + world.laneBottom * ky;   // 키 큰 몸(100도트)까지
-    if (b.top >= laneB || b.bottom <= laneT || b.left >= c.right) return 0;
-    var pad = Math.ceil((c.right - b.left + 4) * LW / c.width);
+    var pad = 0;
+    ['btnAtk', 'btnSkA', 'btnSkB'].forEach(function (id) {
+      var btn = document.getElementById(id);
+      if (!btn || !btn.offsetParent || btn.hidden) return;
+      var b = btn.getBoundingClientRect();
+      if (b.top >= laneB || b.bottom <= laneT || b.left >= c.right) return;
+      pad = Math.max(pad, Math.ceil((c.right - b.left + 4) * LW / c.width));
+    });
     return Math.max(0, Math.min(Math.round(LW * 0.3), pad));
   }
 
@@ -197,7 +201,7 @@
     } else {
       // 무거운 타(타 knock × 무기 knockMul 이 크면) = 잡몹 넘어짐 (config ai.react.heavyKnock)
       var heavy = !!st.knockdown || st.knock * W.knockMul >= CFG.ai.react.heavyKnock;
-      var res = target.takeHit(dmg, dir, knock, !!st.finisher, { heavy: heavy });
+      var res = target.takeHit(dmg, dir, knock, !!st.finisher, { heavy: heavy, stunMs: st.stunMs });   // stunMs = 번개 기술
       var hb = target.hurtbox();
       // 불똥은 맞은 몸의 가장자리(플레이어 쪽)에서. 마법은 맞은 곳에서 가장 가까운 몸 위치
       if (src) hx = clamp(src.x, hb.x0 + 4, hb.x1 - 4);
@@ -211,8 +215,10 @@
     if (src) { var tb = target.hurtbox(); hy = clamp(src.y, tb.y0 + 6, tb.y1 - 6); }
     // impactFx = 불똥 대신 쓸 그림(법사 = magic_spark)
     var impSpr = G.assets.fx && ((st.impactFx && G.assets.fx[st.impactFx]) || G.assets.fx.impact);
-    FX.impact(hx, hy, dir, W.sparkColor, Math.round(J.sparkCount * (st.finisher ? 1.6 : 1) * (sc < 1 ? 0.7 : 1)), !!st.finisher, impSpr, sc);
-    FX.damage(target.x, topY, dmg, !!st.finisher, J);
+    // big = 기술의 큰 불똥(마무리 타처럼 많이·멀리). damageStyle = 기술 숫자 모양(config damageText)
+    var big = !!(st.finisher || st.big);
+    FX.impact(hx, hy, dir, W.sparkColor, Math.round(J.sparkCount * (big ? 1.6 : 1) * (sc < 1 ? 0.7 : 1) * (st.damageStyle ? 1.3 : 1)), big, impSpr, sc);
+    FX.damage(target.x, topY, dmg, !!(st.finisher || (st.damageStyle && st.knockdown)), J, null, st.damageStyle);
     vibrate(Math.round(J.vibrateMs * (st.finisher ? 2 : 1)));
     G.hits++; G.totalDmg += dmg;
     G.comboHits = G.comboT > 0 ? G.comboHits + 1 : 1;
@@ -369,7 +375,8 @@
   // 적 수만큼 몸끼리 밀어내기 (서로 겹쳐 서지 않게). 오크는 무거워서 거의 안 밀림, 돌진 중엔 안 밀림
   function separate() {
     var p = G.player, AI = CFG.ai, list = [];
-    if (p.state !== 'dead') list.push({ o: p, r: CFG.hero.radius, m: 1 });
+    // 돌진베기 중에는 적 몸을 뚫고 지나감(플레이어를 밀어내기에서 뺌)
+    if (p.state !== 'dead' && !(p.state === 'skill' && Skills.passThrough(p))) list.push({ o: p, r: CFG.hero.radius, m: 1 });
     G.enemies.forEach(function (e) {
       if (!e.alive() || e.state === 'down') return;   // 넘어진 적은 밟고 지나갈 수 있음
       var charging = e.state === 'attack' && e.atk && e.atk.spec.type === 'charge';
@@ -410,6 +417,7 @@
     if (Math.abs(ey) <= 6 && Math.abs(ex) <= 22 * AS && botAtkT <= 0) {
       if (p.state !== 'attack') p.dir = side;
       Input.pressAttack(); botAtkT = 140;
+      if (Math.random() < 0.12) Input.pressSkill(Math.random() < 0.5 ? 'A' : 'B');   // 가끔 기술(쿨타임이면 안 나감)
     }
   }
 
@@ -438,6 +446,7 @@
   // ---------- 갱신 ----------
   function step(realMs) {
     FX.updateShake(realMs);
+    Skills.tickReal(realMs);
     if (G.hitstop > 0) { G.hitstop -= realMs; return; }   // 멈춤: 아무것도 안 움직임
     var dt = realMs * J.timeScale;
     if (G.slowT > 0) { G.slowT -= realMs; dt *= 0.3; }
@@ -445,6 +454,7 @@
     var p = G.player;
     p.weaponKey = G.weaponKey;
     p.setMoveSet(G.moveSet);
+    p.classKey = G.classKey; p.gender = G.charKey;   // 기술 고르기용
     if (MODE === 'stage') { world.minX = G.camX + 14; world.maxX = G.camX + LW - 14 - controlPad; }
     if (G.bot && MODE === 'stage' && !G.stage.result) botThink(dt);
     var ev = p.update(dt, world);
@@ -482,6 +492,7 @@
       G.camX = Math.max(0, Math.min(world.width - LW, G.camX));
     }
     FX.update(dt);
+    Skills.update(dt);
   }
 
   // ---------- 그리기 ----------
@@ -497,21 +508,26 @@
       if (!bgCache) bgCache = buildBackground();
       ctx.drawImage(bgCache, -camX, 0);
     }
+    Skills.drawBackdrop(ctx, LW, LH, G.player);   // 기술 쓰는 동안 배경만 어둡게
 
     // 바닥 위: 보스 공격 예고 띠, 먼지
     G.enemies.forEach(function (e) { e.drawTelegraph(ctx, camX); });
     FX.draw(ctx, camX, true);
+    Skills.drawUnder(ctx, camX, G.player);        // 번개 떨어질 자리 표시
     // 깊이 순서(아래쪽 = 앞쪽)
-    var ents = [{ y: G.player.y, d: function () { G.player.draw(ctx, camX, G.assets.weapons, DEBUG); } }];
+    var ents = [{ y: G.player.y, d: function () { Skills.drawGhosts(ctx, camX); G.player.draw(ctx, camX, G.assets.weapons, DEBUG); } }];
     if (G.dummy) ents.push({ y: G.dummy.y, d: function () { G.dummy.draw(ctx, camX, DEBUG); } });
     G.enemies.forEach(function (e) { ents.push({ y: e.y + (e.alive() ? 0 : -0.5), d: function () { e.draw(ctx, camX, DEBUG); } }); });
     ents.sort(function (a, b) { return a.y - b.y; });
     ents.forEach(function (e) { e.d(); });
     Projectiles.draw(ctx, camX);
+    Skills.drawOver(ctx, camX);                   // 번개 기둥·회전 원
     FX.draw(ctx, camX, false);
+    Skills.drawFlash(ctx, LW, LH);                // 기술 맞는 순간 화면 번쩍
 
     if (DEBUG) drawDebug(camX);
     if (MODE === 'stage') updateHud();
+    if (Skills.ui(G)) controlPad = measureControlPad();   // 기술 버튼이 생기거나 사라지면 버튼 자리 다시 재기
   }
 
   function rectStroke(b, camX, col) {
@@ -523,7 +539,8 @@
     if (G.dummy) rectStroke(G.dummy.hurtbox(), camX, '#3cf');
     if (MODE === 'stage') rectStroke(p.hurtbox(), camX, '#3f9');
     var active = p.activeWindow() >= 0;
-    rectStroke(p.hitbox(), camX, active ? '#f33' : 'rgba(255,80,80,0.35)');
+    if (p.state !== 'skill') rectStroke(p.hitbox(), camX, active ? '#f33' : 'rgba(255,80,80,0.35)');
+    Skills.drawDebug(ctx, camX, p);               // 기술 판정 상자·번개 자리·화염구
     ctx.fillStyle = 'rgba(255,255,0,0.25)';
     ctx.fillRect(0, world.laneTop, LW, 1); ctx.fillRect(0, world.laneBottom, LW, 1);
   }
@@ -574,6 +591,7 @@
     resultEl.hidden = true;
     FX.list.length = 0;
     Projectiles.clear();
+    Skills.clear();
     G.enemies = [];
     G.stage = newStage();
     G.ectx = makeEnemyCtx();
@@ -702,6 +720,9 @@
       S.camMin = at - 40; G.camX = at - 40;
       G.player.x = at - 40 + LW * 0.42 - 4;
     },
+    // 기술 바로 쓰기(쿨타임 무시): GAME.test.skill('A')
+    skill: function (slot, noCd) { if (noCd) G.player.skillCd = {}; Input.pressSkill(slot || 'A'); },
+    resetCd: function () { G.player.skillCd = {}; },
     hurt: function (n, heavy) { var p = G.player; p.invulnT = 0; p.takeHit(n || 10, -p.dir, 10, 0, !!heavy); },
     god: function (on) { G.player.god = on !== false; },
     bot: function (on) { G.bot = on !== false; if (!G.bot) Input.setOverride(null); },
@@ -710,7 +731,7 @@
       var S = G.stage, p = G.player;
       return { mode: MODE, LW: LW, LH: LH, scale: SCALE, controlPad: controlPad, char: G.player.char && G.player.char.def.anims.idle.frames[0], camX: Math.round(G.camX), wave: S ? S.next : null, locked: S ? S.locked : null,
         waveIdx: S ? S.waveIdx : null, time: S ? Math.round(S.time) : null, result: S ? S.result : null,
-        player: { hp: p.hp, state: p.state, x: Math.round(p.x), y: Math.round(p.y) },
+        player: { hp: p.hp, state: p.state, x: Math.round(p.x), y: Math.round(p.y), skill: p.sk ? p.sk.d.key + '@' + Math.round(p.sk.t) : null, cd: p.skillCd },
         enemies: G.enemies.map(function (e) { return e.type + ':' + e.state + ':' + e.hp + '@' + Math.round(e.x) + ',' + Math.round(e.y); }),
         hits: G.hits, maxCombo: G.maxCombo };
     }
@@ -743,6 +764,15 @@
 
   Assets.loadAll(CFG).then(function (assets) {
     G.assets = assets;
+    // 기술(skills.js)이 쓰는 도구: 맞히기·대상 목록·먼지·효과 그림·멈춤·슬로모션
+    Skills.init(CFG, {
+      onHit: onHit,
+      targets: function () { return MODE === 'stage' ? G.enemies : [G.dummy]; },
+      dust: function (x, y, dir) { if (G.assets.dust && G.assets.dust.length) FX.sprite(x, y, G.assets.dust, CFG.dust.fps, CFG.dust.pivot, dir > 0, true); },
+      fx: function () { return G.assets.fx; },
+      hitstop: function (ms) { G.hitstop = Math.max(G.hitstop, ms); },
+      slow: function (ms) { G.slowT = Math.max(G.slowT, ms); }
+    });
     Object.keys(assets.characters).forEach(function (k) { bakeFilter(assets.characters[k]); });
     document.body.classList.add('mode-' + MODE);
     G.player = new Player(CFG);

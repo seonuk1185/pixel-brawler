@@ -137,8 +137,18 @@
       .then(function (lists) {
         var anims = {};
         names.forEach(function (n, i) { anims[n] = lists[i]; });
-        return loadJSON(def.anchors).then(function (raw) {
-          return { def: def, anims: anims, anchors: normalizeAnchors(raw, def.anims) };
+        // 기술 동작 손 위치(anchors_motions_<옷>_<성별>.json, config addSkillArt 가 채움):
+        //   같은 모양의 json. 그 안에 있는 그림 묶음(motion_dash … )만 기본 손 위치에 덮어씀
+        return Promise.all([loadJSON(def.anchors), loadJSON(def.motionAnchors)]).then(function (r) {
+          var anchors = normalizeAnchors(r[0], def.anims);
+          if (r[1]) {
+            var sk = normalizeAnchors(r[1], def.anims);
+            anchors = anchors || {};
+            Object.keys(sk).forEach(function (n) {
+              if (sk[n].some(function (a) { return !!a; })) anchors[n] = sk[n];
+            });
+          }
+          return { def: def, anims: anims, anchors: anchors };
         });
       });
   }

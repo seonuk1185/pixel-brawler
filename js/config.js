@@ -204,6 +204,176 @@
     }
   };
 
+  // ---------- 직업 기술 (2026-11-03): 기사 2개 · 법사 2개, 견습은 없음 ----------
+  // 키보드 U(또는 C) = 기술 A, I(또는 V) = 기술 B / 폰 = 공격 버튼 위 작은 동그라미 2개. MP 없음, 쿨타임만.
+  // 보통 콤보의 「판정 끝난 뒤(회복 장)」에서 바로 끊고 나갈 수 있다(판정 장 도중은 안 됨 → 그 다음 장에서 나감).
+  //
+  // 기술 = 「동작(motion)」 하나 + 「효과(fx)」 몇 개 (art\stage1\README 「스킬 = 동작 모음집 + 효과」, skills\motions.json).
+  //   동작은 몸만 그린 그림 묶음이라 앞으로 나올 다른 기술도 같은 동작을 다시 쓸 수 있다(예: 얼음창 = motion_cast_forward + 얼음 효과).
+  //
+  // MOTIONS = 동작 모음집: 옷_성별 → 동작 이름 → { count = 장 수, ms = 장마다 시간, active = 판정·발사 장(0부터, 참고용) }
+  //   그림 = assets/chars/stage1/<옷_성별>/<동작>_01.png …, 손 위치 = assets/chars/stage1/anchors_motions_<옷_성별>.json
+  //   (art\stage1\skills 에서 복사. 다시 그리면 그 폴더에서 다시 복사하고 ms 를 motions.json 과 맞춘다)
+  var MOTIONS = {
+    knight_male: {
+      motion_dash: { count: 6, ms: [140, 70, 70, 90, 120, 160], active: [3], dashFrames: [1, 2] },        // 0 웅크림 · 1-2 돌진 · 3 가로베기 · 4-5 복귀
+      motion_spin: { count: 7, ms: [120, 60, 60, 60, 60, 110, 160], active: [1, 3, 5] }                    // 0 장전 · 1-4 한 바퀴 · 5 마무리 베기 · 6 가드
+    },
+    knight_female: {
+      motion_dash: { count: 6, ms: [90, 60, 80, 70, 140, 120], active: [2], dashFrames: [1] },            // 1 수평 돌진 · 2 올려베기
+      motion_spin: { count: 7, ms: [80, 45, 45, 45, 45, 90, 150], active: [1, 3, 5] }                     // 발레식 회전 · 5 런지 착지 베기
+    },
+    mage_male: {
+      motion_cast_forward: { count: 6, ms: [110, 120, 140, 80, 120, 150], active: [3] },                 // 3 앞으로 찌르며 발사
+      motion_cast_sky:     { count: 6, ms: [120, 140, 200, 80, 200, 150], active: [3] }                  // 1-2 하늘로 · 3 내리꽂기
+    },
+    mage_female: {
+      motion_cast_forward: { count: 5, ms: [70, 90, 70, 90, 120], active: [2] },                         // 2 투수처럼 던짐
+      motion_cast_sky:     { count: 6, ms: [70, 110, 140, 60, 160, 120], active: [3] }                   // 3 앞 아래로 탁 가리킴
+    }
+  };
+
+  // SKILLS = 기술: 어떤 동작 + 어떤 효과를 언제·어디에. 시각은 「장 번호」로 적는다 → 동작의 ms 가 바뀌면 판정·효과가 같이 따라간다.
+  //   (skills.js 가 동작의 ms 로 「기술 시작부터 몇 ms」로 바꿔서 쓴다. 장 번호 대신 ms 로 직접 적어도 됨: at: [시작, 끝])
+  //   name = 이름, icon = 버튼 글자, cooldownMs = 쿨타임, motion = 동작 이름(MOTIONS), motionMs = 이 기술만 동작 시간 바꾸기(없으면 MOTIONS 의 ms)
+  //   damageStyle = 데미지 숫자 모양(CFG.damageText), darken = 시작 때 배경 어둡게 { ms, alpha }
+  //   iframes = 무적 { frames: [첫 장, 끝 장] }
+  //   move = 돌진 { frames: [첫 장, 끝 장], dist = 도트 }: 처음 빠르게 → 끝에서 느리게. 끝에 적 몸 안이면 뚫고 나감
+  //   trail = 잔상(몸 실루엣) { frames, everyMs, lifeMs, alpha, color }
+  //   hits = 판정 { frame: 장 번호 또는 frames: [첫 장, 끝 장], reach = 판정 상자(발 기준, 앞 +, 뒤 -, depth = 위아래 폭) }
+  //         같은 대상은 한 판정에 한 번. dmg/hitstop/knock/shake = 배율(무기 값과 곱함), knockdown = 잡몹 넘어짐,
+  //         away = 몸에서 바깥쪽으로 밀기, stunMs = 맞고 멈춰 있는 시간 더함(감전 효과 shock 이 겹쳐 보임),
+  //         spark = 불똥 크기, hitY = 불똥 높이, big = 큰 불똥, flash = 처음 맞은 순간 화면 번쩍 { color, alpha, ms }, slowMs = 슬로모션
+  //   finale = 끝맺음 { frame, ifHit = 하나라도 맞았을 때만, hitstopMs, shake, slowMs, flash }
+  //   fx = 효과 { frame, type, x, y (발 기준, 원래 크기 도트) }:
+  //         type 'art' = 효과 그림(fx = CFG.skillFx 이름). layer 'back' = 캐릭터 뒤, follow = 캐릭터를 따라감,
+  //                      rot = 돌리기(도, 시계 +), vx = 앞으로 날아가는 속도(도트/초), fps = 재생 속도 바꾸기, ph = 그림이 없을 때 대신 쓸 효과
+  //         'slash'(기존 베기 그림을 tint 색으로) / 'thrust'(직선 바람) / 'dust'(먼지) / 'spark'(반짝임) / 'ring'(코드로 그린 원)
+  //   cast = 화염구 { frame = 발사 장, x,y = 나오는 곳, speed = 1초에 도트, range = 최대 거리, box = 탄 크기, depth = 위아래 폭,
+  //          backReach = 나오는 곳보다 몸 쪽으로 더 확인할 폭, art = 날아가는 그림, emberMs = 불씨 간격,
+  //          burst = 터짐 { r, depth, art, fromFrame = 몇 번째 장부터(멈춤 동안 큰 장이 보이게) }, hit = 터짐 데미지 }
+  //          (그림이 없을 때: scale·tint·tintK 로 마법탄 그림을 크게·주황색으로)
+  //   strikes = 번개 { frame = 첫 번개 장, gapMs = 번개 사이 시간, x = [법사 앞 거리들], markMs = 미리 바닥 표시 시간,
+  //          r = 가로 반지름, depth = 위아래 폭, ms = 번개가 보이는 시간, art = 번개 기둥(아래 끝 = 땅, 위는 화면 맨 위까지 늘림),
+  //          hitArt = 땅 번쩍, hitFromFrame, color/core/glow = 그림이 없을 때 코드로 그리는 번개 색, hits = 번개마다 데미지 }
+  //   placeholder = 동작 그림이 없을 때 쓰는 기존 그림 { anim, f = 장 순서, d = 장 시간, spin = 좌우 뒤집어 도는 척 [시작ms, 끝ms] }
+  //   male / female = 그 성별만 바꿀 값(그 키를 통째로 덮어씀)
+  // 얕은 복사 + 덮어쓰기 (같은 판정 값을 여러 기술·성별이 나눠 쓸 때)
+  function merge(a, b) { var o = {}, k; for (k in a) o[k] = a[k]; for (k in b) o[k] = b[k]; return o; }
+  var KNIGHT_DASH_HIT = { reach: { x0: -20, x1: 100, yTop: -112, yBot: -4, depth: 20 },
+                          dmg: 1.9, hitstop: 0.55, knock: 1.4, shake: 1.3, knockdown: true, spark: 1.3, big: true, hitY: -62 };
+  var KNIGHT_DASH_FINALE = { ifHit: true, hitstopMs: 120, shake: 2.8, slowMs: 260, flash: { color: '#d8ecff', alpha: 0.4, ms: 140 } };
+  var SPIN_REACH = { x0: -84, x1: 84, yTop: -108, yBot: -6, depth: 20 };
+  var SPIN_HIT = { reach: SPIN_REACH, away: true, dmg: 0.8, hitstop: 0.7, knock: 0.7, shake: 1.2, spark: 1.1, hitY: -60 };
+  var SPIN_LAST = { reach: { x0: -92, x1: 92, yTop: -112, yBot: -4, depth: 22 }, away: true,
+                    dmg: 1.6, hitstop: 2.2, knock: 2.6, shake: 3.0, knockdown: true, spark: 1.5, big: true, hitY: -60,
+                    flash: { color: '#e6f2ff', alpha: 0.45, ms: 150 }, slowMs: 280 };
+  // 불·번개 기술은 법사 보라 반짝임(impactFx) 대신 기본 불똥(노랑·흰색)이 효과 색과 어울림
+  var FIRE_HIT = { dmg: 2.8, hitstop: 2.0, knock: 2.4, shake: 3.0, knockdown: true, spark: 1.4, big: true,
+                   flash: { color: '#ffb060', alpha: 0.4, ms: 160 }, slowMs: 240 };
+  var FIRE_BURST = { r: 56, depth: 24, art: 'fire_explosion', fromFrame: 1, scale: 1.7, tint: '#ff6a10', tintK: 0.6 };
+  var BOLT_HIT = { dmg: 1.05, hitstop: 1.2, knock: 0.4, shake: 1.8, stunMs: 450, spark: 1.2, big: true,
+                   flash: { color: '#e8ffff', alpha: 0.3, ms: 90 } };
+  var BOLT_HITS = [ BOLT_HIT, merge(BOLT_HIT, {}),
+    { dmg: 1.7, hitstop: 2.2, knock: 2.2, shake: 3.2, knockdown: true, spark: 1.5, big: true,
+      flash: { color: '#ffffff', alpha: 0.5, ms: 150 }, slowMs: 260 } ];
+  // 번개 3줄기: 첫 번개 = 3장(내리꽂기) 시작, 그 뒤 gapMs 마다. xs = 법사 앞 거리(가까운 곳 → 먼 곳)
+  function strikesOf(gapMs, xs) {
+    return { frame: 3, gapMs: gapMs, x: xs, markMs: 240, r: 26, depth: 28, ms: 220,
+             art: 'lightning_bolt', hitArt: 'lightning_impact', hitFromFrame: 1, color: '#59e6ff', core: '#ffffff', glow: '#fff27a', hits: BOLT_HITS };
+  }
+  var SKILLS = {
+    knight: {
+      // 돌진베기: 1~2장 동안 앞으로 약 120도트 미끄러지며 길 위의 적을 한 번씩 벤다(무적), 베는 장 다음 장에 「쾅」 멈춤
+      A: {
+        name: '돌진베기', icon: '돌', cooldownMs: 4000, damageStyle: 'skill_knight', motion: 'motion_dash',
+        darken: { ms: 460, alpha: 0.45 },
+        iframes: { frames: [0, 4] },
+        move: { frames: [1, 2], dist: 120 },
+        trail: { frames: [1, 3], everyMs: 30, lifeMs: 180, alpha: 0.35, color: '#9cc8ff' },
+        hits: [ merge(KNIGHT_DASH_HIT, { frames: [1, 3] }) ],
+        finale: merge(KNIGHT_DASH_FINALE, { frame: 4 }),
+        fx: [
+          { frame: 1, type: 'dust' },
+          { frame: 1, type: 'art', fx: 'dash_trail', x: -12, y: -52, layer: 'back', follow: true },
+          { frame: 3, type: 'art', fx: 'slash_wave', x: 80, y: -62, vx: 160,
+            ph: { type: 'slash', x: 28, y: -62, rot: -8, sx: 1.7, sy: 1.35, tint: '#a8d4ff', ms: 260 } }
+        ],
+        placeholder: { anim: 'attack1', f: [0, 1, 3, 3, 4], d: [70, 40, 180, 160, 110] },
+        // 여: 1장 수평 돌진 → 2장 올려베기(판정) → 3장 머리 위로 돌며 후속. 돌진은 1~2장에 걸쳐(그림 자료는 1장만이지만
+        //   2장도 앞으로 쏠린 자세라 이어서 미끄러짐), 판정은 3장(후속)까지 → 올려베기 파동이 지나가는 적도 맞음
+        female: {
+          iframes: { frames: [0, 4] },
+          trail: { frames: [1, 2], everyMs: 30, lifeMs: 180, alpha: 0.35, color: '#9cc8ff' },
+          hits: [ merge(KNIGHT_DASH_HIT, { frames: [1, 3], reach: { x0: -20, x1: 100, yTop: -124, yBot: -4, depth: 20 } }) ],
+          finale: merge(KNIGHT_DASH_FINALE, { frame: 4 }),
+          fx: [
+            { frame: 1, type: 'dust' },
+            { frame: 1, type: 'art', fx: 'dash_trail', x: -8, y: -60, layer: 'back', follow: true },
+            { frame: 2, type: 'art', fx: 'slash_wave', x: 84, y: -76, rot: -35, vx: 160,
+              ph: { type: 'slash', x: 30, y: -70, rot: -35, sx: 1.6, sy: 1.3, tint: '#a8d4ff', ms: 260 } }
+          ],
+          placeholder: { anim: 'attack1', f: [0, 1, 2, 2, 3], d: [70, 40, 180, 160, 110] }
+        }
+      },
+      // 회전베기: 제자리에서 한 바퀴 돌며 1·3·5장에 앞뒤 둘레를 벤다, 5장(마무리)에 넘어뜨림 + 둘레 적을 밀어냄
+      B: {
+        name: '회전베기', icon: '회', cooldownMs: 7000, damageStyle: 'skill_knight', motion: 'motion_spin',
+        darken: { ms: 600, alpha: 0.45 },
+        iframes: { frames: [0, 5] },
+        hits: [ merge(SPIN_HIT, { frame: 1 }), merge(SPIN_HIT, { frame: 3 }), merge(SPIN_LAST, { frame: 5 }) ],
+        fx: [
+          { frame: 1, type: 'art', fx: 'spin_ring', x: 0, y: -50, follow: true,
+            ph: { type: 'ring', y: -58, r: 70, ms: 300, color: '#cfe8ff' } },
+          { frame: 5, type: 'ring', y: -56, r: 86, ms: 220, color: '#ffffff' },
+          { frame: 5, type: 'dust' }
+        ],
+        placeholder: { anim: 'attack2', f: [0, 2, 3, 2, 3, 2, 3, 4], d: [90, 75, 75, 75, 75, 75, 125, 130], spin: [90, 560], everyMs: 75 },
+        female: {
+          fx: [
+            { frame: 1, type: 'art', fx: 'spin_ring', x: 0, y: -56, follow: true, fps: 22,
+              ph: { type: 'ring', y: -58, r: 70, ms: 260, color: '#cfe8ff' } },
+            { frame: 5, type: 'ring', y: -56, r: 86, ms: 220, color: '#ffffff' },
+            { frame: 5, type: 'dust' }
+          ],
+          placeholder: { anim: 'attack2', f: [0, 1, 2, 3, 1, 2, 3, 4], d: [90, 75, 75, 75, 75, 75, 125, 130], spin: [90, 560], everyMs: 75 }
+        }
+      }
+    },
+    mage: {
+      // 화염구: 마법탄보다 크고 묵직한 불덩이. 처음 맞은 적(또는 끝까지 날아간 곳)에서 크게 터져 주변을 넘어뜨림
+      //   발사 = 남 3장(+127,-65, 260/초, 240) / 여 2장(+85,-75, 340/초, 220) (그림 자료 motions.json)
+      A: {
+        name: '화염구', icon: '화', cooldownMs: 4500, damageStyle: 'skill_fire', motion: 'motion_cast_forward',
+        darken: { ms: 480, alpha: 0.4 },
+        iframes: { frames: [0, 3] },
+        cast: { frame: 3, x: 127, y: -65, speed: 260, range: 240, box: { w: 40, h: 34 }, depth: 18, backReach: 110,
+                art: 'fireball', scale: 1.7, tint: '#ff7a1a', tintK: 0.78, emberMs: 45, burst: FIRE_BURST, hit: FIRE_HIT },
+        fx: [ { frame: 3, type: 'spark', x: 127, y: -65, scale: 1.5, tint: '#ffa040' } ],
+        placeholder: { anim: 'attack3', f: [0, 1, 2, 3, 4, 5], d: [80, 90, 60, 150, 110, 110] },
+        female: {
+          cast: { frame: 2, x: 85, y: -75, speed: 340, range: 220, box: { w: 40, h: 34 }, depth: 18, backReach: 75,
+                  art: 'fireball', scale: 1.7, tint: '#ff7a1a', tintK: 0.78, emberMs: 40, burst: FIRE_BURST, hit: FIRE_HIT },
+          fx: [ { frame: 2, type: 'spark', x: 85, y: -75, scale: 1.5, tint: '#ffa040' } ],
+          placeholder: { anim: 'attack3', f: [0, 1, 2, 3, 4], d: [70, 90, 150, 140, 150] }
+        }
+      },
+      // 번개: 3장(내리꽂기)부터 법사 앞 바닥 3곳에 차례로 화면 맨 위에서 번개가 꽂힌다(가까운 곳 → 먼 곳).
+      //   맞으면 잠깐 감전(stun), 마지막은 넘어뜨림. 가운데 번개 자리 = 그림 자료의 낙하점(남 +120, 여 +110)
+      B: {
+        name: '번개', icon: '번', cooldownMs: 8000, damageStyle: 'skill_bolt', motion: 'motion_cast_sky',
+        darken: { ms: 950, alpha: 0.5 },
+        iframes: { frames: [0, 2] },
+        strikes: strikesOf(120, [75, 120, 165]),
+        placeholder: { anim: 'attack2', f: [0, 1, 2, 3, 3, 3, 4], d: [80, 90, 60, 160, 160, 110, 100] },
+        female: {
+          strikes: strikesOf(100, [70, 110, 150]),
+          placeholder: { anim: 'attack3', f: [0, 1, 2, 2, 2, 3, 4], d: [80, 90, 160, 160, 120, 80, 70] }
+        }
+      }
+    }
+  };
+
   // 새 그림(art\stage1): 빈손 남/여 + 손 위치 json → 무기를 코드로 손에 붙인다
   // 콤보 3타는 캐릭터마다 자기 그림(attack1/attack2/attack3)과 자기 수치를 쓴다 (위 MOVES)
   // 직업(견습/기사)에 따라 콤보 묶음이 바뀐다: combos.fist = 맨손(FIST), combos.sword = 검(MOVES)
@@ -430,6 +600,14 @@
                 pop: { bold: true } },
       crit:   { font: 'huge', scale: 1, bold: true, top: '#ffe066', bottom: '#ffa83a', outline: '#5a2a14', shadow: 'rgba(30,12,8,0.4)',
                 pop: { top: '#fffbe0', bottom: '#ffe066' } },
+      // 기술 숫자 (2026-11-03): 마무리 숫자(huge 12도트)보다 큰 giant(8x14, 굵게 → 획 3도트). 기술마다 색이 다름
+      //   기술 쪽에서 damageStyle 로 고른다(CFG.skills). 새 모양을 만들면 여기에 이름을 하나 더 적고 기술의 damageStyle 을 그 이름으로
+      skill_knight: { font: 'giant', scale: 1, bold: true, top: '#ffffff', bottom: '#9cc8ff', outline: '#1a2a4a', shadow: 'rgba(8,14,30,0.45)',
+                      pop: { top: '#ffffff', bottom: '#ffffff' } },
+      skill_fire:   { font: 'giant', scale: 1, bold: true, top: '#ffd27a', bottom: '#ff5a1e', outline: '#4a1408', shadow: 'rgba(30,8,4,0.45)',
+                      pop: { top: '#fff4d0', bottom: '#ffb040' } },
+      skill_bolt:   { font: 'giant', scale: 1, bold: true, top: '#fff6a0', bottom: '#5ae6ff', outline: '#14244a', shadow: 'rgba(6,12,30,0.45)',
+                      pop: { top: '#ffffff', bottom: '#fff6a0' } },
       hurtBottom: '#b82c26',
       popK: 0.12,
       lift: 14              // 숫자가 처음 뜨는 높이(머리 위에서 몇 도트 더, actorScale 곱함)
@@ -607,9 +785,51 @@
       left: ['ArrowLeft', 'KeyA'], right: ['ArrowRight', 'KeyD'],
       up: ['ArrowUp', 'KeyW'], down: ['ArrowDown', 'KeyS'],
       attack: ['KeyJ', 'KeyZ'],
-      jump: ['KeyK', 'KeyX', 'Space'] // 아직 안 씀(자리만)
-    }
+      jump: ['KeyK', 'KeyX', 'Space'], // 아직 안 씀(자리만)
+      // 기술 (2026-11-03): WASD 이동·J 공격·K 점프와 안 겹치게 J/K 바로 위 U/I, 왼손은 Z(공격)·X(점프) 옆 C/V
+      skillA: ['KeyU', 'KeyC'],
+      skillB: ['KeyI', 'KeyV']
+    },
+
+    // ---------- 직업 기술 (위 SKILLS 설명 참고) ----------
+    // bufferMs = 미리 눌러 둔 기술 입력 기억 시간, cancelAfterHit = 보통 콤보 타의 판정이 끝난 장부터 기술로 끊을 수 있음
+    skills: { bufferMs: 300, cancelAfterHit: true, knight: SKILLS.knight, mage: SKILLS.mage },
+
+    // ---------- 기술 효과 그림 (art\stage1\skills\fx 에서 복사 → assets/fx/skill/<이름>_01.png …, 크기·기준점은 fx.json) ----------
+    // count = 장 수(0 = 그림 없음 → 기존 그림을 물들여 쓰거나 코드로 그림), fps = 1초에 장 수, pivot = 그림 속 기준점(원래 크기), loop = 반복
+    // 불러올 때 CFG.magic 에 'skill_<이름>' 으로 등록된다 → 굽기(shrink.js)·불러오기(assets.js)가 기준점을 정확히 줄여 줌
+    skillFx: {
+      dash_trail:       { count: 4, fps: 16, pivot: { x: 134, y: 24 } },   // 돌진 잔상(기준 = 오른쪽 앞끝 → 몸 뒤에 붙임)
+      slash_wave:       { count: 4, fps: 16, pivot: { x: 56, y: 56 } },    // 가로 베기 파동(오른쪽으로 볼록)
+      spin_ring:        { count: 6, fps: 18, pivot: { x: 88, y: 68 } },    // 360 회전 고리(기준 = 고리 가운데 → 허리)
+      fireball:         { count: 4, fps: 14, pivot: { x: 52, y: 28 }, loop: true },   // 화염구(기준 = 흰 불꽃 머리)
+      fire_explosion:   { count: 6, fps: 16, pivot: { x: 64, y: 64 } },
+      lightning_bolt:   { count: 4, fps: 20, pivot: { x: 48, y: 197 } },   // 번개 기둥(기준 = 아래 끝 = 땅)
+      lightning_impact: { count: 4, fps: 16, pivot: { x: 64, y: 63 } },    // 땅 번쩍(기준 = 아래 가운데)
+      shock:            { count: 3, fps: 15, pivot: { x: 44, y: 60 }, loop: true }    // 감전(멈춘 적 몸 가운데에 겹침)
+    },
+    motions: MOTIONS
   };
+
+  // ---------- 기술 그림 끼워 넣기: 동작 그림 묶음 → 각 옷 캐릭터 anims, 효과 그림 → art.fx + magic(기준점) ----------
+  (function addSkillArt(C) {
+    if (C.art.fx) Object.keys(C.skillFx).forEach(function (k) {
+      var F = C.skillFx[k];
+      if (!(F.count > 0)) return;
+      C.art.fx['skill_' + k] = seq('assets/fx/skill/' + k + '_', F.count);
+      C.magic['skill_' + k] = { frames: 'skill_' + k, fps: F.fps, pivot: { x: F.pivot.x, y: F.pivot.y } };
+    });
+    Object.keys(C.motions).forEach(function (ch) {
+      var def = C.art.characters[ch];
+      if (!def) return;   // 예전 견습 그림(?art=novice)에는 옷 캐릭터가 없음
+      var dir = def.anims.idle.frames[0].replace(/[^\/]+$/, '');   // 그 옷 그림 폴더
+      Object.keys(C.motions[ch]).forEach(function (m) {
+        var M = C.motions[ch][m];
+        if (M.count > 0) def.anims[m] = { frames: seq(dir + m + '_', M.count), fps: 14, loop: false };
+      });
+      def.motionAnchors = 'assets/chars/stage1/anchors_motions_' + ch + '.json';
+    });
+  })(window.CFG);
 
   // ---------- 캐릭터 크기(actorScale) 적용: 몸 크기에 묶인 거리 수치를 한 번에 줄인다 ----------
   // 그림·기준점(pivot)·손 위치·무기 손잡이는 assets.js 가 불러올 때 줄인다. 손맛 수치(juice)는 디버그 조절판 값이 바뀌지 않게
@@ -644,6 +864,24 @@
       Object.keys(d.combos || {}).forEach(function (m) { d.combos[m].forEach(step); });
     });
     C.combo.steps.forEach(step);
+    // 기술: 돌진 거리·판정 상자·효과 위치·화염구·번개 거리 (성별 덮어쓰기 값도)
+    function skill(d) {
+      if (!once(d)) return;
+      if (once(d.move)) mul(d.move, ['dist'], S);
+      (d.hits || []).forEach(function (h) { if (once(h)) { box(h.reach); mul(h, ['hitY'], S); } });
+      (d.fx || []).forEach(function (f) { if (once(f)) { mul(f, ['x', 'y', 'len', 'r', 'vx'], S); if (once(f.ph)) mul(f.ph, ['x', 'y', 'len', 'r'], S); } });
+      var c = d.cast;
+      if (once(c)) {
+        mul(c, ['x', 'y', 'speed', 'range', 'depth', 'backReach'], S);
+        if (c.box) mul(c.box, ['w', 'h'], S);
+        if (once(c.burst)) mul(c.burst, ['r', 'depth'], S);
+      }
+      var k = d.strikes;
+      if (once(k)) { arr(k.x); mul(k, ['r', 'depth'], S); }
+      if (d.male) skill(d.male);
+      if (d.female) skill(d.female);
+    }
+    ['knight', 'mage'].forEach(function (c) { if (C.skills[c]) { skill(C.skills[c].A); skill(C.skills[c].B); } });
     if (C.art.fx) mul(C.art.fx.slashOffset, ['x', 'y'], S);
     mul(C.player, ['speedX', 'speedY'], MV);
     box(C.player.hitbox);

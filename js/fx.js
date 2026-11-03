@@ -67,6 +67,18 @@
     g.forEach(function (row, i) { o.push(row); if (i === 2 || i === 7) o.push(row); });
     FONTS.huge.g[c] = o;
   });
+  // giant = mid 를 가로·세로로 늘린 7x14 (가운데에 한 칸을 끼우고, 곧은 줄을 더): 기술 숫자 (2026-11-03)
+  //   끼우는 칸 = 양옆(가운데 두 칸)이 둘 다 칠해져 있을 때만 칠함 → 「0」 속은 넓어지고 「1」 기둥은 너무 뚱뚱해지지 않음
+  //   굵게(bold)와 함께 쓰면 옆 획이 3도트 → 마무리 숫자(huge)보다 확실히 크고 묵직하게 보인다
+  FONTS.giant = { h: 14, g: {} };
+  Object.keys(FONTS.mid.g).forEach(function (c) {
+    var g = FONTS.mid.g[c], o = [];
+    g.forEach(function (row, i) {
+      var r = row.length === 6 ? row.slice(0, 3) + (row[2] === '#' && row[3] === '#' ? '#' : '.') + row.slice(3) : row;
+      o.push(r); if (i === 1 || i === 3 || i === 6 || i === 8) o.push(r);
+    });
+    FONTS.giant.g[c] = o;
+  });
   // 글자 → 작은 그림(캔버스)으로 한 번 만들어 두고 재사용
   //   st = { font, scale, bold, top, bottom(아래 1/3 색 → 살짝 입체), outline(1도트 테두리, 대각선은 안 칠해 둥글게), shadow(1도트 아래 그림자) }
   var textCache = {}, textCacheN = 0;
@@ -179,8 +191,36 @@
         look: scale && scale !== 1 ? { sx: scale, sy: scale } : null });
     },
     // color = 숫자 색(없으면 흰색/치명타 노랑). 플레이어가 맞으면 빨강
-    damage: function (x, y, n, crit, J, color) {
-      list.push({ type: 'dmg', x: x + (Math.random() * 8 - 4), y: y, n: String(n) + (crit ? '!' : ''), crit: crit, t: 0, life: J.dmgMs, rise: J.dmgRise * AS(), color: color || null });
+    // style = CFG.damageText 의 모양 이름(기술 숫자 skill_knight 등). 없으면 보통/마무리
+    damage: function (x, y, n, crit, J, color, style) {
+      // 기술 숫자는 짧은 시간에 같은 대상에 여러 번 뜨므로(회전베기·번개): 근처에 떠 있는 앞 숫자를 한 칸 위로 밀고
+      //   곧 사라지게(흐려지는 시점으로 당김) → 새 숫자가 앞 숫자와 겹쳐 읽히지 않게
+      if (style) list.forEach(function (f) {
+        if (f.type === 'dmg' && f.style && Math.abs(f.x - x) < 16 * AS() && f.t < f.life * 0.7) {
+          f.y -= 12 * AS(); f.t = Math.max(f.t, f.life * 0.6);
+        }
+      });
+      list.push({ type: 'dmg', x: x + (Math.random() * 8 - 4), y: y, n: String(n) + (crit ? '!' : ''), crit: crit, t: 0, life: J.dmgMs * (style ? 1.25 : 1),
+                  rise: J.dmgRise * AS() * (style ? 1.2 : 1), color: color || null, style: style || null });
+    },
+    // 그림 묶음을 한 색으로 물들인 복사본(기술 효과 그림이 아직 없을 때 기존 그림을 불·번개 색으로). k = 물들이는 세기(0~1)
+    //   같은 묶음·색이면 한 번만 만든다
+    tinted: function (frames, color, k) {
+      if (!frames || !frames.length || !color) return frames;
+      frames._tint = frames._tint || {};
+      var key = color + '|' + (k == null ? 0.6 : k);
+      if (frames._tint[key]) return frames._tint[key];
+      var out = frames.map(function (im) {
+        if (!im) return im;
+        var c = document.createElement('canvas'); c.width = im.width; c.height = im.height;
+        var g = c.getContext('2d'); g.imageSmoothingEnabled = false;
+        g.drawImage(im, 0, 0);
+        g.globalCompositeOperation = 'source-atop'; g.globalAlpha = k == null ? 0.6 : k;
+        g.fillStyle = color; g.fillRect(0, 0, c.width, c.height);
+        return c;
+      });
+      frames._tint[key] = out;
+      return out;
     },
     // 그림 여러 장을 한 번 재생하는 효과(오크 돌진 먼지). pivot = 그림 속 기준점(바닥 가운데), flip = 좌우 뒤집기
     // under = true 면 캐릭터보다 뒤(바닥)에 그림, scale = 크기 배율(없으면 1, 법사 마법 터짐·반짝임)
@@ -224,7 +264,7 @@
     else if (f.type === 'dmg') {
       // 처음엔 pop 모양(한 단계 크게/밝게)으로 튀어나왔다가 제 모양으로 돌아오며 떠오름 → 끝에서 서서히 사라짐
       var D = (window.CFG && window.CFG.damageText) || {};
-      var st = (f.crit ? D.crit : D.normal) || { font: 'small', top: '#ffffff', outline: '#2a1020' };
+      var st = (f.style && D[f.style]) || (f.crit ? D.crit : D.normal) || { font: 'small', top: '#ffffff', outline: '#2a1020' };
       if ((k < (D.popK || 0.12) && st.pop) || f.color) {
         var st2 = {}, kk;
         for (kk in st) if (kk !== 'pop') st2[kk] = st[kk];

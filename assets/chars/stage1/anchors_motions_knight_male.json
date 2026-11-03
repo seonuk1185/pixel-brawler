@@ -1,0 +1,153 @@
+{
+ "note": "Motion-library anchors (2026-11-03), same format as art/stage1/knight_male/anchors_knight_male.json. hand=[x,y] grip position in the 176x136 frame (feet baseline y=130, facing right); angle degrees, 0 = weapon pointing right, positive = clockwise on screen; layer back = draw weapon before the character. Hands read off 4x grid zooms of the finished frames, angles chosen for the intended swing (check.manual=true).",
+ "weapon": "sword",
+ "frameSize": [
+  176,
+  136
+ ],
+ "frames": {
+  "motion_dash_01": {
+   "hand": [
+    54,
+    78
+   ],
+   "angle": 160,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "motion_dash_02": {
+   "hand": [
+    83,
+    82
+   ],
+   "angle": 165,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "motion_dash_03": {
+   "hand": [
+    81,
+    82
+   ],
+   "angle": 165,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "motion_dash_04": {
+   "hand": [
+    144,
+    66
+   ],
+   "angle": 0,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "motion_dash_05": {
+   "hand": [
+    77,
+    67
+   ],
+   "angle": 175,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "motion_dash_06": {
+   "hand": [
+    103,
+    73
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "motion_spin_01": {
+   "hand": [
+    41,
+    73
+   ],
+   "angle": 175,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "motion_spin_02": {
+   "hand": [
+    115,
+    58
+   ],
+   "angle": 0,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "motion_spin_03": {
+   "hand": [
+    111,
+    58
+   ],
+   "angle": 15,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "motion_spin_04": {
+   "hand": [
+    30,
+    58
+   ],
+   "angle": 180,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "motion_spin_05": {
+   "hand": [
+    107,
+    56
+   ],
+   "angle": 0,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "motion_spin_06": {
+   "hand": [
+    125,
+    74
+   ],
+   "angle": 5,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "motion_spin_07": {
+   "hand": [
+    97,
+    61
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  }
+ }
+}

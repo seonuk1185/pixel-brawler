@@ -1,0 +1,142 @@
+{
+ "note": "Motion-library anchors (2026-11-03), same format as art/stage1/mage_male/anchors_mage_male.json. hand=[x,y] grip position in the 176x136 frame (feet baseline y=130, facing right); angle degrees, 0 = weapon pointing right, positive = clockwise on screen; layer back = draw weapon before the character. Hands read off 4x grid zooms of the finished frames, angles chosen for the intended swing (check.manual=true).",
+ "weapon": "staff",
+ "frameSize": [
+  176,
+  136
+ ],
+ "frames": {
+  "motion_cast_forward_01": {
+   "hand": [
+    84,
+    70
+   ],
+   "angle": -80,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "motion_cast_forward_02": {
+   "hand": [
+    44,
+    32
+   ],
+   "angle": -110,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "motion_cast_forward_03": {
+   "hand": [
+    27,
+    26
+   ],
+   "angle": -140,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "motion_cast_forward_04": {
+   "hand": [
+    146,
+    65
+   ],
+   "angle": 0,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "motion_cast_forward_05": {
+   "hand": [
+    133,
+    65
+   ],
+   "angle": 0,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "motion_cast_forward_06": {
+   "hand": [
+    96,
+    75
+   ],
+   "angle": -75,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "motion_cast_sky_01": {
+   "hand": [
+    93,
+    86
+   ],
+   "angle": -60,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "motion_cast_sky_02": {
+   "hand": [
+    95,
+    14
+   ],
+   "angle": -90,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "motion_cast_sky_03": {
+   "hand": [
+    86,
+    8
+   ],
+   "angle": -90,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "motion_cast_sky_04": {
+   "hand": [
+    124,
+    101
+   ],
+   "angle": 30,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "motion_cast_sky_05": {
+   "hand": [
+    122,
+    101
+   ],
+   "angle": 30,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "motion_cast_sky_06": {
+   "hand": [
+    98,
+    76
+   ],
+   "angle": -75,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  }
+ }
+}

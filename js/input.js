@@ -2,6 +2,7 @@
 (function () {
   var keysDown = {};
   var attackQueued = 0;   // 누른 순간 기록(시각)
+  var skillQueued = { A: 0, B: 0 };   // 기술 A/B 누른 순간
   var joy = { x: 0, y: 0, active: false, id: null };
 
   function matches(code, list) { return list.indexOf(code) >= 0; }
@@ -9,10 +10,13 @@
   function init(cfg) {
     var K = cfg.keys;
     window.addEventListener('keydown', function (e) {
-      if (e.repeat) { if (matches(e.code, K.attack)) e.preventDefault(); return; }
+      var skA = K.skillA || [], skB = K.skillB || [];
+      if (e.repeat) { if (matches(e.code, K.attack) || matches(e.code, skA) || matches(e.code, skB)) e.preventDefault(); return; }
       keysDown[e.code] = true;
       if (matches(e.code, K.attack)) attackQueued = performance.now();
-      if ([].concat(K.left, K.right, K.up, K.down, K.attack, K.jump).indexOf(e.code) >= 0) e.preventDefault();
+      if (matches(e.code, skA)) skillQueued.A = performance.now();
+      if (matches(e.code, skB)) skillQueued.B = performance.now();
+      if ([].concat(K.left, K.right, K.up, K.down, K.attack, K.jump, skA, skB).indexOf(e.code) >= 0) e.preventDefault();
     });
     window.addEventListener('keyup', function (e) { keysDown[e.code] = false; });
     window.addEventListener('blur', function () { keysDown = {}; });
@@ -67,6 +71,20 @@
     ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (t) {
       atk.addEventListener(t, function () { atk.classList.remove('down'); });
     });
+
+    // ----- 기술 버튼 2개 (공격 버튼 위) -----
+    [['A', 'btnSkA'], ['B', 'btnSkB']].forEach(function (s) {
+      var b = document.getElementById(s[1]);
+      if (!b) return;
+      b.addEventListener('pointerdown', function (e) {
+        skillQueued[s[0]] = performance.now();
+        b.classList.add('down');
+        e.preventDefault();
+      });
+      ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (t) {
+        b.addEventListener(t, function () { b.classList.remove('down'); });
+      });
+    });
   }
 
   var override = null;   // 시험용 자동 조종(?bot=1)이 넣는 방향
@@ -98,6 +116,15 @@
     },
     peekAttack: function (bufferMs) { return attackQueued && performance.now() - attackQueued <= bufferMs; },
     pressAttack: function () { attackQueued = performance.now(); }, // 시험용
+    // 기술: slot = 'A' / 'B'. 버퍼 안에 눌린 기술이 있으면 꺼내 씀
+    takeSkill: function (slot, bufferMs) {
+      var t = skillQueued[slot];
+      if (t && performance.now() - t <= bufferMs) { skillQueued[slot] = 0; return true; }
+      return false;
+    },
+    peekSkill: function (slot, bufferMs) { var t = skillQueued[slot]; return !!t && performance.now() - t <= bufferMs; },
+    clearSkill: function (slot) { skillQueued[slot] = 0; },
+    pressSkill: function (slot) { skillQueued[slot] = performance.now(); },   // 시험용
     setOverride: function (ax) { override = ax; }                    // 시험용(자동 조종). null 이면 원래대로
   };
 })();

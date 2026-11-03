@@ -132,6 +132,27 @@ html, body {
   .btn.atk { right: 0; bottom: 0; width: 80px; height: 80px; font-size: 16px; background: #c8423aa6; border-color: #0006; box-shadow: inset 0 -5px 0 #0003; }
   .btn.atk.down { transform: scale(.92); background: #e0574ed9; box-shadow: inset 0 -2px 0 #0004; }
   .btn.jump { display: none; }   /* 점프(준비 중): 만들 때 다시 보이게 */
+  /* 기술 버튼 2개: 공격 버튼 위쪽에 왼쪽 위로 비스듬히(호 모양). 공격 버튼 가로 폭에서 거의 안 벗어나게 →
+     싸움 못 들어가는 곳(controlPad)이 조금만 넓어짐. --cd = 남은 쿨타임 비율(1 → 0) */
+  .btn.sk {
+    width: 44px; height: 44px; padding: 0; overflow: hidden; font-size: 17px; line-height: 1;
+    background: #2f4f8ccc; border-color: #0008; box-shadow: inset 0 -4px 0 #0003;
+  }
+  .btn.sk[hidden] { display: none; }
+  .btn.skA { right: 36px; bottom: 80px; }
+  .btn.skB { right: -6px; bottom: 96px; }
+  .btn.sk.down { transform: scale(.9); }
+  .btn.sk .ic { position: relative; z-index: 1; }
+  .btn.sk .sweep {
+    position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
+    background: conic-gradient(#000b calc(var(--cd, 0) * 360deg), transparent 0);
+  }
+  .btn.sk .sec {
+    position: absolute; inset: 0; z-index: 2; display: flex; align-items: center; justify-content: center;
+    font-size: 15px; color: #fff; text-shadow: 1px 1px 0 #000, -1px -1px 0 #000;
+  }
+  .btn.sk.cool .ic { opacity: .2; }
+  .btn.sk:not(.cool) { box-shadow: inset 0 -4px 0 #0003, 0 0 0 2px #9cc8ff66; }
 }
 
 /* 세로 화면(폰 세로): 게임 화면은 위(고르기 버튼 아래), 조작은 아래 빈 곳 (main.js 가 body 에 portrait 를 붙임) */
@@ -147,7 +168,19 @@ html, body {
   .portrait .joy { bottom: 60px; left: 36px; }
   .portrait .btns { bottom: 56px; right: 24px; width: 104px; height: 104px; }
   .portrait .btn.atk { width: 104px; height: 104px; font-size: 18px; background: #c8423a; border-color: #0009; }
+  .portrait .btn.sk { width: 56px; height: 56px; font-size: 21px; background: #2f4f8c; }
+  .portrait .btn.skA { right: 82px; bottom: 82px; }
+  .portrait .btn.skB { right: 12px; bottom: 116px; }
 }
+
+/* PC: 아래 조작 글자 옆 작은 기술 칸(아이콘 + 쿨타임 초) */
+.skchip {
+  display: inline-flex; align-items: center; gap: 2px; margin-left: 2px; padding: 0 4px; border-radius: 3px;
+  background: #2f4f8c; color: #fff; font-weight: 800;
+}
+.skchip[hidden] { display: none; }
+.skchip.cool { background: #3a3350; color: #fff8; }
+.skchip .sec { font-size: 11px; color: #ffd23f; }
 
 /* 디버그 판 */
 .debug {
