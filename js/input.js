@@ -1,6 +1,6 @@
 // 조작: PC 키보드 + 폰 가상 조이스틱 / 공격·점프·기술 버튼
 // 달리기(2026-11-03): 키보드 = 같은 쪽(←/→)을 빠르게 두 번 → 누르고 있는 동안 달림.
-//   폰 = 조이스틱을 가로로 끝까지(CFG.move.joyRunAt) 밀거나, 손을 뗐다가 바로(joyFlickMs) 같은 쪽으로 다시 밀면 달림
+//   폰 = 조이스틱을 가로로 같은 쪽으로 잠깐(CFG.move.joyHoldMs) 계속 밀거나, 손을 뗐다가 바로(joyFlickMs) 같은 쪽으로 다시 밀면 달림
 (function () {
   var keysDown = {};
   var attackQueued = 0;   // 누른 순간 기록(시각)
@@ -11,7 +11,8 @@
   // 달리기: runKey = 키보드로 정한 달리는 쪽(-1/1, 0 = 아님), tap = 마지막으로 누른 좌/우와 시각
   var runKey = 0, tap = { dir: 0, t: 0 };
   // 폰: joyRun = 조이스틱으로 정한 달리는 쪽, joyRel = 마지막으로 뗀 시각·쪽(빠르게 다시 밀기 = 달리기)
-  var joyRun = 0, joyRel = { t: -1e9, dir: 0 }, joyFlick = false;
+  var joyRun = 0, joyRel = { t: -1e9, dir: 0 }, joyFlick = false, joyHold = { dir: 0, t: 0 };   // joyHold = 같은 쪽으로 밀기 시작한 시각
+  var joyRunTick = null;   // 조이스틱 만들 때 joyRunCheck 를 넣어 둠 → runDir 가 매 프레임 부름
 
   function matches(code, list) { return list.indexOf(code) >= 0; }
   function anyHeld(list) { for (var i = 0; i < list.length; i++) if (keysDown[list[i]]) return true; return false; }
@@ -60,18 +61,22 @@
       joy.x = dx / R; joy.y = dy / R;
       joyRunCheck();
     }
-    // 달리기 판정(조이스틱): 가로로 끝까지 밀면 → 달림, 0.55 아래로 돌아오거나 반대로 밀면 → 걷기
-    //   빠르게 다시 밀기(joyFlick)로 시작한 달리기는 살짝(0.35)만 밀고 있어도 유지
+    // 달리기 판정(조이스틱) (2026-11-03 형님 요청으로 변경): 가로로 같은 쪽을 joyHoldMs 동안 계속 밀고 있으면 → 달림
+    //   (반쯤만 밀어도 됨, joyHoldAt 이상). 손 뗐다가 바로 같은 쪽으로 다시 밀기(joyFlick)도 그대로 달림
+    //   달리다가 0.35 아래로 돌아오거나 반대로 밀면 → 걷기
     function joyRunCheck() {
-      var M = MV(), ax = Math.abs(joy.x), s = joy.x > 0 ? 1 : -1, horiz = ax > Math.abs(joy.y) * 0.9;
+      var M = MV(), ax = Math.abs(joy.x), s = joy.x > 0 ? 1 : -1, horiz = ax > Math.abs(joy.y) * 0.9, now = performance.now();
       if (joyRun) {
-        if (s !== joyRun || ax < (joyFlick ? 0.35 : 0.55)) { joyRun = 0; joyFlick = false; }
+        if (s !== joyRun || ax < 0.35) { joyRun = 0; joyFlick = false; }
       }
+      if (horiz && ax >= (M.joyHoldAt || 0.5)) { if (joyHold.dir !== s) joyHold = { dir: s, t: now }; }
+      else joyHold = { dir: 0, t: 0 };
       if (!joyRun && horiz) {
-        if (ax >= (M.joyRunAt || 0.9)) { joyRun = s; joyFlick = false; }
-        else if (ax > 0.4 && joyRel.dir === s && performance.now() - joyRel.t <= (M.joyFlickMs || 280)) { joyRun = s; joyFlick = true; }
+        if (joyHold.dir === s && now - joyHold.t >= (M.joyHoldMs || 450)) { joyRun = s; joyFlick = false; }
+        else if (ax > 0.4 && joyRel.dir === s && now - joyRel.t <= (M.joyFlickMs || 280)) { joyRun = s; joyFlick = true; }
       }
     }
+    joyRunTick = joyRunCheck;
     zone.addEventListener('pointerdown', function (e) {
       if (joy.id !== null) return;
       joy.id = e.pointerId; joy.active = true;
@@ -91,7 +96,7 @@
       if (e.pointerId !== joy.id) return;
       // 가로로 꽤 민 채로 뗐으면 기억(바로 같은 쪽으로 다시 밀면 달리기)
       joyRel = Math.abs(joy.x) > 0.4 ? { t: performance.now(), dir: joy.x > 0 ? 1 : -1 } : { t: -1e9, dir: 0 };
-      joy.id = null; joy.active = false; joy.x = joy.y = 0; joyRun = 0; joyFlick = false;
+      joy.id = null; joy.active = false; joy.x = joy.y = 0; joyRun = 0; joyFlick = false; joyHold = { dir: 0, t: 0 };
       knob.style.transform = '';
       base.classList.remove('on');
       base.style.left = ''; base.style.top = '';
@@ -134,7 +139,7 @@
   // 지금 달리는 쪽(-1/1), 아니면 0. 그 쪽을 누르고(밀고) 있을 때만
   function runDir(cfg) {
     if (override) return override.run || 0;
-    if (joy.active) return joyRun;
+    if (joy.active) { if (joyRunTick) joyRunTick(); return joyRun; }   // 손가락이 멈춰 있어도 「계속 밀고 있는 시간」을 매 프레임 확인
     var K = cfg.keys;
     if (runKey && anyHeld(runKey < 0 ? K.left : K.right) && !anyHeld(runKey < 0 ? K.right : K.left)) return runKey;
     return 0;

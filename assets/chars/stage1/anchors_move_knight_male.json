@@ -150,10 +150,10 @@
   },
   "run_attack_01": {
    "hand": [
-    101,
-    79
+    43,
+    78
    ],
-   "angle": -40,
+   "angle": 150,
    "layer": "back",
    "check": {
     "manual": true
@@ -161,10 +161,10 @@
   },
   "run_attack_02": {
    "hand": [
-    106,
-    82
+    49,
+    85
    ],
-   "angle": 170,
+   "angle": 160,
    "layer": "back",
    "check": {
     "manual": true
@@ -172,10 +172,10 @@
   },
   "run_attack_03": {
    "hand": [
-    106,
-    82
+    53,
+    86
    ],
-   "angle": 170,
+   "angle": 160,
    "layer": "back",
    "check": {
     "manual": true
@@ -183,10 +183,10 @@
   },
   "run_attack_04": {
    "hand": [
-    114,
-    57
+    62,
+    67
    ],
-   "angle": -20,
+   "angle": 165,
    "layer": "back",
    "check": {
     "manual": true
@@ -194,8 +194,8 @@
   },
   "run_attack_05": {
    "hand": [
-    99,
-    72
+    108,
+    75
    ],
    "angle": -40,
    "layer": "back",
