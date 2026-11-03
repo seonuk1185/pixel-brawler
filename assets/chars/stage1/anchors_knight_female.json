@@ -86,162 +86,90 @@
   },
   "walk_01": {
    "hand": [
-    91,
-    74
+    90,
+    67
    ],
-   "angle": -40,
+   "angle": -38,
    "layer": "back",
    "check": {
-    "fromNovice": [
-     91,
-     74
-    ],
-    "shift": [
-     0,
-     0
-    ],
-    "match": 0.958,
-    "match0": 0.958
+    "walk2": "2026-11-03 redrawn walk: hand = front gauntlet centre"
    }
   },
   "walk_02": {
    "hand": [
-    87,
-    75
+    90,
+    70
    ],
    "angle": -38,
    "layer": "back",
    "check": {
-    "fromNovice": [
-     87,
-     75
-    ],
-    "shift": [
-     0,
-     0
-    ],
-    "match": 0.93,
-    "match0": 0.93
+    "walk2": "2026-11-03 redrawn walk: hand = front gauntlet centre"
    }
   },
   "walk_03": {
    "hand": [
-    81,
-    79
+    90,
+    68
    ],
-   "angle": -34,
+   "angle": -38,
    "layer": "back",
    "check": {
-    "fromNovice": [
-     80,
-     80
-    ],
-    "shift": [
-     1,
-     -1
-    ],
-    "match": 0.967,
-    "match0": 0.941
+    "walk2": "2026-11-03 redrawn walk: hand = front gauntlet centre"
    }
   },
   "walk_04": {
    "hand": [
-    83,
-    76
+    93,
+    66
    ],
    "angle": -38,
    "layer": "back",
    "check": {
-    "fromNovice": [
-     83,
-     76
-    ],
-    "shift": [
-     0,
-     0
-    ],
-    "match": 0.93,
-    "match0": 0.926
+    "walk2": "2026-11-03 redrawn walk: hand = front gauntlet centre"
    }
   },
   "walk_05": {
    "hand": [
-    92,
-    73
+    91,
+    70
    ],
-   "angle": -40,
+   "angle": -38,
    "layer": "back",
    "check": {
-    "fromNovice": [
-     91,
-     74
-    ],
-    "shift": [
-     1,
-     -1
-    ],
-    "match": 0.96,
-    "match0": 0.91
+    "walk2": "2026-11-03 redrawn walk: hand = front gauntlet centre"
    }
   },
   "walk_06": {
    "hand": [
-    84,
-    76
+    91,
+    70
    ],
    "angle": -38,
    "layer": "back",
    "check": {
-    "fromNovice": [
-     83,
-     76
-    ],
-    "shift": [
-     1,
-     0
-    ],
-    "match": 0.935,
-    "match0": 0.918
+    "walk2": "2026-11-03 redrawn walk: hand = front gauntlet centre"
    }
   },
   "walk_07": {
    "hand": [
-    81,
-    78
-   ],
-   "angle": -34,
-   "layer": "back",
-   "check": {
-    "fromNovice": [
-     80,
-     79
-    ],
-    "shift": [
-     1,
-     -1
-    ],
-    "match": 0.956,
-    "match0": 0.946
-   }
-  },
-  "walk_08": {
-   "hand": [
-    87,
-    75
+    90,
+    69
    ],
    "angle": -38,
    "layer": "back",
    "check": {
-    "fromNovice": [
-     87,
-     75
-    ],
-    "shift": [
-     0,
-     0
-    ],
-    "match": 0.933,
-    "match0": 0.925
+    "walk2": "2026-11-03 redrawn walk: hand = front gauntlet centre"
+   }
+  },
+  "walk_08": {
+   "hand": [
+    93,
+    67
+   ],
+   "angle": -38,
+   "layer": "back",
+   "check": {
+    "walk2": "2026-11-03 redrawn walk: hand = front gauntlet centre"
    }
   },
   "hurt_01": {

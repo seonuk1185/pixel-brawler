@@ -37,7 +37,7 @@
   var MOVES = {
     // 남자: 힘 있는 검술. 1타 대각선 내려베기 → 2타 아래에서 위로 되받아 베기 → 3타 크게 들어 내리찍기
     male: {
-      stride: 112, attack1Prefix: 'attack_', attack1Count: 5, attack2Count: 5, attack3Count: 6,
+      stride: 112, knightStride: 84, attack1Prefix: 'attack_', attack1Count: 5, attack2Count: 5, attack3Count: 6,
       combo: [
         { anim: 'attack1', f: [0, 1, 2, 3, 4], d: [40, 70, 35, 90, 90], active: [2, 3], cancel: 3, lunge: 4,
           reach: { x0: 8, x1: 92, yTop: -100, yBot: -18 },
@@ -55,7 +55,7 @@
     },
     // 여자: 빠르고 가볍고 우아한 검술. 1타 앞으로 찌르기 → 2타 한 바퀴 돌며 가로 베기 → 3타 낮게 파고들며 X자 베기(두 번 판정)
     female: {
-      stride: 96, attack1Prefix: 'attack1_', attack1Count: 4, attack2Count: 5, attack3Count: 6,
+      stride: 96, knightStride: 100, attack1Prefix: 'attack1_', attack1Count: 4, attack2Count: 5, attack3Count: 6,
       combo: [
         { anim: 'attack1', f: [0, 1, 2, 3], d: [45, 40, 80, 70], active: [1, 2], cancel: 3, lunge: 6,
           reach: { x0: 20, x1: 108, yTop: -82, yBot: -44 },
@@ -146,9 +146,10 @@
         idle:    { frames: seq(p + 'idle_', 4),   fps: 6,  loop: true },
         // 걷기: 시간 대신 「걸은 거리」로 그림을 넘긴다. stride = 8장 한 바퀴(두 걸음) 동안 가는 도트 수.
         //   그림 속 보폭에 맞춘 값이라 발이 바닥에서 미끄러지지 않는다. 캐릭터마다 보폭이 달라 MOVES 에 따로 둔다
-        //   (남 112, 여 96 → 좌우 90도트/초에서 약 6.4 / 7.5장/초).
+        //   견습 남 112, 여 96 / 기사 옷은 걷기 그림을 따로 그려서(2026-11-03, 보폭 짧은 갑옷 걸음) knightStride 남 84, 여 100
+        //   (그림 속 디딘 발이 한 장마다 뒤로 가는 거리 × 8 을 잰 값. 좌우 104도트/초에서 견습 약 7.4 / 8.7장/초, 기사 약 9.9 / 8.3장/초).
         //   depthStrideMul = 위아래(안쪽) 이동일 때 거리를 이만큼 크게 쳐서, 느린 위아래 이동에도 다리가 자연스럽게 움직이게.
-        walk:    { frames: seq(p + 'walk_', 8),   fps: 12, loop: true, stride: M.stride, depthStrideMul: 1.6 },
+        walk:    { frames: seq(p + 'walk_', 8),   fps: 12, loop: true, stride: outfit === 'knight' ? M.knightStride : M.stride, depthStrideMul: 1.6 },
         attack1: { frames: seq(p + M.attack1Prefix, M.attack1Count), fps: 14, loop: false },
         attack2: { frames: seq(p + 'attack2_', M.attack2Count), fps: 14, loop: false },
         attack3: { frames: seq(p + 'attack3_', M.attack3Count), fps: 14, loop: false },
@@ -244,8 +245,8 @@
 
     // ---------- 움직임 ----------
     player: {
-      speedX: 90,           // 1초에 도트 몇 칸 (좌우)
-      speedY: 55,           // 위아래 (안쪽/바깥쪽)
+      speedX: 104,          // 1초에 도트 몇 칸 (좌우)  (2026-11-03: 90 → 104, 약 15% 빠르게)
+      speedY: 63,           // 위아래 (안쪽/바깥쪽)  (55 → 63)
       startX: 200,
       hitbox: { x0: 8, x1: 92, yTop: -100, yBot: -18, depth: 14 } // 발 기준, 오른쪽 볼 때
     },
@@ -374,7 +375,7 @@
       wolf: {
         label: '늑대', frameW: 208, frameH: 112, pivot: { x: 104, y: 106 },
         anims: enemyAnims('wolf', {
-          idle: [4, 6, true], run: [6, 12, true],
+          idle: [4, 6, true], run: [6, 14, true],   // run fps 12 → 14: 달리기 속도를 올린 만큼 다리도 빠르게
           attack: [5, 12, false, [1, 1, 1, 2, 3, 3, 4, 5]],   // 1 웅크림(예고) · 2 도약 · 3 물기 · 4 착지 · 5 복귀
           hit: [3, 10, false, [1, 2, 2, 3]],
           hit2: [3, 10, false, [1, 1, 2, 2, 3]],
@@ -384,7 +385,8 @@
         }),
         walkAnim: 'run',
         down: { slide: 70, lyingFrames: [3, 4] },
-        hp: 48, speedX: 100, speedY: 55, radius: 26, height: 66,
+        // 늑대는 플레이어보다 빨라야 함(빠른 적): 플레이어 90→104 에 맞춰 100→115, 55→63 (2026-11-03)
+        hp: 48, speedX: 115, speedY: 63, radius: 26, height: 66,
         hurtbox: { x0: -50, x1: 51, yTop: -66, yBot: 0 },
         engage: 84, hover: [150, 200], range: [55, 112], alignY: 8, cooldown: [1300, 2300], firstCooldown: [300, 1200],
         retreatMs: 900,           // 물고 난 뒤 뒤로 빠지는 시간 (치고 빠지기)
