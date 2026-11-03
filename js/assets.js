@@ -137,6 +137,10 @@
       .catch(function () { console.warn('json 못 읽음(파일로 열면 안 됨, 서버로 열 것):', src); return null; });
   }
 
+  // 여러 캐릭터가 같이 쓰는 json(motions_move.json)은 한 번만 받음
+  var jsonOnce = {};
+  function loadJSONOnce(src) { return jsonOnce[src] || (jsonOnce[src] = loadJSON(src)); }
+
   // 여러 모양의 anchor json 을 { anim: [ {x,y,angle(라디안),layer}, ... ] } 로 통일
   function normalizeAnchors(raw, anims) {
     if (!raw) return null;
@@ -201,16 +205,21 @@
         var anims = {};
         names.forEach(function (n, i) { anims[n] = lists[i]; });
         // 기술 동작 손 위치(anchors_motions_<옷>_<성별>.json): 그 안에 있는 그림 묶음(motion_dash … )만 기본 손 위치에 덮어씀
-        return Promise.all([loadJSON(def.anchors), loadJSON(def.motionAnchors)]).then(function (r) {
+        // 달리기·점프 손 위치(anchors_move_<옷>_<성별>.json)도 같은 방식. motions_move.json = 달리기 보폭·점프 높이·판정(def.moveWho 항목)
+        var mvData = CFGR && CFGR.move && CFGR.move.data;
+        return Promise.all([loadJSON(def.anchors), loadJSON(def.motionAnchors), loadJSON(def.moveAnchors),
+                            mvData && def.moveWho ? loadJSONOnce(mvData) : null]).then(function (r) {
           var anchors = normalizeAnchors(r[0], def.anims);
-          if (r[1]) {
-            var sk = normalizeAnchors(r[1], def.anims);
+          [r[1], r[2]].forEach(function (extra) {
+            if (!extra) return;
+            var sk = normalizeAnchors(extra, def.anims);
             anchors = anchors || {};
             Object.keys(sk).forEach(function (n) {
               if (sk[n].some(function (a) { return !!a; })) anchors[n] = sk[n];
             });
-          }
-          return { def: def, anims: anims, anchors: anchors };
+          });
+          var move = r[3] && r[3].characters ? r[3].characters[def.moveWho] || null : null;
+          return { def: def, anims: anims, anchors: anchors, move: move };
         });
       });
   }

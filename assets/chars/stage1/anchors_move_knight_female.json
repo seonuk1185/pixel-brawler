@@ -1,0 +1,251 @@
+{
+ "frameSize": [
+  176,
+  136
+ ],
+ "weapon": "sword",
+ "frames": {
+  "run_01": {
+   "hand": [
+    49,
+    80
+   ],
+   "angle": 155,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "run_02": {
+   "hand": [
+    52,
+    82
+   ],
+   "angle": 155,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "run_03": {
+   "hand": [
+    48,
+    78
+   ],
+   "angle": 155,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "run_04": {
+   "hand": [
+    48,
+    75
+   ],
+   "angle": 155,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "run_05": {
+   "hand": [
+    49,
+    80
+   ],
+   "angle": 155,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "run_06": {
+   "hand": [
+    50,
+    83
+   ],
+   "angle": 155,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "run_07": {
+   "hand": [
+    48,
+    78
+   ],
+   "angle": 155,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "run_08": {
+   "hand": [
+    47,
+    75
+   ],
+   "angle": 155,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "jump_01": {
+   "hand": [
+    93,
+    81
+   ],
+   "angle": -30,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "jump_02": {
+   "hand": [
+    99,
+    27
+   ],
+   "angle": -60,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "jump_03": {
+   "hand": [
+    89,
+    74
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "jump_04": {
+   "hand": [
+    97,
+    51
+   ],
+   "angle": -30,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "jump_05": {
+   "hand": [
+    95,
+    84
+   ],
+   "angle": -30,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "run_attack_01": {
+   "hand": [
+    95,
+    78
+   ],
+   "angle": -30,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "run_attack_02": {
+   "hand": [
+    90,
+    91
+   ],
+   "angle": 10,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "run_attack_03": {
+   "hand": [
+    90,
+    95
+   ],
+   "angle": 10,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "run_attack_04": {
+   "hand": [
+    78,
+    73
+   ],
+   "angle": -60,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "run_attack_05": {
+   "hand": [
+    100,
+    68
+   ],
+   "angle": -38,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "jump_attack_01": {
+   "hand": [
+    63,
+    25
+   ],
+   "angle": -150,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "jump_attack_02": {
+   "hand": [
+    98,
+    87
+   ],
+   "angle": 40,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "jump_attack_03": {
+   "hand": [
+    100,
+    75
+   ],
+   "angle": 70,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "jump_attack_04": {
+   "hand": [
+    92,
+    54
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  }
+ }
+}

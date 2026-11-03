@@ -54,14 +54,14 @@
     </div>
   </div>
   <div class="combo" id="combo" hidden></div>
-  <div class="keyhint">이동 ←↑↓→ / WASD · 공격 J / Z (연타 3타)<span class="skkeys"> · 기술 U / C <span class="skchip" data-skill="A" hidden><span class="ic"></span><b class="sec"></b></span> · I / V <span class="skchip" data-skill="B" hidden><span class="ic"></span><b class="sec"></b></span></span></div>
+  <div class="keyhint">이동 ←↑↓→ / WASD · 달리기 ←← / →→ · 점프 K / X / Space · 공격 J / Z (연타 3타)<span class="skkeys"> · 기술 U / C <span class="skchip" data-skill="A" hidden><span class="ic"></span><b class="sec"></b></span> · I / V <span class="skchip" data-skill="B" hidden><span class="ic"></span><b class="sec"></b></span></span></div>
 
   <!-- 폰 조작 -->
   <div class="joyzone" id="joyZone">
     <div class="joy" id="joy"><i id="joyKnob"></i></div>
   </div>
   <div class="btns">
-    <button type="button" class="btn jump" id="btnJump" disabled aria-label="점프(준비 중)">점프</button>
+    <button type="button" class="btn jump" id="btnJump" aria-label="점프">점프</button>
     <button type="button" class="btn atk" id="btnAtk" aria-label="공격">공격</button>
     <!-- 기술 A/B (기사·법사만 보임, 견습은 숨김). 쿨타임 중엔 어둡고 남은 초 표시 (skills.js 의 ui) -->
     <button type="button" class="btn sk skA" id="btnSkA" data-skill="A" hidden aria-label="기술 A"><i class="sweep"></i><span class="ic"></span><b class="sec"></b></button>

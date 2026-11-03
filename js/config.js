@@ -428,6 +428,14 @@
       combo: swordCombo,
       combos: outfit === 'mage' ? { magic: M.combo } : { sword: swordCombo }
     };
+    // 달리기·점프 (2026-11-03, art\stage1\motions_move → 같은 옷 폴더). run 8 · jump 5 · run_attack 5 · jump_attack 4 장.
+    //   장마다 시간·보폭·판정은 motions_move.json(CFG.move.data)의 moveWho 항목, 손 위치 = anchors_move_<옷_성별>.json
+    def.anims.run = { frames: seq(p + 'run_', 8), fps: 12, loop: true };
+    def.anims.jump = { frames: seq(p + 'jump_', 5), fps: 12, loop: false };
+    def.anims.run_attack = { frames: seq(p + 'run_attack_', 5), fps: 12, loop: false };
+    def.anims.jump_attack = { frames: seq(p + 'jump_attack_', 4), fps: 12, loop: false };
+    def.moveAnchors = 'assets/chars/stage1/anchors_move_' + (outfit ? outfit + '_' : '') + who + '.json';
+    def.moveWho = (outfit || 'novice') + '_' + who;
     if (!outfit) {   // 견습 옷만 맨손 콤보 그림이 있다
       def.anims.fist1 = { frames: seq(p + 'fist1_', 4),  fps: 14, loop: false };
       def.anims.fist2 = { frames: seq(p + 'fist2_', 5),  fps: 14, loop: false };
@@ -541,6 +549,40 @@
       hitbox: { x0: 8, x1: 92, yTop: -100, yBot: -18, depth: 14 } // 발 기준, 오른쪽 볼 때
     },
 
+    // ---------- 달리기 · 점프 · 달리며 공격 · 공중 공격 (2026-11-03, art\stage1 README 「달리기·점프」) ----------
+    // 그림별 시간·보폭·점프 높이·판정 상자(reach)는 data(motions_move.json, 원래 그림 크기 기준 → 쓸 때 actorScale 곱함).
+    // 여기 값은 손맛 조절용. 속도는 「걷기 속도(player.speedX, 이미 줄인 값) x 배율」이라 actorScale 이 바뀌어도 비율이 그대로.
+    move: {
+      data: 'assets/chars/stage1/motions_move.json',
+      doubleTapMs: 250,     // 키보드: 같은 쪽(←/→)을 이 시간 안에 두 번 누르면 달리기(누르고 있는 동안)
+      runMul: 2.3,          // 달리기 속도 = 걷기 x 2.3 (견습 남 약 177 도트/초). 그림은 「달린 거리」로 넘김 → 발이 안 미끄러짐
+      runDepthMul: 0.55,    // 달리면서 위아래(안쪽) = 걷기 위아래 x 0.55 (느리게)
+      joyRunAt: 0.9,        // 폰: 조이스틱을 가로로 끝(0~1 중 0.9)까지 밀면 달리기, 0.55 아래로 돌아오면 걷기
+      joyFlickMs: 280,      // 폰: 손을 뗐다가 이 시간 안에 같은 쪽으로 다시 밀면 달리기(살짝만 밀어도)
+      jump: {
+        bufferMs: 150,      // 미리 눌러 둔 점프 기억 시간
+        heightMul: 1.0,     // 점프 높이 = data 추천 높이(남 70 / 여 78) x actorScale x 이 값
+        airMul: 1.0,        // 공중 시간 = data 추천(남 560 / 여 520 ms) x 이 값
+        steer: 5,           // 공중에서 좌우로 방향 바꾸는 힘(클수록 빨리 바뀜). 안 누르면 뛴 속도 그대로 날아감(달려서 뛰면 멀리)
+        depthMul: 0.5,      // 공중에서 위아래(안쪽) 이동 = 걷기 위아래 x
+        overBodyZ: 10       // 이 높이(도트) 넘게 뜨면 적 몸에 안 막힘(위로 넘어감)
+      },
+      // 달리며 공격: 남 = 어깨 돌진, 여 = 슬라이딩. entry → 밀고 가는 반복(1·2장, minLoopMs~maxLoopMs) → finish → recover
+      //   밀고 가는 동안 tickMs 마다 앞에 닿은 적을 작게 때리고(tick) 주인공과 함께 앞으로 민다. 닿았던 적이 떨어지면 일찍 마무리.
+      //   마무리(finish): 어깨 돌진 = 멀리 날려 보냄(넘어뜨리지 않음), 슬라이딩 = 띄워 넘어뜨림. 보스는 안 넘어지고 조금만 밀림
+      runAttack: {
+        minLoopMs: 300, maxLoopMs: 450, tickMs: 90,
+        speedMul: 1.0,      // 밀고 가는 속도 = data pushLoopSpeed(남 300 / 여 330) x actorScale x 이 값
+        depth: 10,          // 위아래 판정 폭(도트, 원래 크기 기준 아님 = 이미 작은 값)
+        bossPush: 0.25,     // 보스는 이만큼만 같이 밀림
+        tick:   { dmg: 0.3, hitstop: 0.25, knock: 0.15, shake: 0.35, spark: 0.55, hitY: -50, noJuggle: true, numStyle: 'push', mergeNum: true, flashK: 0.35 },
+        charge: { dmg: 1.3, hitstop: 1.6, knock: 6.0, shake: 1.9, spark: 1.1, hitY: -56, noKnockdown: true, crit: true, big: true },
+        slide:  { dmg: 1.2, hitstop: 1.5, knock: 1.6, shake: 1.7, spark: 1.0, hitY: -30, knockdown: true, crit: true, big: true }
+      },
+      // 공중 공격: 1·2장이 판정. reachDown = 판정 상자를 아래로 더 늘림(원래 크기 도트, 내려치기가 땅 위 적에게 닿게)
+      jumpAttack: { dmg: 1.2, hitstop: 1.1, knock: 1.3, shake: 1.2, spark: 0.9, knockdown: true, reachDown: 34, depth: 10 }
+    },
+
     // ---------- 직업 (위쪽 버튼) ----------
     // weapon = 쓰는 무기(무기별 손맛 + 손에 붙일 그림, 'fist' 는 그림 없음), moves = 콤보 묶음(combos 의 이름),
     // outfit = 입는 옷 그림(characters 의 「옷_성별」 묶음, 없으면 견습 옷)
@@ -624,8 +666,15 @@
                       pop: { top: '#fff4d0', bottom: '#ffb040' } },
       skill_bolt:   { font: 'giant', scale: 1, bold: true, top: '#fff6a0', bottom: '#5ae6ff', outline: '#14244a', shadow: 'rgba(6,12,30,0.45)',
                       pop: { top: '#ffffff', bottom: '#fff6a0' } },
+      // 달리며 공격의 밀고 가는 작은 타(2026-11-03): 보통 숫자보다 작고(large 8도트) 하늘색 → 마무리 숫자와 구분
+      push: { font: 'large', scale: 1, top: '#e8fbff', bottom: '#8fd6ff', outline: '#163048', shadow: 'rgba(8,14,30,0.35)',
+              pop: { top: '#ffffff', bottom: '#d8f4ff' } },
       hurtBottom: '#b82c26',
       popK: 0.12,
+      // 여러 번 한꺼번에 맞을 때 숫자 쌓기 (2026-11-03, 메이플처럼 위로 줄 세움, fx.js 의 FX.damage)
+      //   같은 대상에 windowMs 안에 또 맞으면 그 위 줄에 쌓는다(최대 cap 줄 — 넘치면 가장 오래된 줄이 빨리 사라짐).
+      //   줄 사이 gap 도트, 줄마다 jitter 만큼 좌우로 살짝 어긋남. 다른 대상의 숫자와 겹치면 위(또는 옆)로 비켜 섬
+      stack: { windowMs: 480, cap: 5, gap: 0.5, jitter: [0, 3, -3, 2, -2, 1] },
       lift: 14              // 숫자가 처음 뜨는 높이(머리 위에서 몇 도트 더, actorScale 곱함)
     },
 
@@ -801,7 +850,7 @@
       left: ['ArrowLeft', 'KeyA'], right: ['ArrowRight', 'KeyD'],
       up: ['ArrowUp', 'KeyW'], down: ['ArrowDown', 'KeyS'],
       attack: ['KeyJ', 'KeyZ'],
-      jump: ['KeyK', 'KeyX', 'Space'], // 아직 안 씀(자리만)
+      jump: ['KeyK', 'KeyX', 'Space'], // 점프 (2026-11-03). 달리기 = 좌/우를 빠르게 두 번(CFG.move.doubleTapMs)
       // 기술 (2026-11-03): WASD 이동·J 공격·K 점프와 안 겹치게 J/K 바로 위 U/I, 왼손은 Z(공격)·X(점프) 옆 C/V
       skillA: ['KeyU', 'KeyC'],
       skillB: ['KeyI', 'KeyV']

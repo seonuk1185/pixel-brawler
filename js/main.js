@@ -80,7 +80,7 @@
     var ky = c.height / LH;
     var laneT = c.top + world.laneTop * ky - 100 * AS * ky, laneB = c.top + world.laneBottom * ky;   // 키 큰 몸(100도트)까지
     var pad = 0;
-    ['btnAtk', 'btnSkA', 'btnSkB'].forEach(function (id) {
+    ['btnAtk', 'btnJump', 'btnSkA', 'btnSkB'].forEach(function (id) {
       var btn = document.getElementById(id);
       if (!btn || !btn.offsetParent || btn.hidden) return;
       var b = btn.getBoundingClientRect();
@@ -216,8 +216,9 @@
       hx = target.x - dir * 6 * AS; topY = target.y - 96 * AS;
     } else {
       // 무거운 타(타 knock × 무기 knockMul 이 크면) = 잡몹 넘어짐 (config ai.react.heavyKnock)
-      var heavy = !!st.knockdown || st.knock * W.knockMul >= CFG.ai.react.heavyKnock;
-      var res = target.takeHit(dmg, dir, knock, !!st.finisher, { heavy: heavy, stunMs: st.stunMs });   // stunMs = 번개 기술
+      //   noKnockdown = 세게 밀어도 안 넘어짐(달리며 공격 어깨 돌진 마무리 = 멀리 날려 보내기), noJuggle = 연속 맞음으로 안 넘어짐(밀고 가는 작은 타)
+      var heavy = !st.noKnockdown && (!!st.knockdown || st.knock * W.knockMul >= CFG.ai.react.heavyKnock);
+      var res = target.takeHit(dmg, dir, knock, !!st.finisher && !st.noKnockdown, { heavy: heavy, stunMs: st.stunMs, noJuggle: !!st.noJuggle, flashK: st.flashK });   // stunMs = 번개 기술
       var hb = target.hurtbox();
       // 불똥은 맞은 몸의 가장자리(플레이어 쪽)에서. 마법은 맞은 곳에서 가장 가까운 몸 위치
       if (src) hx = clamp(src.x, hb.x0 + 4, hb.x1 - 4);
@@ -227,14 +228,16 @@
       else if (res === 'dead') G.hitstop = Math.max(G.hitstop, J.hitstopMs * 1.6);
     }
     // hitY = 주먹·발이 닿는 높이(맨손 콤보), spark = 불똥 그림 크기(맨손은 작게)
-    var hy = p.y + (st.hitY != null ? st.hitY : -52 * AS), sc = st.spark || 1;
+    var hy = p.y - (p.z || 0) + (st.hitY != null ? st.hitY : -52 * AS), sc = st.spark || 1;   // 공중이면 그만큼 위
     if (src) { var tb = target.hurtbox(); hy = clamp(src.y, tb.y0 + 6, tb.y1 - 6); }
+    else if (st.atTarget) { var tb2 = target.hurtbox(); hy = clamp(hy, tb2.y0 + 6, tb2.y1 - 6); }   // 공중 공격: 맞은 몸 안쪽
     // impactFx = 불똥 대신 쓸 그림(법사 = magic_spark)
     var impSpr = G.assets.fx && ((st.impactFx && G.assets.fx[st.impactFx]) || G.assets.fx.impact);
     // big = 기술의 큰 불똥(마무리 타처럼 많이·멀리). damageStyle = 기술 숫자 모양(config damageText)
     var big = !!(st.finisher || st.big);
     FX.impact(hx, hy, dir, W.sparkColor, Math.round(J.sparkCount * (big ? 1.6 : 1) * (sc < 1 ? 0.7 : 1) * (st.damageStyle ? 1.3 : 1)), big, impSpr, sc);
-    FX.damage(target.x, topY, dmg, !!(st.finisher || (st.damageStyle && st.knockdown)), J, null, st.damageStyle);
+    // 숫자: crit = 마무리 모양(「22!」), numStyle = 숫자 모양만 따로(달리며 공격 작은 타 = push). 마지막 = 대상(같은 대상 숫자는 위로 쌓임)
+    FX.damage(target.x, topY, dmg, !!(st.finisher || st.crit || (st.damageStyle && st.knockdown)), J, null, st.numStyle || st.damageStyle, target.id || 'dummy', !!st.mergeNum);
     vibrate(Math.round(J.vibrateMs * (st.finisher ? 2 : 1)));
     G.hits++; G.totalDmg += dmg;
     G.comboHits = G.comboT > 0 ? G.comboHits + 1 : 1;
@@ -289,7 +292,7 @@
     G.hitstop = Math.max(G.hitstop, J.hitstopMs * (e.T.boss ? 1.3 : 0.8));
     FX.shake(J.shakePx * (spec.shake || 1.2), J.shakeMs * 1.3);
     FX.impact(p.x - dir * 4, p.y - 60 * AS, -dir, '#ff6a5a', Math.round(J.sparkCount * 0.8), e.T.boss, null, 0.8);
-    FX.damage(p.x, p.y - 112 * AS, dmg, false, J, '#ff5a4a');
+    FX.damage(p.x, p.y - (p.z || 0) - 112 * AS, dmg, false, J, '#ff5a4a', null, 'player');
     vibrate(Math.round(J.vibrateMs * 2.5));
     G.comboT = 0; comboEl.hidden = true;
   }
@@ -392,11 +395,14 @@
   function separate() {
     var p = G.player, AI = CFG.ai, list = [];
     // 돌진베기 중에는 적 몸을 뚫고 지나감(플레이어를 밀어내기에서 뺌)
-    if (p.state !== 'dead' && !(p.state === 'skill' && Skills.passThrough(p))) list.push({ o: p, r: CFG.hero.radius, m: 1 });
+    //   점프로 overBodyZ 넘게 뜨면 적 몸 위로 넘어감(밀어내기에서 뺌). 달리며 공격으로 밀고 가는 중이면 잡몹을 앞으로 밀어냄(주인공은 안 밀림)
+    var overZ = (CFG.move && CFG.move.jump.overBodyZ) || 10;
+    var pushing = p.state === 'runatk' && p.ratk && p.ratk.phase !== 'recover';
+    if (p.state !== 'dead' && !(p.state === 'skill' && Skills.passThrough(p)) && !((p.z || 0) > overZ)) list.push({ o: p, r: CFG.hero.radius, m: 1, hero: true });
     G.enemies.forEach(function (e) {
       if (!e.alive() || e.state === 'down') return;   // 넘어진 적은 밟고 지나갈 수 있음
       var charging = e.state === 'attack' && e.atk && e.atk.spec.type === 'charge';
-      list.push({ o: e, r: e.T.radius, m: charging ? 0 : (e.T.boss ? 0.08 : 1) });
+      list.push({ o: e, r: e.T.radius, m: charging ? 0 : (e.T.boss ? 0.08 : 1), boss: !!e.T.boss });
     });
     for (var i = 0; i < list.length; i++) for (var j = i + 1; j < list.length; j++) {
       var a = list[i], b = list[j];
@@ -404,10 +410,12 @@
       var dx = b.o.x - a.o.x, min = a.r + b.r;
       if (Math.abs(dx) >= min) continue;
       var s = dx > 0 ? 1 : dx < 0 ? -1 : (a.o.dir || 1);
-      var ov = min - Math.abs(dx), tm = a.m + b.m;
+      var am = a.m, bm = b.m;
+      if (pushing && a.hero && !b.boss) am = 0;
+      var ov = min - Math.abs(dx), tm = am + bm;
       if (tm <= 0) continue;
-      a.o.x -= s * ov * a.m / tm;
-      b.o.x += s * ov * b.m / tm;
+      a.o.x -= s * ov * am / tm;
+      b.o.x += s * ov * bm / tm;
     }
   }
 
@@ -459,6 +467,23 @@
     }
   }
 
+  // ---------- 달리기·점프 효과 (2026-11-03) ----------
+  function dustAt(x, y, dir, scale) {
+    if (G.assets.dust && G.assets.dust.length) FX.sprite(x, y, G.assets.dust, CFG.dust.fps * 1.3, CFG.dust.pivot, dir > 0, true, scale);
+  }
+  // kind = 'jump'(공중 공격: 아래로 휘두르는 바람) / 'slide' · 'shoulder_charge'(달리며 공격 마무리: 발밑 먼지)
+  function moveSwingFx(p, kind) {
+    var fxs = G.assets.fx && G.assets.fx.slash && G.assets.fx.slash.length ? G.assets.fx.slash : null;
+    if (kind === 'jump') {
+      var W = CFG.weapons[p.weaponKey], a = { from: -60, to: 80, r: 40 * AS, w: 7 * AS };
+      if (fxs) FX.slash(p.x + p.dir * 30 * AS, p.y - p.z - 46 * AS, p.dir, a, W.arcColor, J.slashMs * 1.2, fxs,
+                        { rot: 35, sx: 0.85, sy: 0.85, alpha: p.weaponKey === 'fist' ? 0.45 : null });
+      return;
+    }
+    dustAt(p.x + p.dir * 20 * AS, p.y, -p.dir, 0.55);
+  }
+  function landFx(p) { dustAt(p.x, p.y, p.dir, 0.4); }
+
   // ---------- 갱신 ----------
   function step(realMs) {
     FX.updateShake(realMs);
@@ -481,14 +506,37 @@
     }
     if (ev.cast) castMagic(ev.cast.step);
     if (ev.hitCheck) {
-      var hb = p.hitbox(), done = ev.hitCheck.done;
+      var hc = ev.hitCheck, hb = p.hitbox(), done = hc.done, anyHit = false, RA = p.ratk;
       var targets = MODE === 'stage' ? G.enemies : [G.dummy];
       targets.forEach(function (t) {
         var id = t.id || 'dummy';
         if (done[id] || (t.canBeHit && !t.canBeHit())) return;   // 죽었거나 넘어져 있으면(무적) 안 맞음
-        if (overlap(hb, t.hurtbox())) { done[id] = true; onHit(ev.hitCheck.step, t); }   // 판정 구간마다 대상별 한 번
+        // 달리며 공격 마무리: 밀고 온 적은 상자 밖으로 조금 벗어나 있어도 맞음
+        var carried = hc.finish && RA && RA.ids[id] && Math.abs(t.x - p.x) < 100 * AS && Math.abs(t.y - p.y) < 16 * AS;
+        if (overlap(hb, t.hurtbox()) || carried) {   // 판정 구간마다 대상별 한 번
+          done[id] = true; anyHit = true;
+          if (hc.push && RA) RA.ids[id] = true;
+          onHit(hc.step, t);
+        }
+      });
+      // 밀고 가는 타: 이번에 닿았는지(닿았던 적이 떨어지면 일찍 마무리)
+      if (hc.push && RA) { RA.contact = anyHit; if (anyHit) RA.had = true; }
+    }
+    // 달리며 공격으로 밀고 가는 중: 맞은 적을 주인공과 같이 앞으로(보스는 조금만)
+    if (ev.push && p.ratk && MODE === 'stage') {
+      var RC = CFG.move.runAttack;
+      G.enemies.forEach(function (e) {
+        if (!p.ratk.ids[e.id] || !e.alive() || e.state === 'down' || Math.abs(e.y - p.y) > 16 * AS) return;
+        var ahead = (e.x - p.x) * p.dir;
+        if (ahead < -4 * AS) return;
+        if (e.T.boss) { e.x += ev.push.dx * (RC.bossPush || 0.25); return; }
+        e.x += ev.push.dx;
+        var gap = (CFG.hero.radius + e.T.radius) * 0.75;
+        if ((e.x - p.x) * p.dir < gap) e.x = p.x + p.dir * gap;   // 늘 주인공 앞에 붙어서 밀려감
       });
     }
+    if (ev.moveSwing) moveSwingFx(p, ev.moveSwing.kind);
+    if (ev.land) landFx(p);
     // 날아가는 마법탄: 처음 맞은 대상(또는 끝까지 날아간 곳)에서 터짐
     Projectiles.update(dt, MODE === 'stage' ? G.enemies : [G.dummy], function (pr, t) { explode(pr.x, pr.y, pr.z, pr.st, pr.dir, pr.wk, t); });
     if (MODE === 'stage') {
@@ -555,8 +603,12 @@
     var p = G.player;
     if (G.dummy) rectStroke(G.dummy.hurtbox(), camX, '#3cf');
     if (MODE === 'stage') rectStroke(p.hurtbox(), camX, '#3f9');
-    var active = p.activeWindow() >= 0;
+    var active = p.activeWindow() >= 0 || p.moveActive();   // 달리며 공격·공중 공격 판정도(빨강)
     if (p.state !== 'skill') rectStroke(p.hitbox(), camX, active ? '#f33' : 'rgba(255,80,80,0.35)');
+    if (p.z > 0.5) {   // 점프: 땅(그림자)에서 발까지 노란 줄
+      ctx.fillStyle = 'rgba(255,230,60,0.8)';
+      ctx.fillRect(Math.round(p.x - camX), Math.round(p.y - p.z), 1, Math.round(p.z));
+    }
     Skills.drawDebug(ctx, camX, p);               // 기술 판정 상자·번개 자리·화염구
     ctx.fillStyle = 'rgba(255,255,0,0.25)';
     ctx.fillRect(0, world.laneTop, LW, 1); ctx.fillRect(0, world.laneBottom, LW, 1);
@@ -778,7 +830,8 @@
       return { mode: MODE, LW: LW, LH: LH, scale: SCALE, rs: RS, hd: Assets.isHD(),
  controlPad: controlPad, char: G.player.char && G.player.char.def.anims.idle.frames[0], camX: Math.round(G.camX), wave: S ? S.next : null, locked: S ? S.locked : null,
         waveIdx: S ? S.waveIdx : null, time: S ? Math.round(S.time) : null, result: S ? S.result : null,
-        player: { hp: p.hp, state: p.state, x: Math.round(p.x), y: Math.round(p.y), skill: p.sk ? p.sk.d.key + '@' + Math.round(p.sk.t) : null, cd: p.skillCd },
+        player: { hp: p.hp, state: p.state, x: Math.round(p.x), y: Math.round(p.y), z: Math.round(p.z * 10) / 10,
+          frame: p.char ? p.currentFrame() : null, ratk: p.ratk ? p.ratk.phase : null, skill: p.sk ? p.sk.d.key + '@' + Math.round(p.sk.t) : null, cd: p.skillCd },
         enemies: G.enemies.map(function (e) { return e.type + ':' + e.state + ':' + e.hp + '@' + Math.round(e.x) + ',' + Math.round(e.y); }),
         hits: G.hits, maxCombo: G.maxCombo };
     }

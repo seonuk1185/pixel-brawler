@@ -1,25 +1,48 @@
-// 조작: PC 키보드 + 폰 가상 조이스틱 / 공격 버튼
+// 조작: PC 키보드 + 폰 가상 조이스틱 / 공격·점프·기술 버튼
+// 달리기(2026-11-03): 키보드 = 같은 쪽(←/→)을 빠르게 두 번 → 누르고 있는 동안 달림.
+//   폰 = 조이스틱을 가로로 끝까지(CFG.move.joyRunAt) 밀거나, 손을 뗐다가 바로(joyFlickMs) 같은 쪽으로 다시 밀면 달림
 (function () {
   var keysDown = {};
   var attackQueued = 0;   // 누른 순간 기록(시각)
+  var jumpQueued = 0;     // 점프 누른 순간
   var skillQueued = { A: 0, B: 0 };   // 기술 A/B 누른 순간
   var joy = { x: 0, y: 0, active: false, id: null };
+  var CF = null;
+  // 달리기: runKey = 키보드로 정한 달리는 쪽(-1/1, 0 = 아님), tap = 마지막으로 누른 좌/우와 시각
+  var runKey = 0, tap = { dir: 0, t: 0 };
+  // 폰: joyRun = 조이스틱으로 정한 달리는 쪽, joyRel = 마지막으로 뗀 시각·쪽(빠르게 다시 밀기 = 달리기)
+  var joyRun = 0, joyRel = { t: -1e9, dir: 0 }, joyFlick = false;
 
   function matches(code, list) { return list.indexOf(code) >= 0; }
+  function anyHeld(list) { for (var i = 0; i < list.length; i++) if (keysDown[list[i]]) return true; return false; }
+  function MV() { return (CF && CF.move) || {}; }
 
   function init(cfg) {
+    CF = cfg;
     var K = cfg.keys;
     window.addEventListener('keydown', function (e) {
-      var skA = K.skillA || [], skB = K.skillB || [];
-      if (e.repeat) { if (matches(e.code, K.attack) || matches(e.code, skA) || matches(e.code, skB)) e.preventDefault(); return; }
+      var skA = K.skillA || [], skB = K.skillB || [], jp = K.jump || [];
+      if (e.repeat) { if (matches(e.code, K.attack) || matches(e.code, skA) || matches(e.code, skB) || matches(e.code, jp)) e.preventDefault(); return; }
+      // 달리기: 같은 쪽을 doubleTapMs 안에 다시 누름(그 쪽 키를 모두 뗐다가). 반대쪽을 누르면 달리기 끝
+      var d = matches(e.code, K.left) ? -1 : matches(e.code, K.right) ? 1 : 0;
+      if (d) {
+        var now = performance.now(), held = anyHeld(d < 0 ? K.left : K.right);
+        if (!held && tap.dir === d && now - tap.t <= (MV().doubleTapMs || 250)) runKey = d;
+        else if (runKey && runKey !== d) runKey = 0;
+        if (!held) tap = { dir: d, t: now };
+      }
       keysDown[e.code] = true;
       if (matches(e.code, K.attack)) attackQueued = performance.now();
+      if (matches(e.code, jp)) jumpQueued = performance.now();
       if (matches(e.code, skA)) skillQueued.A = performance.now();
       if (matches(e.code, skB)) skillQueued.B = performance.now();
-      if ([].concat(K.left, K.right, K.up, K.down, K.attack, K.jump, skA, skB).indexOf(e.code) >= 0) e.preventDefault();
+      if ([].concat(K.left, K.right, K.up, K.down, K.attack, jp, skA, skB).indexOf(e.code) >= 0) e.preventDefault();
     });
-    window.addEventListener('keyup', function (e) { keysDown[e.code] = false; });
-    window.addEventListener('blur', function () { keysDown = {}; });
+    window.addEventListener('keyup', function (e) {
+      keysDown[e.code] = false;
+      if (runKey && !anyHeld(runKey < 0 ? K.left : K.right)) runKey = 0;
+    });
+    window.addEventListener('blur', function () { keysDown = {}; runKey = 0; });
 
     // ----- 조이스틱 (왼쪽 아래 영역 아무 데나 누르면 그 자리에 생김) -----
     var zone = document.getElementById('joyZone');
@@ -35,6 +58,19 @@
       if (d > R) { dx *= R / d; dy *= R / d; }
       knob.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
       joy.x = dx / R; joy.y = dy / R;
+      joyRunCheck();
+    }
+    // 달리기 판정(조이스틱): 가로로 끝까지 밀면 → 달림, 0.55 아래로 돌아오거나 반대로 밀면 → 걷기
+    //   빠르게 다시 밀기(joyFlick)로 시작한 달리기는 살짝(0.35)만 밀고 있어도 유지
+    function joyRunCheck() {
+      var M = MV(), ax = Math.abs(joy.x), s = joy.x > 0 ? 1 : -1, horiz = ax > Math.abs(joy.y) * 0.9;
+      if (joyRun) {
+        if (s !== joyRun || ax < (joyFlick ? 0.35 : 0.55)) { joyRun = 0; joyFlick = false; }
+      }
+      if (!joyRun && horiz) {
+        if (ax >= (M.joyRunAt || 0.9)) { joyRun = s; joyFlick = false; }
+        else if (ax > 0.4 && joyRel.dir === s && performance.now() - joyRel.t <= (M.joyFlickMs || 280)) { joyRun = s; joyFlick = true; }
+      }
     }
     zone.addEventListener('pointerdown', function (e) {
       if (joy.id !== null) return;
@@ -53,7 +89,9 @@
     });
     function end(e) {
       if (e.pointerId !== joy.id) return;
-      joy.id = null; joy.active = false; joy.x = joy.y = 0;
+      // 가로로 꽤 민 채로 뗐으면 기억(바로 같은 쪽으로 다시 밀면 달리기)
+      joyRel = Math.abs(joy.x) > 0.4 ? { t: performance.now(), dir: joy.x > 0 ? 1 : -1 } : { t: -1e9, dir: 0 };
+      joy.id = null; joy.active = false; joy.x = joy.y = 0; joyRun = 0; joyFlick = false;
       knob.style.transform = '';
       base.classList.remove('on');
       base.style.left = ''; base.style.top = '';
@@ -61,41 +99,29 @@
     zone.addEventListener('pointerup', end);
     zone.addEventListener('pointercancel', end);
 
-    // ----- 공격 버튼 -----
-    var atk = document.getElementById('btnAtk');
-    atk.addEventListener('pointerdown', function (e) {
-      attackQueued = performance.now();
-      atk.classList.add('down');
-      e.preventDefault();
-    });
-    ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (t) {
-      atk.addEventListener(t, function () { atk.classList.remove('down'); });
-    });
-
-    // ----- 기술 버튼 2개 (공격 버튼 위) -----
-    [['A', 'btnSkA'], ['B', 'btnSkB']].forEach(function (s) {
-      var b = document.getElementById(s[1]);
+    // ----- 공격·점프 버튼 + 기술 버튼 2개 -----
+    function btn(id, onDown) {
+      var b = document.getElementById(id);
       if (!b) return;
-      b.addEventListener('pointerdown', function (e) {
-        skillQueued[s[0]] = performance.now();
-        b.classList.add('down');
-        e.preventDefault();
-      });
+      b.addEventListener('pointerdown', function (e) { onDown(); b.classList.add('down'); e.preventDefault(); });
       ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (t) {
         b.addEventListener(t, function () { b.classList.remove('down'); });
       });
-    });
+    }
+    btn('btnAtk', function () { attackQueued = performance.now(); });
+    btn('btnJump', function () { jumpQueued = performance.now(); });
+    btn('btnSkA', function () { skillQueued.A = performance.now(); });
+    btn('btnSkB', function () { skillQueued.B = performance.now(); });
   }
 
-  var override = null;   // 시험용 자동 조종(?bot=1)이 넣는 방향
+  var override = null;   // 시험용 자동 조종(?bot=1)이 넣는 방향 { x, y, run }
   function axis(cfg) {
     if (override) return { x: override.x, y: override.y };
     var K = cfg.keys, x = 0, y = 0;
-    function any(list) { for (var i = 0; i < list.length; i++) if (keysDown[list[i]]) return true; return false; }
-    if (any(K.left)) x -= 1;
-    if (any(K.right)) x += 1;
-    if (any(K.up)) y -= 1;
-    if (any(K.down)) y += 1;
+    if (anyHeld(K.left)) x -= 1;
+    if (anyHeld(K.right)) x += 1;
+    if (anyHeld(K.up)) y -= 1;
+    if (anyHeld(K.down)) y += 1;
     if (joy.active) {
       var dz = 0.25;
       x = Math.abs(joy.x) > dz ? joy.x : 0;
@@ -105,26 +131,35 @@
     if (len > 1) { x /= len; y /= len; }
     return { x: x, y: y };
   }
+  // 지금 달리는 쪽(-1/1), 아니면 0. 그 쪽을 누르고(밀고) 있을 때만
+  function runDir(cfg) {
+    if (override) return override.run || 0;
+    if (joy.active) return joyRun;
+    var K = cfg.keys;
+    if (runKey && anyHeld(runKey < 0 ? K.left : K.right) && !anyHeld(runKey < 0 ? K.right : K.left)) return runKey;
+    return 0;
+  }
+  function fresh(t, bufferMs) { return !!t && performance.now() - t <= bufferMs; }
 
   window.Input = {
     init: init,
     axis: axis,
+    runDir: runDir,
     // 버퍼 안에 눌린 공격이 있으면 꺼내 씀
-    takeAttack: function (bufferMs) {
-      if (attackQueued && performance.now() - attackQueued <= bufferMs) { attackQueued = 0; return true; }
-      return false;
-    },
-    peekAttack: function (bufferMs) { return attackQueued && performance.now() - attackQueued <= bufferMs; },
+    takeAttack: function (bufferMs) { if (fresh(attackQueued, bufferMs)) { attackQueued = 0; return true; } return false; },
+    peekAttack: function (bufferMs) { return fresh(attackQueued, bufferMs); },
     pressAttack: function () { attackQueued = performance.now(); }, // 시험용
+    takeJump: function (bufferMs) { if (fresh(jumpQueued, bufferMs)) { jumpQueued = 0; return true; } return false; },
+    pressJump: function () { jumpQueued = performance.now(); },     // 시험용
     // 기술: slot = 'A' / 'B'. 버퍼 안에 눌린 기술이 있으면 꺼내 씀
     takeSkill: function (slot, bufferMs) {
-      var t = skillQueued[slot];
-      if (t && performance.now() - t <= bufferMs) { skillQueued[slot] = 0; return true; }
+      if (fresh(skillQueued[slot], bufferMs)) { skillQueued[slot] = 0; return true; }
       return false;
     },
-    peekSkill: function (slot, bufferMs) { var t = skillQueued[slot]; return !!t && performance.now() - t <= bufferMs; },
+    peekSkill: function (slot, bufferMs) { return fresh(skillQueued[slot], bufferMs); },
     clearSkill: function (slot) { skillQueued[slot] = 0; },
     pressSkill: function (slot) { skillQueued[slot] = performance.now(); },   // 시험용
-    setOverride: function (ax) { override = ax; }                    // 시험용(자동 조종). null 이면 원래대로
+    setOverride: function (ax) { override = ax; },                   // 시험용(자동 조종). null 이면 원래대로
+    state: function () { return { runKey: runKey, joyRun: joyRun, joyFlick: joyFlick, joy: { x: joy.x, y: joy.y, active: joy.active } }; }   // 시험용
   };
 })();

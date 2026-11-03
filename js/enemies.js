@@ -87,7 +87,7 @@
     return { x0: Math.min(xa, xb), x1: Math.max(xa, xb), y0: this.y + r.yTop, y1: this.y + r.yBot, z: this.y, depth: depth };
   };
 
-  // 플레이어에게 맞음. dir = 밀려나는 방향. opts = { heavy: 무거운 타, force: 넘어져 있어도 맞음(보스 쓰러질 때 졸개 정리),
+  // 플레이어에게 맞음. dir = 밀려나는 방향. opts = { heavy: 무거운 타, force: 넘어져 있어도 맞음(보스 쓰러질 때 졸개 정리), noJuggle: 연속 맞음으로 안 넘어짐,
   //   stunMs: 맞은 그림이 끝나도 이만큼 더 멈춰 있음(번개 기술) }
   // 돌려주는 값: 'dead' / 'down'(넘어짐) / 'stagger'(움찔·휘청) / 'armor'(번쩍이기만) / null(무적이라 안 맞음)
   Enemy.prototype.takeHit = function (dmg, dir, knockPx, finisher, opts) {
@@ -97,7 +97,7 @@
     var T = this.T, AI = this.cfg.ai, R = AI.react;
     var before = this.hp / this.maxHp;
     this.hp = Math.max(0, this.hp - dmg);
-    this.flashT = this.cfg.juice.flashMs;
+    this.flashT = this.cfg.juice.flashMs * (opts.flashK != null ? opts.flashK : 1);   // flashK = 하얀 번쩍 길이 배율(밀고 가는 작은 타는 짧게)
     var kv = dir * knockPx * AI.enemyKnockMul * (T.knockResist != null ? T.knockResist : 1) * 10;
     if (this.hp <= 0) {
       if (this.state === 'down') {     // 누워 있다가 죽음: 일어나지 않고 그 자리에 누운 채로
@@ -122,8 +122,9 @@
       // 잡몹: 콤보 마지막 타 / 무거운 타 / 짧은 시간에 여러 번 맞으면 넘어짐
       var now = this.clock;
       this.recentHits = this.recentHits.filter(function (t) { return now - t <= R.juggleWindowMs; });
-      this.recentHits.push(now);
-      if (this.hasAnim('knockdown') && (finisher || opts.heavy || this.recentHits.length >= R.juggleHits)) {
+      // noJuggle = 달리며 공격의 밀고 가는 작은 타: 여러 번 맞아도 넘어지지 않음(밀려가야 하므로)
+      if (!opts.noJuggle) this.recentHits.push(now);
+      if (this.hasAnim('knockdown') && (finisher || opts.heavy || (!opts.noJuggle && this.recentHits.length >= R.juggleHits))) {
         this.state = 'down'; this.downT = 0; this.animT = 0; this.atk = null; this.vx = 0;
         this.dir = -dir; this.recentHits = [];
         return 'down';

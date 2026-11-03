@@ -29,7 +29,172 @@
     // classKey/gender = 지금 직업·성별(main.js 가 매 장면 넣음)
     this.sk = null; this.skillCd = {};
     this.classKey = null; this.gender = 'male';
+    // 달리기·점프 (2026-11-03): z = 땅에서 뜬 높이(도트, 그림자는 땅에 남음), vz = 위로 가는 속도, gz = 중력
+    //   runDist = 달린 거리(그림을 거리로 넘김), jp = 점프 진행, ratk = 달리며 공격 진행
+    this.z = 0; this.vz = 0; this.gz = 600;
+    this.runDist = 0; this.jp = null; this.ratk = null;
   }
+
+  // ---------- 달리기·점프 도구 ----------
+  // 이 캐릭터의 달리기·점프 자료(motions_move.json 의 한 사람 몫, 원래 크기 기준)
+  Player.prototype.mv = function () { return this.char && this.char.move; };
+  Player.prototype.hasMove = function () {
+    var m = this.mv(), A = this.char && this.char.anims;
+    return !!(m && A && A.run && A.run[0] && A.jump && A.jump[0] && this.cfg.move);
+  };
+  Player.prototype.runSpeed = function () { return this.cfg.player.speedX * ((this.cfg.move && this.cfg.move.runMul) || 2.3); };
+  Player.prototype.airborne = function () { return this.z > 0.01 || this.vz > 0; };
+  // 공중에서 떨어지기(맞아서 점프가 끊겼을 때 등). 땅에 닿으면 true
+  Player.prototype.fall = function (dtMs) {
+    if (!this.airborne()) return false;
+    var dt = dtMs / 1000;
+    this.vz -= this.gz * dt; this.z += this.vz * dt;
+    if (this.z <= 0) { this.z = 0; this.vz = 0; return true; }
+    return false;
+  };
+  // 달리기 그림 번호: 달린 거리로. 장 i 동안 몸이 travelPerFrame[i] 만큼 가야 디딘 발이 땅에 붙어 있다
+  Player.prototype.runFrame = function () {
+    var tr = this.mv().run.travelPerFrame, S = AS(), tot = 0, i;
+    for (i = 0; i < tr.length; i++) tot += tr[i] * S;
+    var d = ((this.runDist % tot) + tot) % tot;
+    for (i = 0; i < tr.length; i++) { var w = tr[i] * S; if (d < w) return i; d -= w; }
+    return tr.length - 1;
+  };
+  Player.prototype.clearMove = function () {
+    if (this.state === 'jump' || this.state === 'runatk' || this.state === 'run') { this.state = 'idle'; this.animT = 0; }
+    this.jp = null; this.ratk = null; this.z = 0; this.vz = 0;
+  };
+
+  // 점프 시작: vx = 뛰는 순간 좌우 속도(달리면 달리기 속도 → 멀리), run = 달리다 뜀
+  Player.prototype.startJump = function (vx, run) {
+    var J = this.mv().jump, C = this.cfg.move.jump, S = AS();
+    var H = J.suggested.jumpHeight * S * (C.heightMul || 1), T = J.suggested.airTimeMs * (C.airMul || 1) / 1000;
+    this.state = 'jump'; this.atk = null; this.animT = 0; this.ratk = null;
+    this.gz = 8 * H / (T * T);
+    this.jp = { phase: 'takeoff', t: 0, H: H, v0: 4 * H / T, vx: vx, run: !!run, atk: null, attacked: false };
+    this.z = 0; this.vz = 0;
+  };
+  // 공중 공격 판정 값(config move.jumpAttack). 불똥은 맞은 몸 안쪽에(atTarget)
+  Player.prototype.jumpAttackStep = function () {
+    if (this._jaSt && this._jaSt.src === this.cfg.move.jumpAttack) return this._jaSt;
+    var st = {}, k, C = this.cfg.move.jumpAttack;
+    for (k in C) st[k] = C[k];
+    st.src = C; st.hitY = -40 * AS(); st.atTarget = true;
+    return (this._jaSt = st);
+  };
+  Player.prototype.updateJump = function (dtMs, ev) {
+    var jp = this.jp, C = this.cfg.move, J = this.mv().jump, dt = dtMs / 1000, ax = Input.axis(this.cfg);
+    jp.t += dtMs;
+    if (jp.phase === 'takeoff') {            // 웅크림(땅): 뛴 속도의 일부만 계속
+      this.x += jp.vx * dt * 0.6;
+      if (jp.t >= J.ms.takeoff) { jp.phase = 'air'; jp.t = 0; this.vz = jp.v0; }
+      return;
+    }
+    if (jp.phase === 'air') {
+      // 좌우: 누르면 그쪽으로 천천히 바뀜(steer), 안 누르면 뛴 속도 그대로
+      var top = jp.run ? this.runSpeed() : this.cfg.player.speedX;
+      if (Math.abs(ax.x) > 0.1) {
+        jp.vx += (ax.x * top - jp.vx) * Math.min(1, dt * (C.jump.steer || 5));
+        if (!jp.atk) this.dir = ax.x > 0 ? 1 : -1;
+      }
+      this.x += jp.vx * dt;
+      this.y += ax.y * this.cfg.player.speedY * (C.jump.depthMul || 0.5) * dt;
+      this.vz -= this.gz * dt; this.z += this.vz * dt;
+      // 공중 공격(한 번 뛸 때 한 번): 1·2장이 판정
+      if (!jp.attacked && this.char.anims.jump_attack && this.char.anims.jump_attack[0] && Input.takeAttack(this.cfg.combo.bufferMs)) {
+        jp.attacked = true; jp.atk = { t: 0, i: 0, done: {}, active: false };
+      }
+      var a = jp.atk;
+      if (a) {
+        var JA = this.mv().jump_attack, last = JA.ms.length - 1;
+        a.t += dtMs;
+        while (a.i < last && a.t >= JA.ms[a.i]) { a.t -= JA.ms[a.i]; a.i++; }
+        a.active = JA.active.indexOf(a.i) >= 0;
+        if (a.active) {
+          if (!a.swung) { a.swung = true; ev.moveSwing = { kind: 'jump' }; }
+          ev.hitCheck = { step: this.jumpAttackStep(), done: a.done, move: 'jump' };
+        }
+      }
+      if (this.z <= 0 && this.vz < 0) {      // 땅에 닿음 → 착지(공중 공격 도중이면 끊김)
+        this.z = 0; this.vz = 0; jp.phase = 'land'; jp.t = 0;
+        if (a) a.active = false;
+        ev.land = true;
+      }
+      return;
+    }
+    if (jp.t >= J.ms.land) { this.state = 'idle'; this.jp = null; this.animT = 0; }   // 착지 웅크림 끝
+  };
+  Player.prototype.jumpFrame = function () {
+    var jp = this.jp;
+    if (jp.phase === 'takeoff') return { anim: 'jump', idx: 0 };
+    if (jp.phase === 'land') return { anim: 'jump', idx: 4 };
+    if (jp.atk) return { anim: 'jump_attack', idx: Math.min(3, jp.atk.i) };
+    if (this.z >= jp.H * 0.7 || Math.abs(this.vz) < jp.v0 * 0.2) return { anim: 'jump', idx: 2 };   // 꼭대기 근처
+    return { anim: 'jump', idx: this.vz > 0 ? 1 : 3 };
+  };
+
+  // 달리며 공격: entry → 밀고 가는 반복(1·2장) → finish → recover (config move.runAttack, 자료 run_attack)
+  Player.prototype.startRunAttack = function () {
+    this.state = 'runatk'; this.animT = 0; this.atk = null; this.jp = null;
+    this.ratk = { phase: 'entry', t: 0, pt: 0, tickT: 0, ids: {}, had: false, contact: false, finHit: false, fdone: {}, v: this.runSpeed() };
+  };
+  Player.prototype.runAttackStep = function (which) {
+    var R = this.mv().run_attack, C = this.cfg.move.runAttack;
+    var src = which === 'tick' ? C.tick : (R.kind === 'slide' ? C.slide : C.charge);
+    this._raSt = this._raSt || {};
+    var key = which + '|' + R.kind;
+    if (this._raSt[key] && this._raSt[key].src === src) return this._raSt[key];
+    var st = {}, k;
+    for (k in src) st[k] = src[k];
+    st.src = src; st.hitY = (src.hitY || -50) * AS();
+    if (which !== 'tick') st.finisherText = true;
+    return (this._raSt[key] = st);
+  };
+  Player.prototype.updateRunAttack = function (dtMs, ev) {
+    var R = this.mv().run_attack, C = this.cfg.move.runAttack, a = this.ratk, dt = dtMs / 1000;
+    var push = R.bodyTravel.pushLoopSpeed * AS() * (C.speedMul || 1), dx = 0;
+    a.t += dtMs;
+    if (a.phase === 'entry') {
+      dx = a.v * dt;                                  // 달리던 속도 그대로 들어감
+      if (a.t >= R.ms.entry) { a.phase = 'push'; a.t = 0; a.tickT = 0; }
+    } else if (a.phase === 'push') {
+      dx = push * dt; a.pt += dtMs;
+      a.tickT -= dtMs;
+      if (a.tickT <= 0) { a.tickT += C.tickMs; ev.hitCheck = { step: this.runAttackStep('tick'), done: {}, push: true, move: 'run' }; }
+      // 최소 시간이 지났고 닿았던 적이 떨어졌으면 / 최대 시간이면 → 마무리
+      if (a.pt >= C.maxLoopMs || (a.pt >= C.minLoopMs && a.had && !a.contact)) { a.phase = 'finish'; a.t = 0; }
+    } else if (a.phase === 'finish') {
+      dx = push * dt * Math.max(0, 1 - a.t / R.ms.finish);   // 마무리하며 멈춤
+      if (!a.finHit) { a.finHit = true; ev.hitCheck = { step: this.runAttackStep('finish'), done: a.fdone, finish: true, move: 'run' }; ev.moveSwing = { kind: R.kind }; }
+      if (a.t >= R.ms.finish) { a.phase = 'recover'; a.t = 0; }
+    } else if (a.t >= R.ms.recover) {
+      this.state = 'idle'; this.ratk = null; this.animT = 0; this.comboIdleT = 0; this.comboStep = 0;
+      return;
+    }
+    if (dx) { this.x += dx * this.dir; ev.push = { dx: dx * this.dir }; }
+  };
+  Player.prototype.runAttackFrame = function () {
+    var a = this.ratk, R = this.mv().run_attack;
+    if (a.phase === 'entry') return 0;
+    if (a.phase === 'push') return 1 + (Math.floor(a.pt / R.ms.pushLoop) % 2);
+    return a.phase === 'finish' ? 3 : 4;
+  };
+  // 달리며 공격·공중 공격의 지금 판정 상자(원래 크기 reach → 줄임). 판정 안 나는 장이면 null
+  Player.prototype.moveReach = function () {
+    var S = AS(), r = null, C = this.cfg.move;
+    if (this.state === 'runatk' && this.ratk && (this.ratk.phase === 'push' || this.ratk.phase === 'finish')) {
+      r = this.mv().run_attack.reach[this.runAttackFrame()];
+      if (!r) return null;
+      return { x0: Math.max(r.x0, -8) * S, x1: r.x1 * S, yTop: r.yTop * S, yBot: r.yBot * S, depth: C.runAttack.depth || 10 };
+    }
+    if (this.state === 'jump' && this.jp && this.jp.atk && this.jp.atk.active) {
+      r = this.mv().jump_attack.reach[this.jp.atk.i];
+      if (!r) return null;
+      return { x0: r.x0 * S, x1: r.x1 * S, yTop: r.yTop * S, yBot: (r.yBot + (C.jumpAttack.reachDown || 0)) * S, depth: C.jumpAttack.depth || 10 };
+    }
+    return null;
+  };
+  Player.prototype.moveActive = function () { return !!this.moveReach() && (this.state === 'jump' || (this.ratk && (this.ratk.phase === 'push' || (this.ratk.phase === 'finish' && this.ratk.t < 60)))); };
 
   // 장마다 시간(d, ms) 목록에서 t 일 때 몇 번째 장인지. 마지막 장을 넘기면 마지막 장(done = true)
   function seqAt(d, t) {
@@ -53,6 +218,7 @@
     if (this.state === 'dead' || this.state === 'down' || this.invulnT > 0) return false;
     if (this.state === 'skill' && window.Skills && Skills.invulnerable(this)) return false;   // 기술 무적 구간
     this.sk = null;                          // 기술 도중(무적 구간 밖)에 맞으면 기술은 끊김
+    this.jp = null; this.ratk = null;        // 점프·달리며 공격도 끊김(공중이면 그대로 떨어짐: fall)
     var H = this.cfg.hero;
     if (!this.god) this.hp = Math.max(0, this.hp - dmg);
     this.atk = null;
@@ -94,13 +260,14 @@
   };
   Player.prototype.hurtbox = function () {
     var h = this.cfg.hero.hurtbox;
-    var xa = this.x + h.x0 * this.dir, xb = this.x + h.x1 * this.dir;
-    return { x0: Math.min(xa, xb), x1: Math.max(xa, xb), y0: this.y + h.yTop, y1: this.y + h.yBot, z: this.y };
+    var xa = this.x + h.x0 * this.dir, xb = this.x + h.x1 * this.dir, z = this.z || 0;   // 공중이면 몸 판정도 그만큼 위로
+    return { x0: Math.min(xa, xb), x1: Math.max(xa, xb), y0: this.y - z + h.yTop, y1: this.y - z + h.yBot, z: this.y };
   };
 
   Player.prototype.setCharacter = function (charAssets) {
     this.char = charAssets; this.animT = 0;
     if (this.state === 'attack' || this.state === 'skill') { this.state = 'idle'; this.atk = null; this.sk = null; }   // 공격·기술 도중 캐릭터를 바꾸면 끊는다
+    this.clearMove();
     this.comboStep = 0;
   };
 
@@ -109,6 +276,7 @@
     if (this.moveSet === k) return;
     this.moveSet = k;
     if (this.state === 'attack' || this.state === 'skill') { this.state = 'idle'; this.atk = null; this.sk = null; this.animT = 0; }
+    this.clearMove();
     this.comboStep = 0;
   };
 
@@ -173,6 +341,9 @@
       return { anim: st.anim || 'attack', idx: st.f[this.atk.i] };
     }
     if (this.state === 'skill' && this.sk && window.Skills) return Skills.frame(this);   // 기술 그림(없으면 placeholder)
+    if (this.state === 'jump' && this.jp) return this.jumpFrame();
+    if (this.state === 'runatk' && this.ratk) return { anim: 'run_attack', idx: this.runAttackFrame() };
+    if (this.state === 'run' && this.hasMove()) return { anim: 'run', idx: this.runFrame() };
     var a = this.state === 'walk' ? 'walk' : 'idle';
     var A = def.anims[a];
     var n = A.frames.length;
@@ -196,6 +367,7 @@
 
     // 맞고 움찔 / 넘어짐 / 쓰러짐: 조작 안 됨, 밀려나기만
     if (this.state === 'hurt' || this.state === 'dead' || this.state === 'down') {
+      this.fall(dtMs);                       // 공중에서 맞았으면 떨어짐
       this.x += this.vx * dtMs / 1000;
       this.vx *= Math.exp(-dtMs / 1000 * 9);
       var downArt = this.hasDownArt();
@@ -222,8 +394,13 @@
       this.clamp(world);
       return ev;
     }
-    // 기술 시작: 서 있거나 걷는 중, 또는 공격의 회복 장(canSkillCancel)
-    if (window.Skills && this.cfg.skills && (this.state !== 'attack' || this.canSkillCancel())) {
+    // 점프 중(공중 공격 포함) / 달리며 공격 중: 기술·콤보 안 됨
+    if (this.state === 'jump' && this.jp) { this.updateJump(dtMs, ev); this.clamp(world); return ev; }
+    if (this.state === 'runatk' && this.ratk) { this.updateRunAttack(dtMs, ev); this.clamp(world); return ev; }
+    if (this.airborne()) this.fall(dtMs);    // 혹시 남은 높이(점프가 끊김)는 떨어뜨림
+
+    // 기술 시작: 서 있거나 걷거나 달리는 중, 또는 공격의 회복 장(canSkillCancel)
+    if (window.Skills && this.cfg.skills && !this.airborne() && (this.state !== 'attack' || this.canSkillCancel())) {
       var sd = Skills.pick(this);
       if (sd) { Skills.start(this, sd); return this.update(0, world); }
     }
@@ -231,23 +408,43 @@
     if (this.state !== 'attack') {
       this.comboIdleT += dtMs;
       if (this.comboIdleT > C.resetMs) this.comboStep = 0;
+      var ax = Input.axis(cfg), canMove = this.hasMove() && !this.airborne();
+      // 달리기: 입력(Input.runDir)이 달리는 쪽이고 그 쪽을 누르고 있을 때
+      var rd = canMove ? Input.runDir(cfg) : 0, running = rd !== 0 && ax.x * rd > 0.3;
+      if (canMove && Input.takeJump(cfg.move.jump.bufferMs || 150)) {
+        // 점프: 지금 좌우 속도를 가지고 뜸(달리던 중이면 달리기 속도 → 멀리)
+        this.startJump(running ? rd * this.runSpeed() : ax.x * cfg.player.speedX, running);
+        return this.update(0, world);
+      }
       if (Input.takeAttack(C.bufferMs)) {
+        if (running && this.state === 'run' && this.char.anims.run_attack && this.char.anims.run_attack[0]) {
+          this.dir = rd; this.startRunAttack();            // 달리며 공격(남 어깨 돌진 / 여 슬라이딩)
+          return this.update(0, world);
+        }
         this.startAttack(this.comboStep);
         this.comboIdleT = 0;
       } else {
-        var ax = Input.axis(cfg);
         var dt = dtMs / 1000;
-        var mx = ax.x * cfg.player.speedX * dt, my = ax.y * cfg.player.speedY * dt;
+        var spX = running ? this.runSpeed() : cfg.player.speedX;
+        var spY = cfg.player.speedY * (running ? (cfg.move.runDepthMul || 0.55) : 1);
+        var mx = (running ? rd : ax.x) * spX * dt, my = ax.y * spY * dt;
         this.x += mx;
         this.y += my;
-        // 걷기 그림은 걸은 거리만큼 넘긴다(stride = 한 사이클(8장) 동안 가는 도트 수).
-        // 위아래(안쪽) 이동은 화면상 짧게 보이므로 depthStrideMul 배로 쳐서 다리가 너무 느리게 움직이지 않게 함
-        var wA = this.char && this.char.def.anims.walk;
-        if (wA && wA.stride) this.walkPhase = (this.walkPhase + Math.hypot(mx, my * (wA.depthStrideMul || 1)) / wA.stride) % 1;
-        if (ax.x > 0.1) this.dir = 1; else if (ax.x < -0.1) this.dir = -1;
-        var moving = Math.abs(ax.x) > 0.05 || Math.abs(ax.y) > 0.05;
-        if (moving && this.state !== 'walk') { this.state = 'walk'; this.animT = 0; this.walkPhase = 0; }
-        if (!moving && this.state !== 'idle') { this.state = 'idle'; this.animT = 0; }
+        if (running) {
+          // 달리기 그림은 「달린 거리」로 넘김(motions_move.json travelPerFrame) → 발이 안 미끄러짐
+          if (this.state !== 'run') { this.state = 'run'; this.animT = 0; this.runDist = 0; }
+          this.runDist += Math.hypot(mx, my);
+          this.dir = rd;
+        } else {
+          // 걷기 그림은 걸은 거리만큼 넘긴다(stride = 한 사이클(8장) 동안 가는 도트 수).
+          // 위아래(안쪽) 이동은 화면상 짧게 보이므로 depthStrideMul 배로 쳐서 다리가 너무 느리게 움직이지 않게 함
+          var wA = this.char && this.char.def.anims.walk;
+          if (wA && wA.stride) this.walkPhase = (this.walkPhase + Math.hypot(mx, my * (wA.depthStrideMul || 1)) / wA.stride) % 1;
+          if (ax.x > 0.1) this.dir = 1; else if (ax.x < -0.1) this.dir = -1;
+          var moving = Math.abs(ax.x) > 0.05 || Math.abs(ax.y) > 0.05;
+          if (moving && this.state !== 'walk') { this.state = 'walk'; this.animT = 0; this.walkPhase = 0; }
+          if (!moving && this.state !== 'idle') { this.state = 'idle'; this.animT = 0; }
+        }
       }
     }
 
@@ -313,16 +510,20 @@
       var r = (wi >= 0 ? hitWindows(st)[wi] : st).reach;
       if (r) h = { x0: r.x0, x1: r.x1, yTop: r.yTop, yBot: r.yBot, depth: r.depth || h.depth };
     }
-    var xa = this.x + h.x0 * this.dir, xb = this.x + h.x1 * this.dir;
-    return { x0: Math.min(xa, xb), x1: Math.max(xa, xb), y0: this.y + h.yTop, y1: this.y + h.yBot, z: this.y, depth: h.depth };
+    var mr = this.moveReach();   // 달리며 공격·공중 공격 (motions_move.json reach, 이미 줄인 값)
+    if (mr) h = mr;
+    var xa = this.x + h.x0 * this.dir, xb = this.x + h.x1 * this.dir, z = this.z || 0;   // 공중이면 그만큼 위로
+    return { x0: Math.min(xa, xb), x1: Math.max(xa, xb), y0: this.y - z + h.yTop, y1: this.y - z + h.yBot, z: this.y, depth: h.depth };
   };
 
   Player.prototype.draw = function (ctx, camX, weaponImgs, debug) {
     var fr = this.currentFrame();
     var def = this.char.def;
     var img = this.char.anims[fr.anim][fr.idx];
-    var x = snapPx(this.x - camX), y = snapPx(this.y);
-    drawShadow(ctx, x, y, 22 * AS());
+    var x = snapPx(this.x - camX), z = this.z || 0;
+    // 그림자는 땅(y)에 남고, 몸은 뜬 높이(z)만큼 위에. 높이 뜰수록 그림자가 작아짐
+    drawShadow(ctx, x, snapPx(this.y), 22 * AS() * (1 - Math.min(0.45, z / (90 * AS()))));
+    var y = snapPx(this.y - z);
     // 맞은 뒤 무적: 깜빡임
     if (this.invulnT > 0 && this.state !== 'hurt' && this.state !== 'down' && this.state !== 'dead' && Math.floor(this.invulnT / 70) % 2 === 0) return;
     ctx.save();

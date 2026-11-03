@@ -194,6 +194,49 @@
     return scratch;
   }
 
+  // ----- 데미지 숫자 쌓기 (2026-11-03) -----
+  //   groups = 숫자 묶음 { key(대상), x, y(처음 높이), dy(비켜 선 양), t(나이), n(줄 수), top(다음 줄 높이), rise, riseMs, open }
+  //   줄(list 의 'dmg') = { g, off(묶음 바닥에서 위로), jx(좌우 어긋남), w, h(글자 상자 도트) }
+  var groups = [], dmgUid = 0;
+  function stackCfg() {
+    var D = (window.CFG && CFG.damageText) || {};
+    return D.stack || { windowMs: 480, cap: 5, gap: 1, jitter: [0] };
+  }
+  // 줄의 글자 모양(config damageText): 모양 이름 → 마무리 → 보통
+  function dmgStyle(f) {
+    var D = (window.CFG && window.CFG.damageText) || {};
+    return (f.style && D[f.style]) || (f.crit ? D.crit : D.normal) || { font: 'small', top: '#ffffff', outline: '#2a1020' };
+  }
+  // 글자 상자 크기(도트): 튀어나올 때(pop, 굵게) 기준으로 넉넉하게
+  function lineSize(f) {
+    var st = dmgStyle(f), h = (FONT_H[st.font] || 8) * Math.max(1, st.scale || 1);
+    var cw = h * 0.62 * (st.bold || (st.pop && st.pop.bold) ? 1.12 : 1);
+    return { w: f.str.length * cw + 2.5, h: h + 1.6 };
+  }
+  function easeRise(u) { return 1 - Math.pow(1 - Math.min(1, u), 3); }
+  // 줄의 글자 바닥 가운데(도트), tau ms 뒤
+  function linePos(f, tau) {
+    var g = f.g, D = (window.CFG && CFG.damageText) || {};
+    var lift = (D.lift != null ? D.lift : 20) * AS();
+    return { x: g.x + (f.jx || 0), y: g.y + g.dy - lift - easeRise((g.t + tau) / g.riseMs) * g.rise - f.off };
+  }
+  // 새 줄이 지금 떠 있는 다른 묶음의 줄과 겹치나(앞으로 0.45초 동안). 겹친 양(도트²)의 합, 안 겹치면 0
+  function collides(line) {
+    var tot = 0, taus = [0, 120, 260, 450];
+    list.forEach(function (f) {
+      if (f.type !== 'dmg' || f === line || f.g === line.g) return;
+      for (var i = 0; i < taus.length; i++) {
+        var tau = taus[i];
+        if (f.t + tau > f.life * 0.85 || tau > line.life * 0.85) continue;   // 그때 이미 거의 사라짐
+        var a = linePos(line, tau), b = linePos(f, tau);
+        var ox = Math.min(a.x + line.w / 2, b.x + f.w / 2) - Math.max(a.x - line.w / 2, b.x - f.w / 2);
+        var oy = Math.min(a.y, b.y) - Math.max(a.y - line.h, b.y - f.h);
+        if (ox > -3 && oy > -1) tot += (ox + 3) * (oy + 1);   // 옆으로는 3도트 띄움(「17!」「14!」가 붙어 「1714!」로 안 보이게)
+      }
+    });
+    return tot;
+  }
+
   var FX = {
     list: list,
     drawPixelText: drawPixelText,
@@ -238,17 +281,71 @@
     },
     // color = 숫자 색(없으면 흰색/치명타 노랑). 플레이어가 맞으면 빨강
     // style = CFG.damageText 의 모양 이름(기술 숫자 skill_knight 등). 없으면 보통/마무리
-    damage: function (x, y, n, crit, J, color, style) {
-      // 기술 숫자는 짧은 시간에 같은 대상에 여러 번 뜨므로(회전베기·번개): 근처에 떠 있는 앞 숫자를 한 칸 위로 밀고
-      //   곧 사라지게(흐려지는 시점으로 당김) → 새 숫자가 앞 숫자와 겹쳐 읽히지 않게
-      if (style) list.forEach(function (f) {
-        if (f.type === 'dmg' && f.style && Math.abs(f.x - x) < 16 * AS() && f.t < f.life * 0.7) {
-          f.y -= 12 * AS(); f.t = Math.max(f.t, f.life * 0.6);
+    // key = 맞은 대상(적 id / 'dummy' / 'player'). 같은 대상이 짧은 시간(stack.windowMs)에 또 맞으면 숫자를 한 줄 위에 쌓는다
+    //   (메이플처럼 줄 세움, 한 묶음은 같이 떠오름). 다른 묶음의 숫자와 겹치면 위·옆으로 비켜 선다 (2026-11-03)
+    // merge = 빠른 연타(달리며 공격의 밀고 가는 타): 같은 대상의 같은 모양 숫자가 아직 떠 있으면 새 줄 대신 그 숫자에 더해서
+    //   「합계」로 다시 튀어나오게 함(4 → 8 → 12 …) → 작은 숫자가 줄줄이 쌓이지 않음
+    damage: function (x, y, n, crit, J, color, style, key, merge) {
+      var SC = stackCfg();
+      key = key || ('k' + (++dmgUid));
+      if (merge) {
+        for (var mi = list.length - 1; mi >= 0; mi--) {
+          var mf = list[mi];
+          if (mf.type !== 'dmg' || !mf.merge || mf.g.key !== key || mf.style !== (style || null) || mf.t > (SC.windowMs || 480)) continue;
+          mf.val += n; mf.n = String(mf.val); mf.t = 0;
+          var ms = lineSize({ str: mf.n, crit: false, style: mf.style }); mf.w = ms.w;
+          mf.g.x = x + mf.g.dx;
+          return;
         }
-      });
-      list.push({ type: 'dmg', x: x + (Math.random() * 8 - 4), y: y, n: String(n) + (crit ? '!' : ''), crit: crit, t: 0, life: J.dmgMs * (style ? 1.25 : 1),
-                  rise: J.dmgRise * AS() * (style ? 1.2 : 1), color: color || null, style: style || null });
+      }
+      var now = { str: String(n) + (crit ? '!' : ''), crit: crit, color: color || null, style: style || null };
+      var life = J.dmgMs * (style && style !== 'push' ? 1.25 : 1);
+      var sz = lineSize(now);
+      // 같은 대상의 열린 묶음(최근 + 줄 수가 cap 미만)
+      var g = null;
+      for (var i = groups.length - 1; i >= 0; i--) {
+        var q = groups[i];
+        if (q.key !== key || !q.open) continue;
+        if (q.t <= SC.windowMs && q.n < SC.cap) { g = q; break; }
+        q.open = false;
+        // 꽉 차서 닫힌 묶음은 곧 사라지게(새 묶음이 그 자리에 올라옴)
+        if (q.n >= SC.cap) list.forEach(function (f) { if (f.type === 'dmg' && f.g === q) f.t = Math.max(f.t, f.life * 0.62); });
+      }
+      var line = { type: 'dmg', n: now.str, crit: crit, t: 0, life: life, color: now.color, style: now.style, w: sz.w, h: sz.h,
+                   merge: !!merge, val: +n };
+      var jit = SC.jitter || [0];
+      if (g) {
+        // 쌓기: 묶음 맨 위에 한 줄. 다른 묶음 숫자와 겹치면 조금씩 더 위로
+        line.g = g; line.jx = jit[g.n % jit.length]; line.off = g.top;
+        g.x = x + g.dx;   // 묶음은 대상을 따라감(밀려가는 적 위에 계속)
+        var off0 = line.off, jx0 = line.jx, bestC = null;
+        search: for (var k = 0; k <= 10; k++) for (var s2 = 0; s2 < 3; s2++) {
+          line.off = off0 + k * 4; line.jx = jx0 + [0, 8, -8][s2];
+          var cc = collides(line);
+          if (!cc) { bestC = null; break search; }
+          if (!bestC || cc < bestC.c) bestC = { c: cc, off: line.off, jx: line.jx };
+        }
+        if (bestC) { line.off = bestC.off; line.jx = bestC.jx; }
+      } else {
+        g = { key: key, x: x, y: y, dx: 0, dy: 0, t: 0, n: 0, top: 0, open: true,
+              rise: J.dmgRise * AS() * (style && style !== 'push' ? 1.2 : 1), riseMs: life / 1.6 };
+        groups.push(g);
+        line.g = g; line.jx = 0; line.off = 0;
+        // 새 묶음 자리: 그대로 → 위로 조금씩 → 옆으로 비켜 보기. 다 겹치면 처음 자리(가장 덜 겹치는 곳)
+        var tries = [[0, 0], [0, -7], [0, -14], [9, -4], [-9, -4], [0, -21], [12, -12], [-12, -12], [0, -28], [14, -20], [-14, -20], [0, -35], [0, -42]], best = null;
+        for (var a = 0; a < tries.length; a++) {
+          g.dx = tries[a][0]; g.x = x + g.dx; g.dy = tries[a][1];
+          var c = collides(line);
+          if (!c) { best = null; break; }
+          if (!best || c < best.c) best = { c: c, a: a };
+        }
+        if (best) { g.dx = tries[best.a][0]; g.x = x + g.dx; g.dy = tries[best.a][1]; }
+      }
+      g.top = line.off + sz.h + (SC.gap != null ? SC.gap : 1);
+      g.n++;
+      list.push(line);
     },
+    groups: groups,
     // 그림 묶음을 한 색으로 물들인 복사본(기술 효과 그림이 아직 없을 때 기존 그림을 불·번개 색으로). k = 물들이는 세기(0~1)
     //   같은 묶음·색이면 한 번만 만든다
     tinted: function (frames, color, k) {
@@ -287,6 +384,7 @@
         }
         if (f.t >= f.life) list.splice(i, 1);
       }
+      for (var j = groups.length - 1; j >= 0; j--) { groups[j].t += dtMs; if (groups[j].t > 4000) groups.splice(j, 1); }
     },
 
     // under = true: 바닥 효과만(캐릭터 뒤), false/없음: 나머지(캐릭터 앞)
@@ -315,7 +413,7 @@
     else if (f.type === 'dmg') {
       // 처음엔 pop 모양(한 단계 크게/밝게)으로 튀어나왔다가 제 모양으로 돌아오며 떠오름 → 끝에서 서서히 사라짐
       var D = (window.CFG && window.CFG.damageText) || {};
-      var st = (f.style && D[f.style]) || (f.crit ? D.crit : D.normal) || { font: 'small', top: '#ffffff', outline: '#2a1020' };
+      var st = dmgStyle(f);
       if ((k < (D.popK || 0.12) && st.pop) || f.color) {
         var st2 = {}, kk;
         for (kk in st) if (kk !== 'pop') st2[kk] = st[kk];
@@ -323,9 +421,10 @@
         if (f.color) { st2.top = f.color; st2.bottom = D.hurtBottom || f.color; }   // 플레이어가 맞은 숫자 = 빨강
         st = st2;
       }
-      var ease = 1 - Math.pow(1 - Math.min(1, k * 1.6), 3);
+      // 위치 = 묶음(같은 대상) 자리 + 그 안의 줄 높이(off). 묶음째 같이 떠오름
+      var lp = linePos(f, 0), fh = (FONT_H[st.font] || 8) * Math.max(1, st.scale || 1);
       ctx.globalAlpha = k > 0.7 ? Math.max(0, 1 - (k - 0.7) / 0.3) : 1;
-      drawPixelText(ctx, f.n, x, y - (D.lift != null ? D.lift : 20) * AS() - ease * f.rise, st);
+      drawPixelText(ctx, f.n, snapPx(lp.x - camX), snapPx(lp.y - fh), st);
       ctx.globalAlpha = 1;
     }
   }

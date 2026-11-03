@@ -132,7 +132,7 @@ body.smooth #screen { image-rendering: auto; }
     position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; margin: -26px 0 0 -26px;
     border-radius: 50%; background: #fff5; border: 2px solid #fff8;
   }
-  /* 공격 버튼 하나만(점프는 아직 없어서 숨김). 가로 화면에서는 게임 화면 위에 겹치므로 작고 반투명하게,
+  /* 공격 버튼(+ 점프·기술). 가로 화면에서는 게임 화면 위에 겹치므로 작고 반투명하게,
      main.js 가 이 버튼이 덮는 폭만큼 오른쪽을 「싸움 못 들어가는 곳」으로 비워 둔다(controlPad) */
   .btns {
     display: block; position: absolute; right: max(16px, env(safe-area-inset-right)); bottom: 14px;
@@ -144,16 +144,18 @@ body.smooth #screen { image-rendering: auto; }
   }
   .btn.atk { right: 0; bottom: 0; width: 80px; height: 80px; font-size: 16px; background: #c8423aa6; border-color: #0006; box-shadow: inset 0 -5px 0 #0003; }
   .btn.atk.down { transform: scale(.92); background: #e0574ed9; box-shadow: inset 0 -2px 0 #0004; }
-  .btn.jump { display: none; }   /* 점프(준비 중): 만들 때 다시 보이게 */
-  /* 기술 버튼 2개: 공격 버튼 위쪽에 왼쪽 위로 비스듬히(호 모양). 공격 버튼 가로 폭에서 거의 안 벗어나게 →
-     싸움 못 들어가는 곳(controlPad)이 조금만 넓어짐. --cd = 남은 쿨타임 비율(1 → 0) */
+  /* 점프(2026-11-03): 공격 버튼 바로 위 왼쪽(엄지를 위로 밀면 닿는 곳). 기술 B 는 그 오른쪽, 기술 A 는 그 위.
+     네 버튼 모두 공격 버튼 가로 폭 안(+6px)에 세로로 쌓아서 싸움 못 들어가는 곳(controlPad) 폭이 거의 그대로 */
+  .btn.jump { right: 36px; bottom: 84px; width: 50px; height: 50px; padding: 0; font-size: 13px; background: #3a8a4ab3; border-color: #0007; box-shadow: inset 0 -4px 0 #0003; }
+  .btn.jump.down { transform: scale(.9); background: #4aa85ce0; }
+  /* 기술 버튼 2개: 점프 오른쪽(B)과 위(A). --cd = 남은 쿨타임 비율(1 → 0) */
   .btn.sk {
     width: 44px; height: 44px; padding: 0; overflow: hidden; font-size: 17px; line-height: 1;
     background: #2f4f8ccc; border-color: #0008; box-shadow: inset 0 -4px 0 #0003;
   }
   .btn.sk[hidden] { display: none; }
-  .btn.skA { right: 36px; bottom: 80px; }
-  .btn.skB { right: -6px; bottom: 96px; }
+  .btn.skA { right: 18px; bottom: 140px; }
+  .btn.skB { right: -8px; bottom: 90px; }
   .btn.sk.down { transform: scale(.9); }
   .btn.sk .ic { position: relative; z-index: 1; }
   .btn.sk .sweep {
@@ -177,7 +179,9 @@ body.smooth #screen { image-rendering: auto; }
 .portrait .banner { font-size: 26px; }
 .portrait .banner.boss { font-size: 30px; }
 @media (pointer: coarse) {
-  .portrait .joyzone { height: 60%; width: 55%; }
+  .portrait .joyzone { height: 60%; width: 48%; }
+  /* 세로 화면: 조작 자리가 넉넉해서 점프는 공격 버튼 왼쪽(아래 줄), 기술 2개는 공격 버튼 위 */
+  .portrait .btn.jump { right: 116px; bottom: 0; width: 66px; height: 66px; font-size: 15px; background: #3a8a4a; border-color: #0009; }
   .portrait .joy { bottom: 60px; left: 36px; }
   .portrait .btns { bottom: 56px; right: 24px; width: 104px; height: 104px; }
   .portrait .btn.atk { width: 104px; height: 104px; font-size: 18px; background: #c8423a; border-color: #0009; }
