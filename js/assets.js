@@ -90,8 +90,11 @@
       });
       if (cfg.dust) jobs.push(loadList(cfg.dust.frames).then(function (l) { out.dust = l.filter(Boolean); }));
       if (art.fx) {
-        jobs.push(Promise.all([loadList(art.fx.slash), loadList(art.fx.impact)]).then(function (r) {
-          out.fx = { slash: r[0].filter(Boolean), impact: r[1].filter(Boolean) };
+        // slash/impact + 그 밖의 그림 묶음(법사 magic_bolt 등): art.fx 안의 「경로 목록」은 전부 같은 이름으로 불러 둔다
+        var fxKeys = Object.keys(art.fx).filter(function (k) { return Array.isArray(art.fx[k]); });
+        out.fx = {};
+        jobs.push(Promise.all(fxKeys.map(function (k) { return loadList(art.fx[k]); })).then(function (r) {
+          fxKeys.forEach(function (k, i) { out.fx[k] = r[i].filter(Boolean); });
         }));
       }
       return Promise.all(jobs).then(function () { return out; });

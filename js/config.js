@@ -34,6 +34,8 @@
   // dmg/hitstop/knock/shake = 배율(무기 배율과 곱함), finisher = 마무리 타(크게)
   // fx = 베기 효과: type 'slash'(초승달 그림) / 'thrust'(짧은 직선), x,y = 발 기준 위치, rot = 돌리기(도, 시계방향 +),
   //      sx,sy = 크기 배율, flipY = 위아래 뒤집기(아래→위로 올려 베기), len = 찌르기 길이
+  //      linger = 궤적이 남아 있는 시간(ms, 없으면 juice.slashMs): 꽉 찬 초승달을 그만큼 붙잡고 서서히 흐려짐(X자 두 획이 함께 보이게)
+  //      top = 불똥(맞은 효과)보다 위에 그림
   var MOVES = {
     // 남자: 힘 있는 검술. 1타 대각선 내려베기 → 2타 아래에서 위로 되받아 베기 → 3타 크게 들어 내리찍기
     male: {
@@ -89,10 +91,10 @@
              hits: [
                { active: [1, 1], lunge: 2, dmg: 0.7, hitstop: 0.9, knock: 0.5, shake: 0.9,
                  reach: { x0: 8, x1: 76, yTop: -106, yBot: -14 },
-                 fx: { type: 'slash', x: 44, y: -62, rot: -45, sx: 1.0, sy: 1.1 }, arc: { from: -135, to: 50, r: 52, w: 10 } },
+                 fx: { type: 'slash', x: 44, y: -62, rot: -45, sx: 1.0, sy: 1.1, linger: 300, top: true }, arc: { from: -135, to: 50, r: 52, w: 10 } },
                { active: [3, 3], lunge: 2, dmg: 1.6, hitstop: 1.9, knock: 2.4, shake: 2.3, finisher: true,
                  reach: { x0: 6, x1: 80, yTop: -112, yBot: -12 },
-                 fx: { type: 'slash', x: 46, y: -64, rot: 120, sx: 1.2, sy: 1.15, flipY: true }, arc: { from: 150, to: -60, r: 56, w: 12 } }
+                 fx: { type: 'slash', x: 46, y: -64, rot: 120, sx: 1.2, sy: 1.15, flipY: true, linger: 300, top: true }, arc: { from: 150, to: -60, r: 56, w: 12 } }
              ] }
       }
     }
@@ -145,6 +147,63 @@
     ]
   };
 
+  // ---------- 법사(지팡이) 3타 콤보 (2026-11-03, art\stage1 README 「Mage」 표) ----------
+  // 남 = 지팡이(staff), 여 = 짧은 지팡이(wand). 근접 타는 기사보다 약간 약하고, 마무리 3타가 마법(멀리 날아가거나 범위)이라 그걸로 메운다.
+  // impactFx = 맞았을 때 불똥 대신 쓸 효과 그림(config art.fx 의 이름). hitY = 불똥 높이(발 기준)
+  // fx 는 하나 또는 [여러 개]: type 'spark' = 지팡이 끝 반짝임(magic_spark 그림, x,y = 발 기준, scale = 크기)
+  // cast = 마법: 판정 상자 대신 이 장에서 마법이 나간다.
+  //   kind 'bolt' = 날아가는 마법탄: x,y = 나오는 곳(발 기준), speed = 1초에 도트, range = 최대 거리, box = 탄 크기(w,h),
+  //     depth = 위아래(안쪽) 판정 폭. 처음 맞은 적에서 터짐(burst). burstAtEnd = 끝까지 날아가면 거기서도 터짐
+  //     backReach = 나오는 곳보다 이만큼 뒤(몸 쪽)도 처음에 확인 → 바로 앞에 붙은 적도 맞음(탄이 머리 위로 지나가지 않게)
+  //   kind 'burst' = 그 자리에서 바로 터짐(범위 공격)
+  //   burst = 터짐: r = 반지름(도트), depth = 위아래 폭, scale = 터짐 그림 크기(96x96 = 반지름 약 48)
+  var MAGE = {
+    // 남자: 1타 지팡이 찌르기 → 2타 머리 위에서 내려치기 → 3타 마법탄 발사(마무리)
+    male: {
+      stride: 84, attack1Count: 4, attack2Count: 5, attack3Count: 6,
+      combo: [
+        { anim: 'attack1', f: [0, 1, 2, 3], d: [60, 60, 110, 90], active: [2, 2], cancel: 3, lunge: 3,
+          reach: { x0: 40, x1: 98, yTop: -82, yBot: -56 },
+          dmg: 0.95, hitstop: 0.8, knock: 0.8, shake: 0.7, hitY: -69, spark: 0.8, impactFx: 'magic_spark',
+          fx: { type: 'spark', x: 94, y: -69, scale: 1.0 } },
+        { anim: 'attack2', f: [0, 1, 2, 3, 4], d: [70, 90, 60, 130, 110], active: [3, 3], cancel: 4, lunge: 4,
+          reach: { x0: 30, x1: 78, yTop: -120, yBot: -5 },
+          dmg: 1.1, hitstop: 1.1, knock: 1.3, shake: 1.1, hitY: -34, spark: 0.9, impactFx: 'magic_spark',
+          fx: [{ type: 'whoosh', x: 46, y: -62, rot: 0, sx: 0.8, sy: 0.95, alpha: 0.45 }, { type: 'spark', x: 69, y: -11, scale: 1.1 }],
+          arc: { from: -100, to: 60, r: 46, w: 6 } },
+        { anim: 'attack3', f: [0, 1, 2, 3, 4, 5], d: [80, 100, 60, 150, 120, 140], active: [3, 3], cancel: 99, lunge: 0,
+          dmg: 1.9, hitstop: 1.6, knock: 2.4, shake: 2.0, finisher: true, spark: 1.0, impactFx: 'magic_spark',
+          fx: { type: 'spark', x: 105, y: -68, scale: 1.3 },
+          cast: { kind: 'bolt', x: 105, y: -68, speed: 300, range: 220, box: { w: 18, h: 16 }, depth: 14, burstAtEnd: true, backReach: 85,
+                  burst: { r: 30, depth: 16, scale: 0.75 } } }
+      ]
+    },
+    // 여자: 1타 지팡이 튕기기(끝에서 작은 반짝임, 짧은 원거리) → 2타 한 바퀴 돌기(앞뒤 다 맞음 + 앞으로 한 번 더) → 3타 두 손 마법 폭발(범위, 마무리)
+    female: {
+      stride: 84, attack1Count: 4, attack2Count: 5, attack3Count: 5,
+      combo: [
+        { anim: 'attack1', f: [0, 1, 2, 3], d: [40, 45, 100, 70], active: [2, 2], cancel: 3, lunge: 3,
+          reach: { x0: 40, x1: 92, yTop: -88, yBot: -60 },
+          dmg: 0.85, hitstop: 0.75, knock: 0.7, shake: 0.6, hitY: -74, spark: 0.7, impactFx: 'magic_spark',
+          fx: { type: 'spark', x: 63, y: -74, scale: 0.9 } },
+        // 2타 = 돌기: 장 1~2(등 보임)에서 앞뒤 둘 다 맞음(가볍게) → 장 3 앞으로 한 번 더
+        { anim: 'attack2', f: [0, 1, 2, 3, 4], d: [45, 50, 60, 110, 80], cancel: 4,
+          reach: { x0: -44, x1: 60, yTop: -96, yBot: -30 }, impactFx: 'magic_spark', hitY: -72,
+          hits: [
+            { active: [1, 2], lunge: 0, dmg: 0.55, hitstop: 0.7, knock: 0.6, shake: 0.6, spark: 0.6,
+              fx: { type: 'whoosh', x: 10, y: -66, rot: 90, sx: 0.6, sy: 1.25, alpha: 0.35 } },
+            { active: [3, 3], lunge: 3, dmg: 0.75, hitstop: 0.9, knock: 1.1, shake: 0.9, spark: 0.75,
+              reach: { x0: 20, x1: 64, yTop: -96, yBot: -40 },
+              fx: { type: 'spark', x: 47, y: -75, scale: 0.9 } }
+          ] },
+        { anim: 'attack3', f: [0, 1, 2, 3, 4], d: [60, 70, 140, 110, 110], active: [2, 2], cancel: 99, lunge: 0,
+          dmg: 1.8, hitstop: 1.7, knock: 2.4, shake: 2.2, finisher: true, spark: 0.9, impactFx: 'magic_spark',
+          fx: { type: 'none' },
+          cast: { kind: 'burst', x: 76, y: -71, burst: { r: 40, depth: 18, scale: 1.0 } } }
+      ]
+    }
+  };
+
   // 새 그림(art\stage1): 빈손 남/여 + 손 위치 json → 무기를 코드로 손에 붙인다
   // 콤보 3타는 캐릭터마다 자기 그림(attack1/attack2/attack3)과 자기 수치를 쓴다 (위 MOVES)
   // 직업(견습/기사)에 따라 콤보 묶음이 바뀐다: combos.fist = 맨손(FIST), combos.sword = 검(MOVES)
@@ -153,6 +212,8 @@
   function stage1(who, anchors, outfit) {
     var p = 'assets/chars/stage1/' + (outfit ? outfit + '_' : '') + who + '/';
     var M = MOVES[who];
+    if (outfit === 'mage') M = { stride: MAGE[who].stride, attack1Prefix: 'attack1_', attack1Count: MAGE[who].attack1Count,
+                                 attack2Count: MAGE[who].attack2Count, attack3Count: MAGE[who].attack3Count, combo: MAGE[who].combo };
     // 검 콤보: 기사 옷이면 knightCombo 에 있는 타만 바꿔 끼운다(나머지 타는 견습과 같은 수치)
     var swordCombo = M.combo;
     if (outfit === 'knight' && M.knightCombo) {
@@ -184,7 +245,7 @@
         getup:     { frames: seq(p + 'getup_', 4),     d: [220, 180, 160, 140], loop: false }
       },
       combo: swordCombo,
-      combos: { sword: swordCombo }
+      combos: outfit === 'mage' ? { magic: M.combo } : { sword: swordCombo }
     };
     if (!outfit) {   // 견습 옷만 맨손 콤보 그림이 있다
       def.anims.fist1 = { frames: seq(p + 'fist1_', 4),  fps: 14, loop: false };
@@ -208,9 +269,13 @@
     // 기사 옷 (직업 「기사(검)」을 고르면 이 그림 + 기사 손 위치로 바뀐다)
     knightMale = stage1('male', 'assets/chars/stage1/anchors_knight_male.json', 'knight');
     knightFemale = stage1('female', 'assets/chars/stage1/anchors_knight_female.json', 'knight');
+    // 법사 옷 (직업 「법사(지팡이)」): 걷기 보폭 남녀 모두 84 (MAGE.<성별>.stride)
+    var mageMale = stage1('male', 'assets/chars/stage1/anchors_mage_male.json', 'mage');
+    var mageFemale = stage1('female', 'assets/chars/stage1/anchors_mage_female.json', 'mage');
   }
   var characters = { male: male, female: female };
   if (knightMale) { characters.knight_male = knightMale; characters.knight_female = knightFemale; }
+  if (mageMale) { characters.mage_male = mageMale; characters.mage_female = mageFemale; }
 
   // ---------- 적 그림 (art\stage1-enemies 에서 복사, 그림은 전부 「왼쪽을 봄」) ----------
   // playback = 그림 번호(1부터) 재생 순서, fps = 1초에 몇 칸. 순서를 늘리면 그 장면이 길어진다(예: 몽둥이 치켜든 장면 = 예고)
@@ -249,7 +314,10 @@
       // 무기 그림: img = 경로, grip = 손잡이 점(그림 안 좌표), baseAngle = 그림이 원래 향한 방향(도)
       weapons: {
         sword: { label: '검',   img: 'assets/weapons/sword.png', grip: { x: 8, y: 4 },  baseAngle: 0, layer: 'back' },
-        axe:   { label: '도끼', img: 'assets/weapons/axe.png',   grip: { x: 9, y: 4 },  baseAngle: 0, layer: 'back' }
+        axe:   { label: '도끼', img: 'assets/weapons/axe.png',   grip: { x: 9, y: 4 },  baseAngle: 0, layer: 'back' },
+        // 법사: staff = 남(74x18, 수정 끝이 손잡이 앞 49도트), wand = 여(32x11, 끝이 손잡이 앞 23도트)
+        staff: { label: '지팡이', img: 'assets/weapons/staff.png', grip: { x: 24, y: 9 }, baseAngle: 0, layer: 'back' },
+        wand:  { label: '완드',   img: 'assets/weapons/wand.png',  grip: { x: 8, y: 4 },  baseAngle: 0, layer: 'back' }
       },
       // 허수아비: 없으면(null) 코드로 그린 나무 기둥. hit 그림은 「왼쪽에서 맞음」 기준, 오른쪽에서 맞으면 뒤집어 씀
       dummy: artSet === 'novice' ? null : {
@@ -261,7 +329,11 @@
       fx: artSet === 'novice' ? null : {
         slash: seq('assets/fx/slash_', 4),
         impact: seq('assets/fx/spark_', 4),
-        slashOffset: { x: 40, y: -60 }   // 캐릭터 발 기준, 베기 그림 가운데 위치(오른쪽 볼 때)
+        slashOffset: { x: 40, y: -60 },  // 캐릭터 발 기준, 베기 그림 가운데 위치(오른쪽 볼 때)
+        // 법사 마법 효과 (artstage1effects): 마법탄 48x32 / 터짐 96x96 / 반짝임 40x40
+        magic_bolt: seq('assets/fx/magic_bolt_', 6),
+        magic_burst: seq('assets/fx/magic_burst_', 6),
+        magic_spark: seq('assets/fx/magic_spark_', 4)
       }
     },
 
@@ -280,7 +352,9 @@
     // 도끼를 다시 켜려면: 아래 axe 줄의 주석(//)을 풀고, index.html 의 도끼 버튼 주석(<!-- -->)도 푼다.
     classes: {
       novice: { label: '견습(맨손)', weapon: 'fist',  moves: 'fist' },
-      knight: { label: '기사(검)',   weapon: 'sword', moves: 'sword', outfit: 'knight' }
+      knight: { label: '기사(검)',   weapon: 'sword', moves: 'sword', outfit: 'knight' },
+      // 법사: 무기가 성별마다 다름(남 지팡이 staff / 여 짧은 지팡이 wand)
+      mage:   { label: '법사(지팡이)', weapon: { male: 'staff', female: 'wand' }, moves: 'magic', outfit: 'mage' }
       // , axe: { label: '도끼', weapon: 'axe', moves: 'sword' }
     },
     defaultClass: 'novice',
@@ -289,7 +363,18 @@
     weapons: {
       fist:  { damage: [8, 11],  hitstopMul: 0.9, shakeMul: 0.85, knockMul: 0.85, speed: 1.0, arcColor: '#ffffff', sparkColor: '#ffe6a0' },
       sword: { damage: [11, 15], hitstopMul: 1.0, shakeMul: 1.0, knockMul: 1.0, speed: 1.0,  arcColor: '#cfe8ff', sparkColor: '#fff3b0' },
-      axe:   { damage: [19, 26], hitstopMul: 1.6, shakeMul: 1.8, knockMul: 1.6, speed: 0.78, arcColor: '#ffc27a', sparkColor: '#ffb347' }
+      axe:   { damage: [19, 26], hitstopMul: 1.6, shakeMul: 1.8, knockMul: 1.6, speed: 0.78, arcColor: '#ffc27a', sparkColor: '#ffb347' },
+      // 법사: 근접은 검보다 약간 약하게(검 11~15). 마무리 마법(배율 1.8~1.9, 여러 마리 동시)으로 메운다
+      staff: { damage: [9, 13],  hitstopMul: 1.0, shakeMul: 0.95, knockMul: 0.95, speed: 1.0, arcColor: '#d9c2ff', sparkColor: '#c99bff' },
+      wand:  { damage: [8, 12],  hitstopMul: 0.95, shakeMul: 0.9, knockMul: 0.9, speed: 1.0, arcColor: '#e6d2ff', sparkColor: '#e0a8ff' }
+    },
+
+    // ---------- 법사 마법 그림 재생 ----------
+    // bolt = 날아가는 마법탄(돌면서 반복), burst = 터짐(한 번), spark = 지팡이 끝 반짝임(한 번). pivot = 그림 속 가운데
+    magic: {
+      bolt:  { frames: 'magic_bolt',  fps: 15, pivot: { x: 24, y: 16 } },
+      burst: { frames: 'magic_burst', fps: 16.7, pivot: { x: 48, y: 48 }, shake: 0.8 },   // 6장 x 60ms
+      spark: { frames: 'magic_spark', fps: 18, pivot: { x: 20, y: 20 } }
     },
 
     // ---------- 3타 콤보: 입력 기억 시간(공통) + 예전 견습 그림(?art=novice)용 콤보 ----------

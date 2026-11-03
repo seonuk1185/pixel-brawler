@@ -21,6 +21,13 @@ html, body {
   border: 0; padding: 6px 11px; cursor: pointer;
 }
 .seg button.on { background: #f2c14e; color: #2a1a12; }
+/* 좁은 화면(폰 세로 등): 직업 버튼의 괄호 설명을 숨기고 버튼을 조금 작게 → 한 줄에 다 들어가게 */
+@media (max-width: 560px) {
+  .topbar { gap: 6px; }
+  .seg button { padding: 6px 9px; }
+  .seg .sub { display: none; }
+  .modebtn { padding: 6px 8px; }
+}
 .modebtn {
   font-size: 13px; font-weight: 700; color: #ddd; background: #0006; border: 2px solid #0008; border-radius: 6px;
   padding: 6px 10px; text-decoration: none; white-space: nowrap;

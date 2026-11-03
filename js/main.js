@@ -180,31 +180,37 @@
   }
 
   // 플레이어가 대상(허수아비/적)을 때림
-  function onHit(st, target) {
+  // src = 마법탄·터짐처럼 몸과 떨어진 곳에서 맞힐 때 { dir: 밀려나는 방향, wk: 쏠 때 무기, x, y: 맞은 곳 } (없으면 플레이어 몸으로 때림)
+  function onHit(st, target, src) {
     var p = G.player;
-    var W = CFG.weapons[p.weaponKey];
+    var dir = src ? src.dir : p.dir;
+    var W = CFG.weapons[src ? src.wk : p.weaponKey];
     var dmg = Math.round(rand(W.damage[0], W.damage[1]) * st.dmg);
     G.hitstop = Math.max(G.hitstop, J.hitstopMs * W.hitstopMul * st.hitstop);
     FX.shake(J.shakePx * W.shakeMul * st.shake, J.shakeMs * (st.finisher ? 1.5 : 1));
     var knock = J.knockback * W.knockMul * st.knock;
     var hx, topY;
     if (target === G.dummy) {
-      target.hit(p.dir, knock, J.wobble * (st.finisher ? 1.4 : 1), J.flashMs);
-      hx = target.x - p.dir * 6; topY = target.y - 96;
+      target.hit(dir, knock, J.wobble * (st.finisher ? 1.4 : 1), J.flashMs);
+      hx = target.x - dir * 6; topY = target.y - 96;
     } else {
       // 무거운 타(타 knock × 무기 knockMul 이 크면) = 잡몹 넘어짐 (config ai.react.heavyKnock)
       var heavy = !!st.knockdown || st.knock * W.knockMul >= CFG.ai.react.heavyKnock;
-      var res = target.takeHit(dmg, p.dir, knock, !!st.finisher, { heavy: heavy });
+      var res = target.takeHit(dmg, dir, knock, !!st.finisher, { heavy: heavy });
       var hb = target.hurtbox();
-      // 불똥은 맞은 몸의 가장자리(플레이어 쪽)에서
-      hx = p.dir > 0 ? Math.max(hb.x0 + 4, Math.min(hb.x1 - 4, p.x + 30)) : Math.min(hb.x1 - 4, Math.max(hb.x0 + 4, p.x - 30));
+      // 불똥은 맞은 몸의 가장자리(플레이어 쪽)에서. 마법은 맞은 곳에서 가장 가까운 몸 위치
+      if (src) hx = clamp(src.x, hb.x0 + 4, hb.x1 - 4);
+      else hx = p.dir > 0 ? Math.max(hb.x0 + 4, Math.min(hb.x1 - 4, p.x + 30)) : Math.min(hb.x1 - 4, Math.max(hb.x0 + 4, p.x - 30));
       topY = target.y - target.T.height - 8;
       if (res === 'dead' && target.T.boss) onBossDown(target);
       else if (res === 'dead') G.hitstop = Math.max(G.hitstop, J.hitstopMs * 1.6);
     }
     // hitY = 주먹·발이 닿는 높이(맨손 콤보), spark = 불똥 그림 크기(맨손은 작게)
     var hy = p.y + (st.hitY != null ? st.hitY : -52), sc = st.spark || 1;
-    FX.impact(hx, hy, p.dir, W.sparkColor, Math.round(J.sparkCount * (st.finisher ? 1.6 : 1) * (sc < 1 ? 0.7 : 1)), !!st.finisher, G.assets.fx && G.assets.fx.impact, sc);
+    if (src) { var tb = target.hurtbox(); hy = clamp(src.y, tb.y0 + 6, tb.y1 - 6); }
+    // impactFx = 불똥 대신 쓸 그림(법사 = magic_spark)
+    var impSpr = G.assets.fx && ((st.impactFx && G.assets.fx[st.impactFx]) || G.assets.fx.impact);
+    FX.impact(hx, hy, dir, W.sparkColor, Math.round(J.sparkCount * (st.finisher ? 1.6 : 1) * (sc < 1 ? 0.7 : 1)), !!st.finisher, impSpr, sc);
     FX.damage(target.x, topY, dmg, !!st.finisher, J);
     vibrate(Math.round(J.vibrateMs * (st.finisher ? 2 : 1)));
     G.hits++; G.totalDmg += dmg;
@@ -212,6 +218,43 @@
     G.maxCombo = Math.max(G.maxCombo, G.comboHits);
     G.comboT = 1200;
     showCombo();
+  }
+
+  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+  // ---------- 법사 마법 (config MAGE 의 cast, CFG.magic 그림) ----------
+  // 그림 효과 한 번 재생: kind = 'spark'(지팡이 끝 반짝임) / 'burst'(터짐)
+  function magicSprite(kind, x, y, dir, scale) {
+    var M = CFG.magic && CFG.magic[kind], fr = M && G.assets.fx && G.assets.fx[M.frames];
+    if (fr && fr.length) FX.sprite(x, y, fr, M.fps, M.pivot, dir < 0, false, scale || 1);
+  }
+  // 마법 내보내기: bolt = 날아가는 탄(Projectiles), burst = 그 자리에서 바로 터짐
+  function castMagic(st) {
+    var p = G.player, c = st.cast, x = p.x + p.dir * c.x, y = p.y + c.y;
+    if (c.kind === 'bolt') {
+      var B = CFG.magic.bolt;
+      Projectiles.spawn({ x: x, y: y, z: p.y, dir: p.dir, speed: c.speed, range: c.range, box: c.box, depth: c.depth,
+        burstAtEnd: !!c.burstAtEnd, backReach: c.backReach || 0, frames: G.assets.fx && G.assets.fx[B.frames], fps: B.fps, pivot: B.pivot,
+        st: st, wk: p.weaponKey });
+    } else explode(x, y, p.y, st, p.dir, p.weaponKey, null);
+  }
+  // 터짐: 반지름 r 안(위아래 줄은 depth 안)의 대상 전부 맞음. direct = 마법탄이 직접 맞힌 대상(항상 맞음)
+  function explode(cx, cy, z, st, dir, wk, direct) {
+    var B = st.cast.burst;
+    magicSprite('burst', cx, cy, dir, B.scale);
+    FX.shake(J.shakePx * ((CFG.magic.burst && CFG.magic.burst.shake) || 0.8), J.shakeMs);
+    var targets = MODE === 'stage' ? G.enemies.slice() : [G.dummy];
+    targets.forEach(function (t) {
+      if (!t || (t.canBeHit && !t.canBeHit())) return;
+      var hb = t.hurtbox();
+      if (t !== direct) {
+        if (Math.abs(hb.z - z) > B.depth) return;
+        var nx = clamp(cx, hb.x0, hb.x1), ny = clamp(cy, hb.y0, hb.y1);
+        if (Math.hypot(nx - cx, ny - cy) > B.r) return;
+      }
+      var d = Math.abs(t.x - cx) < 4 ? dir : (t.x > cx ? 1 : -1);   // 터진 곳에서 바깥으로 밀림
+      onHit(st, t, { dir: d, wk: wk, x: cx, y: cy });
+    });
   }
 
   // 적이 플레이어를 때림
@@ -369,6 +412,28 @@
     }
   }
 
+  // ---------- 휘두를 때 효과 (궤적·바람·반짝임) ----------
+  // sfx = 그 타의 fx 하나. linger = 궤적이 남는 시간(ms, 기사 여자 3타 X자), 없으면 juice.slashMs
+  function swingFx(p, st0, sfx) {
+    var W = CFG.weapons[p.weaponKey], a = st0.arc;
+    var fxs = G.assets.fx && G.assets.fx.slash && G.assets.fx.slash.length ? G.assets.fx.slash : null;
+    var ms = sfx && sfx.linger ? sfx.linger : J.slashMs * (st0.finisher ? 1.5 : 1);
+    if (sfx && sfx.type === 'none') {
+      // 맨손 주먹: 궤적 없음 (맞으면 불똥만)
+    } else if (sfx && sfx.type === 'spark') {    // 법사: 지팡이 끝 반짝임(magic_spark 그림)
+      magicSprite('spark', p.x + p.dir * sfx.x, p.y + sfx.y, p.dir, sfx.scale);
+    } else if (sfx && sfx.type === 'whoosh') {   // 발차기: 베기 그림을 흐리고 납작하게 → 바람 가르는 느낌
+      if (fxs) FX.slash(p.x + p.dir * sfx.x, p.y + sfx.y, p.dir, a, '#ffffff', ms, fxs, sfx);
+    } else if (sfx && sfx.type === 'thrust') {   // 찌르기: 짧은 직선 궤적(코드로 그림)
+      FX.thrust(p.x + p.dir * sfx.x, p.y + sfx.y, p.dir, sfx.len || 40, W.arcColor, ms);
+    } else if (fxs) {   // 그림 효과: 캐릭터 앞에 놓기 (타마다 위치·회전·뒤집기 다름)
+      var off = sfx || CFG.art.fx.slashOffset;
+      FX.slash(p.x + p.dir * off.x, p.y + off.y, p.dir, a, W.arcColor, ms, fxs, sfx);
+    } else {     // 코드로 그린 궤적
+      FX.slash(p.x + p.dir * 18, p.y - 56, p.dir, a, W.arcColor, J.slashMs, null);
+    }
+  }
+
   // ---------- 갱신 ----------
   function step(realMs) {
     FX.updateShake(realMs);
@@ -383,22 +448,11 @@
     if (G.bot && MODE === 'stage' && !G.stage.result) botThink(dt);
     var ev = p.update(dt, world);
     if (ev.slash) {
-      var W = CFG.weapons[p.weaponKey], st0 = ev.slash.step, a = st0.arc, sfx = st0.fx;
-      var fxs = G.assets.fx && G.assets.fx.slash && G.assets.fx.slash.length ? G.assets.fx.slash : null;
-      var ms = J.slashMs * (st0.finisher ? 1.5 : 1);
-      if (sfx && sfx.type === 'none') {
-        // 맨손 주먹: 궤적 없음 (맞으면 불똥만)
-      } else if (sfx && sfx.type === 'whoosh') {   // 발차기: 베기 그림을 흐리고 납작하게 → 바람 가르는 느낌
-        if (fxs) FX.slash(p.x + p.dir * sfx.x, p.y + sfx.y, p.dir, a, '#ffffff', ms, fxs, sfx);
-      } else if (sfx && sfx.type === 'thrust') {   // 찌르기: 짧은 직선 궤적(코드로 그림)
-        FX.thrust(p.x + p.dir * sfx.x, p.y + sfx.y, p.dir, sfx.len || 40, W.arcColor, ms);
-      } else if (fxs) {   // 그림 효과: 캐릭터 앞에 놓기 (타마다 위치·회전·뒤집기 다름)
-        var off = sfx || CFG.art.fx.slashOffset;
-        FX.slash(p.x + p.dir * off.x, p.y + off.y, p.dir, a, W.arcColor, ms, fxs, sfx);
-      } else {     // 코드로 그린 궤적
-        FX.slash(p.x + p.dir * 18, p.y - 56, p.dir, a, W.arcColor, J.slashMs, null);
-      }
+      // fx 는 하나 또는 여러 개(법사 2타 = 바람 + 지팡이 끝 반짝임)
+      var st0 = ev.slash.step;
+      (Array.isArray(st0.fx) ? st0.fx : [st0.fx]).forEach(function (sfx) { swingFx(p, st0, sfx); });
     }
+    if (ev.cast) castMagic(ev.cast.step);
     if (ev.hitCheck) {
       var hb = p.hitbox(), done = ev.hitCheck.done;
       var targets = MODE === 'stage' ? G.enemies : [G.dummy];
@@ -408,6 +462,8 @@
         if (overlap(hb, t.hurtbox())) { done[id] = true; onHit(ev.hitCheck.step, t); }   // 판정 구간마다 대상별 한 번
       });
     }
+    // 날아가는 마법탄: 처음 맞은 대상(또는 끝까지 날아간 곳)에서 터짐
+    Projectiles.update(dt, MODE === 'stage' ? G.enemies : [G.dummy], function (pr, t) { explode(pr.x, pr.y, pr.z, pr.st, pr.dir, pr.wk, t); });
     if (MODE === 'stage') {
       var E = G.ectx;
       E.now += dt; E.view.x0 = G.camX; E.view.x1 = G.camX + LW - (controlPad ? controlPad + 14 : 0);   // 적은 몸이 넓어서 버튼 쪽으로 조금 더 띄움
@@ -450,6 +506,7 @@
     G.enemies.forEach(function (e) { ents.push({ y: e.y + (e.alive() ? 0 : -0.5), d: function () { e.draw(ctx, camX, DEBUG); } }); });
     ents.sort(function (a, b) { return a.y - b.y; });
     ents.forEach(function (e) { e.d(); });
+    Projectiles.draw(ctx, camX);
     FX.draw(ctx, camX, false);
 
     if (DEBUG) drawDebug(camX);
@@ -515,6 +572,7 @@
   function resetStage() {
     resultEl.hidden = true;
     FX.list.length = 0;
+    Projectiles.clear();
     G.enemies = [];
     G.stage = newStage();
     G.ectx = makeEnemyCtx();
@@ -555,20 +613,24 @@
     var c = CFG.classes && CFG.classes[G.classKey], C = G.assets.characters;
     return (c && c.outfit && C[c.outfit + '_' + G.charKey]) || C[G.charKey];
   }
+  // 직업의 무기: 성별마다 다를 수 있음(법사 = 남 staff / 여 wand)
+  function classWeapon(c) { var w = c.weapon; return w && typeof w === 'object' ? (w[G.charKey] || w.male) : w; }
   function setChar(k) {
     if (!G.assets.characters[k]) return;
     G.charKey = k; G.player.setCharacter(outfitAssets());
+    var c = CFG.classes && CFG.classes[G.classKey];
+    if (c) { G.weaponKey = classWeapon(c); G.player.weaponKey = G.weaponKey; }
     document.querySelectorAll('[data-char]').forEach(function (b) { b.classList.toggle('on', b.dataset.char === k); });
   }
   // 직업 고르기: 견습(맨손) / 기사(검). 직업이 무기와 콤보 묶음을 정한다 (config classes)
   function setClass(k) {
     var c = CFG.classes && CFG.classes[k];
     if (!c) return;
-    G.classKey = k; G.weaponKey = c.weapon; G.moveSet = c.moves;
+    G.classKey = k; G.weaponKey = classWeapon(c); G.moveSet = c.moves;
     if (G.player) {
       var a = outfitAssets();
       if (a && G.player.char !== a) G.player.setCharacter(a);   // 옷이 바뀔 때만 그림 묶음 교체
-      G.player.weaponKey = c.weapon; G.player.setMoveSet(c.moves);
+      G.player.weaponKey = G.weaponKey; G.player.setMoveSet(c.moves);
     }
     document.querySelectorAll('[data-class]').forEach(function (b) { b.classList.toggle('on', b.dataset.class === k); });
   }

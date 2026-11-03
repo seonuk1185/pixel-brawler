@@ -1,0 +1,603 @@
+{
+ "frameSize": [
+  176,
+  136
+ ],
+ "frames": {
+  "idle_01": {
+   "hand": [
+    92,
+    73
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "idle_02": {
+   "hand": [
+    92,
+    73
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "idle_03": {
+   "hand": [
+    92,
+    73
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "idle_04": {
+   "hand": [
+    92,
+    73
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "walk_01": {
+   "hand": [
+    93,
+    76
+   ],
+   "angle": -30,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "walk_02": {
+   "hand": [
+    93,
+    78
+   ],
+   "angle": -30,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "walk_03": {
+   "hand": [
+    91,
+    80
+   ],
+   "angle": -30,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "walk_04": {
+   "hand": [
+    93,
+    77
+   ],
+   "angle": -30,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "walk_05": {
+   "hand": [
+    95,
+    77
+   ],
+   "angle": -30,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "walk_06": {
+   "hand": [
+    94,
+    77
+   ],
+   "angle": -30,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "walk_07": {
+   "hand": [
+    92,
+    78
+   ],
+   "angle": -30,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "walk_08": {
+   "hand": [
+    93,
+    78
+   ],
+   "angle": -30,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "hurt_01": {
+   "hand": [
+    37,
+    83
+   ],
+   "angle": 150,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     36,
+     79
+    ],
+    "shift": [
+     1,
+     4
+    ],
+    "match": 0.872,
+    "match0": 0.776
+   }
+  },
+  "hurt_02": {
+   "hand": [
+    38,
+    78
+   ],
+   "angle": 110,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     38,
+     74
+    ],
+    "shift": [
+     0,
+     4
+    ],
+    "match": 0.901,
+    "match0": 0.829
+   }
+  },
+  "hurt_03": {
+   "hand": [
+    93,
+    56
+   ],
+   "angle": -60,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     93,
+     56
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.955,
+    "match0": 0.955
+   }
+  },
+  "attack1_01": {
+   "hand": [
+    87,
+    58
+   ],
+   "angle": -60,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "attack1_02": {
+   "hand": [
+    71,
+    50
+   ],
+   "angle": -110,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "attack1_03": {
+   "hand": [
+    109,
+    56
+   ],
+   "angle": 0,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "attack1_04": {
+   "hand": [
+    87,
+    58
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "attack2_01": {
+   "hand": [
+    57,
+    62
+   ],
+   "angle": -170,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "attack2_02": {
+   "hand": [
+    85,
+    58
+   ],
+   "angle": -10,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "attack2_03": {
+   "hand": [
+    93,
+    56
+   ],
+   "angle": 0,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "attack2_04": {
+   "hand": [
+    93,
+    55
+   ],
+   "angle": 0,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "attack2_05": {
+   "hand": [
+    85,
+    79
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "attack3_01": {
+   "hand": [
+    79,
+    75
+   ],
+   "angle": -20,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "attack3_02": {
+   "hand": [
+    39,
+    94
+   ],
+   "angle": -150,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "attack3_03": {
+   "hand": [
+    110,
+    59
+   ],
+   "angle": 0,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "attack3_04": {
+   "hand": [
+    103,
+    60
+   ],
+   "angle": 0,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "attack3_05": {
+   "hand": [
+    88,
+    78
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "manual": true
+   }
+  },
+  "getup_03": {
+   "hand": [
+    92,
+    90
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     93,
+     88
+    ],
+    "shift": [
+     -1,
+     2
+    ],
+    "match": 0.937,
+    "match0": 0.888
+   }
+  },
+  "getup_04": {
+   "hand": [
+    92,
+    73
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     91,
+     73
+    ],
+    "shift": [
+     7,
+     1
+    ],
+    "match": 0.897,
+    "match0": 0.845
+   }
+  },
+  "hurt2_01": {
+   "hand": [
+    76,
+    75
+   ],
+   "angle": 60,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     72,
+     79
+    ],
+    "shift": [
+     4,
+     -4
+    ],
+    "match": 0.935,
+    "match0": 0.894
+   }
+  },
+  "hurt2_02": {
+   "hand": [
+    83,
+    88
+   ],
+   "angle": 80,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     82,
+     89
+    ],
+    "shift": [
+     1,
+     -1
+    ],
+    "match": 0.836,
+    "match0": 0.798
+   }
+  },
+  "hurt2_03": {
+   "hand": [
+    102,
+    69
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     95,
+     69
+    ],
+    "shift": [
+     7,
+     0
+    ],
+    "match": 0.865,
+    "match0": 0.826
+   }
+  },
+  "knockdown_01": {
+   "hand": [
+    68,
+    128
+   ],
+   "angle": 0,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     68,
+     128
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 1,
+    "match0": 1
+   },
+   "hide": true
+  },
+  "knockdown_02": {
+   "hand": [
+    68,
+    128
+   ],
+   "angle": 0,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     68,
+     128
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 1,
+    "match0": 1
+   },
+   "hide": true
+  },
+  "knockdown_03": {
+   "hand": [
+    68,
+    128
+   ],
+   "angle": 0,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     68,
+     128
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.9,
+    "match0": 0.893
+   },
+   "hide": true
+  },
+  "knockdown_04": {
+   "hand": [
+    68,
+    128
+   ],
+   "angle": 0,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     68,
+     128
+    ],
+    "shift": [
+     7,
+     6
+    ],
+    "match": 0.895,
+    "match0": 0.754
+   },
+   "hide": true
+  },
+  "knockdown_05": {
+   "hand": [
+    68,
+    128
+   ],
+   "angle": 0,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     68,
+     128
+    ],
+    "shift": [
+     -3,
+     2
+    ],
+    "match": 0.965,
+    "match0": 0.904
+   },
+   "hide": true
+  },
+  "getup_01": {
+   "hand": [
+    68,
+    128
+   ],
+   "angle": 0,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     68,
+     128
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.99,
+    "match0": 0.987
+   },
+   "hide": true
+  },
+  "getup_02": {
+   "hand": [
+    68,
+    128
+   ],
+   "angle": 0,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     68,
+     128
+    ],
+    "shift": [
+     1,
+     1
+    ],
+    "match": 0.895,
+    "match0": 0.885
+   },
+   "hide": true
+  }
+ },
+ "note": "Mage anchors (2026-11-03). hand=[x,y] grip position in frame pixels (176x136, feet baseline y=130, facing right); angle degrees, 0 = weapon pointing right, positive = clockwise on screen; draw weapon (staff.png male / wand.png female) so its grip lands on hand, rotated by angle; layer back = draw weapon before the character. hide=true: do not draw the held weapon (knocked out of the hand); hand is then only a drop point on the ground.",
+ "weapon": "wand"
+}

@@ -90,9 +90,9 @@
       list.push({ type: 'dmg', x: x + (Math.random() * 8 - 4), y: y, n: String(n) + (crit ? '!' : ''), crit: crit, t: 0, life: J.dmgMs, rise: J.dmgRise, color: color || null });
     },
     // 그림 여러 장을 한 번 재생하는 효과(오크 돌진 먼지). pivot = 그림 속 기준점(바닥 가운데), flip = 좌우 뒤집기
-    // under = true 면 캐릭터보다 뒤(바닥)에 그림
-    sprite: function (x, y, frames, fps, pivot, flip, under) {
-      list.push({ type: 'sprite', x: x, y: y, frames: frames, step: 1000 / fps, pivot: pivot, flip: !!flip, under: !!under, t: 0, life: frames.length * 1000 / fps });
+    // under = true 면 캐릭터보다 뒤(바닥)에 그림, scale = 크기 배율(없으면 1, 법사 마법 터짐·반짝임)
+    sprite: function (x, y, frames, fps, pivot, flip, under, scale) {
+      list.push({ type: 'sprite', x: x, y: y, frames: frames, step: 1000 / fps, pivot: pivot, flip: !!flip, under: !!under, t: 0, life: frames.length * 1000 / fps, scale: scale || 1 });
     },
 
     update: function (dtMs) {
@@ -107,38 +107,47 @@
     },
 
     // under = true: 바닥 효과만(캐릭터 뒤), false/없음: 나머지(캐릭터 앞)
+    // 베기 궤적 중 look.top 인 것(기사 여자 3타 X자)은 불똥보다 위에 보이도록 맨 마지막에 그린다
     draw: function (ctx, camX, under) {
-      list.forEach(function (f) {
-        if (!!f.under !== !!under) return;
-        var k = f.t / f.life, x = Math.round(f.x - camX), y = Math.round(f.y);
-        if (f.type === 'sprite') {
-          var im = f.frames[Math.min(f.frames.length - 1, Math.floor(f.t / f.step))];
-          if (!im) return;
-          ctx.save(); ctx.translate(x, y); if (f.flip) ctx.scale(-1, 1);
-          ctx.drawImage(im, -f.pivot.x, -f.pivot.y); ctx.restore();
-        }
-        else if (f.type === 'slash') drawSlash(ctx, f, x, y, k);
-        else if (f.type === 'thrust') drawThrust(ctx, f, x, y, k);
-        else if (f.type === 'impact') drawImpact(ctx, f, x, y, k);
-        else if (f.type === 'dmg') {
-          // 처음엔 크게 튀어나왔다가 작아지며 떠오름
-          var s = f.crit ? (k < 0.12 ? 4 : 3) : (k < 0.12 ? 3 : 2);
-          var ease = 1 - Math.pow(1 - Math.min(1, k * 1.6), 3);
-          ctx.globalAlpha = k > 0.7 ? Math.max(0, 1 - (k - 0.7) / 0.3) : 1;
-          drawPixelText(ctx, f.n, x, y - 20 - ease * f.rise, s, f.color || (f.crit ? '#ffd23f' : '#ffffff'), '#2a1020');
-          ctx.globalAlpha = 1;
-        }
-      });
+      list.forEach(function (f) { drawOne(ctx, camX, under, f, false); });
+      if (!under) list.forEach(function (f) { drawOne(ctx, camX, under, f, true); });
     }
   };
 
+  function drawOne(ctx, camX, under, f, topPass) {
+    if (!!f.under !== !!under) return;
+    if (!!(f.look && f.look.top) !== topPass) return;
+    var k = f.t / f.life, x = Math.round(f.x - camX), y = Math.round(f.y);
+    if (f.type === 'sprite') {
+      var im = f.frames[Math.min(f.frames.length - 1, Math.floor(f.t / f.step))];
+      if (!im) return;
+      ctx.save(); ctx.translate(x, y); ctx.scale(f.flip ? -f.scale : f.scale, f.scale);
+      ctx.drawImage(im, -f.pivot.x, -f.pivot.y); ctx.restore();
+    }
+    else if (f.type === 'slash') drawSlash(ctx, f, x, y, k);
+    else if (f.type === 'thrust') drawThrust(ctx, f, x, y, k);
+    else if (f.type === 'impact') drawImpact(ctx, f, x, y, k);
+    else if (f.type === 'dmg') {
+      // 처음엔 크게 튀어나왔다가 작아지며 떠오름
+      var s = f.crit ? (k < 0.12 ? 4 : 3) : (k < 0.12 ? 3 : 2);
+      var ease = 1 - Math.pow(1 - Math.min(1, k * 1.6), 3);
+      ctx.globalAlpha = k > 0.7 ? Math.max(0, 1 - (k - 0.7) / 0.3) : 1;
+      drawPixelText(ctx, f.n, x, y - 20 - ease * f.rise, s, f.color || (f.crit ? '#ffd23f' : '#ffffff'), '#2a1020');
+      ctx.globalAlpha = 1;
+    }
+  }
+
   function drawSprites(ctx, f, x, y, k) {
-    var fr = f.sprites[Math.min(f.sprites.length - 1, Math.floor(k * f.sprites.length))];
+    var L = f.look || {};
+    var fi = Math.min(f.sprites.length - 1, Math.floor(k * f.sprites.length));
+    // linger(오래 남는 궤적): 꽉 찬 초승달(2번째 장)을 붙잡고 있다가 끝에서만 흩어지는 장으로, 60%부터 서서히 흐려짐
+    if (L.linger && f.sprites.length >= 4) fi = k < 0.78 ? 1 : k < 0.9 ? 2 : 3;
+    var fr = f.sprites[fi];
     if (!fr) return false;
     ctx.save();
     ctx.translate(x, y);
-    var L = f.look || {};
     if (L.alpha != null) ctx.globalAlpha = L.alpha * (k > 0.6 ? Math.max(0, 1 - (k - 0.6) / 0.4) : 1);   // 흐리게(발차기 바람)
+    else if (L.linger) ctx.globalAlpha = k > 0.6 ? Math.max(0.15, 1 - (k - 0.6) / 0.4 * 0.85) : 1;
     ctx.scale(f.dir < 0 ? -1 : 1, 1);                       // 왼쪽 보면 좌우 뒤집기
     if (L.rot) ctx.rotate(L.rot * Math.PI / 180);           // 휘두르는 방향에 맞게 돌리기
     ctx.scale(L.sx || 1, ((L.flipY || (f.arc && f.arc.flipY)) ? -1 : 1) * (L.sy || 1));

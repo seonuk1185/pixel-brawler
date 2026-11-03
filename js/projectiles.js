@@ -1,0 +1,79 @@
+// 날아가는 공격(법사 마법탄 등): 목록에 넣고 → 매 장면 앞으로 이동 → 맞을 대상과 겹치면 onImpact 로 알림
+// 맞았을 때 무엇을 할지(데미지·터짐)는 main.js 가 정한다. 여기는 「날아가기 + 처음 맞은 대상 찾기 + 그리기」만.
+(function () {
+  var list = [];
+
+  // o = { x, y(화면 높이, 발 기준이 아닌 실제 y), z(걷는 줄 = 쏜 사람 발 y), dir(1/-1), speed(도트/초), range(도트),
+  //       box: { w, h } 탄 크기, depth = 위아래(줄) 판정 폭, frames = 그림 목록, fps, pivot, burstAtEnd,
+  //       backReach = 처음 한 번은 나온 곳에서 이만큼 뒤(쏜 사람 쪽)까지도 확인 → 바로 앞에 붙은 적을 탄이 건너뛰지 않게,
+  //       ...아무 값(main 이 씀) }
+  function spawn(o) {
+    o.trav = 0; o.t = 0; o.dead = false;
+    list.push(o);
+    return o;
+  }
+
+  function box(p) {
+    var w = (p.box && p.box.w) || 16, h = (p.box && p.box.h) || 16;
+    return { x0: p.x - w / 2, x1: p.x + w / 2, y0: p.y - h / 2, y1: p.y + h / 2, z: p.z, depth: p.depth || 14 };
+  }
+
+  function overlap(h, b) {
+    return h.x0 < b.x1 && h.x1 > b.x0 && h.y0 < b.y1 && h.y1 > b.y0 && Math.abs(h.z - b.z) <= h.depth;
+  }
+
+  // targets = 맞을 수 있는 대상 목록(hurtbox(), canBeHit() 있으면 확인), onImpact(p, target 또는 null(끝까지 날아감))
+  function update(dtMs, targets, onImpact) {
+    for (var i = list.length - 1; i >= 0; i--) {
+      var p = list[i];
+      if (!p.dead) {
+        // 빠른 탄이 얇은 몸을 건너뛰지 않게 한 번에 최대 8도트씩 나눠 움직이며 확인
+        var move = p.speed * dtMs / 1000, steps = Math.max(1, Math.ceil(move / 8));
+        for (var s = 0; s < steps && !p.dead; s++) {
+          var m = Math.min(move / steps, p.range - p.trav);
+          p.x += p.dir * m; p.trav += m;
+          var b = box(p), hit = null, best = 1e9;
+          if (p.backReach && !p.checkedBack) {   // 첫 확인: 쏜 사람 앞 ~ 나온 곳까지 넓혀서
+            p.checkedBack = true;
+            if (p.dir > 0) b.x0 -= p.backReach; else b.x1 += p.backReach;
+          }
+          targets.forEach(function (t) {
+            if (!t || (t.canBeHit && !t.canBeHit())) return;
+            if (!overlap(b, t.hurtbox())) return;
+            var d = (t.x - p.x) * p.dir;          // 앞쪽으로 가장 가까운 대상 먼저
+            if (d < best) { best = d; hit = t; }
+          });
+          if (hit) {   // 터지는 곳 = 맞은 몸 안(뒤쪽 확인으로 맞았으면 몸 쪽으로 당김)
+            var hb = hit.hurtbox();
+            p.x = Math.max(hb.x0, Math.min(hb.x1, p.x));
+            p.dead = true; onImpact(p, hit);
+          }
+          else if (p.trav >= p.range - 0.01) { p.dead = true; if (p.burstAtEnd) onImpact(p, null); }
+        }
+        p.t += dtMs;
+      }
+      if (p.dead) list.splice(i, 1);
+    }
+  }
+
+  function draw(ctx, camX) {
+    list.forEach(function (p) {
+      var fr = p.frames && p.frames.length ? p.frames[Math.floor(p.t / 1000 * (p.fps || 12)) % p.frames.length] : null;
+      var x = Math.round(p.x - camX), y = Math.round(p.y);
+      if (!fr) {   // 그림이 없으면 보라색 동그라미
+        ctx.fillStyle = '#c99bff'; ctx.fillRect(x - 5, y - 4, 10, 8);
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(x - 2, y - 2, 4, 4);
+        return;
+      }
+      var pv = p.pivot || { x: fr.width / 2, y: fr.height / 2 };
+      ctx.save(); ctx.translate(x, y); if (p.dir < 0) ctx.scale(-1, 1);   // 그림은 오른쪽으로 날아감
+      ctx.drawImage(fr, -pv.x, -pv.y);
+      ctx.restore();
+    });
+  }
+
+  window.Projectiles = {
+    list: list, spawn: spawn, update: update, draw: draw,
+    clear: function () { list.length = 0; }
+  };
+})();

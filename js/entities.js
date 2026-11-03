@@ -249,9 +249,10 @@
         var wi = this.activeWindow();
         if (wi >= 0) {
           var w = hitWindows(st)[wi];
-          if (!a.slashed[wi]) { a.slashed[wi] = true; ev.slash = { step: w }; }
+          // cast = 마법(법사): 판정 상자 대신 그 구간 처음에 한 번 마법을 내보낸다(main.js 가 탄·터짐을 만든다)
+          if (!a.slashed[wi]) { a.slashed[wi] = true; ev.slash = { step: w }; if (w.cast) ev.cast = { step: w }; }
           // 판정 구간마다 맞은 대상 기록(같은 대상은 한 구간에 한 번만, 여러 적은 한꺼번에 맞음)
-          ev.hitCheck = { step: w, stepIndex: a.step, win: wi, done: a.hitDone[wi] || (a.hitDone[wi] = {}) };
+          if (!w.cast) ev.hitCheck = { step: w, stepIndex: a.step, win: wi, done: a.hitDone[wi] || (a.hitDone[wi] = {}) };
         }
       }
     }
