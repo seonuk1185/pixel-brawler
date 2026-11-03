@@ -131,10 +131,12 @@
   // 새 그림(art\stage1): 빈손 남/여 + 손 위치 json → 무기를 코드로 손에 붙인다
   // 콤보 3타는 캐릭터마다 자기 그림(attack1/attack2/attack3)과 자기 수치를 쓴다 (위 MOVES)
   // 직업(견습/기사)에 따라 콤보 묶음이 바뀐다: combos.fist = 맨손(FIST), combos.sword = 검(MOVES)
-  function stage1(who, anchors) {
-    var p = 'assets/chars/stage1/' + who + '/';
+  // outfit = 옷 그림 묶음('knight' = 기사 갑옷). 없으면 견습 옷. 기사 옷 그림은 검 콤보 그림만 있고 맨손(fist) 그림은 없다
+  //   (파일 이름·장 수·발 위치가 견습 그림과 똑같아서 MOVES 수치를 그대로 쓴다)
+  function stage1(who, anchors, outfit) {
+    var p = 'assets/chars/stage1/' + (outfit ? outfit + '_' : '') + who + '/';
     var M = MOVES[who];
-    return {
+    var def = {
       label: who === 'male' ? '남' : '여',
       frameW: 176, frameH: 136,
       pivot: { x: 68, y: 130 },
@@ -150,19 +152,23 @@
         attack1: { frames: seq(p + M.attack1Prefix, M.attack1Count), fps: 14, loop: false },
         attack2: { frames: seq(p + 'attack2_', M.attack2Count), fps: 14, loop: false },
         attack3: { frames: seq(p + 'attack3_', M.attack3Count), fps: 14, loop: false },
-        hurt:    { frames: seq(p + 'hurt_', 3),   fps: 10, loop: false },
-        fist1:   { frames: seq(p + 'fist1_', 4),  fps: 14, loop: false },
-        fist2:   { frames: seq(p + 'fist2_', 5),  fps: 14, loop: false },
-        fist3:   { frames: seq(p + 'fist3_', who === 'male' ? 6 : 5), fps: 14, loop: false }
+        hurt:    { frames: seq(p + 'hurt_', 3),   fps: 10, loop: false }
       },
       combo: M.combo,
-      combos: { sword: M.combo, fist: FIST[who] }
+      combos: { sword: M.combo }
     };
+    if (!outfit) {   // 견습 옷만 맨손 콤보 그림이 있다
+      def.anims.fist1 = { frames: seq(p + 'fist1_', 4),  fps: 14, loop: false };
+      def.anims.fist2 = { frames: seq(p + 'fist2_', 5),  fps: 14, loop: false };
+      def.anims.fist3 = { frames: seq(p + 'fist3_', who === 'male' ? 6 : 5), fps: 14, loop: false };
+      def.combos.fist = FIST[who];
+    }
+    return def;
   }
 
   // 어떤 그림 묶음을 쓸지: 기본 stage1, 주소 뒤에 ?art=novice 를 붙이면 예전 견습(칼 박힌 그림)
   var artSet = /[?&]art=novice/.test(location.search) ? 'novice' : 'stage1';
-  var male, female;
+  var male, female, knightMale = null, knightFemale = null;
   if (artSet === 'novice') {
     male = clone(NOVICE);   male.label = '남';
     female = clone(NOVICE); female.label = '여';
@@ -170,7 +176,12 @@
   } else {
     male = stage1('male', 'assets/chars/stage1/anchors_male.json');
     female = stage1('female', 'assets/chars/stage1/anchors_female.json');
+    // 기사 옷 (직업 「기사(검)」을 고르면 이 그림 + 기사 손 위치로 바뀐다)
+    knightMale = stage1('male', 'assets/chars/stage1/anchors_knight_male.json', 'knight');
+    knightFemale = stage1('female', 'assets/chars/stage1/anchors_knight_female.json', 'knight');
   }
+  var characters = { male: male, female: female };
+  if (knightMale) { characters.knight_male = knightMale; characters.knight_female = knightFemale; }
 
   // ---------- 적 그림 (art\stage1-enemies 에서 복사, 그림은 전부 「왼쪽을 봄」) ----------
   // playback = 그림 번호(1부터) 재생 순서, fps = 1초에 몇 칸. 순서를 늘리면 그 장면이 길어진다(예: 몽둥이 치켜든 장면 = 예고)
@@ -204,7 +215,8 @@
 
     // ---------- 그림 경로 (교체는 여기서만) ----------
     art: {
-      characters: { male: male, female: female },
+      // 키 = 성별(male/female) 또는 「옷_성별」(knight_male). 직업에 outfit 이 있으면 그 옷, 없으면 견습 옷
+      characters: characters,
       // 무기 그림: img = 경로, grip = 손잡이 점(그림 안 좌표), baseAngle = 그림이 원래 향한 방향(도)
       weapons: {
         sword: { label: '검',   img: 'assets/weapons/sword.png', grip: { x: 8, y: 4 },  baseAngle: 0, layer: 'back' },
@@ -233,12 +245,13 @@
     },
 
     // ---------- 직업 (위쪽 버튼) ----------
-    // weapon = 쓰는 무기(무기별 손맛 + 손에 붙일 그림, 'fist' 는 그림 없음), moves = 콤보 묶음(combos 의 이름)
+    // weapon = 쓰는 무기(무기별 손맛 + 손에 붙일 그림, 'fist' 는 그림 없음), moves = 콤보 묶음(combos 의 이름),
+    // outfit = 입는 옷 그림(characters 의 「옷_성별」 묶음, 없으면 견습 옷)
     // 견습 = 전직 전 맨손, 기사 = 검. 처음 켤 때는 defaultClass.
     // 도끼를 다시 켜려면: 아래 axe 줄의 주석(//)을 풀고, index.html 의 도끼 버튼 주석(<!-- -->)도 푼다.
     classes: {
       novice: { label: '견습(맨손)', weapon: 'fist',  moves: 'fist' },
-      knight: { label: '기사(검)',   weapon: 'sword', moves: 'sword' }
+      knight: { label: '기사(검)',   weapon: 'sword', moves: 'sword', outfit: 'knight' }
       // , axe: { label: '도끼', weapon: 'axe', moves: 'sword' }
     },
     defaultClass: 'novice',

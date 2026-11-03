@@ -1,0 +1,608 @@
+{
+ "frameSize": [
+  176,
+  136
+ ],
+ "frames": {
+  "idle_01": {
+   "hand": [
+    94,
+    73
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     94,
+     73
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.981,
+    "match0": 0.981
+   }
+  },
+  "idle_02": {
+   "hand": [
+    93,
+    72
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     93,
+     72
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.986,
+    "match0": 0.986
+   }
+  },
+  "idle_03": {
+   "hand": [
+    92,
+    73
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     92,
+     73
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.97,
+    "match0": 0.97
+   }
+  },
+  "idle_04": {
+   "hand": [
+    93,
+    73
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     93,
+     74
+    ],
+    "shift": [
+     0,
+     -1
+    ],
+    "match": 0.977,
+    "match0": 0.962
+   }
+  },
+  "walk_01": {
+   "hand": [
+    91,
+    74
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     91,
+     74
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.958,
+    "match0": 0.958
+   }
+  },
+  "walk_02": {
+   "hand": [
+    87,
+    75
+   ],
+   "angle": -38,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     87,
+     75
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.93,
+    "match0": 0.93
+   }
+  },
+  "walk_03": {
+   "hand": [
+    81,
+    79
+   ],
+   "angle": -34,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     80,
+     80
+    ],
+    "shift": [
+     1,
+     -1
+    ],
+    "match": 0.967,
+    "match0": 0.941
+   }
+  },
+  "walk_04": {
+   "hand": [
+    83,
+    76
+   ],
+   "angle": -38,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     83,
+     76
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.93,
+    "match0": 0.926
+   }
+  },
+  "walk_05": {
+   "hand": [
+    92,
+    73
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     91,
+     74
+    ],
+    "shift": [
+     1,
+     -1
+    ],
+    "match": 0.96,
+    "match0": 0.91
+   }
+  },
+  "walk_06": {
+   "hand": [
+    84,
+    76
+   ],
+   "angle": -38,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     83,
+     76
+    ],
+    "shift": [
+     1,
+     0
+    ],
+    "match": 0.935,
+    "match0": 0.918
+   }
+  },
+  "walk_07": {
+   "hand": [
+    81,
+    78
+   ],
+   "angle": -34,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     80,
+     79
+    ],
+    "shift": [
+     1,
+     -1
+    ],
+    "match": 0.956,
+    "match0": 0.946
+   }
+  },
+  "walk_08": {
+   "hand": [
+    87,
+    75
+   ],
+   "angle": -38,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     87,
+     75
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.933,
+    "match0": 0.925
+   }
+  },
+  "hurt_01": {
+   "hand": [
+    36,
+    79
+   ],
+   "angle": 150,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     34,
+     79
+    ],
+    "shift": [
+     2,
+     0
+    ],
+    "match": 0.954,
+    "match0": 0.907
+   }
+  },
+  "hurt_02": {
+   "hand": [
+    38,
+    74
+   ],
+   "angle": 110,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     37,
+     74
+    ],
+    "shift": [
+     1,
+     0
+    ],
+    "match": 0.868,
+    "match0": 0.85
+   }
+  },
+  "hurt_03": {
+   "hand": [
+    93,
+    56
+   ],
+   "angle": -60,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     93,
+     56
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.942,
+    "match0": 0.938
+   }
+  },
+  "attack1_01": {
+   "hand": [
+    82,
+    75
+   ],
+   "angle": -10,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     81,
+     77
+    ],
+    "shift": [
+     1,
+     -2
+    ],
+    "match": 0.937,
+    "match0": 0.914
+   }
+  },
+  "attack1_02": {
+   "hand": [
+    128,
+    64
+   ],
+   "angle": 0,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     130,
+     65
+    ],
+    "shift": [
+     -2,
+     -1
+    ],
+    "match": 0.974,
+    "match0": 0.941
+   }
+  },
+  "attack1_03": {
+   "hand": [
+    130,
+    64
+   ],
+   "angle": 0,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     134,
+     65
+    ],
+    "shift": [
+     -4,
+     -1
+    ],
+    "match": 0.97,
+    "match0": 0.925
+   }
+  },
+  "attack1_04": {
+   "hand": [
+    86,
+    74
+   ],
+   "angle": -20,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     85,
+     76
+    ],
+    "shift": [
+     1,
+     -2
+    ],
+    "match": 0.945,
+    "match0": 0.912
+   }
+  },
+  "attack2_01": {
+   "hand": [
+    52,
+    54
+   ],
+   "angle": 190,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     52,
+     54
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.965,
+    "match0": 0.965
+   }
+  },
+  "attack2_02": {
+   "hand": [
+    32,
+    58
+   ],
+   "angle": 180,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     32,
+     58
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.987,
+    "match0": 0.987
+   }
+  },
+  "attack2_03": {
+   "hand": [
+    101,
+    58
+   ],
+   "angle": 0,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     101,
+     58
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.998,
+    "match0": 0.998
+   }
+  },
+  "attack2_04": {
+   "hand": [
+    98,
+    52
+   ],
+   "angle": -20,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     98,
+     52
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.998,
+    "match0": 0.998
+   }
+  },
+  "attack2_05": {
+   "hand": [
+    79,
+    75
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     79,
+     75
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.965,
+    "match0": 0.965
+   }
+  },
+  "attack3_01": {
+   "hand": [
+    104,
+    47
+   ],
+   "angle": -120,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     106,
+     47
+    ],
+    "shift": [
+     -2,
+     0
+    ],
+    "match": 0.973,
+    "match0": 0.926
+   }
+  },
+  "attack3_02": {
+   "hand": [
+    108,
+    105
+   ],
+   "angle": 30,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     108,
+     105
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.938,
+    "match0": 0.938
+   }
+  },
+  "attack3_03": {
+   "hand": [
+    66,
+    88
+   ],
+   "angle": 155,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     66,
+     88
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.852,
+    "match0": 0.851
+   }
+  },
+  "attack3_04": {
+   "hand": [
+    100,
+    32
+   ],
+   "angle": -75,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     100,
+     31
+    ],
+    "shift": [
+     0,
+     1
+    ],
+    "match": 0.98,
+    "match0": 0.965
+   }
+  },
+  "attack3_05": {
+   "hand": [
+    110,
+    61
+   ],
+   "angle": -5,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     112,
+     61
+    ],
+    "shift": [
+     -2,
+     0
+    ],
+    "match": 0.981,
+    "match0": 0.96
+   }
+  },
+  "attack3_06": {
+   "hand": [
+    103,
+    62
+   ],
+   "angle": 0,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     104,
+     63
+    ],
+    "shift": [
+     -1,
+     -1
+    ],
+    "match": 0.988,
+    "match0": 0.942
+   }
+  }
+ }
+}

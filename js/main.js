@@ -12,6 +12,9 @@
   var hudEl = document.getElementById('hud');
   var LW = 480, LH = 240, SCALE = 1;
   var world = { width: CFG.world.width, laneTop: 0, laneBottom: 0, floorY: 0, bgOff: 0, minX: null, maxX: null };
+  // 폰 가로 화면: 공격 버튼이 게임 화면 오른쪽 아래(걷는 길)를 덮는다 → 그 폭(도트)만큼 오른쪽을 싸움 자리에서 뺀다.
+  //   플레이어·적이 그 밑으로 못 들어가고, 카메라도 남은 폭 기준으로 따라간다. 버튼이 게임 화면 밖이면(세로 화면·PC) 0
+  var controlPad = 0;
   var bgCache = null;
 
   // ---------- 화면 크기: 정수 배율로만 키운다(도트 선명) ----------
@@ -56,11 +59,25 @@
       world.laneBottom = LH - CFG.world.floorBottomPad;
     }
     bgCache = null;
+    controlPad = measureControlPad();
     if (G.player) {
       G.player.y = Math.max(world.laneTop, Math.min(world.laneBottom, G.player.y));
       if (G.dummy) G.dummy.y = Math.round((world.laneTop + world.laneBottom) / 2);
       G.enemies.forEach(function (e) { e.y = Math.max(world.laneTop, Math.min(world.laneBottom, e.y)); });
     }
+  }
+
+  // 공격 버튼이 덮는 게임 화면 오른쪽 폭(도트). 버튼이 안 보이거나 걷는 길과 안 겹치면 0
+  function measureControlPad() {
+    var btn = document.getElementById('btnAtk');
+    if (!btn || !btn.offsetParent) return 0;
+    var b = btn.getBoundingClientRect(), c = canvas.getBoundingClientRect();
+    if (!c.width || !c.height) return 0;
+    var ky = c.height / LH;
+    var laneT = c.top + world.laneTop * ky - 100 * ky, laneB = c.top + world.laneBottom * ky;   // 키 큰 몸(100도트)까지
+    if (b.top >= laneB || b.bottom <= laneT || b.left >= c.right) return 0;
+    var pad = Math.ceil((c.right - b.left + 4) * LW / c.width);
+    return Math.max(0, Math.min(Math.round(LW * 0.3), pad));
   }
 
   // ---------- 연습장 배경 (코드로 그린 돌벽 + 바닥 타일) ----------
@@ -259,7 +276,7 @@
     if (!S.result) S.time += dt;
     // 웨이브 시작: 카메라가 그 자리에 오면 화면 고정
     var camMax = Math.max(0, world.width - LW);
-    var target = Math.max(S.camMin, Math.min(camMax, p.x - LW * 0.42));
+    var target = Math.max(S.camMin, Math.min(camMax, p.x - (LW - controlPad) * 0.42));
     if (!S.locked && S.next < waves.length) {
       var at = waveAt(waves[S.next]);
       if (target >= at) { target = at; startWave(S.next); }
@@ -360,7 +377,7 @@
     var p = G.player;
     p.weaponKey = G.weaponKey;
     p.setMoveSet(G.moveSet);
-    if (MODE === 'stage') { world.minX = G.camX + 14; world.maxX = G.camX + LW - 14; }
+    if (MODE === 'stage') { world.minX = G.camX + 14; world.maxX = G.camX + LW - 14 - controlPad; }
     if (G.bot && MODE === 'stage' && !G.stage.result) botThink(dt);
     var ev = p.update(dt, world);
     if (ev.slash) {
@@ -391,7 +408,7 @@
     }
     if (MODE === 'stage') {
       var E = G.ectx;
-      E.now += dt; E.view.x0 = G.camX; E.view.x1 = G.camX + LW;
+      E.now += dt; E.view.x0 = G.camX; E.view.x1 = G.camX + LW - (controlPad ? controlPad + 14 : 0);   // 적은 몸이 넓어서 버튼 쪽으로 조금 더 띄움
       G.enemies.forEach(function (e) { e.update(dt, E); });
       separate();
       p.clamp(world);
@@ -505,7 +522,7 @@
     G.player.god = !!god;
     G.player.x = 90;
     G.player.y = Math.round((world.laneTop + world.laneBottom) / 2);
-    G.player.setCharacter(G.assets.characters[G.charKey]);
+    G.player.setCharacter(outfitAssets());
     G.player.weaponKey = G.weaponKey; G.player.setMoveSet(G.moveSet);
     G.camX = 0;
     lastHud = {};
@@ -531,9 +548,14 @@
       b.addEventListener('click', function () { setClass(b.dataset.class); b.blur(); });
     });
   }
+  // 지금 성별 + 직업 옷에 맞는 그림 묶음 (기사 = knight_male / knight_female, 없으면 견습 옷)
+  function outfitAssets() {
+    var c = CFG.classes && CFG.classes[G.classKey], C = G.assets.characters;
+    return (c && c.outfit && C[c.outfit + '_' + G.charKey]) || C[G.charKey];
+  }
   function setChar(k) {
     if (!G.assets.characters[k]) return;
-    G.charKey = k; G.player.setCharacter(G.assets.characters[k]);
+    G.charKey = k; G.player.setCharacter(outfitAssets());
     document.querySelectorAll('[data-char]').forEach(function (b) { b.classList.toggle('on', b.dataset.char === k); });
   }
   // 직업 고르기: 견습(맨손) / 기사(검). 직업이 무기와 콤보 묶음을 정한다 (config classes)
@@ -541,7 +563,11 @@
     var c = CFG.classes && CFG.classes[k];
     if (!c) return;
     G.classKey = k; G.weaponKey = c.weapon; G.moveSet = c.moves;
-    if (G.player) { G.player.weaponKey = c.weapon; G.player.setMoveSet(c.moves); }
+    if (G.player) {
+      var a = outfitAssets();
+      if (a && G.player.char !== a) G.player.setCharacter(a);   // 옷이 바뀔 때만 그림 묶음 교체
+      G.player.weaponKey = c.weapon; G.player.setMoveSet(c.moves);
+    }
     document.querySelectorAll('[data-class]').forEach(function (b) { b.classList.toggle('on', b.dataset.class === k); });
   }
   // 무기만 바꾸기(디버그·나중용): 콤보 묶음은 그대로
@@ -617,7 +643,7 @@
     retry: function () { resetStage(); },
     info: function () {
       var S = G.stage, p = G.player;
-      return { mode: MODE, LW: LW, LH: LH, scale: SCALE, camX: Math.round(G.camX), wave: S ? S.next : null, locked: S ? S.locked : null,
+      return { mode: MODE, LW: LW, LH: LH, scale: SCALE, controlPad: controlPad, char: G.player.char && G.player.char.def.anims.idle.frames[0], camX: Math.round(G.camX), wave: S ? S.next : null, locked: S ? S.locked : null,
         waveIdx: S ? S.waveIdx : null, time: S ? Math.round(S.time) : null, result: S ? S.result : null,
         player: { hp: p.hp, state: p.state, x: Math.round(p.x), y: Math.round(p.y) },
         enemies: G.enemies.map(function (e) { return e.type + ':' + e.state + ':' + e.hp + '@' + Math.round(e.x) + ',' + Math.round(e.y); }),

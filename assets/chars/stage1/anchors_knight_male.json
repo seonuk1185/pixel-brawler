@@ -1,0 +1,630 @@
+{
+ "note": "hand=[x,y] grip position in frame pixels (176x136 frame, feet baseline y=130); angle in degrees, 0 = weapon pointing right, positive = clockwise on screen (y down); draw weapon so its grip pixel lands on hand, rotated by angle; layer back = draw weapon before the character, front = after",
+ "frameSize": [
+  176,
+  136
+ ],
+ "frames": {
+  "attack_01": {
+   "hand": [
+    98,
+    78
+   ],
+   "angle": -35,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     98,
+     78
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.976,
+    "match0": 0.976
+   }
+  },
+  "attack_02": {
+   "hand": [
+    62,
+    31
+   ],
+   "angle": -35,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     62,
+     31
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.954,
+    "match0": 0.954
+   }
+  },
+  "attack_03": {
+   "hand": [
+    106,
+    65
+   ],
+   "angle": -138,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     106,
+     65
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.995,
+    "match0": 0.995
+   }
+  },
+  "attack_04": {
+   "hand": [
+    124,
+    82
+   ],
+   "angle": 15,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     124,
+     82
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.997,
+    "match0": 0.997
+   }
+  },
+  "attack_05": {
+   "hand": [
+    96,
+    78
+   ],
+   "angle": -37,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     96,
+     78
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.971,
+    "match0": 0.971
+   }
+  },
+  "hurt_01": {
+   "hand": [
+    95,
+    63
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     95,
+     63
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.942,
+    "match0": 0.942
+   }
+  },
+  "hurt_02": {
+   "hand": [
+    95,
+    86
+   ],
+   "angle": 25,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     96,
+     87
+    ],
+    "shift": [
+     -1,
+     -1
+    ],
+    "match": 0.888,
+    "match0": 0.874
+   }
+  },
+  "hurt_03": {
+   "hand": [
+    98,
+    84
+   ],
+   "angle": 28,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     98,
+     86
+    ],
+    "shift": [
+     0,
+     -2
+    ],
+    "match": 0.904,
+    "match0": 0.875
+   }
+  },
+  "idle_01": {
+   "hand": [
+    96,
+    77
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     96,
+     77
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.969,
+    "match0": 0.965
+   }
+  },
+  "idle_02": {
+   "hand": [
+    97,
+    77
+   ],
+   "angle": -39,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     97,
+     76
+    ],
+    "shift": [
+     0,
+     1
+    ],
+    "match": 0.964,
+    "match0": 0.931
+   }
+  },
+  "idle_03": {
+   "hand": [
+    96,
+    77
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     95,
+     77
+    ],
+    "shift": [
+     1,
+     0
+    ],
+    "match": 0.962,
+    "match0": 0.942
+   }
+  },
+  "idle_04": {
+   "hand": [
+    97,
+    75
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     97,
+     74
+    ],
+    "shift": [
+     0,
+     1
+    ],
+    "match": 0.956,
+    "match0": 0.942
+   }
+  },
+  "walk_01": {
+   "hand": [
+    94,
+    80
+   ],
+   "angle": -27,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     93,
+     80
+    ],
+    "shift": [
+     1,
+     0
+    ],
+    "match": 0.967,
+    "match0": 0.918
+   }
+  },
+  "walk_02": {
+   "hand": [
+    93,
+    79
+   ],
+   "angle": -27,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     92,
+     80
+    ],
+    "shift": [
+     1,
+     -1
+    ],
+    "match": 0.965,
+    "match0": 0.914
+   }
+  },
+  "walk_03": {
+   "hand": [
+    85,
+    78
+   ],
+   "angle": -27,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     85,
+     78
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.943,
+    "match0": 0.942
+   }
+  },
+  "walk_04": {
+   "hand": [
+    92,
+    79
+   ],
+   "angle": -27,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     91,
+     79
+    ],
+    "shift": [
+     1,
+     0
+    ],
+    "match": 0.966,
+    "match0": 0.918
+   }
+  },
+  "walk_05": {
+   "hand": [
+    96,
+    79
+   ],
+   "angle": -27,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     96,
+     79
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.954,
+    "match0": 0.947
+   }
+  },
+  "walk_06": {
+   "hand": [
+    94,
+    78
+   ],
+   "angle": -27,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     94,
+     79
+    ],
+    "shift": [
+     0,
+     -1
+    ],
+    "match": 0.961,
+    "match0": 0.934
+   }
+  },
+  "walk_07": {
+   "hand": [
+    86,
+    79
+   ],
+   "angle": -27,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     85,
+     78
+    ],
+    "shift": [
+     1,
+     1
+    ],
+    "match": 0.956,
+    "match0": 0.939
+   }
+  },
+  "walk_08": {
+   "hand": [
+    93,
+    78
+   ],
+   "angle": -27,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     94,
+     79
+    ],
+    "shift": [
+     -1,
+     -1
+    ],
+    "match": 0.97,
+    "match0": 0.95
+   }
+  },
+  "attack2_01": {
+   "hand": [
+    108,
+    100
+   ],
+   "angle": 45,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     109,
+     102
+    ],
+    "shift": [
+     -1,
+     -2
+    ],
+    "match": 0.945,
+    "match0": 0.912
+   }
+  },
+  "attack2_02": {
+   "hand": [
+    54,
+    76
+   ],
+   "angle": 150,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     57,
+     78
+    ],
+    "shift": [
+     -3,
+     -2
+    ],
+    "match": 0.736,
+    "match0": 0.67
+   }
+  },
+  "attack2_03": {
+   "hand": [
+    108,
+    72
+   ],
+   "angle": -30,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     108,
+     72
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.972,
+    "match0": 0.966
+   }
+  },
+  "attack2_04": {
+   "hand": [
+    104,
+    21
+   ],
+   "angle": -85,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     105,
+     20
+    ],
+    "shift": [
+     -1,
+     1
+    ],
+    "match": 0.992,
+    "match0": 0.962
+   }
+  },
+  "attack2_05": {
+   "hand": [
+    99,
+    71
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     99,
+     71
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.949,
+    "match0": 0.949
+   }
+  },
+  "attack3_01": {
+   "hand": [
+    50,
+    90
+   ],
+   "angle": 160,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     50,
+     92
+    ],
+    "shift": [
+     -4,
+     7
+    ],
+    "match": 0.896,
+    "match0": 0.787,
+    "manual": true
+   }
+  },
+  "attack3_02": {
+   "hand": [
+    52,
+    31
+   ],
+   "angle": 120,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     52,
+     31
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.974,
+    "match0": 0.97
+   }
+  },
+  "attack3_03": {
+   "hand": [
+    72,
+    24
+   ],
+   "angle": 180,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     72,
+     22
+    ],
+    "shift": [
+     0,
+     2
+    ],
+    "match": 0.987,
+    "match0": 0.933
+   }
+  },
+  "attack3_04": {
+   "hand": [
+    100,
+    49
+   ],
+   "angle": -60,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     100,
+     48
+    ],
+    "shift": [
+     0,
+     1
+    ],
+    "match": 0.983,
+    "match0": 0.957
+   }
+  },
+  "attack3_05": {
+   "hand": [
+    114,
+    125
+   ],
+   "angle": 3,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     114,
+     125
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.99,
+    "match0": 0.99
+   }
+  },
+  "attack3_06": {
+   "hand": [
+    111,
+    121
+   ],
+   "angle": 10,
+   "layer": "back",
+   "check": {
+    "fromNovice": [
+     111,
+     121
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.997,
+    "match0": 0.997
+   }
+  }
+ }
+}
