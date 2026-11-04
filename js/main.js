@@ -1,6 +1,7 @@
 // 게임 본체: 화면 크기, 배경, 매 장면 갱신, 타격 처리
 // 기본 = 스테이지 판(웨이브 + 보스, 여러 판). 주소 뒤 ?mode=practice = 예전 허수아비 연습장
-// 주소 뒤 ?stage=N = 그 판으로 바로 시작(시험용, 잠금 무시). ?bot=1 이면 고르기 화면 없이 바로 시작
+// 주소 뒤 ?stage=N = 판 번호(config stages 의 id) N 인 판으로 바로 시작(시험용, 잠금 무시). ?bot=1 이면 고르기 화면 없이 바로 시작
+//   (2026-11-04: 5단계가 아직 없어서 목록 = 1 2 3 4 6. ?stage=6 = 해적 항구. 없는 번호면 무시)
 (function () {
   var CFG = window.CFG, J = CFG.juice;
   var AS = CFG.actorScale || 1;   // 캐릭터 크기: 코드에 바로 적힌 거리·높이와 손맛의 밀림 거리(juice.knockback)에 곱한다
@@ -11,9 +12,10 @@
 
   // ---------- 스테이지 고르기 (2026-11-04) ----------
   // 열린 판 = 깬 판 + 1. 깬 판 번호는 이 브라우저에 저장(localStorage). 저장이 막혀 있어도 게임은 됨(이번에 연 동안만 기억)
+  //   코드 안의 판 번호(G.stageNo, urlStage, 저장 값) = 목록 순서(1부터). 화면에 보이는 번호·주소 ?stage= = 판 id(config stages)
   var STAGES = CFG.stages;
-  var urlStage = parseInt(params.get('stage'), 10);
-  urlStage = urlStage >= 1 && urlStage <= STAGES.length ? urlStage : 0;
+  function stageIndexOfId(id) { for (var i = 0; i < STAGES.length; i++) if (STAGES[i].id === id) return i + 1; return 0; }
+  var urlStage = stageIndexOfId(parseInt(params.get('stage'), 10));
   var SAVE_KEY = 'pixelBrawler.cleared';
   var clearedMem = 0;
   function loadCleared() {
@@ -347,7 +349,7 @@
     var dmg = rand(spec.dmg[0], spec.dmg[1]);
     if (e.dmgMul !== 1) dmg = Math.max(1, Math.round(dmg * e.dmgMul));   // 판·변종 공격력 배율
     var dir = p.x >= e.x ? 1 : -1;
-    if (!p.takeHit(dmg, dir, spec.knock, spec.flinchMs, !!spec.heavy)) return;   // heavy = 넘어짐
+    if (!p.takeHit(dmg, dir, spec.knock, spec.flinchMs, !!spec.heavy)) return false;   // heavy = 넘어짐. 안 맞았으면 false(총알은 그대로 지나감)
     G.hitstop = Math.max(G.hitstop, J.hitstopMs * (e.T.boss ? 1.3 : 0.8));
     FX.shake(J.shakePx * (spec.shake || 1.2), J.shakeMs * 1.3);
     FX.impact(p.x - dir * 4, p.y - 60 * AS, -dir, '#ff6a5a', Math.round(J.sparkCount * 0.8), e.T.boss, null, 0.8);
@@ -356,6 +358,7 @@
     G.comboT = 0; comboEl.hidden = true;
     // 독(전갈 왕 독침): 맞으면 잠깐 독 → poisonStep 이 everyMs 마다 체력을 조금씩 깎음(독으로는 안 쓰러짐)
     if (spec.poison) p.poison = { t: spec.poison.ms, tick: spec.poison.everyMs, every: spec.poison.everyMs, dmg: spec.poison.dmg };
+    return true;
   }
   function poisonStep(dt) {
     var p = G.player, P = p.poison;
@@ -657,6 +660,95 @@
     });
   }
 
+  // ---------- 총알 (6단계 총잡이 shot · 선장 pistol): 쏜 사람 줄(발 y = z)을 따라 똑바로 날아감 ----------
+  // { e: 쏜 적, s: 공격 수치, x: 지금 가로 위치, z: 줄(발 y), h: 땅에서 높이(그림만), dir, trav: 날아간 거리, t, art }
+  //   맞음 = 가로로 플레이어 몸(hurtbox x)에 닿음 + 줄이 s.depth 안 + 점프 높이 s.dodgeZ 아래(높이는 안 봄: 총구가 머리보다 높은 선장 권총도 같게)
+  //   맞으면 사라짐. 플레이어가 깜빡임(무적)·기술 무적이면 그냥 지나감. range 까지 가거나 보스가 쓰러지면 사라짐
+  var shots = [];
+  function fireShot(e, s) {
+    var F = G.assets.enemyFx && G.assets.enemyFx[e.type];
+    var mx = e.x + e.dir * s.spawn.x, my = e.y + s.spawn.y;
+    shots.push({ e: e, s: s, x: mx, z: e.y, h0: -s.spawn.y, h: -s.spawn.y, dir: e.dir, trav: 0, t: 0, art: F && F.bullet });
+    var SM = F && F.smoke;
+    if (SM && SM.frames.length) FX.sprite(mx, my, SM.frames, SM.fps, SM.pivot, e.dir > 0, false);   // 총구 연기(그림은 왼쪽을 봄)
+    if (Skills.debris) Skills.debris(mx, my, e.y, 4, { cols: ['#fff2a0', '#ffb040', '#ffffff'], glow: true, sp: 110, size: 1.2, ms: 160 });   // 불꽃 튐
+    FX.shake(J.shakePx * 0.35, 70);
+  }
+  function shotsStep(dt) {
+    var p = G.player, S = G.stage, hb = null;
+    for (var i = shots.length - 1; i >= 0; i--) {
+      var b = shots[i], s = b.s, move = s.speed * dt / 1000, n = Math.max(1, Math.ceil(move / 6)), gone = false;
+      b.t += dt;
+      if (S.bossDownT >= 0 || S.result) { shots.splice(i, 1); continue; }
+      for (var k = 0; k < n && !gone; k++) {
+        var m = Math.min(move / n, s.range - b.trav);
+        b.x += b.dir * m; b.trav += m;
+        b.h = s.dropPx > 0 ? b.h0 + (s.aimH - b.h0) * Math.min(1, b.trav / s.dropPx) : b.h0;   // 권총: 처음 dropPx 동안 총알 높이로 내려옴
+        if (p.state !== 'dead' && Math.abs(p.y - b.z) <= s.depth && (p.z || 0) <= s.dodgeZ) {
+          hb = p.hurtbox();
+          var w = s.box.w / 2;
+          if (b.x + w > hb.x0 && b.x - w < hb.x1 && onPlayerHit({ x: b.x - b.dir * 30, dmgMul: b.e.dmgMul, T: b.e.T }, s)) {
+            gone = true;
+            if (Skills.debris) Skills.debris(b.x, b.z - b.h, b.z, 5, { cols: ['#fff2a0', '#ffd060', '#c8c8c8'], glow: true, sp: 120, size: 1.2, ms: 220 });
+          }
+        }
+        if (b.trav >= s.range - 0.01) gone = true;
+      }
+      if (gone) shots.splice(i, 1);
+    }
+  }
+  function drawShots(camX, under) {
+    shots.forEach(function (b) {
+      var x = snap(b.x - camX);
+      if (under) { window.drawShadow(ctx, x, snap(b.z), 3 * AS); return; }   // 바닥에 작은 그림자 = 총알이 지나가는 줄
+      var y = snap(b.z - b.h), A = b.art;
+      if (!A || !A.frames.length) { ctx.fillStyle = '#fff2a0'; ctx.fillRect(x - 2, y - 1, 4, 3); return; }
+      var im = A.frames[Math.floor(b.t * A.fps / 1000) % A.frames.length];
+      ctx.save(); ctx.translate(x, y); if (b.dir > 0) ctx.scale(-1, 1);   // 그림은 왼쪽으로 날아감(꼬리가 오른쪽) → 오른쪽으로 쏘면 뒤집기
+      Assets.blit(ctx, im, A.pivot.x, A.pivot.y); ctx.restore();
+    });
+  }
+
+  // ---------- 대포알 (6단계 선장 barrage): 떨어질 자리에 그림자(점점 커짐) + 빨간 원 → fallMs 뒤 쾅 ----------
+  // { e, s, tx, ty: 떨어질 자리(줄), t }. 맞음 = 가로 radius · 위아래 depth 안 + 높이 dodgeZ 아래(바위 던지기와 같음). 보스가 쓰러진 뒤엔 안 아픔
+  var cannons = [];
+  function dropCannon(e, s, tx, ty) {
+    var F = G.assets.enemyFx && G.assets.enemyFx[e.type];
+    cannons.push({ e: e, s: s, tx: tx, ty: ty, t: 0, F: F || {} });
+  }
+  function cannonsStep(dt) {
+    var p = G.player, S = G.stage;
+    for (var i = cannons.length - 1; i >= 0; i--) {
+      var c = cannons[i], s = c.s;
+      c.t += dt;
+      if (c.t < s.fallMs) continue;
+      cannons.splice(i, 1);
+      var B = c.F.blast;
+      if (B && B.frames.length) FX.sprite(c.tx, c.ty, B.frames, B.fps, B.pivot, Math.random() < 0.5, false);
+      if (Skills.debris) Skills.debris(c.tx, c.ty - 6 * AS, c.ty, 10, { cols: ['#ffd060', '#ff8a2a', '#6a5a4a', '#a0805a'], sp: 170, size: 2, ms: 600 });
+      FX.shake(J.shakePx * s.shake, J.shakeMs * 1.6);
+      if (S.bossDownT < 0 && p.state !== 'dead' && Math.abs(p.x - c.tx) <= s.radius && Math.abs(p.y - c.ty) <= s.depth && (p.z || 0) <= s.dodgeZ)
+        onPlayerHit({ x: c.tx, dmgMul: c.e.dmgMul, T: c.e.T }, s);
+    }
+  }
+  // 바닥: 그림자(떨어지는 정도로 1→4장, 없으면 검은 타원) + 빨간 원 / 공중: 떨어지는 대포알(연기 꼬리)
+  function drawCannonsUnder(camX) {
+    cannons.forEach(function (c) {
+      var u = Math.min(1, c.t / c.s.fallMs), SH = c.F.shadow, x = snap(c.tx - camX), y = snap(c.ty);
+      Enemy.drawRing(ctx, camX, c.tx, c.ty, c.s.radius, c.s.depth, u, false);
+      if (SH && SH.frames.length) {
+        ctx.save(); ctx.translate(x, y); Assets.blit(ctx, SH.frames[Math.min(SH.frames.length - 1, Math.floor(u * 3.999))], SH.pivot.x, SH.pivot.y); ctx.restore();
+      } else window.drawShadow(ctx, x, y, 14 * AS * (0.4 + 0.6 * u));
+    });
+  }
+  function drawCannons(camX) {
+    cannons.forEach(function (c) {
+      var u = Math.min(1, c.t / c.s.fallMs), A = c.F.cannonball, x = snap(c.tx - camX), y = snap(c.ty - c.s.dropHeight * (1 - u * u));   // 점점 빨리 떨어짐
+      if (!A || !A.frames.length) { ctx.fillStyle = '#2a2a30'; ctx.fillRect(x - 5, y - 5, 10, 10); return; }
+      ctx.save(); ctx.translate(x, y); Assets.blit(ctx, A.frames[Math.floor(c.t * A.fps / 1000) % A.frames.length], A.pivot.x, A.pivot.y); ctx.restore();
+    });
+  }
+
   // ---------- 소품 (판의 props: 상자·통·모닥불 + 음식) = props.js. 그림이 없는 종류는 ?debug=1 에서만 자리 표시 ----------
   Props.init(CFG, {
     laneY: laneY,
@@ -669,6 +761,7 @@
     S.bossDownT = 0;
     S.queue = [];                      // 아직 안 나온 졸개는 취소
     puddles.forEach(function (q) { q.t = Math.max(q.t, q.P.ms - 600); });   // 독 웅덩이는 곧 사라짐
+    shots.length = 0;                  // 날아가던 총알도 사라짐(대포알은 떨어지지만 안 아픔)
     G.hitstop = Math.max(G.hitstop, 260);
     G.slowT = 1400;                    // 보스 쓰러질 때 슬로모션
     FX.shake(J.shakePx * 3, 500);
@@ -776,6 +869,7 @@
     G.enemies.forEach(function (e) {
       if (!e.alive() || !e.entered) return;
       var d = Math.abs(e.x - p.x) + Math.abs(e.y - p.y) * 2 + (e.canBeHit() ? 0 : 400);   // 넘어진 적은 나중에
+      if (e.T.ranged) d *= 0.6;   // 총잡이(멀리서 쏨)는 먼저 쫓아가서 잡음(물러나도 따라감)
       if (d < bd) { bd = d; best = e; }
     });
     var ax = { x: 0, y: 0 }, R = CFG.hero.radius;
@@ -784,7 +878,7 @@
       Input.setOverride(ax); return;
     }
     var side = best.x > p.x ? 1 : -1;
-    var want = ({ goblin: 42, wolf: 58, orc: 72, bat: 46, skeleton: 44, golem: 76, mummy: 46, scorpion: 80, lizard: 46, toad: 74 }[best.type] || 50) * AS;
+    var want = ({ goblin: 42, wolf: 58, orc: 72, bat: 46, skeleton: 44, golem: 76, mummy: 46, scorpion: 80, lizard: 46, toad: 74, gunner: 40, captain: 70 }[best.type] || 50) * AS;
     var sv = Props.steer(p, R, best.x - side * want, best.y, world, best.x);   // 막는 소품: 목표가 그 안이면 옆으로, 앞에 있으면 돌아감
     var tx = sv.x, ty = best.y;
     var ex = tx - p.x, ey = ty - p.y, my = sv.y - p.y;   // 공격 조건은 원래 줄(ey), 움직임은 돌아가는 줄(my)
@@ -907,6 +1001,8 @@
       E.enemies = G.enemies;
       rocksStep(dt);         // 골렘이 던진 바위 · 두꺼비가 뱉은 독 덩어리
       puddlesStep(dt);       // 두꺼비 독 웅덩이
+      shotsStep(dt);         // 총잡이·선장 총알
+      cannonsStep(dt);       // 선장 대포알
       poisonStep(dt);        // 전갈 왕 독 · 독 웅덩이
       stageStep(dt);
       Props.update(dt, p);   // 부서지는 그림·음식 줍기
@@ -940,6 +1036,8 @@
     G.enemies.forEach(function (e) { e.drawTelegraph(ctx, camX); });
     if (puddles.length) drawPuddles(camX);        // 두꺼비 독 웅덩이(바닥)
     if (rocks.length) drawRocksUnder(camX);       // 바위 떨어질 자리 빨간 원 + 그림자
+    if (cannons.length) drawCannonsUnder(camX);   // 대포알 떨어질 자리 그림자 + 빨간 원
+    if (shots.length) drawShots(camX, true);      // 총알 그림자(지나가는 줄)
     FX.draw(ctx, camX, true);
     if (MODE === 'stage') Props.drawUnder(ctx, camX, LW);   // 소품 그림자·모닥불 빛
     Skills.drawUnder(ctx, camX, G.player);        // 번개 떨어질 자리 표시
@@ -952,6 +1050,8 @@
     ents.forEach(function (e) { e.d(); });
     Projectiles.draw(ctx, camX);
     if (rocks.length) drawRocks(camX);            // 날아가는 바위(공중이라 캐릭터 위)
+    if (shots.length) drawShots(camX, false);     // 날아가는 총알
+    if (cannons.length) drawCannons(camX);        // 떨어지는 대포알
     Skills.drawOver(ctx, camX);                   // 번개 기둥·회전 원
     FX.draw(ctx, camX, false);
     Skills.drawFlash(ctx, LW, LH);                // 기술 맞는 순간 화면 번쩍
@@ -1054,7 +1154,7 @@
     FX.list.length = 0;
     Projectiles.clear();
     Skills.clear();
-    rocks.length = 0; puddles.length = 0;
+    rocks.length = 0; puddles.length = 0; shots.length = 0; cannons.length = 0;
     G.enemies = [];
     G.stage = newStage();
     G.ectx = makeEnemyCtx();
@@ -1107,7 +1207,7 @@
       var n = i + 1, b = document.createElement('button'), open = n <= max;
       b.type = 'button'; b.className = 'sbtn' + (open ? '' : ' locked') + (n <= cleared ? ' cleared' : '');
       b.disabled = !open;
-      b.innerHTML = '<b>' + n + '</b><span>' + (open ? st.name.replace(/^STAGE\s*\d+\s*/, '') : '잠김') + '</span>' + (n <= cleared ? '<i>클리어</i>' : '');
+      b.innerHTML = '<b>' + st.id + '</b><span>' + (open ? st.name.replace(/^STAGE\s*\d+\s*/, '') : '잠김') + '</span>' + (n <= cleared ? '<i>클리어</i>' : '');
       b.addEventListener('click', function () { closeMenu(selEl); G.paused = false; goStage(n); });
       list.appendChild(b);
       if (open && (n === G.stageNo || !focus)) focus = b;
@@ -1127,7 +1227,8 @@
       throwRock: throwRock,   // 골렘 바위 던지기
       burst: rockBurst,       // 골렘 내려찍기 땅 터짐
       debris: function (x, y, n, cols) { if (Skills.debris) Skills.debris(x, y - 6 * AS, y, n, { cols: cols, sp: 150, size: 2.2, ms: 600 }); },   // 두꺼비 배치기 흙탕물
-      grabPlayer: grabPlayer, grabMash: grabMash, releaseGrab: releaseGrab   // 미라 잡기
+      grabPlayer: grabPlayer, grabMash: grabMash, releaseGrab: releaseGrab,   // 미라 잡기
+      fireShot: fireShot, dropCannon: dropCannon                               // 6단계 총알 · 대포알
     };
     Object.defineProperty(E, 'player', { get: function () { return G.player; } });
     return E;
@@ -1280,8 +1381,8 @@
     god: function (on) { G.player.god = on !== false; },
     bot: function (on) { G.bot = on !== false; if (!G.bot) Input.setOverride(null); },
     retry: function () { resetStage(); },
-    // 판 바로 가기: GAME.test.stage(2) / 고르기 화면 열기: GAME.test.select()
-    stage: function (n) { return goStage(n); },
+    // 판 바로 가기: GAME.test.stage(2) (판 번호 = id, ?stage= 와 같음) / 고르기 화면 열기: GAME.test.select()
+    stage: function (n) { return goStage(stageIndexOfId(n) || n); },   // n = 판 번호(id)
     select: function () { openStageSelect(); },
     info: function () {
       var S = G.stage, p = G.player;
@@ -1293,7 +1394,7 @@
         enemies: G.enemies.map(function (e) { return e.type + (e.variant ? '(' + e.variant + ')' : '') + ':' + (e.asleep ? 'asleep' : e.alertT > 0 ? 'alert' : e.state) +
           (e.atk && e.atk.spec.type === 'burrow' ? '/' + e.atk.phase : '') + (e.atk && e.atk.held ? '/hold' : '') + (e.atk ? '/' + e.atk.name : '') + (e.airborne() ? '/air' : '') + ':' + e.hp + '@' + Math.round(e.x) + ',' + Math.round(e.y); }),
         poison: p.poison ? Math.round(p.poison.t) : 0,
-        hits: G.hits, maxCombo: G.maxCombo, rocks: rocks.length, puddles: puddles.length,
+        hits: G.hits, maxCombo: G.maxCombo, rocks: rocks.length, puddles: puddles.length, shots: shots.length, cannons: cannons.length, stageId: CFG.stage.id,
         props: Props.list.map(function (pr) { return pr.type + ':' + (pr.state === 'idle' ? pr.hitsLeft : pr.state) + '@' + Math.round(pr.x) + ',' + Math.round(pr.y); }),
         food: Props.food.map(function (f) { return f.kind + '@' + Math.round(f.x) + ',' + Math.round(f.y); }) };
     }

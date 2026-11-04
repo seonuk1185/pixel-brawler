@@ -1,5 +1,6 @@
 // 적: 고블린 · 늑대 · 오크 족장(보스) + 2단계 박쥐(나는 적) · 해골 병사(방패 막기) · 돌 골렘(보스, 바위 던지기)
-//   + 3단계 도마뱀 전사(찌르기·달려들기) · 거대 두꺼비(보스, 배치기·혀·독 뱉기) + 4단계 미라(잡기) · 전갈 왕(보스, 땅속 숨기). 수치는 전부 config.js 의 enemies.
+//   + 3단계 도마뱀 전사(찌르기·달려들기) · 거대 두꺼비(보스, 배치기·혀·독 뱉기) + 4단계 미라(잡기) · 전갈 왕(보스, 땅속 숨기)
+//   + 6단계 해적 총잡이(멀리서 쏨, 거리 두기) · 해적 선장(보스, 칼 두 번·권총·대포 일제 사격). 수치는 전부 config.js 의 enemies.
 // 그림은 전부 「왼쪽을 봄」 → 그릴 때 ctx.scale(-dir, 1)  (dir = 1 이면 오른쪽을 봄)
 (function () {
   var uid = 0;
@@ -303,6 +304,8 @@
     if (adx > 2) this.dir = dx > 0 ? 1 : -1;
     if (!this.side || adx > 30 * AS()) this.side = this.x < p.x ? -1 : 1;
 
+    if (T.ranged) { this.thinkRanged(dt, ctx, dx, dy); this.keepInView(ctx); return; }   // 총잡이: 거리 두고 쏨(아래 thinkRanged)
+
     var pick = this.cool <= 0 && this.retreatT <= 0 && this.entered ? this.chooseAttack(adx, Math.abs(dy), ctx) : null;
     if (pick) { this.startAttack(pick, ctx); this.keepInView(ctx); return; }
 
@@ -331,6 +334,42 @@
     var s = moving ? 'walk' : 'idle';
     if (this.state !== s) { this.state = s; this.animT = 0; }
   };
+
+  // 해적 총잡이(T.ranged, 6단계): 플레이어와 keep 사이 거리에 서서(가까우면 플레이어를 보며 뒤로 물러남, 멀면 다가감) 차례가 되면 쏨.
+  //   공격 차례가 alignMs 안으로 남으면 플레이어 줄로 맞춤(그 전엔 yOff 만큼 흩어져 섬 → 늘 같은 줄에서 겨누지 않음)
+  //   tooClose 안으로 붙으면 개머리판(bash). 겨누는 총잡이는 maxShooters 까지만(잡몹 공격 차례 maxAttackers 도 같이 따름)
+  Enemy.prototype.thinkRanged = function (dt, ctx, dx, dy) {
+    var T = this.T, R = T.ranged, p = ctx.player, adx = Math.abs(dx), ady = Math.abs(dy);
+    if (this.cool <= 0 && this.entered && this.mayAttack(ctx)) {
+      if (adx < R.tooClose && ady <= T.alignY) { this.startAttack('bash', ctx); return; }
+      var sh = T.attacks.shot;
+      if (adx >= sh.when[0] && adx <= sh.when[1] && ady <= T.alignY && shooters(ctx) < (R.maxShooters || 2)) { this.startAttack('shot', ctx); return; }
+    }
+    var want = Math.max(R.keep[0], Math.min(R.keep[1], adx));
+    var tx = p.x + this.side * want;
+    // 뒤가 화면 끝이라 더 물러날 수 없으면 그 자리(붙으면 bash)
+    var x0 = ctx.view.x0 + 16 * AS(), x1 = ctx.view.x1 - 16 * AS();
+    if (this.entered) tx = Math.max(x0, Math.min(x1, tx));
+    var ready = this.cool <= (R.alignMs || 0);
+    var ty = ready ? p.y : p.y + this.yOff * 1.4;
+    ty = Math.max(ctx.world.laneTop, Math.min(ctx.world.laneBottom, ty));
+    if (ctx.steer) { var sv = ctx.steer(this, tx, ty); tx = sv.x; ty = sv.y; }
+    var mx = tx - this.x, my = ty - this.y;
+    var away = Math.sign(mx) === Math.sign(this.x - p.x);   // 플레이어에게서 멀어지는 쪽 = 뒷걸음질(느리게)
+    var vx = Math.abs(mx) > 4 ? Math.sign(mx) * T.speedX * (away ? R.backOffMul || 1 : 1) : 0;
+    var vy = Math.abs(my) > 2 ? Math.sign(my) * T.speedY : 0;
+    var slowD = 14 * AS();
+    if (Math.abs(mx) < slowD) vx *= Math.abs(mx) / slowD;
+    this.setMove(vx, vy);
+    this.x += vx * dt; this.y += vy * dt;
+    if (Math.abs(p.x - this.x) > 2) this.dir = p.x > this.x ? 1 : -1;   // 뒷걸음질 때도 플레이어 쪽을 봄
+  };
+  // 지금 총을 겨누고 있는 잡몹 수
+  function shooters(ctx) {
+    var n = 0;
+    ctx.enemies.forEach(function (e) { if (e.state === 'attack' && e.atk && e.atk.spec.type === 'shot' && !e.T.boss) n++; });
+    return n;
+  }
 
   // 잡몹: 공격 차례가 있는지 (동시에 너무 많이 때리지 않게)
   Enemy.prototype.mayAttack = function (ctx) {
@@ -361,8 +400,13 @@
     var opts = [], sum = 0, self = this;
     Object.keys(T.attacks).forEach(function (k) {
       var a = T.attacks[k];
-      var yOk = a.type === 'charge' ? ady <= 40 * AS() : (a.type === 'throw' || a.type === 'burrow') ? true : ady <= T.alignY;   // 바위 던지기·땅속 숨기는 줄 상관없음
+      var yOk = a.type === 'charge' ? ady <= 40 * AS() : (a.type === 'throw' || a.type === 'burrow' || a.type === 'barrage') ? true : ady <= T.alignY;   // 바위 던지기·땅속 숨기·대포 사격은 줄 상관없음
       if (a.type === 'burrow' && self.clock - self.lastBurrowAt < (a.gapMs || 0)) return;   // 한 번 숨은 뒤 gapMs 동안은 안 숨음
+      // 그 밖의 gapMs(선장 대포 사격): 한 번 쓰면 이 시간 동안 안 씀. firstMs = 나타난 뒤 처음 쓸 수 있을 때까지
+      if (a.type !== 'burrow' && a.gapMs) {
+        var last = self.usedAt[k] != null ? self.usedAt[k] : (a.firstMs != null ? a.firstMs - a.gapMs : -1e9);
+        if (self.clock - last < a.gapMs) return;
+      }
       if (yOk && adx >= a.when[0] && adx <= a.when[1]) { opts.push(k); sum += a.weight; }
     });
     if (!opts.length) return null;
@@ -396,8 +440,14 @@
     if (spec.type === 'charge') return this.updateCharge(dtMs, ctx);
     if (spec.type === 'burrow') return this.updateBurrow(dtMs, ctx);
     if (spec.type === 'leap') return this.updateLeap(dtMs, ctx);
+    if (spec.type === 'barrage') return this.updateBarrage(dtMs, ctx);
     var fr = this.frameAt(spec.anim, a.t);
     if (fr.done) { this.endAttack(); return; }
+    // 총 쏘기(6단계 총잡이·선장 권총): 겨누는 동안 방향·줄 고정 → spawnFrame 그림에서 총알 하나(main.js ctx.fireShot)
+    if (spec.type === 'shot') {
+      if (!a.fired && fr.no >= spec.spawnFrame) { a.fired = true; if (ctx.fireShot) ctx.fireShot(this, spec); }
+      return;
+    }
     // 바위 던지기: 던지기 전까지 플레이어 자리를 겨눔(앞쪽, maxRange 까지) → spawnFrame 그림에서 그 자리로 던짐(main.js ctx.throwRock)
     if (spec.type === 'throw') {
       if (!a.thrown) {
@@ -416,6 +466,8 @@
       var sp = spec.move.dist / (cnt * fr.step / 1000);
       this.x += this.dir * sp * dt; a.moved += sp * dt;
     }
+    // multiHit = 판정 장마다 따로 한 번씩 맞을 수 있음(선장 칼 두 번: 2장 대각선 · 3장 가로)
+    if (spec.multiHit && inList(spec.active, fr.no) && a.hitNo !== fr.no) { a.hitNo = fr.no; a.hit = false; }
     // reachF = 장마다 다른 판정 상자(전갈 집게: 3장 멀리 → 4장 가까이 조임)
     if (inList(spec.active, fr.no)) this.tryHitPlayer(spec, (spec.reachF && spec.reachF[fr.no]) || spec.reach, ctx);
     // 땅을 찍는 순간 화면 흔들림 (보스)
@@ -512,6 +564,25 @@
     }
     // 판정은 쿵 한 순간(hitMs)만: 엎드려 있는 동안 걸어 들어온 플레이어까지 맞히지 않게
     if (inList(s.active, fr.no) && a.t - upAt - airMs <= (s.hitMs || 160)) this.tryHitPlayer(s, s.reach, ctx);
+  };
+
+  // 선장 대포 일제 사격(barrage): 1~3장 호령(예고) → spawnFrame(4장)부터 intervalMs 마다 대포알 하나(main.js ctx.dropCannon, 떨어질 자리 = 그때 플레이어 자리)
+  //   첫 알 = 발밑 그대로, 다음부터 spread 만큼 흩어서. 다 떨어뜨리고 holdMs 지나면 끝(그동안 마지막 장 5 = 가리키는 자세 그대로)
+  Enemy.prototype.updateBarrage = function (dtMs, ctx) {
+    var a = this.atk, s = a.spec, p = ctx.player, w = ctx.world;
+    var fr = this.frameAt(s.anim, a.t);
+    if (fr.no < s.spawnFrame && !fr.done) return;
+    if (a.dropped == null) { a.dropped = 0; a.dropT = 0; ctx.shake(s.shake * 0.4); }
+    a.dropT -= dtMs;
+    while (a.dropped < s.count && a.dropT <= 0) {
+      var tx = p.x, ty = p.y;
+      if (a.dropped > 0) { tx += rand(-s.spread.x, s.spread.x); ty += rand(-s.spread.y, s.spread.y); }
+      tx = Math.max(ctx.view.x0 + 10 * AS(), Math.min(ctx.view.x1 - 10 * AS(), tx));
+      ty = Math.max(w.laneTop, Math.min(w.laneBottom, ty));
+      if (ctx.dropCannon && p.state !== 'dead') ctx.dropCannon(this, s, tx, ty);
+      a.dropped++; a.dropT += s.intervalMs; a.lastDrop = a.t;
+    }
+    if (fr.done && a.dropped >= s.count && a.t - a.lastDrop >= (s.holdMs || 0)) this.endAttack();
   };
 
   // 오크 어깨 돌진: 웅크림(예고) → 돌진(미끄러짐 + 먼지) → 부딪힘 → 복귀
@@ -631,6 +702,8 @@
       if (a.rx != null && a.t < landMs) drawRing(g, camX, a.rx, a.ly, (s.reach.x1 - s.reach.x0) / 2, s.depth, a.t / landMs, false);
       return;
     }
+    if (s.type === 'shot') { this.drawAim(g, camX); return; }   // 총: 겨누는 동안 빨간 겨눔 선
+    if (s.type === 'barrage') return;                            // 대포 사격: 떨어질 자리는 main.js 가 그림(그림자 + 빨간 원)
     if (a.held) return;
     if (s.type === 'charge') {
       if (a.phase !== 'wind') return;
@@ -653,6 +726,31 @@
     g.fillRect(x0, y0, w, 1); g.fillRect(x0, y0 + h - 1, w, 1);
   };
 
+  // 총 겨눔 예고(6단계 총잡이·선장 권총): spawnFrame 전까지(겨누는 그림) 총구에서 앞으로 range 까지
+  //   ① 바닥 줄 표시 = 총알이 지나갈 줄(쏜 사람 발 y ± depth, 옅게) → 이 줄 밖으로 비키면 안 맞음
+  //   ② 총알 높이의 가는 빨간 선(겨눌수록 진하게, 깜빡임) + 총구 반짝임. 1장(총 드는 그림) 동안은 바닥 줄만 아주 옅게
+  Enemy.prototype.drawAim = function (g, camX) {
+    var a = this.atk, s = a.spec, A = this.T.anims[s.anim];
+    var fireMs = A.playback.indexOf(s.spawnFrame) * 1000 / A.fps;
+    if (a.fired || a.t >= fireMs) return;
+    var aimMs = A.playback.indexOf(s.telegraph[0]) * 1000 / A.fps, k = a.t < aimMs ? 0 : (a.t - aimMs) / Math.max(1, fireMs - aimMs);
+    var x0 = this.x + this.dir * s.spawn.x - camX, x1 = this.x + this.dir * (s.spawn.x + s.range) - camX;
+    var xa = Math.round(Math.min(x0, x1)), w = Math.round(Math.abs(x1 - x0));
+    var blink = Math.floor(performance.now() / 80) % 2;
+    var d = s.depth, y0 = Math.round(this.y - d), h = Math.round(d * 2);
+    g.fillStyle = 'rgba(255,40,30,' + (a.t < aimMs ? 0.05 : 0.08 + 0.1 * k) + ')';
+    g.fillRect(xa, y0, w, h);
+    if (a.t < aimMs) return;
+    var ly = Math.round(this.y - s.aimH) + 0.5, my = this.y + s.spawn.y;
+    g.save();
+    g.globalAlpha = Math.min(1, 0.35 + 0.5 * k + (blink ? 0.15 : 0));
+    g.strokeStyle = '#ff3a2a'; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(x0, my); g.lineTo(x0 + this.dir * Math.max(1, s.dropPx || 0), ly); g.lineTo(x1, ly); g.stroke();   // 총구가 높으면(권총) 비스듬히 내려와 총알 높이로
+    g.fillStyle = blink ? '#fff2a0' : '#ff6a3a';
+    g.fillRect(Math.round(x0) - 1, Math.round(my) - 1, 2, 2);
+    g.restore();
+  };
+
   Enemy.prototype.draw = function (g, camX, debug) {
     var T = this.T, img = this.currentImg();
     var x = snapPx(this.x - camX), y = snapPx(this.y);
@@ -671,7 +769,8 @@
     g.save();
     g.globalAlpha = alpha;
     g.translate(x, y + by);
-    g.scale(-this.dir, 1);        // 그림이 왼쪽을 보므로 반대로
+    var ds = T.drawScale || 1;    // 6단계 선장: 그림만 조금 크게(판정은 config 에서 같이 키움)
+    g.scale(-this.dir * ds, ds);  // 그림이 왼쪽을 보므로 반대로
     Assets.blit(g, img, T.pivot.x, T.pivot.y);
     if (this.flashT > 0) {
       var s = FX.whiteSilhouette(img, 0, 0, img.width, img.height, 1);
@@ -704,8 +803,10 @@
       g.strokeStyle = '#3cf'; g.strokeRect(Math.round(hb.x0 - camX) + 0.5, Math.round(hb.y0) + 0.5, Math.round(hb.x1 - hb.x0), Math.round(hb.y1 - hb.y0));
       if (this.state === 'attack') {
         var s2 = this.atk.spec, rr = s2.type === 'charge' ? (this.atk.phase === 'impact' ? s2.reach : s2.bodyReach) : s2.reach;
-        var ab = this.attackBox(rr, s2.depth);
-        g.strokeStyle = 'rgba(255,60,60,0.8)'; g.strokeRect(Math.round(ab.x0 - camX) + 0.5, Math.round(ab.y0) + 0.5, Math.round(ab.x1 - ab.x0), Math.round(ab.y1 - ab.y0));
+        if (rr) {   // 판정 상자가 없는 공격(바위 던지기·총·대포)은 안 그림
+          var ab = this.attackBox(rr, s2.depth);
+          g.strokeStyle = 'rgba(255,60,60,0.8)'; g.strokeRect(Math.round(ab.x0 - camX) + 0.5, Math.round(ab.y0) + 0.5, Math.round(ab.x1 - ab.x0), Math.round(ab.y1 - ab.y0));
+        }
       }
       g.fillStyle = '#0f0'; g.fillRect(x - 1, y - 1, 3, 3);
     }

@@ -512,6 +512,14 @@
     ground: { img: 'assets/bg/stage4/ground.png', w: 715,  tile: true,  parallax: 1.0 },
     height: 240, floorY: 144, laneTop: 158, laneBottom: 230
   };
+  // ---------- 6단계 배경 = 해적 항구 (art\stage6-bg 에서 복사, 2026-11-04) ----------
+  // 항구 마을 → 정박한 해적선 → 요새 부두 + 등대(해질녘). 크기·바닥·걷는 길은 1~4단계와 같음(mid 가 조금 짧음 → 판 끝에 맞춰 자동으로 느리게 흐름)
+  var BG_HARBOR = {
+    far:    { img: 'assets/bg/stage6/far.png',    w: 512,  tile: true,  parallax: 0.15 },
+    mid:    { img: 'assets/bg/stage6/mid.png',    w: 1197, tile: false, parallax: 0.5 },
+    ground: { img: 'assets/bg/stage6/ground.png', w: 684,  tile: true,  parallax: 1.0 },
+    height: 240, floorY: 144, laneTop: 158, laneBottom: 230
+  };
 
   window.CFG = {
     version: 'stage1-proto-2',
@@ -1113,6 +1121,101 @@
                     puddle: { ms: 4500, radius: 36, depth: 10, everyMs: 500, firstMs: 250, stayMs: 700, dmg: 2 },
                     dmg: [7, 9], knock: 12, flinchMs: 300, shake: 1.2, when: [110, 420], weight: 2 }
         }
+      },
+
+      // ===== 6단계 적 (art\stage6-enemies 에서 복사, 2026-11-04). 수치 = 그 폴더 anchors_*.json 의 suggest =====
+      // 총알·연기·대포알·그림자·폭발 그림(fxArt)은 총잡이·선장이 같이 씀(같은 파일이라 한 번만 받음)
+      // 해적 총잡이: 처음 나오는 「멀리서 쏘는」 잡몹. 고블린 크기(그림 칸·기준점 같음)
+      //   ranged = 거리 두기 { keep = 플레이어와 이 거리(가로) 사이에 서 있으려 함(가까우면 뒤로 물러나며 플레이어를 봄, 멀면 다가옴),
+      //     tooClose = 이보다 가까우면 개머리판으로 침(bash), backOffMul = 뒤로 물러날 때 걷기 속도 배율,
+      //     maxShooters = 동시에 겨누고 있는 총잡이 최대 수(한꺼번에 여기저기서 쏘지 않게), alignMs = 공격 차례가 이만큼 남으면 플레이어 줄로 맞춤(그전엔 흩어져 서 있음) }
+      //   shot = 머스킷 쏘기(type 'shot'): 1장 어깨에 댐 → 2장 겨눔(500ms, 예고 = 총구에서 앞으로 가는 빨간 겨눔 선 + 바닥 줄 표시)
+      //     → 3장 탕(spawn = 총구 자리에서 총알이 나감 + 연기). 총알은 쏜 사람 줄(발 y)을 따라 똑바로 speed 로 range 까지 날아감
+      //     맞는 조건 = 가로로 몸에 닿음 + 줄(위아래)이 depth 안 + 점프 높이가 dodgeZ 아래. 줄을 바꾸거나 뛰면 피함. 맞거나 끝까지 가면 사라짐
+      //     aimH = 총알이 날아가는 높이(땅에서, 원래 크기). 총구가 이보다 높으면(선장 권총) 처음 dropPx 동안 이 높이로 내려옴(그림만, 판정은 높이 무관)
+      //   bash = 개머리판 치기: 플레이어가 tooClose 안으로 붙었을 때만
+      gunner: {
+        label: '해적 총잡이', frameW: 176, frameH: 136, pivot: { x: 92, y: 130 },
+        anims: enemyAnims('gunner', {
+          idle: [4, 6, true], walk: [8, 10, true],
+          attack: [5, 10, false, [1, 2, 2, 2, 2, 2, 3, 4, 4, 5]],   // 1 어깨에 댐 · 2 겨눔(예고 500ms) · 3 탕 · 4 반동 · 5 내림
+          melee2: [4, 10, false, [1, 1, 1, 2, 3, 3, 4]],             // 개머리판: 1 뒤로 치켜듦(예고) · 2 앞으로 찍음(맞음) · 3 · 4 복귀
+          hit: [3, 10, false, [1, 2, 2, 3]],
+          hit2: [3, 10, false, [1, 1, 2, 2, 3]],
+          knockdown: [5, 10, false, [1, 2, 2, 3, 4, 5, 4, 5]],
+          getup: [3, 8, false, [1, 1, 2, 2, 3]],
+          death: [5, 8, false, [1, 2, 3, 4, 5]]
+        }),
+        fxArt: {
+          bullet: { frames: seq(EN + 'bullet/bullet_', 3), pivot: { x: 17, y: 13 }, fps: 16 },   // 총알(납 알 가운데 기준, 꼬리가 오른쪽 = 왼쪽으로 날아감)
+          smoke:  { frames: seq(EN + 'smoke/smoke_', 4),   pivot: { x: 36, y: 40 }, fps: 12 }    // 총구 연기(한 번)
+        },
+        walkAnim: 'walk',
+        down: { slide: 70, lyingFrames: [3, 4, 5] },
+        hp: 60, speedX: 46, speedY: 30, radius: 15, height: 88,
+        hurtbox: { x0: -20, x1: 22, yTop: -88, yBot: 0 },
+        engage: 50, hover: [150, 240], range: [0, 340], alignY: 8, cooldown: [2400, 3400], firstCooldown: [1200, 2200],
+        knockResist: 1.0, deathKnock: 210,
+        ranged: { keep: [150, 240], tooClose: 70, backOffMul: 0.8, maxShooters: 2, alignMs: 700 },
+        attacks: {
+          shot: { type: 'shot', anim: 'attack', telegraph: [2], spawnFrame: 3, spawn: { x: 66, y: -68 }, aimH: 68, dropPx: 0,
+                  speed: 360, range: 340, box: { w: 12, h: 8 }, depth: 10, dodgeZ: 20,
+                  dmg: [5, 7], knock: 12, when: [120, 340] },
+          bash: { anim: 'melee2', active: [2], telegraph: [1], reach: { x0: 28, x1: 74, yTop: -80, yBot: -58 }, depth: 12,
+                  dmg: [6, 9], knock: 20, when: [0, 70] }
+        }
+      },
+      // 해적 선장(6단계 보스): 오크·골렘·전갈·두꺼비와 같은 보스 규칙(공격 중 안 끊김, 체력 66%·33% 휘청, 절반에서 화남 + 졸개 부름)
+      //   휘청 3장 = 칼 짚고 무릎 꿇음, 모자 삐뚤, 머리 위 별 = 때릴 기회(1000ms)
+      //   drawScale = 그림만 이만큼 크게(오크·골렘 옆에서 너무 호리호리해 보여서, art README). 아래 판정·거리 수치는 그림 기준 그대로 적고 scaleActors 가 같이 곱함
+      //   공격: combo = 칼 두 번 베기(1장 높이 치켜듦 = 예고 → 2장 대각선 베기 reachF[2] → 3장 가로 베기 reachF[3], multiHit = 장마다 한 번씩 맞을 수 있음)
+      //         pistol = 권총(총잡이와 같은 type 'shot'): 2장 겨눔(예고, 빨간 겨눔 선) → 3장 탕. 총구가 주인공 머리보다 높아서 총알 그림은 dropPx 동안 aimH 로 내려옴
+      //         barrage = 대포 일제 사격(type 'barrage'): 1~3장 호령(예고) → 4장 칼로 가리킴 = 대포알 count 개를 intervalMs 마다 떨어뜨림(그동안 5장 자세)
+      //           대포알 하나 = 떨어질 자리에 그림자(점점 커짐) + 빨간 원 → fallMs 뒤 쾅(blast 그림, radius·depth 안이면 맞음, 넘어짐, 높이 dodgeZ 넘게 뛰면 피함)
+      //           자리 = 첫 알은 플레이어 발밑 그대로, 다음부터 그때 플레이어 자리에서 spread(가로·위아래)만큼 흩어서. dropHeight = 처음 높이,
+      //           holdMs = 마지막 알을 떨어뜨린 뒤 가리키는 자세로 더 서 있는 시간, gapMs = 한 번 쓰면 이 시간 동안 안 씀, firstMs = 나타나서 처음 쓰기까지
+      captain: {
+        label: '해적 선장', boss: true, frameW: 320, frameH: 232, pivot: { x: 168, y: 226 },
+        drawScale: 1.1,
+        anims: enemyAnims('captain', {
+          idle: [4, 5, true], walk: [6, 8, true],
+          attack1: [5, 10, false, [1, 1, 1, 1, 2, 2, 3, 3, 4, 4, 5]],   // 칼 두 번: 1 치켜듦(예고 400ms) · 2 대각선 베기 · 3 가로 베기 · 4 · 5 복귀
+          attack2: [5, 9, false, [1, 2, 2, 2, 2, 3, 4, 4, 5]],          // 권총: 1 뽑음 · 2 겨눔(예고 450ms) · 3 탕 · 4 반동 · 5 내림
+          special: [5, 8, false, [1, 1, 1, 2, 3, 3, 3, 4, 5, 5, 5, 5]], // 대포 사격: 1 호령 · 2~3 칼 치켜듦(예고) · 4 가리킴 = 쏴라 · 5 그대로
+          hit: [3, 8, false, [1, 2, 2, 3]],
+          hit2: [3, 8, false, [1, 1, 2, 2, 3]],
+          stagger: [4, 7, false, null],                                  // 휘청: 장마다 시간은 아래 stagger.d (3장 = 무릎 꿇고 별)
+          death: [5, 6, false, [1, 1, 2, 2, 3, 4, 5]]                    // 모자 날아감 → 무릎 → 뒤로 넘어짐 → 누움
+        }),
+        fxArt: {
+          bullet:     { frames: seq(EN + 'bullet/bullet_', 3),         pivot: { x: 17, y: 13 },  fps: 16 },
+          smoke:      { frames: seq(EN + 'smoke/smoke_', 4),           pivot: { x: 36, y: 40 },  fps: 12 },
+          cannonball: { frames: seq(EN + 'cannonball/cannonball_', 4), pivot: { x: 24, y: 64 },  fps: 12 },   // 떨어지는 대포알(알 가운데 기준, 위로 연기 꼬리)
+          shadow:     { frames: seq(EN + 'shadow/shadow_', 4),         pivot: { x: 32, y: 10 },  fps: 0 },    // 대포알 그림자(떨어지는 정도로 장을 고름)
+          blast:      { frames: seq(EN + 'blast/blast_', 6),           pivot: { x: 80, y: 124 }, fps: 12 }    // 쾅(바닥 가운데 기준)
+        },
+        walkAnim: 'walk',
+        hp: 1100, speedX: 36, speedY: 26, radius: 36, height: 150,
+        hurtbox: { x0: -42, x1: 40, yTop: -148, yBot: 0 },
+        engage: 70, hover: [70, 90], range: [40, 160], alignY: 10, cooldown: [1000, 1800], firstCooldown: [1200, 1500],
+        knockResist: 0.2, deathKnock: 50,
+        staggerCdMs: 2200,
+        superArmor: true,
+        stagger: { at: [0.66, 0.33], onWall: false, d: [260, 160, 1000, 320] },
+        enrageAt: 0.5,
+        enrage: { speedMul: 1.25, cooldownMul: 0.7, summon: ['gunner', 'skeleton', 'gunner'] },
+        attacks: {
+          combo:   { anim: 'attack1', active: [2, 3], multiHit: true, telegraph: [1], depth: 16,
+                     reach: { x0: 40, x1: 158, yTop: -140, yBot: -15 },
+                     reachF: { 2: { x0: 40, x1: 100, yTop: -140, yBot: -15 }, 3: { x0: 50, x1: 158, yTop: -135, yBot: -60 } },
+                     dmg: [14, 17], knock: 26, flinchMs: 400, shake: 1.6, when: [40, 160], weight: 3 },
+          pistol:  { type: 'shot', anim: 'attack2', telegraph: [2], spawnFrame: 3, spawn: { x: 110, y: -120 }, aimH: 70, dropPx: 60,
+                     speed: 420, range: 380, box: { w: 12, h: 8 }, depth: 12, dodgeZ: 20,
+                     dmg: [12, 15], knock: 18, flinchMs: 350, shake: 1.2, when: [150, 360], weight: 2 },
+          barrage: { type: 'barrage', anim: 'special', telegraph: [1, 2, 3], spawnFrame: 4, count: 5, intervalMs: 260, fallMs: 900, dropHeight: 260,
+                     spread: { x: 50, y: 14 }, radius: 40, depth: 16, dodgeZ: 24, holdMs: 300, gapMs: 9000, firstMs: 4000,
+                     dmg: [16, 20], knock: 30, flinchMs: 450, heavy: true, shake: 2.4, when: [60, 600], weight: 2 }
+        }
       }
     },
 
@@ -1131,7 +1234,9 @@
     //   healOnClear = 웨이브를 깰 때마다 체력 회복
     //   hpMul / dmgMul = 이 판 적 전부의 체력·공격력 배율(없으면 1) → 예전 몬스터를 「강한 버전」으로 다시 씀
     //   bg = 배경 3장(위 BG_FOREST 설명). 판을 시작할 때 그 판 배경만 불러온다(main.js useStage → Assets.ensureBg)
-    // 새 판 넣기: 아래 목록 끝에 { id: 5, … } 하나 추가하면 끝(스테이지 고르기 화면·다음 스테이지는 자동)
+    // 새 판 넣기: 아래 목록에 { id, … } 하나 추가하면 끝(스테이지 고르기 화면·다음 스테이지는 자동)
+    //   id = 판 번호(고르기 화면 숫자 · 주소 ?stage=N 이 이 번호). 목록 순서 = 노는 순서(다음 스테이지 · 잠금 풀림은 목록 순서대로)
+    //   → 번호를 건너뛰어도 됨(2026-11-04: 5단계 설산은 그림이 아직이라 목록 = 1 2 3 4 6, 나중에 6 앞에 { id: 5 } 끼움)
     // 지금 하고 있는 판은 main.js 가 CFG.stage(+ CFG.bg = 그 판 bg)에 넣어 둔다 → 다른 코드는 예전처럼 CFG.stage 를 읽음
     // 시험 기간(2026-11-04 형님): 스테이지 고르기에서 모든 판을 처음부터 열어 둠. 정식으로 낼 때 false
     stagesAllOpen: true,
@@ -1286,6 +1391,47 @@
           { type: 'firebowl',  x: 2040 + 332, y: 0.48 },
           { type: 'amphora',   x: 2250, y: 0.78, drop: 'meat' }    // 6번 웨이브 화면 = 보스방 바로 앞
         ]
+      },
+      // 5스테이지(설산)는 그림 완성 후 이 앞에 끼움
+      // ===== 6단계: 해적 항구 (2026-11-04 새 그림: 배경·소품·해적 총잡이·해적 선장) =====
+      // 4단계보다 한 단계 어렵게(체력·공격 x1.3): 새 적 해적 총잡이(멀리서 쏨, 거리 두기) + 해골·도마뱀·고블린(일부 「해적」 색) 섞음,
+      //   화덕 둘레에 미리 서 있는 무리 3곳 + 옆에서 지원, 보스 = 해적 선장(칼 두 번·권총·대포 일제 사격)
+      {
+        id: 6,
+        name: 'STAGE 6  해적 항구',
+        width: 2880,
+        healOnClear: 14,            // 총알이 멀리서 조금씩 깎으므로 웨이브마다 조금 더 회복(4단계 12)
+        bgTop: '#82538c',           // 화면이 배경보다 높을 때 위쪽 하늘 색 (실제로는 배경 맨 윗줄 = 해질녘 보라를 늘려 씀)
+        bg: BG_HARBOR,
+        hpMul: 1.3, dmgMul: 1.3,
+        waves: [
+          // 1: 항구 마을 입구 — 해적 총잡이 첫 등장(앞에서 해골이 막고 뒤에서 쏨)
+          { at: 120,  spawn: [['skeleton', 'R', 0, { variant: 'pirate' }], ['gunner', 'R', 700], ['goblin', 'L', 2200, { variant: 'pirate' }]] },
+          // 2: 화덕(500 + 326) 옆에 총잡이 + 해적 고블린(camp1, 하나 깨면 둘 다 깸) + 옆에서 지원
+          { at: 500,  placed: [['goblin', 288, 0.36, { group: 'camp1', dir: 1, variant: 'pirate' }], ['gunner', 364, 0.58, { group: 'camp1' }]],
+                      spawn: [['lizard', 'L', 700], ['skeleton', 'R', 2400, { variant: 'pirate' }]] },
+          { at: 880,  spawn: [['gunner', 'R', 0], ['lizard', 'L', 500], ['goblin', 'R', 1300, { variant: 'pirate' }], ['skeleton', 'L', 3000], ['goblin', 'R', 3600, { variant: 'pirate' }]] },
+          // 4: 해적선 앞 화덕(1260 + 330) 둘레에 해적 해골 + 도마뱀 + 총잡이(camp2) + 옆에서 지원
+          { at: 1260, placed: [['skeleton', 292, 0.34, { group: 'camp2', dir: 1, variant: 'pirate' }], ['gunner', 372, 0.44, { group: 'camp2' }], ['lizard', 340, 0.8, { group: 'camp2' }]],
+                      spawn: [['goblin', 'R', 1200, { variant: 'pirate' }], ['gunner', 'L', 3400], ['skeleton', 'R', 4200, { variant: 'pirate' }]] },
+          { at: 1650, spawn: [['lizard', 'R', 0], ['gunner', 'L', 400], ['skeleton', 'R', 1000, { variant: 'pirate' }], ['goblin', 'L', 2800, { variant: 'pirate' }], ['goblin', 'R', 3400]] },
+          // 6: 요새 부두 화덕(2040 + 332)을 지키는 총잡이 둘(dock) + 옆에서 지원
+          { at: 2040, placed: [['gunner', 296, 0.3, { group: 'dock', dir: 1 }], ['gunner', 368, 0.66, { group: 'dock' }]],
+                      spawn: [['skeleton', 'R', 600, { variant: 'pirate' }], ['goblin', 'L', 1000], ['goblin', 'R', 2800, { variant: 'pirate' }], ['skeleton', 'L', 3400], ['skeleton', 'R', 4000, { variant: 'pirate' }]] },
+          { at: 'end', boss: true, spawn: [['captain', 'R', 0]] }
+        ],
+        // 소품: 럼주 통·그물 화물 상자(부서짐) + 부두 화덕 3개(장식, 무리 자리). 보스 앞 럼주 통은 고기가 꼭 나옴
+        props: [
+          { type: 'rumbarrel', x: 430,  y: 0.72 },
+          { type: 'netcrate',  x: 700,  y: 0.22 },
+          { type: 'firepan',   x: 500 + 326, y: 0.47 },
+          { type: 'rumbarrel', x: 1150, y: 0.7 },
+          { type: 'netcrate',  x: 1480, y: 0.26 },
+          { type: 'firepan',   x: 1260 + 330, y: 0.56 },
+          { type: 'netcrate',  x: 1860, y: 0.32, drop: 'bread' },
+          { type: 'firepan',   x: 2040 + 332, y: 0.48 },
+          { type: 'rumbarrel', x: 2250, y: 0.78, drop: 'meat' }    // 6번 웨이브 화면 = 보스방 바로 앞
+        ]
       }
     ],
 
@@ -1301,7 +1447,9 @@
       // 3단계(2026-11-04): 흰 해골·보라 박쥐 → 이끼 낀 늪 빛(칙칙한 초록). 흰색·회색이 많아 color 로 물들임
       bog:   { label: '늪', hue: 0, sat: 0.85, bright: 0.95, color: '#7a9a4a', colorK: 0.36, hpMul: 1.1 },
       // 4단계(2026-11-04): 회색 늑대·흰 해골 → 모래 빛(누런 갈색). 회색·흰색이라 색상환 대신 color 로 물들임
-      sand:  { label: '모래', hue: 0, sat: 0.9, bright: 1.0, color: '#d8a860', colorK: 0.38, hpMul: 1.1 }
+      sand:  { label: '모래', hue: 0, sat: 0.9, bright: 1.0, color: '#d8a860', colorK: 0.38, hpMul: 1.1 },
+      // 6단계(2026-11-04): 흰 해골·초록 고블린 → 바닷물에 전 「해적」 빛(칙칙한 푸른 회색). 흰색이 많아 color 로 물들임
+      pirate: { label: '해적', hue: 0, sat: 0.8, bright: 0.92, color: '#4a6a94', colorK: 0.34, hpMul: 1.1 }
     },
 
     // ---------- 소품 그림 (2026-11-04, art\stage1-props 에서 복사 → assets/props/stage1/…, 크기·기준점은 props.json) ----------
@@ -1401,6 +1549,30 @@
         frames: seq('assets/props/stage3/cauldron/cook_', 6), fps: 8,
         pivot: { x: 27, y: 81 }, solid: false, shadow: 18,
         glow: [{ r: 60, y: 10, color: '#ff9a3a', alpha: 0.26 }, { r: 44, y: 46, color: '#9aff5a', alpha: 0.2 }]
+      },
+      // ----- 6단계 소품 (art\stage6-props 에서 복사 → assets/props/stage6/…, 크기·기준점은 그 폴더 props.json) -----
+      // 이름이 1단계 상자(crate)·술통(barrel)과 겹쳐서 종류 이름만 따로(그림 폴더 이름은 그대로)
+      // 럼주 통(쇠테·꼭지·빨간 X 표시): 고블린 가슴 높이. 통 판자·쇠테·럼주 조각
+      rumbarrel: {
+        frames: ['intact', 'cracked', 'damaged'].map(function (s) { return 'assets/props/stage6/barrel/' + s + '_01.png'; }), fps: 0,
+        breakFrames: seq('assets/props/stage6/barrel/break_', 4),
+        pivot: { x: 48, y: 77 }, solid: true, footprint: { w: 40, depth: 16 },
+        hits: 3, hurtbox: { x: -23, y: -61, w: 46, h: 60 }, shadow: 22,
+        chips: ['#a0663a', '#6e4224', '#3e3a3a', '#9a2a22', '#d89a5a']
+      },
+      // 그물 묶은 화물 상자(위에 자루): 주인공 허리~가슴 높이. 판자·밧줄·자루 조각
+      netcrate: {
+        frames: ['intact', 'cracked', 'damaged'].map(function (s) { return 'assets/props/stage6/crate/' + s + '_01.png'; }), fps: 0,
+        breakFrames: seq('assets/props/stage6/crate/break_', 4),
+        pivot: { x: 43, y: 80 }, solid: true, footprint: { w: 68, depth: 18 },
+        hits: 3, hurtbox: { x: -36, y: -70, w: 72, h: 69 }, shadow: 34,
+        chips: ['#c8ae84', '#9a7c54', '#6e5434', '#d8c8a0', '#8a7a5a']
+      },
+      // 부두 화덕(다리 굽은 쇠 화로 팬 + 꼬챙이 생선): 장식(지나갈 수 있음, 안 부서짐). 팬·다리·나무판은 그대로, 불꽃만 움직이는 6장 반복
+      firepan: {
+        frames: seq('assets/props/stage6/firepan/burn_', 6), fps: 10,
+        pivot: { x: 25, y: 79 }, solid: false, shadow: 16,
+        glow: { r: 66, y: 46, color: '#ff9a3a', alpha: 0.3 }
       }
     },
     // ---------- 부서지는 소품 공통 (상자·통) ----------
@@ -1550,6 +1722,18 @@
     mul(C.ai, ['sepDepth'], S);
     Object.keys(C.enemies).forEach(function (k) {
       var T = C.enemies[k];
+      // 6단계: 그림만 크게 그리는 적(drawScale, 해적 선장) → 그림에 묶인 몸·판정·총구 자리도 같은 배율(먼저 곱하고 아래에서 actorScale)
+      var DS = T.drawScale || 1;
+      if (DS !== 1) {
+        var bx = function (r) { mul(r, ['x0', 'x1', 'yTop', 'yBot'], DS); };
+        mul(T, ['radius', 'height'], DS); bx(T.hurtbox);
+        if (T.stagger) bx(T.stagger.hurtbox);
+        Object.keys(T.attacks).forEach(function (n) {
+          var a = T.attacks[n];
+          bx(a.reach); bx(a.bodyReach); mul(a.spawn, ['x', 'y'], DS); mul(a, ['aimH'], DS);
+          if (a.reachF) Object.keys(a.reachF).forEach(function (f) { bx(a.reachF[f]); });
+        });
+      }
       mul(T, ['radius', 'height', 'engage', 'alignY', 'deathKnock'], S);
       mul(T, ['speedX', 'speedY'], MV);
       // 적 걷기 그림은 시간으로 넘긴다 → 속도를 덜 줄인 만큼 그림도 빠르게(발과 바닥의 관계가 원래와 같게)
@@ -1570,7 +1754,11 @@
         mul(a.grab, ['dist'], S); mul(a, ['catchR'], S);
         // 3단계: 두꺼비 배치기 뛰는 거리·겨누는 거리, 독 웅덩이 크기
         mul(a.leap, ['max', 'aimAt'], S); mul(a.puddle, ['radius', 'depth'], S);
+        // 6단계: 총알 거리·크기·날아가는 높이(speed 는 위에서), 대포알 떨어지는 높이·흩어지는 폭
+        mul(a, ['range', 'aimH', 'dropPx', 'dropHeight'], S); mul(a.box, ['w', 'h'], S); mul(a.spread, ['x', 'y'], S);
       });
+      // 6단계 총잡이 거리 두기
+      if (T.ranged) { arr(T.ranged.keep); mul(T.ranged, ['tooClose'], S); }
       // 나는 적 흔들림, 방패 막기 밀림, 보스 핵 빛 위치
       mul(T.flying, ['bob'], S); mul(T.guard, ['push'], S);
       if (T.stagger) { mul(T.stagger.core, ['x', 'y', 'r'], S); box(T.stagger.hurtbox); }   // 휘청 중 몸 판정(전갈 뒤집힘)
