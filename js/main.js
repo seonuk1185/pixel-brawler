@@ -1,7 +1,8 @@
 // 게임 본체: 화면 크기, 배경, 매 장면 갱신, 타격 처리
 // 기본 = 스테이지 판(웨이브 + 보스, 여러 판). 주소 뒤 ?mode=practice = 예전 허수아비 연습장
 // 주소 뒤 ?stage=N = 판 번호(config stages 의 id) N 인 판으로 바로 시작(시험용, 잠금 무시). ?bot=1 이면 고르기 화면 없이 바로 시작
-//   (2026-11-04: 목록 = 1 2 3 4 5 6 7 8 9. ?stage=5 = 눈 덮인 산, ?stage=6 = 해적 항구, ?stage=7 = 화산, ?stage=8 = 유령 고성, ?stage=9 = 마왕군 요새. 없는 번호면 무시)
+//   (2026-11-04: 목록 = 1 2 3 4 5 6 7 8 9 10. ?stage=5 = 눈 덮인 산, ?stage=6 = 해적 항구, ?stage=7 = 화산, ?stage=8 = 유령 고성, ?stage=9 = 마왕군 요새,
+//    ?stage=10 = 마왕성(마지막 판, 마왕을 쓰러뜨리면 엔딩). 없는 번호면 무시)
 (function () {
   var CFG = window.CFG, J = CFG.juice;
   var AS = CFG.actorScale || 1;   // 캐릭터 크기: 코드에 바로 적힌 거리·높이와 손맛의 밀림 거리(juice.knockback)에 곱한다
@@ -442,10 +443,25 @@
     FX.shake(J.shakePx * 0.3, 80);
   }
   // 안개 + 박쥐 구름(8단계 흡혈 백작 fxArt.mist): 사라지는 자리 · 나타나는 자리에 한 번(바닥 기준, 캐릭터 앞)
+  //   10단계 마왕 어둠 순간이동: 안개 그림이 없음 → 검붉은 연기 조각(spec.smokeCols)을 더 많이·크게
   function mistPuff(e, x, y) {
-    var F = G.assets.enemyFx && G.assets.enemyFx[e.type], M = F && F.mist;
+    var F = G.assets.enemyFx && G.assets.enemyFx[e.type], M = F && F.mist, SC = e.atk && e.atk.spec.smokeCols;
     if (M && M.frames.length) FX.sprite(x, y, M.frames, M.fps, M.pivot, e.dir > 0, false);
-    if (Skills.debris) Skills.debris(x, y - 40 * AS, y, 6, { cols: ['#c8c8d8', '#8a8aa0', '#e8e8f0'], sp: 60, size: 1.6, ms: 520, g: -40, spread: 1.2 });
+    if (Skills.debris) Skills.debris(x, y - 40 * AS, y, SC ? 14 : 6, { cols: SC || ['#c8c8d8', '#8a8aa0', '#e8e8f0'], sp: SC ? 80 : 60, size: SC ? 2.4 : 1.6, ms: SC ? 640 : 520, g: -40, spread: 1.2 });
+  }
+  // 플레이어 밀어내기(10단계 마왕 각성 포효): 맞음·데미지 없이 shoveMs 동안 dist 만큼 바깥으로 밀려남(step 이 매 장면 옮김). 쓰러짐·잡힘·넘어짐이면 안 밂
+  var shove = null;
+  function pushPlayer(e, dist) {
+    var p = G.player;
+    if (p.state === 'dead' || p.state === 'held' || p.state === 'down') return;
+    shove = { dir: p.x >= e.x ? 1 : -1, dist: dist, t: 0, ms: 320 };
+  }
+  function shoveStep(dt) {
+    if (!shove) return;
+    var p = G.player, u0 = Math.min(1, shove.t / shove.ms); shove.t += dt;
+    var u1 = Math.min(1, shove.t / shove.ms), ease = function (u) { return 1 - (1 - u) * (1 - u); };
+    if (p.state !== 'dead' && p.state !== 'held') { p.x += shove.dir * shove.dist * (ease(u1) - ease(u0)); p.clamp(world); }
+    if (u1 >= 1) shove = null;
   }
   // 붙잡힌 동안 누른 버튼 수(공격·점프·기술 A/B, 한 번 누름 = 한 번)
   function grabMash() {
@@ -758,6 +774,8 @@
   //   8단계 흡혈 백작 박쥐 떼도 같은 길(proj = 'bats'). o = { dz: 줄을 위아래로 옮김, wait: 이만큼 늦게 출발(그동안 안 보임), scale: 그림 크기 } (화난 뒤 세 무리)
   //     s.hitCols = 맞을 때 튀는 조각 색(없으면 불꽃색)
   //   9단계 흑마법사 암흑 구체도 같은 길(proj 'orb', impact 'orbhit'): s.impactAir = 터지는 그림을 바닥 말고 구체 높이에, s.impactCols = 터질 때 튀는 조각 색
+  //   10단계 마왕 초승달 파동도 같은 길(proj 'wave', 높이 0 = 바닥을 따라): s.pierce = 맞혀도 안 사라지고 range 끝까지(플레이어는 한 번만 맞음, b.hit),
+  //     s.projLoop = 날아가는 동안 반복할 그림 번호(처음엔 1장), s.projEnd = 끝까지 가면 그 자리에 한 번 보여 줄 그림 번호(흩어짐)
   var shots = [];
   function fireShot(e, s, o) {
     var F = G.assets.enemyFx && G.assets.enemyFx[e.type];
@@ -787,16 +805,20 @@
         var m = Math.min(move / n, s.range - b.trav);
         b.x += b.dir * m; b.trav += m;
         b.h = s.dropPx > 0 ? b.h0 + (s.aimH - b.h0) * Math.min(1, b.trav / s.dropPx) : b.h0;   // 권총: 처음 dropPx 동안 총알 높이로 내려옴
-        if (p.state !== 'dead' && Math.abs(p.y - b.z) <= s.depth && (p.z || 0) <= s.dodgeZ) {
+        if (!b.hit && p.state !== 'dead' && Math.abs(p.y - b.z) <= s.depth && (p.z || 0) <= s.dodgeZ) {
           hb = p.hurtbox();
           var w = s.box.w / 2;
           if (b.x + w > hb.x0 && b.x - w < hb.x1 && onPlayerHit({ x: b.x - b.dir * 30, dmgMul: b.e.dmgMul, T: b.e.T }, s)) {
-            gone = true;
+            if (s.pierce) b.hit = true; else gone = true;   // 파동(pierce): 그대로 지나감
             if (b.imp) shotImpact(b);
-            else if (Skills.debris) Skills.debris(b.x, b.z - b.h, b.z, 5, { cols: s.hitCols || ['#fff2a0', '#ffd060', '#c8c8c8'], glow: !s.hitCols, sp: 120, size: 1.2, ms: 220 });
+            else if (Skills.debris) Skills.debris(b.x, b.z - b.h - (s.pierce ? 40 * AS : 0), b.z, s.pierce ? 9 : 5, { cols: s.hitCols || ['#fff2a0', '#ffd060', '#c8c8c8'], glow: !s.hitCols, sp: 120, size: 1.2, ms: 220 });
           }
         }
-        if (b.trav >= s.range - 0.01) { if (!gone && b.imp) shotImpact(b); gone = true; }   // 끝까지 날아간 불덩이도 그 자리에서 터짐
+        if (b.trav >= s.range - 0.01) {   // 끝까지 날아간 불덩이도 그 자리에서 터짐 / 파동은 흩어지는 그림 한 장
+          if (!gone && b.imp) shotImpact(b);
+          if (s.projEnd && b.art && b.art.frames[s.projEnd - 1]) FX.sprite(b.x, b.z - b.h, [b.art.frames[s.projEnd - 1]], 7, b.art.pivot, b.dir > 0, false);
+          gone = true;
+        }
       }
       if (gone) shots.splice(i, 1);
     }
@@ -808,7 +830,8 @@
       if (under) { window.drawShadow(ctx, x, snap(b.z), (b.s.box.w > 30 * AS ? 12 : 3) * AS * b.sc); return; }   // 바닥에 그림자 = 지나가는 줄(박쥐 떼는 크게)
       var y = snap(b.z - b.h), A = b.art;
       if (!A || !A.frames.length) { ctx.fillStyle = '#fff2a0'; ctx.fillRect(x - 2, y - 1, 4, 3); return; }
-      var im = A.frames[Math.floor(b.t * A.fps / 1000) % A.frames.length];
+      var fi = Math.floor(b.t * A.fps / 1000), L = b.s.projLoop;
+      var im = L ? A.frames[(fi < 1 ? 1 : L[(fi - 1) % L.length]) - 1] : A.frames[fi % A.frames.length];   // projLoop: 1장 → 2·3장 반복(10단계 파동)
       ctx.save(); ctx.translate(x, y); ctx.scale(b.dir > 0 ? -b.sc : b.sc, b.sc);   // 그림은 왼쪽으로 날아감(꼬리가 오른쪽) → 오른쪽으로 쏘면 뒤집기. sc = 작은 박쥐 무리
       Assets.blit(ctx, im, A.pivot.x, A.pivot.y); ctx.restore();
     });
@@ -816,6 +839,7 @@
 
   // ---------- 대포알 (6단계 선장 barrage): 떨어질 자리에 그림자(점점 커짐) + 빨간 원 → fallMs 뒤 쾅 ----------
   // { e, s, tx, ty: 떨어질 자리(줄), t }. 맞음 = 가로 radius · 위아래 depth 안 + 높이 dodgeZ 아래(바위 던지기와 같음). 보스가 쓰러진 뒤엔 안 아픔
+  //   10단계 마왕 암흑 구슬 비도 같은 길: s.proj = 떨어지는 그림(없으면 cannonball), s.blast = 터지는 그림(없으면 blast), s.blastCols = 터질 때 조각 색
   var cannons = [];
   function dropCannon(e, s, tx, ty) {
     var F = G.assets.enemyFx && G.assets.enemyFx[e.type];
@@ -828,9 +852,9 @@
       c.t += dt;
       if (c.t < s.fallMs) continue;
       cannons.splice(i, 1);
-      var B = c.F.blast;
+      var B = c.F[s.blast || 'blast'];
       if (B && B.frames.length) FX.sprite(c.tx, c.ty, B.frames, B.fps, B.pivot, Math.random() < 0.5, false);
-      if (Skills.debris) Skills.debris(c.tx, c.ty - 6 * AS, c.ty, 10, { cols: ['#ffd060', '#ff8a2a', '#6a5a4a', '#a0805a'], sp: 170, size: 2, ms: 600 });
+      if (Skills.debris) Skills.debris(c.tx, c.ty - 6 * AS, c.ty, 10, { cols: s.blastCols || ['#ffd060', '#ff8a2a', '#6a5a4a', '#a0805a'], glow: !!s.blastCols, sp: 170, size: 2, ms: 600 });
       FX.shake(J.shakePx * s.shake, J.shakeMs * 1.6);
       if (S.bossDownT < 0 && p.state !== 'dead' && Math.abs(p.x - c.tx) <= s.radius && Math.abs(p.y - c.ty) <= s.depth && (p.z || 0) <= s.dodgeZ)
         onPlayerHit({ x: c.tx, dmgMul: c.e.dmgMul, T: c.e.T }, s);
@@ -848,7 +872,7 @@
   }
   function drawCannons(camX) {
     cannons.forEach(function (c) {
-      var u = Math.min(1, c.t / c.s.fallMs), A = c.F.cannonball, x = snap(c.tx - camX), y = snap(c.ty - c.s.dropHeight * (1 - u * u));   // 점점 빨리 떨어짐
+      var u = Math.min(1, c.t / c.s.fallMs), A = c.F[c.s.proj || 'cannonball'], x = snap(c.tx - camX), y = snap(c.ty - c.s.dropHeight * (1 - u * u));   // 점점 빨리 떨어짐
       if (!A || !A.frames.length) { ctx.fillStyle = '#2a2a30'; ctx.fillRect(x - 5, y - 5, 10, 10); return; }
       ctx.save(); ctx.translate(x, y); Assets.blit(ctx, A.frames[Math.floor(c.t * A.fps / 1000) % A.frames.length], A.pivot.x, A.pivot.y); ctx.restore();
     });
@@ -964,7 +988,8 @@
     var p = G.player, V = G.ectx.view, far = STUCK.far * AS, mv = STUCK.move * AS, S = G.stage;
     G.enemies.forEach(function (e) {
       // 8단계: 흡혈 백작이 안개로 숨어 순간이동하는 동안(hidden, state 'attack')·유령 기사가 옅어져 돌진하는 동안도 공격 중 = 안 셈
-      var busy = e.state === 'attack' || e.state === 'hit' || e.state === 'down' || e.state === 'stagger' || e.state === 'guard' || e.hidden;
+      //   10단계: 마왕이 어둠 순간이동으로 숨은 동안(hidden, state 'attack')·각성 중(awaken)도 안 셈
+      var busy = e.state === 'attack' || e.state === 'hit' || e.state === 'down' || e.state === 'stagger' || e.state === 'guard' || e.state === 'awaken' || e.hidden;
       if (!e.alive() || e.asleep || e.alertT > 0 || busy || p.state === 'dead' || p.state === 'held') { e.lostT = 0; e.lostX = null; return; }
       var on = e.x >= V.x0 && e.x <= V.x1;
       if (on && Math.abs(e.x - p.x) <= far) { e.lostT = 0; e.lostX = null; return; }
@@ -991,6 +1016,16 @@
     G.hitstop = Math.max(G.hitstop, 260);
     G.slowT = 1400;                    // 보스 쓰러질 때 슬로모션
     FX.shake(J.shakePx * 3, 500);
+    shove = null;
+    // 마지막 보스(10단계 마왕): 마지막 타에 더 긴 멈춤·슬로모션 + 하얀 번쩍 → 쓰러지는 그림(왕관이 떨어짐)을 다 보여 준 뒤 엔딩(stageStep · showResult)
+    if (boss.T.finalBoss) {
+      S.ending = true;
+      cannons.length = 0;              // 떨어지던 구슬도 사라짐
+      G.hitstop = Math.max(G.hitstop, 420);
+      G.slowT = 2600;
+      Skills.flash({ color: '#ffffff', alpha: 0.85, ms: 700 });
+      FX.shake(J.shakePx * 4, 900);
+    }
     // 남은 졸개들도 같이 쓰러짐
     G.enemies.forEach(function (e) { if (e !== boss && e.alive()) e.takeHit(9999, e.x > boss.x ? 1 : -1, 10, true, { force: true }); });
   }
@@ -1027,7 +1062,20 @@
       rescueStuck(dt);
       // 보스 화남: 체력 절반 아래 → 빨라지고 졸개를 부름
       var B = S.boss;
-      if (B && B.alive() && !B.enraged && B.hp / B.maxHp < B.T.enrageAt) {
+      // 10단계 마왕 각성(enemies.js 가 state 'awaken' 으로 바꿈): 글자 + 화면 번쩍·크게 흔들림 + 짧은 멈춤, 졸개는 각성이 끝날 즈음 나옴. 화남은 그림이 끝나면 enemies.js 가 켬
+      if (B && B.T.awaken && B.state === 'awaken' && !B.awakenShown) {
+        B.awakenShown = true;
+        var AW = B.T.awaken;
+        banner(josa(B.label, '이', '가') + ' 각성했다!', 'boss');
+        Skills.flash({ color: AW.flash || '#ff3a8c', alpha: 0.55, ms: 520 });
+        FX.shake(J.shakePx * AW.shake, 900);
+        G.hitstop = Math.max(G.hitstop, 160);
+        (B.T.enrage.summon || []).forEach(function (t, k) {
+          var q = summonOf(t);
+          S.queue.push({ type: q.type, side: k % 2 ? 'L' : 'R', at: S.waveT + 1100 + k * 900, opt: q.opt });
+        });
+      }
+      if (B && B.alive() && !B.T.awaken && !B.enraged && B.hp / B.maxHp < B.T.enrageAt) {
         B.enraged = true;
         banner(josa(B.label || '오크 족장', '이', '가') + ' 화났다!', 'boss');
         (B.T.enrage.summon || []).forEach(function (t, k) {
@@ -1049,7 +1097,8 @@
       }
     }
     // 보스 쓰러짐 → 잠시 뒤 클리어 화면
-    if (S.bossDownT >= 0 && !S.result) { S.bossDownT += dt; if (S.bossDownT > 2600) showResult('clear'); }
+    //   마지막 보스(엔딩): 쓰러지는 그림(1.5초)과 재 더미를 조금 더 보여 준 뒤
+    if (S.bossDownT >= 0 && !S.result) { S.bossDownT += dt; if (S.bossDownT > (S.ending ? 3600 : 2600)) showResult('clear'); }
     // 플레이어 쓰러짐 → 게임 오버
     if (p.state === 'dead' && !S.result) { S.overT += dt; if (S.overT > (CFG.hero.deathOverMs || 1800)) showResult('over'); }
   }
@@ -1109,7 +1158,7 @@
       Input.setOverride(ax); return;
     }
     var side = best.x > p.x ? 1 : -1;
-    var want = ({ goblin: 42, wolf: 58, orc: 72, bat: 46, skeleton: 44, golem: 76, mummy: 46, scorpion: 80, lizard: 46, toad: 74, gunner: 40, captain: 70, imp: 44, lavagolem: 76, wyvern: 80, yeti: 50, giant: 82, ghost: 46, vampire: 66, soldier: 52, mage: 40, general: 84 }[best.type] || 50) * AS;
+    var want = ({ goblin: 42, wolf: 58, orc: 72, bat: 46, skeleton: 44, golem: 76, mummy: 46, scorpion: 80, lizard: 46, toad: 74, gunner: 40, captain: 70, imp: 44, lavagolem: 76, wyvern: 80, yeti: 50, giant: 82, ghost: 46, vampire: 66, soldier: 52, mage: 40, general: 84, demonking: 86 }[best.type] || 50) * AS;
     var sv = Props.steer(p, R, best.x - side * want, best.y, world, best.x);   // 막는 소품: 목표가 그 안이면 옆으로, 앞에 있으면 돌아감
     var tx = sv.x, ty = best.y;
     var ex = tx - p.x, ey = ty - p.y, my = sv.y - p.y;   // 공격 조건은 원래 줄(ey), 움직임은 돌아가는 줄(my)
@@ -1226,6 +1275,7 @@
       separate();
       propCollide();
       heldStep();            // 미라에게 붙잡힘: 잡은 적 앞에 붙여 둠
+      shoveStep(dt);         // 마왕 각성 포효에 밀려남
       p.clamp(world);
       G.enemies.forEach(function (e) { if (e.alive()) e.keepInView(E); });
       G.enemies = G.enemies.filter(function (e) { return !e.remove; });
@@ -1348,21 +1398,26 @@
   var resultEl = document.getElementById('result');
   function fmtTime(ms) { var s = Math.floor(ms / 1000); return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2); }
   // 클리어: 다음 판 열림(저장) + 「다음 스테이지 →」. 마지막 판이면 ALL CLEAR. 게임 오버: 같은 판 다시 하기
+  //   10단계 마왕을 쓰러뜨림(S.ending) = 엔딩: 「ALL CLEAR!」 + 「마왕을 쓰러뜨렸다」 + 이 판 시간, 첫 판부터 「다음 스테이지」로 이어 왔으면 총 시간도
+  //   run = 이어 하기 기록 { from: 시작한 판 id, ms: { 판 id: 깬 시간 } } — 고르기 화면·주소로 판을 고르면 새로 시작, 「다음 스테이지」·「다시 하기」는 이어 감
   function showResult(kind) {
     var S = G.stage, p = G.player;
     S.result = kind;
     Input.setOverride(null);
-    var last = G.stageNo >= STAGES.length, clear = kind === 'clear';
+    var last = G.stageNo >= STAGES.length, clear = kind === 'clear', end = clear && !!S.ending;
     if (clear) saveCleared(CFG.stage.id);   // 깬 판 id 저장
-    document.getElementById('resTitle').textContent = !clear ? 'GAME OVER' : last ? 'ALL CLEAR!' : 'STAGE CLEAR!';
-    resultEl.className = 'result ' + kind + (clear && last ? ' all' : '');
+    if (clear && G.run) G.run.ms[CFG.stage.id] = S.time;
+    var tot = 0, full = !!G.run && G.run.from === STAGES[0].id;
+    if (end && full) STAGES.forEach(function (st) { if (G.run.ms[st.id] != null) tot += G.run.ms[st.id]; else full = false; });
+    document.getElementById('resTitle').textContent = !clear ? 'GAME OVER' : last || end ? 'ALL CLEAR!' : 'STAGE CLEAR!';
+    resultEl.className = 'result ' + kind + (clear && (last || end) ? ' all' : '') + (end ? ' ending' : '');
     document.getElementById('resStats').innerHTML =
-      (clear && last ? '모든 스테이지를 깼다!<br>' : '') +
+      (end ? '<span class="endline">마왕을 쓰러뜨렸다!</span>' + (full ? '1단계부터 총 시간 <b>' + fmtTime(tot) + '</b><br>' : '') : clear && last ? '모든 스테이지를 깼다!<br>' : '') +
       '시간 <b>' + fmtTime(S.time) + '</b> · 맞힌 수 <b>' + G.hits + '</b> · 최대 콤보 <b>' + G.maxCombo + '</b>' +
       (clear ? ' · 남은 체력 <b>' + p.hp + '</b>' : '');
     var nx = document.getElementById('btnNext');
-    nx.hidden = !(clear && !last);
-    openMenu(resultEl, clear && !last ? nx : clear ? document.getElementById('btnSel') : document.getElementById('btnRetry'));
+    nx.hidden = !(clear && !last && !end);
+    openMenu(resultEl, clear && !last && !end ? nx : clear ? document.getElementById('btnSel') : document.getElementById('btnRetry'));
   }
   // 판 바꾸기: 그 판 배경·소품·적 그림을 (필요하면) 불러온 뒤 처음부터. 플레이어 직업·성별·옷은 그대로, 체력은 가득
   function useStage(n) {
@@ -1389,7 +1444,10 @@
     FX.list.length = 0;
     Projectiles.clear();
     Skills.clear();
-    rocks.length = 0; puddles.length = 0; shots.length = 0; cannons.length = 0; spikes.length = 0; rings.length = 0;
+    rocks.length = 0; puddles.length = 0; shots.length = 0; cannons.length = 0; spikes.length = 0; rings.length = 0; shove = null;
+    // 이어 하기 기록(엔딩 총 시간): 「다음 스테이지」·「다시 하기」로 온 것(G.keepRun)이 아니면 이 판부터 새로
+    if (!G.keepRun || !G.run) G.run = { from: CFG.stage.id, ms: {} };
+    G.keepRun = false;
     G.enemies = [];
     G.stage = newStage();
     G.ectx = makeEnemyCtx();
@@ -1467,7 +1525,8 @@
       spikeLine: spikeLine,                                                    // 5단계 서리 거인 얼음 가시 줄
       burnPlayer: burnPlayer,                                                  // 7단계 와이번 불 뿜기에 계속 서 있음
       drainPlayer: drainPlayer, mist: mistPuff,                                // 8단계 흡혈 백작 피 빨기 · 안개
-      shockwave: shockwave                                                     // 9단계 마왕군 장군 화염 충격파 고리
+      shockwave: shockwave,                                                    // 9단계 마왕군 장군 화염 충격파 고리
+      pushPlayer: pushPlayer                                                   // 10단계 마왕 각성 포효(밀어냄)
     };
     Object.defineProperty(E, 'player', { get: function () { return G.player; } });
     return E;
@@ -1632,8 +1691,10 @@
           frame: p.char ? p.currentFrame() : null, ratk: p.ratk ? p.ratk.phase : null, skill: p.sk ? p.sk.d.key + '@' + Math.round(p.sk.t) : null, cd: p.skillCd },
         enemies: G.enemies.map(function (e) { return e.type + (e.variant ? '(' + e.variant + ')' : '') + ':' + (e.asleep ? 'asleep' : e.alertT > 0 ? 'alert' : e.state) +
           (e.atk && (e.atk.spec.type === 'burrow' || e.atk.spec.type === 'dive' || e.atk.spec.type === 'teleport') ? '/' + e.atk.phase : '') + (e.faded() ? '/faded' : '') + (e.hidden ? '/hidden' : '') + (e.atk && e.atk.held ? '/hold' : '') + (e.atk ? '/' + e.atk.name : '') + (e.airborne() ? '/air' : '') + ':' + e.hp + '@' + Math.round(e.x) + ',' + Math.round(e.y); }),
-        poison: p.poison ? Math.round(p.poison.t) : 0,
+        poison: p.poison ? Math.round(p.poison.t) : 0, ending: S ? !!S.ending : false,
+        run: G.run ? { from: G.run.from, ms: G.run.ms } : null,
         hits: G.hits, maxCombo: G.maxCombo, rocks: rocks.length, puddles: puddles.length, shots: shots.length, cannons: cannons.length, spikes: spikes.length, rings: rings.length, stageId: CFG.stage.id,
+        shotsX: shots.filter(function (b) { return !(b.wait > 0); }).map(function (b) { return Math.round(b.x); }),
         props: Props.list.map(function (pr) { return pr.type + ':' + (pr.state === 'idle' ? pr.hitsLeft : pr.state) + '@' + Math.round(pr.x) + ',' + Math.round(pr.y); }),
         food: Props.food.map(function (f) { return f.kind + '@' + Math.round(f.x) + ',' + Math.round(f.y); }) };
     }
@@ -1699,8 +1760,8 @@
       // 처음: 고르기 화면(뒤에 그 판이 멈춰 보임). ?stage=N 이나 ?bot=1 이면 바로 시작
       var pick = !urlStage && !G.bot;
       resetStage(pick);
-      document.getElementById('btnRetry').addEventListener('click', function () { closeMenu(resultEl); resetStage(); this.blur(); });
-      document.getElementById('btnNext').addEventListener('click', function () { closeMenu(resultEl); goStage(G.stageNo + 1); this.blur(); });
+      document.getElementById('btnRetry').addEventListener('click', function () { closeMenu(resultEl); G.keepRun = true; resetStage(); this.blur(); });
+      document.getElementById('btnNext').addEventListener('click', function () { closeMenu(resultEl); G.keepRun = true; goStage(G.stageNo + 1); this.blur(); });
       document.getElementById('btnSel').addEventListener('click', function () { openStageSelect(); this.blur(); });
       if (params.get('god') === '1') G.player.god = true;
       if (pick) openStageSelect();

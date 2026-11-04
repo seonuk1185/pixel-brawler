@@ -552,6 +552,14 @@
     ground: { img: 'assets/bg/stage9/ground.png', w: 740,  tile: true,  parallax: 1.0 },
     height: 240, floorY: 144, laneTop: 158, laneBottom: 230
   };
+  // ---------- 10단계 배경 = 마왕성 (art\stage10-bg 에서 복사, 2026-11-04, 마지막 판) ----------
+  // 흑요석 대전당(금 기둥·뿔 기사 석상) → 심연 위의 다리(보랏빛 영혼불 기둥) → 마왕의 옥좌실(해골 옥좌·핏빛 일식 창), 핏빛 일식 하늘. 크기·바닥·걷는 길은 1~9단계와 같음
+  var BG_DEMONCASTLE = {
+    far:    { img: 'assets/bg/stage10/far.png',    w: 512,  tile: true,  parallax: 0.15 },
+    mid:    { img: 'assets/bg/stage10/mid.png',    w: 1244, tile: false, parallax: 0.5 },
+    ground: { img: 'assets/bg/stage10/ground.png', w: 683,  tile: true,  parallax: 1.0 },
+    height: 240, floorY: 144, laneTop: 158, laneBottom: 230
+  };
 
   window.CFG = {
     version: 'stage1-proto-2',
@@ -1676,6 +1684,86 @@
                        enraged: { count: 3 },
                        dmg: [13, 16], knock: 30, flinchMs: 450, heavy: true, shake: 2.2, when: [0, 320], weight: 2, gapMs: 6000, firstMs: 4000 }
         }
+      },
+
+      // ===== 10단계 적 (art\stage10-enemies 에서 복사, 2026-11-04). 수치 = 그 폴더 anchors_demonking.json 의 suggest (체력만 낮춤) =====
+      // 마왕(10단계 = 마지막 보스): 다른 보스와 같은 규칙(공격 중 안 끊김, 체력 75%·25% 휘청) + 절반에서 「각성」(화남 대신, 아래 awaken)
+      //   그림 칸 304x280(가로 베기가 앞 164 까지, 칼·빛줄기가 265 높이), 그림은 녹색 바탕에서 뽑아 분홍 룬이 살아 있는 그림만 씀
+      //   효과 그림 폴더는 king* (assets/enemies/orb 는 9단계 흑마법사 것이라 이름이 겹침): kingwave 초승달 파동 · kingorb 암흑 구슬 · kingblast 터짐 · kingaura 각성 오라
+      //   휘청 3장 = 칼 짚고 한 무릎, 고개 숙임 = 때릴 기회(1100ms, stagger.hurtbox)
+      //   공격: combo = 대검 세 번(1장 칼을 머리 뒤로, 룬이 타오름 = 예고 500ms → 2장 대각선 내려베기 reachF[2] → 3장 가로 베기 reachF[3] 앞 164 까지
+      //           → 4장 칼끝을 땅에 꽂음 reachF[4], heavyOn = 이 장만 넘어뜨림 + 크게 흔들림). multiHit = 장마다 한 번씩
+      //         wave = 초승달 파동(총알과 같은 type 'shot', 높이 0 = 바닥을 따라 미끄러짐): 1~2장 칼에 불이 붙음(예고 ~670ms, 바닥 빨간 띠 = 지나갈 줄)
+      //           → 3장 올려 베기 = 발 앞(spawn)에서 파동이 나감. pierce = 맞혀도 안 사라지고 끝까지(한 번만 아픔). 피하기 = 줄 바꾸기 / 뛰어넘기(dodgeZ)
+      //           projLoop = 날아가는 동안 2·3장 반복(처음 1장), projEnd = 끝에서 4장(흩어짐). enraged = 각성 뒤 두 개(gapMs 씩 늦게, 같은 줄)
+      //         orbs = 암흑 구슬 비(선장 대포 사격과 같은 type 'barrage'): 1~2장 손바닥에 구슬(예고) → 3장 하늘로 빛줄기 = 구슬 count 개를 intervalMs 마다
+      //           떨어질 자리 = 그림자 + 빨간 원 → fallMs 뒤 쾅(proj = 떨어지는 그림, blast = 터지는 그림). enraged = 각성 뒤 수·간격
+      //         teleport = 어둠 순간이동(흡혈 백작 안개 순간이동과 같은 type 'teleport', 물기 없음): vanish(1 망토로 감쌈 = 예고 · 2 검은 연기 기둥, 안 맞음)
+      //           → 숨음(hiddenMs) → 플레이어 등 뒤 behind(화면 밖이면 앞) 같은 줄 → gatherMs 동안 검은 연기가 모이고 바닥 빨간 원(예고, 자리 고정)
+      //           → appear(1 연기에서 빚어짐 = 안 맞음 · 2 칼을 치켜든 채 나옴 = 예고) → then = 대검 세 번(combo)을 thenFrame(2장 내려베기)부터
+      //           smokeCols = 사라지고 나타날 때 연기 조각 색. enraged.useGapMs = 각성 뒤 더 자주
+      //   awaken = 각성(체력 enrageAt 아래로 처음 내려가는 타에서): 하던 일을 멈추고 awaken 그림(1250ms) 동안 안 맞음, 2장에서 플레이어를 push 만큼 밀어냄,
+      //     main.js 가 「마왕이 각성했다!」 + 화면 번쩍(flash)·흔들림(shake) + 졸개 부름(enrage.summon). 끝나면 enrage(빨라짐·자주 공격) + 등 뒤 오라(aura) + 테두리(rim)
+      //     aura = fxArt.aura 를 기준점(발)에 scale 배, alpha 로, 'lighter'(더하기) 로 그림 → 붉은 옥좌실 배경에서도 보랏빛으로 빛남
+      //   finalBoss = 마지막 보스: 쓰러뜨리면 보통 클리어 대신 엔딩(main.js onBossDown·showResult), 쓰러진 그림(재 + 왕관 + 대검)이 사라지지 않음
+      demonking: {
+        label: '마왕', boss: true, finalBoss: true, frameW: 304, frameH: 280, pivot: { x: 176, y: 272 },
+        anims: enemyAnims('demonking', {
+          idle: [4, 5, true], walk: [6, 7, true],
+          attack1: [5, 10, false, [1, 1, 1, 1, 1, 2, 2, 3, 3, 4, 4, 4, 5, 5]],   // 대검 세 번: 1 치켜듦·룬(예고 500ms) · 2 내려베기 · 3 가로 베기 · 4 땅에 꽂음(무거움) · 5 복귀
+          attack2: [5, 9, false, [1, 1, 2, 2, 2, 2, 3, 4, 4, 5]],               // 파동: 1 웅크림 · 2 칼에 불(예고) · 3 올려 베기 = 파동 · 4 칼 높이 · 5 복귀
+          special: [5, 8, false, [1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 5]],            // 구슬 비: 1 손 듦 · 2 손바닥 위 구슬(예고) · 3 하늘로 빛줄기 = 구슬 · 4 가리킴 · 5
+          awaken: [4, 8, false, [1, 1, 2, 2, 3, 3, 3, 3, 4, 4]],                // 각성: 1 웅크림·갑옷에 금 · 2 팔 벌려 포효(밀어냄) · 3 거대한 불꽃 오라 · 4 칼 치켜듦
+          vanish: [2, 8, false, [1, 1, 1, 2, 2, 2]],                            // 사라짐: 1 망토로 감쌈(예고) · 2 검은 연기 기둥(붉은 눈, 안 맞음)
+          appear: [2, 8, false, [1, 1, 1, 2, 2, 2]],                            // 나타남: 1 연기에서 빚어짐(안 맞음) · 2 칼 치켜들고 나옴(예고)
+          hit: [3, 8, false, [1, 2, 2, 3]],
+          hit2: [3, 8, false, [1, 1, 2, 2, 3]],
+          stagger: [4, 7, false, null],                                          // 휘청: 장마다 시간은 아래 stagger.d (3장 = 칼 짚고 한 무릎)
+          death: [6, 6, false, [1, 1, 2, 2, 3, 3, 4, 5, 6]]                      // 하늘에 비명·금빛 금 → 무릎 · 칼 떨굼 → 왕관이 날아감·재로 → 재 석상 → 빈 망토 → 재 + 왕관 + 대검
+        }),
+        fxArt: {
+          wave:   { frames: seq(EN + 'kingwave/wave_', 4),     pivot: { x: 36, y: 112 }, fps: 14 },   // 초승달 파동(바닥 가운데 기준, 볼록한 앞이 왼쪽)
+          orb:    { frames: seq(EN + 'kingorb/orb_', 4),       pivot: { x: 24, y: 94 },  fps: 12 },   // 떨어지는 암흑 구슬(구슬 가운데 기준, 위로 불꽃 꼬리)
+          impact: { frames: seq(EN + 'kingblast/impact_', 5),  pivot: { x: 68, y: 156 }, fps: 12 },   // 구슬 터짐(바닥 가운데 기준, 한 번)
+          aura:   { frames: seq(EN + 'kingaura/aura_', 4),     pivot: { x: 64, y: 212 }, fps: 10 }    // 각성 오라(마왕 발에 맞춤, 반복)
+        },
+        walkAnim: 'walk',
+        // 체력·데미지: 자동 조종(?bot=1) 시험에서 9단계 마왕군 장군보다 조금 버겁게 맞춤(그림 자료 제안 hp 1600 보다 낮춤, 판 배율 x1.7)
+        hp: 1100, speedX: 34, speedY: 24, radius: 46, height: 178,
+        hurtbox: { x0: -36, x1: 34, yTop: -176, yBot: 0 },
+        engage: 80, hover: [80, 110], range: [40, 170], alignY: 10, cooldown: [950, 1700], firstCooldown: [1400, 1700],
+        knockResist: 0.15, deathKnock: 0,
+        staggerCdMs: 2400,
+        superArmor: true,
+        stagger: { at: [0.75, 0.25], onWall: false, d: [280, 160, 1100, 320], hurtbox: { x0: -55, x1: 84, yTop: -124, yBot: 0 } },
+        enrageAt: 0.5,
+        enrage: { speedMul: 1.2, cooldownMul: 0.75, summon: [['soldier', { variant: 'abyss' }], ['mage', { variant: 'abyss' }]] },
+        awaken: { anim: 'awaken', pushFrame: 2, push: 60, shake: 3.5, flash: '#ff3a8c',
+                  aura: { art: 'aura', scale: 1.3, alpha: 0.85, fadeInMs: 300 }, rim: { color: '#ff2a6a', px: 1, alpha: 0.6 } },
+        attacks: {
+          combo:    { anim: 'attack1', active: [2, 3, 4], multiHit: true, telegraph: [1], depth: 18,
+                      reach: { x0: 20, x1: 164, yTop: -140, yBot: 0 },
+                      reachF: { 2: { x0: 20, x1: 114, yTop: -135, yBot: -3 }, 3: { x0: 40, x1: 164, yTop: -138, yBot: -92 }, 4: { x0: 30, x1: 96, yTop: -100, yBot: 5 } },
+                      heavyOn: [4], heavyShake: 2.6,
+                      dmg: [14, 18], knock: 28, flinchMs: 420, shake: 1.8, when: [40, 165], weight: 3 },
+          wave:     { type: 'shot', anim: 'attack2', telegraph: [1, 2], spawnFrame: 3, spawn: { x: 110, y: 0 }, aimH: 0, dropPx: 0,
+                      proj: 'wave', projLoop: [2, 3], projEnd: 4, impact: null, muzzle: null, pierce: true,
+                      hitCols: ['#1a0a1e', '#6a1a5a', '#ff3a8c', '#ffd0f0'],
+                      speed: 300, range: 480, box: { w: 34, h: 100 }, depth: 16, dodgeZ: 24,
+                      enraged: { count: 2, lanes: [0, 0], gapMs: 200, scale: [1, 1] },
+                      dmg: [14, 18], knock: 26, flinchMs: 420, shake: 1.4, when: [120, 480], weight: 2 },
+          orbs:     { type: 'barrage', anim: 'special', telegraph: [1, 2], spawnFrame: 3, count: 6, intervalMs: 220, fallMs: 850, dropHeight: 300,
+                      proj: 'orb', blast: 'impact', blastCols: ['#ff3a8c', '#a01a6a', '#2a0a2a', '#ffd0f0'],
+                      spread: { x: 70, y: 16 }, radius: 46, depth: 16, dodgeZ: 24, holdMs: 250, gapMs: 9000, firstMs: 4500,
+                      enraged: { count: 9, intervalMs: 180 },
+                      dmg: [15, 19], knock: 30, flinchMs: 450, heavy: true, shake: 2.2, when: [60, 600], weight: 2 },
+          teleport: { type: 'teleport', anim: 'vanish', appearAnim: 'appear', telegraph: [1], invuln: [2],
+                      hiddenMs: 400, gatherMs: 350, behind: 90, lunge: 0, depth: 18,
+                      reach: { x0: 20, x1: 114, yTop: -135, yBot: -3 },   // 빨간 원 자리 = 이어지는 대검 첫 타(reachF[2])
+                      then: 'combo', thenFrame: 2, smokeCols: ['#140814', '#3a1440', '#6a2a6a', '#ff3a6a'],
+                      enraged: { useGapMs: 6000 },
+                      when: [0, 999], weight: 1, gapMs: 9000, firstMs: 7000 }
+        }
       }
     },
 
@@ -1696,7 +1784,7 @@
     //   bg = 배경 3장(위 BG_FOREST 설명). 판을 시작할 때 그 판 배경만 불러온다(main.js useStage → Assets.ensureBg)
     // 새 판 넣기: 아래 목록에 { id, … } 하나 추가하면 끝(스테이지 고르기 화면·다음 스테이지는 자동)
     //   id = 판 번호(고르기 화면 숫자 · 주소 ?stage=N 이 이 번호). 목록 순서 = 노는 순서(다음 스테이지 · 잠금 풀림은 목록 순서대로)
-    //   → 번호를 건너뛰어도 됨(2026-11-04: 한동안 5단계 설산 그림이 없어서 목록 = 1 2 3 4 6 7 → 같은 날 6 앞에 { id: 5 } 끼움 = 1 2 3 4 5 6 7, 뒤에 8단계 유령 고성 · 9단계 마왕군 요새)
+    //   → 번호를 건너뛰어도 됨(2026-11-04: 한동안 5단계 설산 그림이 없어서 목록 = 1 2 3 4 6 7 → 같은 날 6 앞에 { id: 5 } 끼움 = 1 2 3 4 5 6 7, 뒤에 8단계 유령 고성 · 9단계 마왕군 요새 · 10단계 마왕성 = 마지막 판)
     //   깬 판은 id 로 저장(main.js) → 5단계를 끼워도 예전 저장이 어긋나지 않음(4·6을 깨고 5는 안 깼으면: 6은 그대로 클리어, 5가 열림)
     // 지금 하고 있는 판은 main.js 가 CFG.stage(+ CFG.bg = 그 판 bg)에 넣어 둔다 → 다른 코드는 예전처럼 CFG.stage 를 읽음
     // 시험 기간(2026-11-04 형님): 스테이지 고르기에서 모든 판을 처음부터 열어 둠. 정식으로 낼 때 false
@@ -2056,6 +2144,50 @@
           { type: 'warbrazier', x: 2040 + 332, y: 0.48 },
           { type: 'siegecrate', x: 2250, y: 0.78, drop: 'meat' }    // 6번 웨이브 화면 = 보스방 바로 앞
         ]
+      },
+      // ===== 10단계: 마왕성 (2026-11-04 새 그림: 배경·소품·마왕) = 마지막 판 =====
+      // 9단계보다 조금 더 어렵게(체력·공격 x1.7): 새 잡몹 없이 지금까지 가장 센 적들의 정예 색(마족 병사·흑마법사·유령 기사는 「심연」,
+      //   늑대·설인·도마뱀 전사는 「마족」, 미라는 「유령」) + 불 도깨비, 보랏빛 영혼불 둘레에 미리 서 있는 무리 3곳 + 옆에서 지원.
+      //   보스 = 마왕(대검 세 번·초승달 파동·암흑 구슬 비·어둠 순간이동, 절반에서 각성). 보스방 앞에 음식을 넉넉히(고기 둘 + 빵)
+      //   (예전 보스를 색만 바꾼 중간 보스는 안 넣음: 9단계에서 용암 골렘이 너무 세서 뺐던 것과 같은 이유)
+      {
+        id: 10,
+        name: 'STAGE 10  마왕성',
+        width: 2880,
+        healOnClear: 18,            // 9단계와 같음
+        bgTop: '#220209',           // 화면이 배경보다 높을 때 위쪽 하늘 색 (실제로는 배경 맨 윗줄 = 검붉은 하늘을 늘려 씀)
+        bg: BG_DEMONCASTLE,
+        hpMul: 1.7, dmgMul: 1.7,
+        waves: [
+          // 1: 흑요석 대전당 입구 — 심연 병사 둘 + 뒤에서 불 도깨비
+          { at: 120,  spawn: [['soldier', 'R', 0, { variant: 'abyss' }], ['soldier', 'L', 900], ['imp', 'R', 2200]] },
+          // 2: 영혼불(500 + 326) 옆에 심연 병사 + 심연 마법사(camp1, 하나 깨면 둘 다 깸) + 옆에서 지원
+          { at: 500,  placed: [['soldier', 288, 0.36, { group: 'camp1', dir: 1, variant: 'abyss' }], ['mage', 364, 0.58, { group: 'camp1', variant: 'abyss' }]],
+                      spawn: [['ghost', 'L', 900, { variant: 'abyss' }], ['wolf', 'R', 2600, { variant: 'demonic' }]] },
+          { at: 880,  spawn: [['yeti', 'R', 0, { variant: 'demonic' }], ['soldier', 'L', 400], ['imp', 'R', 1600], ['mummy', 'L', 3000, { variant: 'spectral' }], ['soldier', 'R', 3800]] },
+          // 4: 심연 다리 영혼불(1260 + 330) 둘레에 심연 유령 기사 + 마법사 + 병사(camp2) + 옆에서 지원
+          { at: 1260, placed: [['ghost', 292, 0.34, { group: 'camp2', dir: 1, variant: 'abyss' }], ['mage', 372, 0.44, { group: 'camp2' }], ['soldier', 340, 0.8, { group: 'camp2', variant: 'abyss' }]],
+                      spawn: [['imp', 'R', 1200], ['yeti', 'L', 3400, { variant: 'demonic' }], ['soldier', 'R', 4200]] },
+          // 5: 다리 끝 — 심연 병사 + 유령 기사 + 유령 미라 + 불 도깨비 + 마족 도마뱀 전사
+          { at: 1650, spawn: [['soldier', 'R', 0, { variant: 'abyss' }], ['ghost', 'L', 500], ['mummy', 'R', 2200, { variant: 'spectral' }], ['imp', 'L', 3600], ['lizard', 'R', 4400, { variant: 'demonic' }]] },
+          // 6: 옥좌실 문 영혼불(2040 + 332)을 지키는 근위대(gate: 심연 병사·마법사·유령 기사) + 옆에서 지원
+          { at: 2040, placed: [['soldier', 296, 0.3, { group: 'gate', dir: 1, variant: 'abyss' }], ['mage', 372, 0.62, { group: 'gate', variant: 'abyss' }], ['ghost', 352, 0.86, { group: 'gate', variant: 'abyss' }]],
+                      spawn: [['wolf', 'R', 800, { variant: 'demonic' }], ['imp', 'L', 2800]] },
+          { at: 'end', boss: true, spawn: [['demonking', 'R', 0]] }
+        ],
+        // 소품: 흑금 항아리·저주받은 보물상자(부서짐) + 떠다니는 보랏빛 영혼불 3개(장식, 무리 자리). 보스방 앞 = 고기 둘 + 빵(넉넉히)
+        props: [
+          { type: 'goldurn',     x: 430,  y: 0.72 },
+          { type: 'cursedchest', x: 700,  y: 0.22 },
+          { type: 'soulflame',   x: 500 + 326, y: 0.47 },
+          { type: 'goldurn',     x: 1150, y: 0.7, drop: 'bread' },
+          { type: 'cursedchest', x: 1480, y: 0.26 },
+          { type: 'soulflame',   x: 1260 + 330, y: 0.56 },
+          { type: 'goldurn',     x: 1860, y: 0.32, drop: 'meat' },
+          { type: 'soulflame',   x: 2040 + 332, y: 0.48 },
+          { type: 'cursedchest', x: 2250, y: 0.78, drop: 'meat' },  // 6번 웨이브 화면 = 보스방 바로 앞
+          { type: 'goldurn',     x: 2330, y: 0.2, drop: 'bread' }
+        ]
       }
     ],
 
@@ -2082,7 +2214,9 @@
       // 8단계(2026-11-04): 흰 해골·보라 박쥐·붕대 미라 → 창백한 「유령」 빛(푸른 청록, 조금 밝게). 흰색이 많아 color 로 물들임
       spectral: { label: '유령', hue: 0, sat: 0.55, bright: 1.08, color: '#8fe8f0', colorK: 0.38, hpMul: 1.1 },
       // 9단계(2026-11-04): 회색 늑대·초록 도마뱀·흰 설인 → 검붉은 「마족」 빛(어둡게 + 진홍 덧칠). 정예라 체력 조금 더
-      demonic: { label: '마족', hue: 0, sat: 0.9, bright: 0.82, color: '#a01828', colorK: 0.4, hpMul: 1.15 }
+      demonic: { label: '마족', hue: 0, sat: 0.9, bright: 0.82, color: '#a01828', colorK: 0.4, hpMul: 1.15 },
+      // 10단계(2026-11-04): 마족 병사·흑마법사·유령 기사 → 마왕 근위대 「심연」 빛(어둡게 + 보랏빛 덧칠). 정예라 체력 조금 더
+      abyss: { label: '심연', hue: 0, sat: 0.85, bright: 0.86, color: '#7a2ab0', colorK: 0.38, hpMul: 1.15 }
     },
 
     // ---------- 소품 그림 (2026-11-04, art\stage1-props 에서 복사 → assets/props/stage1/…, 크기·기준점은 props.json) ----------
@@ -2305,6 +2439,31 @@
         frames: seq('assets/props/stage9/brazier/burn_', 6), fps: 10,
         pivot: { x: 21, y: 79 }, solid: false, shadow: 14,
         glow: [{ r: 66, y: 50, color: '#6aff4a', alpha: 0.28 }, { r: 48, y: 6, color: '#3ad86a', alpha: 0.18 }]
+      },
+      // ----- 10단계 소품 (art\stage10-props 에서 복사 → assets/props/stage10/…, 크기·기준점은 그 폴더 props.json) -----
+      // 이름이 8단계 항아리(urn → bronzeurn)·1단계 상자와 겹쳐서 종류 이름만 따로(그림 폴더 이름은 그대로: urn / chest / flame)
+      // 흑금 항아리(금 띠·손잡이·뿔 악마 문장 + 붉은 보석, 검은 대리석 받침): 주인공 가슴 높이. 검은 조각·금·붉은 보석
+      goldurn: {
+        frames: ['intact', 'cracked', 'damaged'].map(function (s) { return 'assets/props/stage10/urn/' + s + '_01.png'; }), fps: 0,
+        breakFrames: seq('assets/props/stage10/urn/break_', 4),
+        pivot: { x: 38, y: 75 }, solid: true, footprint: { w: 36, depth: 16 },
+        hits: 3, hurtbox: { x: -21, y: -70, w: 42, h: 69 }, shadow: 22,
+        chips: ['#1a1a20', '#3a3440', '#e0b860', '#a07a2a', '#c02030']
+      },
+      // 저주받은 보물상자(검은 나무·쇠, 금 모서리·해골 자물쇠·사슬, 틈에서 보랏빛): 낮고 넓음. 나무·쇠·금화·보랏빛 조각
+      cursedchest: {
+        frames: ['intact', 'cracked', 'damaged'].map(function (s) { return 'assets/props/stage10/chest/' + s + '_01.png'; }), fps: 0,
+        breakFrames: seq('assets/props/stage10/chest/break_', 4),
+        pivot: { x: 48, y: 58 }, solid: true, footprint: { w: 56, depth: 16 },
+        hits: 3, hurtbox: { x: -31, y: -42, w: 62, h: 41 }, shadow: 30,
+        chips: ['#3a2a22', '#1e1a1e', '#5a5a64', '#ffd060', '#b05aff']
+      },
+      // 떠다니는 보랏빛 영혼불(희미한 해골 얼굴, 가시 쇠 받침 + 세 다리): 장식(지나갈 수 있음, 안 부서짐). 받침은 그대로, 떠 있는 불꽃만 움직이는 6장 반복
+      //   빛 = 불꽃 높이 보라 + 바닥에 깔린 옅은 보라(영혼불 느낌)
+      soulflame: {
+        frames: seq('assets/props/stage10/flame/burn_', 6), fps: 10,
+        pivot: { x: 17, y: 97 }, solid: false, shadow: 12,
+        glow: [{ r: 64, y: 72, color: '#b04aff', alpha: 0.32 }, { r: 50, y: 6, color: '#7a3aff', alpha: 0.2 }]
       }
     },
     // ---------- 부서지는 소품 공통 (상자·통) ----------
@@ -2503,6 +2662,7 @@
       // 나는 적 흔들림, 방패 막기 밀림, 보스 핵 빛 위치
       mul(T.flying, ['bob'], S); mul(T.guard, ['push'], S); mul(T.glide, ['bob'], S);   // glide = 8단계 유령 기사 둥실
       if (T.stagger) { mul(T.stagger.core, ['x', 'y', 'r'], S); box(T.stagger.hurtbox); }   // 휘청 중 몸 판정(전갈 뒤집힘)
+      mul(T.awaken, ['push'], S);   // 10단계 마왕 각성: 플레이어를 밀어내는 거리
     });
     // 소품·음식: 맞는 상자·막는 상자·그림자·빛·줍는 거리·튀어 오름 (그림은 assets.js 가 actorScale 로 그림)
     Object.keys(C.propTypes || {}).forEach(function (k) {

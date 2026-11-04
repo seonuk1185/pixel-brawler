@@ -104,6 +104,10 @@ body.smooth #screen { image-rendering: auto; }
 .rbtns { flex-wrap: wrap; }
 .rbtns button[hidden] { display: none; }
 .result.all h2 { color: #7fe0ff; }
+/* 10단계 마왕을 쓰러뜨린 엔딩: 금색 제목 + 「마왕을 쓰러뜨렸다!」 한 줄 크게 */
+.result.ending h2 { color: #ffd23f; }
+.result.ending .box { border-color: #c8962a; }
+.result .endline { display: block; margin-bottom: 8px; font-size: 22px; font-weight: 900; color: #ffc8e8; text-shadow: 2px 2px 0 #2a1020; }
 /* 키보드로 고른 버튼 표시 (결과 화면 · 스테이지 고르기) */
 .rbtns button:focus-visible, .rbtns a:focus-visible, .sbtn:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
 

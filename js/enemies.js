@@ -4,7 +4,8 @@
 //   + 6단계 해적 총잡이(멀리서 쏨, 거리 두기) · 해적 선장(보스, 칼 두 번·권총·대포 일제 사격)
 //   + 7단계 불 도깨비(치고 빠지기·불덩이) · 용암 골렘(정예, 골렘 색 바꿈) · 붉은 와이번(보스, 물기·불 뿜기·날아올라 내리꽂기)
 //   + 8단계 유령 기사(내려베기·옅어져 돌진 찌르기) · 흡혈 백작(보스, 발톱·박쥐 떼·안개 순간이동 물어 빨기)
-//   + 9단계 마족 병사(방패 막기·미늘창) · 흑마법사(멀리서 암흑 구체) · 마왕군 장군(보스, 대검 두 번·돌진 찌르기·칼 꽂기 화염 충격파). 수치는 전부 config.js 의 enemies.
+//   + 9단계 마족 병사(방패 막기·미늘창) · 흑마법사(멀리서 암흑 구체) · 마왕군 장군(보스, 대검 두 번·돌진 찌르기·칼 꽂기 화염 충격파)
+//   + 10단계 마왕(마지막 보스, 대검 세 번·초승달 파동·암흑 구슬 비·어둠 순간이동, 절반에서 각성 + 오라). 수치는 전부 config.js 의 enemies.
 // 그림은 전부 「왼쪽을 봄」 → 그릴 때 ctx.scale(-dir, 1)  (dir = 1 이면 오른쪽을 봄)
 (function () {
   var uid = 0;
@@ -97,7 +98,7 @@
   // 지금 맞을 수 있나 (넘어짐~일어남 동안은 무적)
   //   7단계 와이번이 날아 있는 동안(diveAir)은 땅에서 하는 공격은 안 맞고, 플레이어가 jumpZ 넘게 떠 있을 때(점프 공격)만 맞음
   Enemy.prototype.canBeHit = function () {
-    if (!this.alive() || this.state === 'down' || this.hidden || this.burrowInvuln() || this.faded() || this.teleInvuln()) return false;
+    if (!this.alive() || this.state === 'down' || this.state === 'awaken' || this.hidden || this.burrowInvuln() || this.faded() || this.teleInvuln()) return false;
     if (this.diveAir()) return !!(this.lastP && (this.lastP.z || 0) > this.atk.spec.jumpZ);
     return !this.airborne();
   };
@@ -153,6 +154,23 @@
     this.state = 'stagger'; this.stagT = 0; this.animT = 0; this.atk = null; this.vx = 0; this.hidden = false;
   };
 
+  // 10단계 마왕 각성: awaken 그림을 한 번(안 맞음). awakened = 각성 시작함(다시 안 함), awT = 지난 시간. 화남(enraged)은 그림이 끝날 때 켬
+  //   main.js stageStep 이 state 'awaken' 을 보고 글자·번쩍·흔들림·졸개 부름
+  Enemy.prototype.startAwaken = function () {
+    this.state = 'awaken'; this.awakened = true; this.awT = 0; this.animT = 0; this.atk = null; this.vx = 0; this.hidden = false; this.awPushed = false;
+  };
+  // 오라 진하기(0~1): 각성 3장(거대한 불꽃)부터 fadeInMs 동안 진해짐 → 그 뒤 계속. 쓰러지면 400ms 동안 꺼짐
+  Enemy.prototype.auraK = function () {
+    var AW = this.T.awaken;
+    if (!AW || !AW.aura || !this.awakened) return 0;
+    if (this.state === 'dead') return Math.max(0, 1 - this.deadT / 400);
+    if (this.state === 'awaken') {
+      var A = this.T.anims[AW.anim], t3 = A.playback.indexOf(3) * 1000 / A.fps;
+      return Math.max(0, Math.min(1, (this.awT - t3) / (AW.aura.fadeInMs || 1)));
+    }
+    return 1;
+  };
+
   // 그림 한 장 고르기: playback(1부터 번호) + fps
   Enemy.prototype.frameAt = function (name, tMs) {
     var A = this.T.anims[name], imgs = this.art[name];
@@ -188,6 +206,7 @@
     if (!this.alive()) return null;
     if (this.state === 'down' && !opts.force) return null;
     if (this.hidden && !opts.force) return null;   // 땅속(전갈 왕)
+    if (this.state === 'awaken' && !opts.force) return null;   // 각성 중(10단계 마왕)
     this.asleep = false; this.alertT = 0;   // 자다가 맞으면 바로 깸(「!」 없이)
     var T = this.T, AI = this.cfg.ai, R = AI.react;
     var before = this.hp / this.maxHp;
@@ -206,6 +225,8 @@
       return 'dead';
     }
     if (T.boss) {
+      // 10단계 마왕: 체력이 enrageAt(절반) 아래로 처음 내려가면 하던 일(공격·휘청)을 멈추고 각성(그동안 안 맞음)
+      if (T.awaken && !this.awakened && this.hp / this.maxHp < T.enrageAt) { this.startAwaken(); return 'armor'; }
       // 체력 문턱(66%·33%)을 지나면 휘청: 공격 중이어도 끊긴다(때릴 기회)
       var S = T.stagger, after = this.hp / this.maxHp, crossed = false;
       if (S && this.hasAnim('stagger')) S.at.forEach(function (a) {
@@ -271,7 +292,7 @@
       this.deadT += dtMs;
       var fr = this.frameAt('death', this.deadT);
       var AI = this.cfg.ai;
-      if (this.deadT > fr.len + AI.deathHoldMs + AI.deathFadeMs) this.remove = true;
+      if (this.deadT > fr.len + AI.deathHoldMs + AI.deathFadeMs && !T.finalBoss) this.remove = true;   // 마지막 보스(마왕)는 재 + 왕관 + 대검이 남음
       this.keepInView(ctx);
       return;
     }
@@ -315,6 +336,20 @@
         this.state = 'idle'; this.animT = 0;
         if (T.staggerCdMs) this.staggerCd = T.staggerCdMs;
         this.cool = Math.max(this.cool, 400);
+      }
+      this.keepInView(ctx);
+      return;
+    }
+    // 각성(10단계 마왕): 제자리에서 awaken 그림 한 번(안 맞음). pushFrame(2장 팔 벌려 포효)에서 플레이어를 push 만큼 밀어냄(main.js ctx.pushPlayer)
+    //   → 끝나면 화남(빨라짐·자주 공격) + 오라. 곧 공격하지 않게 조금 쉼
+    if (this.state === 'awaken') {
+      var AW = T.awaken, fa = this.frameAt(AW.anim, this.awT);
+      this.awT += dtMs;
+      if (!this.awPushed && fa.no >= AW.pushFrame) { this.awPushed = true; if (ctx.pushPlayer) ctx.pushPlayer(this, AW.push); ctx.shake(AW.shake * 0.5); }
+      if (fa.done) {
+        this.state = 'idle'; this.animT = 0; this.enraged = true;
+        this.cool = Math.max(this.cool, 500);
+        if (T.staggerCdMs) this.staggerCd = T.staggerCdMs;
       }
       this.keepInView(ctx);
       return;
@@ -445,9 +480,11 @@
       // 안개 순간이동 물기(8단계 흡혈 백작): 플레이어가 공중·넘어짐·이미 잡힘이면 안 씀
       if (a.type === 'teleport') { var pp = ctx.player; if ((pp.z || 0) > 4 || pp.state === 'down' || pp.state === 'held' || pp.state === 'dead') return; }
       // 그 밖의 gapMs(선장 대포 사격): 한 번 쓰면 이 시간 동안 안 씀. firstMs = 나타난 뒤 처음 쓸 수 있을 때까지
+      //   10단계 마왕: 각성 뒤(enraged)에는 enraged.useGapMs 로 더 자주(순간이동)
       if (a.type !== 'burrow' && a.gapMs) {
+        var gap = (self.enraged && a.enraged && a.enraged.useGapMs) || a.gapMs;
         var last = self.usedAt[k] != null ? self.usedAt[k] : (a.firstMs != null ? a.firstMs - a.gapMs : -1e9);
-        if (self.clock - last < a.gapMs) return;
+        if (self.clock - last < gap) return;
       }
       if (yOk && adx >= a.when[0] && adx <= a.when[1]) { opts.push(k); sum += a.weight; }
     });
@@ -556,7 +593,12 @@
     // multiHit = 판정 장마다 따로 한 번씩 맞을 수 있음(선장 칼 두 번: 2장 대각선 · 3장 가로)
     if (spec.multiHit && inList(spec.active, fr.no) && a.hitNo !== fr.no) { a.hitNo = fr.no; a.hit = false; }
     // reachF = 장마다 다른 판정 상자(전갈 집게: 3장 멀리 → 4장 가까이 조임)
-    if (inList(spec.active, fr.no)) this.tryHitPlayer(spec, (spec.reachF && spec.reachF[fr.no]) || spec.reach, ctx);
+    //   heavyOn = 이 장의 타만 무거움(넘어짐, 흔들림 heavyShake) — 10단계 마왕 대검 세 번째(땅에 꽂음)
+    if (inList(spec.active, fr.no)) {
+      var hs = spec;
+      if (spec.heavyOn && inList(spec.heavyOn, fr.no)) hs = spec._heavy || (spec._heavy = Object.assign({}, spec, { heavy: true, shake: spec.heavyShake || spec.shake }));
+      this.tryHitPlayer(hs, (spec.reachF && spec.reachF[fr.no]) || spec.reach, ctx);
+    }
     // 땅을 찍는 순간 화면 흔들림 (보스)
     if (spec.shake && !a.shook && fr.no === spec.active[spec.active.length - 1]) {
       a.shook = true; ctx.shake(spec.shake);
@@ -680,17 +722,19 @@
     var a = this.atk, s = a.spec, p = ctx.player, w = ctx.world;
     var fr = this.frameAt(s.anim, a.t);
     if (fr.no < s.spawnFrame && !fr.done) return;
+    // 10단계 마왕 구슬 비: 각성 뒤(enraged)에는 enraged 의 count·intervalMs
+    var EB = this.enraged && s.enraged, cnt = (EB && EB.count) || s.count, iv = (EB && EB.intervalMs) || s.intervalMs;
     if (a.dropped == null) { a.dropped = 0; a.dropT = 0; ctx.shake(s.shake * 0.4); }
     a.dropT -= dtMs;
-    while (a.dropped < s.count && a.dropT <= 0) {
+    while (a.dropped < cnt && a.dropT <= 0) {
       var tx = p.x, ty = p.y;
       if (a.dropped > 0) { tx += rand(-s.spread.x, s.spread.x); ty += rand(-s.spread.y, s.spread.y); }
       tx = Math.max(ctx.view.x0 + 10 * AS(), Math.min(ctx.view.x1 - 10 * AS(), tx));
       ty = Math.max(w.laneTop, Math.min(w.laneBottom, ty));
       if (ctx.dropCannon && p.state !== 'dead') ctx.dropCannon(this, s, tx, ty);
-      a.dropped++; a.dropT += s.intervalMs; a.lastDrop = a.t;
+      a.dropped++; a.dropT += iv; a.lastDrop = a.t;
     }
-    if (fr.done && a.dropped >= s.count && a.t - a.lastDrop >= (s.holdMs || 0)) this.endAttack();
+    if (fr.done && a.dropped >= cnt && a.t - a.lastDrop >= (s.holdMs || 0)) this.endAttack();
   };
 
   // 불 뿜기 한 번 확인: 상자(reach, 위아래 depth)에 플레이어 몸이 닿으면 → 맞을 수 있으면 보통 맞음(onPlayerHit),
@@ -779,6 +823,13 @@
       if (a.t >= s.gatherMs) { a.phase = 'appear'; a.t = 0; this.hidden = false; if (ctx.mist) ctx.mist(this, this.x, this.y); }
       return;
     }
+    //   10단계 마왕(then): appear 가 끝나면 물기 대신 then 공격(대검 세 번)을 thenFrame 그림부터 이어서(appear 2장 = 칼 치켜든 예고)
+    if (a.phase === 'appear' && s.then && this.frameAt(s.appearAnim, a.t).done) {
+      this.startAttack(s.then, ctx);
+      var TA = this.T.anims[this.atk.spec.anim], k0 = TA.playback.indexOf(s.thenFrame || 1);
+      this.atk.t = Math.max(0, k0) * 1000 / TA.fps;
+      return;
+    }
     if (a.phase === 'appear') {
       fr = this.frameAt(s.appearAnim, a.t);
       if (fr.no === 2 && s.lunge) {   // 덤빔: 2장이 보이는 동안 lunge 만큼 고르게 앞으로
@@ -835,6 +886,7 @@
   Enemy.prototype.currentImg = function () {
     var T = this.T;
     if (this.state === 'dead') return this.deadImg || this.frameAt('death', this.deadT).img;
+    if (this.state === 'awaken') return this.frameAt(T.awaken.anim, this.awT).img;   // 10단계 마왕 각성
     if (this.state === 'hit') return this.frameAt(this.hitAnim, this.animT).img;
     if (this.state === 'guard') { var gi = this.art[T.guard.anim]; return gi[this.guardFlash > 0 && gi[1] ? 1 : 0]; }   // 방패 들기(1) / 막는 순간(2)
     if (this.state === 'down') {
@@ -1025,7 +1077,7 @@
       this.drawMound(g, x, y); return;
     }
     var alpha = 1;
-    if (this.state === 'dead') {
+    if (this.state === 'dead' && !T.finalBoss) {   // 마지막 보스(마왕)는 쓰러진 그림이 그대로 남음(엔딩)
       var len = this.frameAt('death', 0).len, t = this.deadT - len - AI.deathHoldMs;
       if (t > 0) { if (Math.floor(t / 70) % 2 === 0) return; alpha = Math.max(0.2, 1 - t / AI.deathFadeMs); }
     }
@@ -1039,12 +1091,15 @@
     if (T.glide && (this.state === 'idle' || this.state === 'walk')) by = snapPx(Math.sin(this.clock / T.glide.bobMs * Math.PI * 2) * T.glide.bob);
     var faded = this.faded();   // 유령 기사 돌진 중 옅어진 장: 반투명
     if (faded) alpha *= 0.6;
+    var auk = this.auraK();       // 10단계 마왕 각성 오라: 몸 뒤에(먼저) 그림
+    if (auk > 0) this.drawAura(g, x, y, auk);
     g.save();
     g.globalAlpha = alpha;
     g.translate(x, y + by - snapPx(fz));
     var ds = T.drawScale || 1;    // 6단계 선장: 그림만 조금 크게(판정은 config 에서 같이 키움)
     g.scale(-this.dir * ds, ds);  // 그림이 왼쪽을 보므로 반대로
-    if (T.rim) drawRim(g, img, T.pivot, T.rim);   // 7단계 와이번: 붉은 하늘에 안 묻히게 어두운 테두리
+    var rim = (auk > 0 && T.awaken.rim) || T.rim;   // 마왕은 각성 뒤 붉은 보랏빛 테두리
+    if (rim) drawRim(g, img, T.pivot, rim);   // 7단계 와이번: 붉은 하늘에 안 묻히게 어두운 테두리
     Assets.blit(g, img, T.pivot.x, T.pivot.y);
     if (this.flashT > 0 && !faded) {
       var s = FX.whiteSilhouette(img, 0, 0, img.width, img.height, 1);
@@ -1069,7 +1124,7 @@
       g.fillStyle = '#ffd23f'; g.fillRect(x - 2, ay, 4, 8); g.fillRect(x - 2, ay + 11, 4, 3);
     }
     // 보스 화남: 머리 위 빨간 김
-    if (this.enraged && this.alive() && Math.floor(performance.now() / 160) % 2) {
+    if (this.enraged && !T.awaken && this.alive() && Math.floor(performance.now() / 160) % 2) {   // 마왕은 김 대신 오라
       var hx = Math.round(this.dir * 14 * AS());
       g.fillStyle = '#ff4a3a'; g.fillRect(x - 2 + hx, y - Math.round(T.height) - 6, 3, 3); g.fillRect(x + 4 + hx, y - Math.round(T.height) - 10, 2, 2);
     }
@@ -1117,13 +1172,45 @@
     g.restore();
   }
 
+  // 10단계 마왕 각성 오라(fxArt[awaken.aura.art]): 발(기준점)에 오라 기준점을 맞춰 scale 배로, 'lighter'(더하기)로 → 붉은 배경에서도 보랏빛으로 빛남.
+  //   k = 진하기(auraK). 먼저 옅게 보통으로 한 번 깔아서 어두운 불꽃 테두리도 보이게
+  Enemy.prototype.drawAura = function (g, x, y, k) {
+    var AU = this.T.awaken.aura, F = window.GAME && GAME.assets && GAME.assets.enemyFx && GAME.assets.enemyFx[this.type], A = F && F[AU.art];
+    if (!A || !A.frames.length) return;
+    var im = A.frames[Math.floor(this.clock * A.fps / 1000) % A.frames.length], sc = AU.scale || 1;
+    g.save(); g.translate(x, y); g.scale(-this.dir * sc, sc);
+    g.globalAlpha = 0.35 * k; Assets.blit(g, im, A.pivot.x, A.pivot.y);
+    g.globalCompositeOperation = 'lighter'; g.globalAlpha = (AU.alpha || 0.8) * k; Assets.blit(g, im, A.pivot.x, A.pivot.y);
+    g.restore();
+  };
+
   // 흡혈 백작 순간이동: 나타날 자리에 안개가 모임(gather) = 안개 그림(fxArt.mist)을 거꾸로(흩어진 끝 → 큰 소용돌이) 재생, 처음엔 옅게
+  //   안개 그림이 없으면(10단계 마왕) 검은 연기 기둥(점점 진하고 높아짐) + 붉은 두 눈
   Enemy.prototype.drawGather = function (g, x, y) {
     var a = this.atk, s = a.spec, F = window.GAME && GAME.assets && GAME.assets.enemyFx && GAME.assets.enemyFx[this.type], M = F && F.mist;
-    if (a.phase !== 'gather' || !M || !M.frames.length) return;
+    if (a.phase !== 'gather') return;
+    if (!M || !M.frames.length) { this.drawSmoke(g, x, y, Math.min(1, a.t / s.gatherMs)); return; }
     var u = Math.min(1, a.t / s.gatherMs), n = M.frames.length, i = Math.max(1, n - 1 - Math.floor(u * (n - 1)));   // 5 → 2장
     g.save(); g.globalAlpha = 0.35 + 0.65 * u; g.translate(x, y); g.scale(-this.dir, 1);
     Assets.blit(g, M.frames[Math.min(n - 1, i)], M.pivot.x, M.pivot.y);
+    g.restore();
+  };
+
+  // 검은 연기 기둥(10단계 마왕 순간이동 예고): u = 0~1(모이는 정도). 위로 갈수록 가늘어지는 타원 몇 겹이 흔들림 + 눈 높이에 붉은 두 눈
+  Enemy.prototype.drawSmoke = function (g, x, y, u) {
+    var H = this.T.height * (0.45 + 0.55 * u), W = this.T.radius * (0.7 + 0.3 * u), t = this.clock / 1000, cols = (this.atk && this.atk.spec.smokeCols) || ['#140814', '#3a1440', '#6a2a6a'];
+    g.save();
+    for (var i = 0; i < 5; i++) {
+      var f = i / 4, cy = y - H * (0.15 + 0.7 * f), rx = W * (1 - 0.55 * f) * (0.9 + 0.1 * Math.sin(t * 7 + i)), ry = H * 0.22;
+      g.globalAlpha = (0.25 + 0.5 * u) * (1 - 0.3 * f);
+      g.fillStyle = cols[i % 3];
+      g.beginPath(); g.ellipse(x + Math.sin(t * 5 + i * 1.7) * 2, cy, rx, ry, 0, 0, Math.PI * 2); g.fill();
+    }
+    if (u > 0.35) {   // 붉은 두 눈
+      var ey = Math.round(y - this.T.height * 0.82), ex = Math.round(this.dir * 3);
+      g.globalAlpha = Math.min(1, (u - 0.35) * 2.5); g.fillStyle = cols[3] || '#ff3a6a';
+      g.fillRect(x + ex - 4, ey, 3, 2); g.fillRect(x + ex + 2, ey, 3, 2);
+    }
     g.restore();
   };
 
