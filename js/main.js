@@ -1,5 +1,6 @@
 // 게임 본체: 화면 크기, 배경, 매 장면 갱신, 타격 처리
-// 기본 = 1단계 판(웨이브 + 보스). 주소 뒤 ?mode=practice = 예전 허수아비 연습장
+// 기본 = 스테이지 판(웨이브 + 보스, 여러 판). 주소 뒤 ?mode=practice = 예전 허수아비 연습장
+// 주소 뒤 ?stage=N = 그 판으로 바로 시작(시험용, 잠금 무시). ?bot=1 이면 고르기 화면 없이 바로 시작
 (function () {
   var CFG = window.CFG, J = CFG.juice;
   var AS = CFG.actorScale || 1;   // 캐릭터 크기: 코드에 바로 적힌 거리·높이와 손맛의 밀림 거리(juice.knockback)에 곱한다
@@ -7,6 +8,27 @@
   var DEBUG = params.get('debug') === '1';
   var MODE = params.get('mode') === 'practice' ? 'practice' : 'stage';
   if (params.get('slow')) J.timeScale = +params.get('slow') || 1;
+
+  // ---------- 스테이지 고르기 (2026-11-04) ----------
+  // 열린 판 = 깬 판 + 1. 깬 판 번호는 이 브라우저에 저장(localStorage). 저장이 막혀 있어도 게임은 됨(이번에 연 동안만 기억)
+  var STAGES = CFG.stages;
+  var urlStage = parseInt(params.get('stage'), 10);
+  urlStage = urlStage >= 1 && urlStage <= STAGES.length ? urlStage : 0;
+  var SAVE_KEY = 'pixelBrawler.cleared';
+  var clearedMem = 0;
+  function loadCleared() {
+    var n = 0;
+    try { n = parseInt(localStorage.getItem(SAVE_KEY), 10) || 0; } catch (e) {}
+    return Math.max(n, clearedMem);
+  }
+  function saveCleared(n) {
+    clearedMem = Math.max(clearedMem, n);
+    try { if (n > (parseInt(localStorage.getItem(SAVE_KEY), 10) || 0)) localStorage.setItem(SAVE_KEY, String(n)); } catch (e) {}
+  }
+  function unlockedMax() { return urlStage ? STAGES.length : Math.min(STAGES.length, loadCleared() + 1); }
+  // 처음 판: ?stage=N, 아니면 열린 판 중 마지막(고르기 화면 뒤에 미리 보임)
+  var startNo = urlStage || unlockedMax();
+  CFG.stage = STAGES[startNo - 1]; CFG.bg = CFG.stage.bg;
 
   var canvas = document.getElementById('screen');
   var ctx = canvas.getContext('2d');
@@ -53,13 +75,8 @@
     }
     setSmooth();
     world.floorY = Math.round(LH * CFG.world.floorTopRatio);
-    if (MODE === 'stage') {
-      var B = CFG.bg;
-      world.width = CFG.stage.width;
-      world.bgOff = Math.max(0, LH - B.height);          // 화면이 240보다 높으면 배경을 바닥에 붙이고 위는 하늘로 채움
-      world.laneTop = world.bgOff + B.laneTop;
-      world.laneBottom = Math.min(LH - 8, world.bgOff + B.laneBottom);
-    } else {
+    if (MODE === 'stage') applyStageWorld();
+    else {
       world.width = Math.max(CFG.world.width, LW);
       world.laneTop = world.floorY + 14;
       world.laneBottom = LH - CFG.world.floorBottomPad;
@@ -71,6 +88,15 @@
       if (G.dummy) G.dummy.y = Math.round((world.laneTop + world.laneBottom) / 2);
       G.enemies.forEach(function (e) { e.y = Math.max(world.laneTop, Math.min(world.laneBottom, e.y)); });
     }
+  }
+
+  // 지금 판(CFG.stage)의 길이·배경 높이로 걷는 길을 정함
+  function applyStageWorld() {
+    var B = CFG.bg;
+    world.width = CFG.stage.width;
+    world.bgOff = Math.max(0, LH - B.height);          // 화면이 240보다 높으면 배경을 바닥에 붙이고 위는 하늘로 채움
+    world.laneTop = world.bgOff + B.laneTop;
+    world.laneBottom = Math.min(LH - 8, world.bgOff + B.laneBottom);
   }
 
   // 공격 버튼(+ 기술 버튼 2개)이 덮는 게임 화면 오른쪽 폭(도트). 버튼이 안 보이거나 걷는 길과 안 겹치면 0
@@ -140,7 +166,7 @@
     return c;
   }
 
-  // ---------- 1단계 배경: 3장 겹쳐 흐르기(먼 산 · 숲/폐허/마을 · 흙길) ----------
+  // ---------- 판 배경: 3장 겹쳐 흐르기(먼 산 · 숲/폐허/마을 · 흙길) ----------
   function drawStageBg(camX) {
     var B = CFG.bg, I = G.assets.bg, off = world.bgOff, H = B.height;
     // 화면이 배경보다 높으면: 위는 하늘 맨 윗줄, 아래는 흙길 맨 아랫줄을 늘려 채움
@@ -182,7 +208,8 @@
     cfg: CFG, assets: null, player: null, dummy: null, enemies: [], mode: MODE,
     hitstop: 0, hits: 0, comboHits: 0, comboT: 0, maxCombo: 0, totalDmg: 0, camX: 0, slowT: 0,
     charKey: 'male', classKey: CFG.defaultClass || 'knight', weaponKey: 'sword', moveSet: 'sword', debug: DEBUG,
-    stage: null, bot: params.get('bot') === '1'
+    stage: null, bot: params.get('bot') === '1',
+    stageNo: startNo, paused: false, props: []
   };
 
   // 폰 진동: 사용자가 한 번이라도 화면을 누른 뒤에만(그 전엔 브라우저가 막고 경고를 띄움)
@@ -287,6 +314,7 @@
   function onPlayerHit(e, spec) {
     var p = G.player;
     var dmg = rand(spec.dmg[0], spec.dmg[1]);
+    if (e.dmgMul !== 1) dmg = Math.max(1, Math.round(dmg * e.dmgMul));   // 판·변종 공격력 배율
     var dir = p.x >= e.x ? 1 : -1;
     if (!p.takeHit(dmg, dir, spec.knock, spec.flinchMs, !!spec.heavy)) return;   // heavy = 넘어짐
     G.hitstop = Math.max(G.hitstop, J.hitstopMs * (e.T.boss ? 1.3 : 0.8));
@@ -305,9 +333,10 @@
     comboEl.hidden = false;
   }
 
-  // ================= 1단계 판 진행 =================
+  // ================= 판 진행 =================
+  // placedQ = 다음 웨이브의 미리 서 있는 적 중 아직 안 내놓은 것(카메라가 다가가면 화면 밖 오른쪽에서부터 내놓음)
   function newStage() {
-    return { next: 0, locked: false, lockCam: 0, lastLock: -1, queue: [], waveT: 0, waveIdx: -1,
+    return { next: 0, locked: false, lockCam: 0, lastLock: -1, queue: [], waveT: 0, waveIdx: -1, placedQ: [],
              camMin: 0, time: 0, boss: null, bossDownT: -1, result: null, overT: 0, lastAttackAt: -1e9 };
   }
   function waveAt(w) { return w.at === 'end' ? world.width - LW : Math.min(w.at, world.width - LW); }
@@ -315,20 +344,152 @@
   function startWave(i) {
     var S = G.stage, w = CFG.stage.waves[i];
     S.locked = true; S.lockCam = waveAt(w); S.waveIdx = i; S.lastLock = S.lockCam; S.waveT = 0;
-    S.queue = w.spawn.map(function (s) { return { type: s[0], side: s[1], at: s[2] }; });
+    S.queue = (w.spawn || []).map(function (s) { return { type: s[0], side: s[1], at: s[2], opt: s[3] }; });
+    // 미리 서 있는 적: 아직 안 나온 것도 지금 다 내놓고, 화면이 고정되면 전부 알아챔
+    S.placedQ.forEach(spawnPlaced); S.placedQ = [];
+    G.enemies.forEach(function (e) { if (e.asleep) wakeEnemy(e, Math.random() * (CFG.ai.wake.groupDelayMs || 0)); });
     banner(w.boss ? 'BOSS!' : 'WAVE ' + (i + 1), w.boss ? 'boss' : '');
   }
 
-  function spawnEnemy(type, side) {
-    var S = G.stage, T = CFG.enemies[type];
-    var x = side === 'L' ? S.lockCam - T.radius - 30 : S.lockCam + LW + T.radius + 30;
-    var y = world.laneTop + Math.random() * (world.laneBottom - world.laneTop);
-    var e = new Enemy(type, CFG, G.assets.enemies[type], x, y);
-    e.dir = side === 'L' ? 1 : -1;
+  // 적 하나 만들기: 판 배율(hpMul·dmgMul) + 변종(색·배율) 적용. opt = { variant }
+  function makeEnemy(type, x, y, opt) {
+    var S = G.stage, T = CFG.enemies[type], st = CFG.stage;
+    var vk = opt && opt.variant, V = vk && CFG.variants ? CFG.variants[vk] : null;
+    var e = new Enemy(type, CFG, V ? tintArt(type, vk) : G.assets.enemies[type], x, y);
+    var hm = (st.hpMul || 1) * (V && V.hpMul || 1), dm = (st.dmgMul || 1) * (V && V.dmgMul || 1);
+    if (hm !== 1) e.hp = e.maxHp = Math.round(e.maxHp * hm);
+    e.dmgMul = dm;
+    if (V) { e.variant = vk; if (V.label) e.label = V.label + ' ' + e.label; }
     e.wave = S.waveIdx;
     G.enemies.push(e);
     if (T.boss) S.boss = e;
     return e;
+  }
+  function spawnEnemy(type, side, opt) {
+    var S = G.stage, T = CFG.enemies[type];
+    var x = side === 'L' ? S.lockCam - T.radius - 30 : S.lockCam + LW + T.radius + 30;
+    var y = world.laneTop + Math.random() * (world.laneBottom - world.laneTop);
+    var e = makeEnemy(type, x, y, opt);
+    e.dir = side === 'L' ? 1 : -1;
+    return e;
+  }
+
+  // ---------- 미리 서 있는 적 (웨이브의 placed) ----------
+  function laneY(k) { return world.laneTop + clamp(k, 0, 1) * (world.laneBottom - world.laneTop); }
+  // 웨이브 i 의 placed 를 줄 세움(x = 그 웨이브 화면 왼쪽 끝 + 적힌 도트)
+  function preparePlaced(i) {
+    var S = G.stage, w = CFG.stage.waves[i];
+    S.placedQ = [];
+    if (!w || !w.placed) return;
+    var at = waveAt(w);
+    S.placedQ = w.placed.map(function (q) { return { type: q[0], x: at + q[1], yk: q[2], opt: q[3] || {}, wave: i }; });
+  }
+  function spawnPlaced(q) {
+    var e = makeEnemy(q.type, q.x, laneY(q.yk), q.opt);
+    e.wave = q.wave;
+    e.dir = q.opt.dir || -1;
+    e.sleep(q.opt.pose, q.opt.group);
+    return e;
+  }
+  function wakeEnemy(e, delayMs) { e.wake((CFG.ai.wake.alertMs || 0) + (delayMs || 0)); }
+  // 매 장면: 카메라가 다가가면 내놓기 · 플레이어가 가까우면 깸 · 무리 중 하나가 깨면 다 깸
+  function placedStep() {
+    var S = G.stage, p = G.player, W = CFG.ai.wake;
+    if (S.placedQ.length) S.placedQ = S.placedQ.filter(function (q) {
+      if (q.x - CFG.enemies[q.type].radius > G.camX + LW + 40) return true;
+      spawnPlaced(q); return false;
+    });
+    var awakeGroups = {}, any = false;
+    G.enemies.forEach(function (e) {
+      if (!e.asleep) { if (e.group) awakeGroups[e.group] = true; return; }
+      any = true;
+      if (p.state !== 'dead' && Math.abs(e.x - p.x) < W.dist && Math.abs(e.y - p.y) < W.dist * 0.6) { wakeEnemy(e, 0); if (e.group) awakeGroups[e.group] = true; }
+    });
+    if (any) G.enemies.forEach(function (e) {
+      if (e.asleep && e.group && awakeGroups[e.group]) wakeEnemy(e, Math.random() * (W.groupDelayMs || 0));
+    });
+  }
+
+  // ---------- 색만 바꾼 적 그림 (variant): 처음 한 번만 구워 두고 계속 다시 씀 ----------
+  // 캔버스 filter(hue-rotate·saturate·brightness)로 복사본을 만든다. filter 를 모르는 브라우저는 점마다 같은 계산(느리지만 한 번뿐)
+  var tintCache = {};
+  function tintArt(type, vk) {
+    var key = type + ':' + vk, src = G.assets.enemies[type], V = CFG.variants && CFG.variants[vk];
+    if (tintCache[key]) return tintCache[key];
+    if (!src || !V) return src;
+    var out = {};
+    Object.keys(src).forEach(function (n) { out[n] = src[n].map(function (im) { return tintImg(im, V); }); });
+    tintCache[key] = out;
+    return out;
+  }
+  function tintImg(img, V) {
+    if (!img) return img;
+    var c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+    var g = c.getContext('2d');
+    if ('filter' in g) {
+      g.filter = 'hue-rotate(' + (V.hue || 0) + 'deg) saturate(' + (V.sat != null ? V.sat : 1) + ') brightness(' + (V.bright != null ? V.bright : 1) + ')';
+      g.drawImage(img, 0, 0);
+    } else {
+      g.drawImage(img, 0, 0);
+      try { tintPixels(g, c.width, c.height, V); } catch (e) { return img; }   // 파일로 열면 점을 못 읽음 → 원래 그림
+    }
+    if (V.color && V.colorK > 0) {   // 덧칠: 그림이 있는 점에만(source-atop) 이 색을 colorK 만큼
+      g.filter = 'none'; g.globalCompositeOperation = 'source-atop'; g.globalAlpha = V.colorK;
+      g.fillStyle = V.color; g.fillRect(0, 0, c.width, c.height);
+      g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
+    }
+    return Assets.copyMeta(img, c);
+  }
+  // CSS hue-rotate / saturate / brightness 와 같은 색 계산(W3C filter 행렬)
+  function tintPixels(g, w, h, V) {
+    var a = (V.hue || 0) * Math.PI / 180, cs = Math.cos(a), sn = Math.sin(a), s = V.sat != null ? V.sat : 1, b = V.bright != null ? V.bright : 1;
+    var H = [0.213 + cs * 0.787 - sn * 0.213, 0.715 - cs * 0.715 - sn * 0.715, 0.072 - cs * 0.072 + sn * 0.928,
+             0.213 - cs * 0.213 + sn * 0.143, 0.715 + cs * 0.285 + sn * 0.140, 0.072 - cs * 0.072 - sn * 0.283,
+             0.213 - cs * 0.213 - sn * 0.787, 0.715 - cs * 0.715 + sn * 0.715, 0.072 + cs * 0.928 + sn * 0.072];
+    var S = [0.213 + 0.787 * s, 0.715 - 0.715 * s, 0.072 - 0.072 * s, 0.213 - 0.213 * s, 0.715 + 0.285 * s, 0.072 - 0.072 * s,
+             0.213 - 0.213 * s, 0.715 - 0.715 * s, 0.072 + 0.928 * s];
+    var M = [];
+    for (var r = 0; r < 3; r++) for (var k = 0; k < 3; k++) M[r * 3 + k] = b * (S[r * 3] * H[k] + S[r * 3 + 1] * H[3 + k] + S[r * 3 + 2] * H[6 + k]);
+    var d = g.getImageData(0, 0, w, h), p = d.data;
+    for (var i = 0; i < p.length; i += 4) {
+      if (!p[i + 3]) continue;
+      var R = p[i], G2 = p[i + 1], B = p[i + 2];
+      p[i] = R * M[0] + G2 * M[1] + B * M[2]; p[i + 1] = R * M[3] + G2 * M[4] + B * M[5]; p[i + 2] = R * M[6] + G2 * M[7] + B * M[8];
+    }
+    g.putImageData(d, 0, 0);
+  }
+  // 판에 나오는 변종 그림을 판 시작할 때 미리 구움(게임 중 멈칫 없게)
+  function bakeStageVariants() {
+    CFG.stage.waves.forEach(function (w) {
+      (w.spawn || []).concat(w.placed || []).forEach(function (s) { if (s[3] && s[3].variant) tintArt(s[0], s[3].variant); });
+    });
+  }
+
+  // ---------- 장식 소품 (판의 props) ----------
+  // 그림(CFG.propTypes)이 있으면 깊이 순서대로 바닥에 그림, 없으면 ?debug=1 에서만 자리 표시. 나중에 부서지는 소품(hp)도 여기에
+  var propArt = {};
+  function loadStageProps(st) {
+    var T = CFG.propTypes || {};
+    return Promise.all((st.props || []).map(function (pr) {
+      var d = T[pr.type];
+      if (!d || !d.frames || propArt[pr.type]) return null;
+      var pv = { x: d.pivot.x, y: d.pivot.y };
+      return Assets.loadSet(d.frames, d.scale || AS, pv).then(function (l) { propArt[pr.type] = { frames: l, pivot: pv }; });
+    }));
+  }
+  function makeProps() {
+    G.props = (CFG.stage.props || []).map(function (pr) { return { type: pr.type, def: pr, x: pr.x, y: laneY(pr.y != null ? pr.y : 0.5), t: Math.random() * 1000 }; });
+  }
+  function drawProp(pr, camX) {
+    var A = propArt[pr.type], x = snap(pr.x - camX), y = snap(pr.y);
+    if (A && A.frames.length) {
+      var d = CFG.propTypes[pr.type], n = A.frames.length, i = d.fps > 0 ? Math.floor(pr.t / (1000 / d.fps)) % n : 0;
+      ctx.save(); ctx.translate(x, y); Assets.blit(ctx, A.frames[i], A.pivot.x, A.pivot.y); ctx.restore();
+    } else if (DEBUG) {   // 그림 없음: 자리만(분홍 X)
+      ctx.strokeStyle = '#f0f'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x - 6, y - 12); ctx.lineTo(x + 6, y); ctx.moveTo(x + 6, y - 12); ctx.lineTo(x - 6, y); ctx.stroke();
+      ctx.fillStyle = '#f0f'; ctx.font = '6px monospace'; ctx.fillText(pr.type, x - 12, y - 14);
+    }
   }
 
   function onBossDown(boss) {
@@ -345,6 +506,7 @@
   function stageStep(dt) {
     var S = G.stage, p = G.player, waves = CFG.stage.waves;
     if (!S.result) S.time += dt;
+    placedStep();
     // 웨이브 시작: 카메라가 그 자리에 오면 화면 고정
     var camMax = Math.max(0, world.width - LW);
     var target = Math.max(S.camMin, Math.min(camMax, p.x - (LW - controlPad) * 0.42));
@@ -362,13 +524,13 @@
     if (S.locked) {
       S.waveT += dt;
       for (var i = S.queue.length - 1; i >= 0; i--) {
-        if (S.queue[i].at <= S.waveT) { spawnEnemy(S.queue[i].type, S.queue[i].side); S.queue.splice(i, 1); }
+        if (S.queue[i].at <= S.waveT) { spawnEnemy(S.queue[i].type, S.queue[i].side, S.queue[i].opt); S.queue.splice(i, 1); }
       }
       // 보스 화남: 체력 절반 아래 → 빨라지고 졸개를 부름
       var B = S.boss;
       if (B && B.alive() && !B.enraged && B.hp / B.maxHp < B.T.enrageAt) {
         B.enraged = true;
-        banner('오크 족장이 화났다!', 'boss');
+        banner((B.label || '오크 족장') + '이 화났다!', 'boss');
         (B.T.enrage.summon || []).forEach(function (t, k) {
           S.queue.push({ type: t, side: k % 2 ? 'L' : 'R', at: S.waveT + 400 + k * 700 });
         });
@@ -378,6 +540,7 @@
       if (!S.queue.length && !left) {
         var w = waves[S.waveIdx];
         S.locked = false; S.next++;
+        preparePlaced(S.next);
         if (w.boss) { if (S.bossDownT < 0) S.bossDownT = 0; }
         else {
           if (p.state !== 'dead') p.hp = Math.min(p.maxHp, p.hp + (CFG.stage.healOnClear || 0));
@@ -486,6 +649,7 @@
 
   // ---------- 갱신 ----------
   function step(realMs) {
+    if (G.paused) return;   // 스테이지 고르기 화면: 멈춤
     FX.updateShake(realMs);
     Skills.tickReal(realMs);
     if (G.hitstop > 0) { G.hitstop -= realMs; return; }   // 멈춤: 아무것도 안 움직임
@@ -549,6 +713,7 @@
       G.enemies = G.enemies.filter(function (e) { return !e.remove; });
       E.enemies = G.enemies;
       stageStep(dt);
+      G.props.forEach(function (pr) { pr.t += dt; });
     } else {
       G.dummy.update(dt);
       var target = p.x - LW * 0.42;
@@ -583,6 +748,7 @@
     var ents = [{ y: G.player.y, d: function () { Skills.drawGhosts(ctx, camX); G.player.draw(ctx, camX, G.assets.weapons, DEBUG); } }];
     if (G.dummy) ents.push({ y: G.dummy.y, d: function () { G.dummy.draw(ctx, camX, DEBUG); } });
     G.enemies.forEach(function (e) { ents.push({ y: e.y + (e.alive() ? 0 : -0.5), d: function () { e.draw(ctx, camX, DEBUG); } }); });
+    G.props.forEach(function (pr) { if (pr.x > camX - 200 && pr.x < camX + LW + 200) ents.push({ y: pr.y - 0.25, d: function () { drawProp(pr, camX); } }); });
     ents.sort(function (a, b) { return a.y - b.y; });
     ents.forEach(function (e) { e.d(); });
     Projectiles.draw(ctx, camX);
@@ -626,6 +792,7 @@
     setIf('phpn', p.hp, function (v) { hud.pHpNum.textContent = v; });
     var B = S.boss, showBoss = !!(B && (B.alive() || S.bossDownT < 800));
     setIf('bshow', showBoss, function (v) { hud.bossBar.hidden = !v; });
+    if (B) setIf('bname', B.label, function (v) { hud.bossName.textContent = v; });
     if (B) setIf('bhp', B.hp / B.maxHp, function (v) { hud.bHp.style.width = (v * 100) + '%'; hud.bHpLag.style.width = (v * 100) + '%'; });
     var waves = CFG.stage.waves;
     var go = !S.locked && S.next > 0 && S.next < waves.length && G.camX < S.lastLock + 70 && p.state !== 'dead';
@@ -645,18 +812,44 @@
   // ---------- 결과 화면 (클리어 / 게임 오버) ----------
   var resultEl = document.getElementById('result');
   function fmtTime(ms) { var s = Math.floor(ms / 1000); return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2); }
+  // 클리어: 다음 판 열림(저장) + 「다음 스테이지 →」. 마지막 판이면 ALL CLEAR. 게임 오버: 같은 판 다시 하기
   function showResult(kind) {
     var S = G.stage, p = G.player;
     S.result = kind;
     Input.setOverride(null);
-    document.getElementById('resTitle').textContent = kind === 'clear' ? 'STAGE CLEAR!' : 'GAME OVER';
-    resultEl.className = 'result ' + kind;
+    var last = G.stageNo >= STAGES.length, clear = kind === 'clear';
+    if (clear) saveCleared(G.stageNo);
+    document.getElementById('resTitle').textContent = !clear ? 'GAME OVER' : last ? 'ALL CLEAR!' : 'STAGE CLEAR!';
+    resultEl.className = 'result ' + kind + (clear && last ? ' all' : '');
     document.getElementById('resStats').innerHTML =
+      (clear && last ? '모든 스테이지를 깼다!<br>' : '') +
       '시간 <b>' + fmtTime(S.time) + '</b> · 맞힌 수 <b>' + G.hits + '</b> · 최대 콤보 <b>' + G.maxCombo + '</b>' +
-      (kind === 'clear' ? ' · 남은 체력 <b>' + p.hp + '</b>' : '');
-    resultEl.hidden = false;
+      (clear ? ' · 남은 체력 <b>' + p.hp + '</b>' : '');
+    var nx = document.getElementById('btnNext');
+    nx.hidden = !(clear && !last);
+    openMenu(resultEl, clear && !last ? nx : clear ? document.getElementById('btnSel') : document.getElementById('btnRetry'));
   }
-  function resetStage() {
+  // 판 바꾸기: 그 판 배경·소품 그림을 (필요하면) 불러온 뒤 처음부터. 플레이어 직업·성별·옷은 그대로, 체력은 가득
+  function useStage(n) {
+    G.stageNo = n;
+    CFG.stage = STAGES[n - 1]; CFG.bg = CFG.stage.bg;
+    sky = null;
+    applyStageWorld();
+    bgCache = null;
+    controlPad = measureControlPad();
+  }
+  function goStage(n) {
+    n = clamp(n, 1, STAGES.length);
+    var st = STAGES[n - 1];
+    loading(true);
+    return Promise.all([Assets.ensureBg(st.bg), loadStageProps(st)]).then(function (r) {
+      loading(false);
+      G.assets.bg = r[0];
+      useStage(n);
+      resetStage();
+    });
+  }
+  function resetStage(quiet) {
     resultEl.hidden = true;
     FX.list.length = 0;
     Projectiles.clear();
@@ -674,7 +867,54 @@
     G.player.weaponKey = G.weaponKey; G.player.setMoveSet(G.moveSet);
     G.camX = 0;
     lastHud = {};
-    banner(CFG.stage.name, 'title');
+    bakeStageVariants();
+    makeProps();
+    preparePlaced(0);
+    if (!quiet) banner(CFG.stage.name, 'title');
+  }
+
+  // ---------- 고르기 화면 · 결과 화면 공통: 키보드(←→↑↓ / WASD 고르기, Enter·Space·J·Z 누르기) + 터치/마우스 ----------
+  // 열린 판(menu)이 있으면 게임 조작 키는 판에 안 넘김. 열자마자 공격 연타가 버튼을 누르지 않게 잠깐(400ms) 무시
+  var menuEl = null, menuOpenAt = 0;
+  function openMenu(el, focusBtn) {
+    menuEl = el; menuOpenAt = performance.now();
+    el.hidden = false;
+    if (focusBtn) try { focusBtn.focus({ preventScroll: true }); } catch (e) { focusBtn.focus(); }
+  }
+  function closeMenu(el) { el.hidden = true; if (menuEl === el) menuEl = null; }
+  function menuButtons() { return Array.prototype.slice.call(menuEl.querySelectorAll('button:not([hidden]):not([disabled]), a[href]')); }
+  window.addEventListener('keydown', function (e) {
+    if (!menuEl || menuEl.hidden) return;
+    var K = CFG.keys, c = e.code, btns = menuButtons();
+    var prev = K.left.concat(K.up).indexOf(c) >= 0, next = K.right.concat(K.down).indexOf(c) >= 0;
+    var push = c === 'Enter' || c === 'NumpadEnter' || c === 'Space' || K.attack.indexOf(c) >= 0;
+    if (!prev && !next && !push) return;
+    e.preventDefault(); e.stopPropagation();   // 게임 조작(input.js)으로 안 넘김
+    if (!btns.length || e.repeat) return;
+    var i = btns.indexOf(document.activeElement);
+    if (prev || next) { i = i < 0 ? 0 : (i + (next ? 1 : -1) + btns.length) % btns.length; btns[i].focus(); return; }
+    if (performance.now() - menuOpenAt < 400) return;
+    (i >= 0 ? btns[i] : btns[0]).click();
+  }, true);
+
+  // 스테이지 고르기 화면: 열린 판만 누를 수 있음(잠긴 판 = 회색). 고르는 동안 게임은 멈춤
+  var selEl = document.getElementById('stageSel');
+  function openStageSelect() {
+    var list = document.getElementById('stageList'), max = unlockedMax(), cleared = loadCleared(), focus = null;
+    list.innerHTML = '';
+    STAGES.forEach(function (st, i) {
+      var n = i + 1, b = document.createElement('button'), open = n <= max;
+      b.type = 'button'; b.className = 'sbtn' + (open ? '' : ' locked') + (n <= cleared ? ' cleared' : '');
+      b.disabled = !open;
+      b.innerHTML = '<b>' + n + '</b><span>' + (open ? st.name.replace(/^STAGE\s*\d+\s*/, '') : '잠김') + '</span>' + (n <= cleared ? '<i>클리어</i>' : '');
+      b.addEventListener('click', function () { closeMenu(selEl); G.paused = false; goStage(n); });
+      list.appendChild(b);
+      if (open && (n === G.stageNo || !focus)) focus = b;
+    });
+    closeMenu(resultEl);
+    G.paused = true;
+    Input.setOverride(null);
+    openMenu(selEl, focus);
   }
   function makeEnemyCtx() {
     var E = {
@@ -813,7 +1053,7 @@
     toBoss: function () {
       var S = G.stage, waves = CFG.stage.waves;
       G.enemies = []; G.ectx.enemies = G.enemies;
-      S.locked = false; S.queue = []; S.next = waves.length - 1;
+      S.locked = false; S.queue = []; S.placedQ = []; S.next = waves.length - 1;
       var at = waveAt(waves[S.next]);
       S.camMin = at - 40; G.camX = at - 40;
       G.player.x = at - 40 + LW * 0.42 - 4;
@@ -825,14 +1065,17 @@
     god: function (on) { G.player.god = on !== false; },
     bot: function (on) { G.bot = on !== false; if (!G.bot) Input.setOverride(null); },
     retry: function () { resetStage(); },
+    // 판 바로 가기: GAME.test.stage(2) / 고르기 화면 열기: GAME.test.select()
+    stage: function (n) { return goStage(n); },
+    select: function () { openStageSelect(); },
     info: function () {
       var S = G.stage, p = G.player;
-      return { mode: MODE, LW: LW, LH: LH, scale: SCALE, rs: RS, hd: Assets.isHD(),
+      return { mode: MODE, stageNo: G.stageNo, paused: G.paused, LW: LW, LH: LH, scale: SCALE, rs: RS, hd: Assets.isHD(),
  controlPad: controlPad, char: G.player.char && G.player.char.def.anims.idle.frames[0], camX: Math.round(G.camX), wave: S ? S.next : null, locked: S ? S.locked : null,
         waveIdx: S ? S.waveIdx : null, time: S ? Math.round(S.time) : null, result: S ? S.result : null,
         player: { hp: p.hp, state: p.state, x: Math.round(p.x), y: Math.round(p.y), z: Math.round(p.z * 10) / 10,
           frame: p.char ? p.currentFrame() : null, ratk: p.ratk ? p.ratk.phase : null, skill: p.sk ? p.sk.d.key + '@' + Math.round(p.sk.t) : null, cd: p.skillCd },
-        enemies: G.enemies.map(function (e) { return e.type + ':' + e.state + ':' + e.hp + '@' + Math.round(e.x) + ',' + Math.round(e.y); }),
+        enemies: G.enemies.map(function (e) { return e.type + (e.variant ? '(' + e.variant + ')' : '') + ':' + (e.asleep ? 'asleep' : e.alertT > 0 ? 'alert' : e.state) + ':' + e.hp + '@' + Math.round(e.x) + ',' + Math.round(e.y); }),
         hits: G.hits, maxCombo: G.maxCombo };
     }
   };
@@ -851,12 +1094,12 @@
   }
   G.stepFor = function (ms) { var n = Math.round(ms / STEP); for (var i = 0; i < n; i++) step(STEP); render(); };   // 시험용: 빨리 감기
 
-  // 연습장 ↔ 1단계 판 이동 버튼 (?debug=1 같은 다른 옵션은 그대로 둠)
+  // 연습장 ↔ 스테이지 판 이동 버튼 (?debug=1 같은 다른 옵션은 그대로 둠)
   function modeLink() {
     var a = document.getElementById('modeBtn'); if (!a) return;
     var q = new URLSearchParams(location.search);
     if (MODE === 'stage') { q.set('mode', 'practice'); a.textContent = '연습장'; }
-    else { q.delete('mode'); a.textContent = '1단계 판'; }
+    else { q.delete('mode'); a.textContent = '스테이지'; }
     var s = q.toString(); a.href = location.pathname + (s ? '?' + s : '');
     var r = document.getElementById('resPractice');
     if (r) { var q2 = new URLSearchParams(location.search); q2.set('mode', 'practice'); r.href = location.pathname + '?' + q2.toString(); }
@@ -871,6 +1114,8 @@
   }
   Assets.loadAll(CFG, firstChars).then(function (assets) {
     G.assets = assets;
+    return MODE === 'stage' ? loadStageProps(CFG.stage).then(function () { return assets; }) : assets;
+  }).then(function (assets) {
     // 기술(skills.js)이 쓰는 도구: 맞히기·대상 목록·먼지·효과 그림·멈춤·슬로모션
     Skills.init(CFG, {
       onHit: onHit,
@@ -891,9 +1136,14 @@
     setChar('male'); setClass(CFG.defaultClass || 'novice');
     if (MODE === 'stage') {
       hudEl.hidden = false;
-      resetStage();
-      document.getElementById('btnRetry').addEventListener('click', function () { resetStage(); this.blur(); });
+      // 처음: 고르기 화면(뒤에 그 판이 멈춰 보임). ?stage=N 이나 ?bot=1 이면 바로 시작
+      var pick = !urlStage && !G.bot;
+      resetStage(pick);
+      document.getElementById('btnRetry').addEventListener('click', function () { closeMenu(resultEl); resetStage(); this.blur(); });
+      document.getElementById('btnNext').addEventListener('click', function () { closeMenu(resultEl); goStage(G.stageNo + 1); this.blur(); });
+      document.getElementById('btnSel').addEventListener('click', function () { openStageSelect(); this.blur(); });
       if (params.get('god') === '1') G.player.god = true;
+      if (pick) openStageSelect();
     }
     modeLink();
     bindToggles();

@@ -34,11 +34,11 @@
       <!-- 도끼 다시 켜기: 아래 주석을 풀고 js/config.js 의 classes 에서 axe 줄 주석도 푼다 -->
       <!-- <button type="button" data-class="axe">도끼</button> -->
     </div>
-    <!-- 연습장(허수아비) ↔ 1단계 판 -->
+    <!-- 연습장(허수아비) ↔ 스테이지 판 -->
     <a class="modebtn" id="modeBtn" href="?mode=practice">연습장</a>
   </div>
 
-  <!-- 1단계 판 화면 위 글자: 체력 막대, 보스 막대, GO, 알림 (게임 화면 크기에 맞춰 main.js 가 위치를 잡음) -->
+  <!-- 스테이지 판 화면 위 글자: 체력 막대, 보스 막대, GO, 알림 (게임 화면 크기에 맞춰 main.js 가 위치를 잡음) -->
   <div class="hud" id="hud" hidden>
     <div class="php"><span class="lbl">HP</span><div class="bar"><em id="pHpLag"></em><i id="pHp"></i></div><span class="num" id="pHpNum">150</span></div>
     <div class="stageinfo" id="stageInfo"></div>
@@ -50,7 +50,16 @@
     <div class="box">
       <h2 id="resTitle">STAGE CLEAR!</h2>
       <p id="resStats"></p>
-      <div class="rbtns"><button type="button" id="btnRetry">다시 하기</button><a id="resPractice" href="?mode=practice">연습장</a></div>
+      <!-- 다음 스테이지(클리어, 마지막 판 아니면) · 다시 하기(같은 판) · 스테이지 고르기 · 연습장. 키보드 ←→ 고르기 + Enter/J -->
+      <div class="rbtns"><button type="button" id="btnNext" hidden>다음 스테이지 →</button><button type="button" id="btnRetry">다시 하기</button><button type="button" class="sub" id="btnSel">스테이지 선택</button><a id="resPractice" href="?mode=practice">연습장</a></div>
+    </div>
+  </div>
+  <!-- 스테이지 고르기 (처음 + 결과 화면에서). 판 버튼은 main.js 가 CFG.stages 로 만듦. 위 고르기 버튼(남/여·직업)은 이 위에 그대로 보임 -->
+  <div class="stagesel" id="stageSel" hidden>
+    <div class="box">
+      <h2>스테이지 선택</h2>
+      <div class="slist" id="stageList"></div>
+      <p class="shint">←→ 고르기 · Enter / J 시작</p>
     </div>
   </div>
   <div class="combo" id="combo" hidden></div>

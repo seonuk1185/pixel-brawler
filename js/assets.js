@@ -242,8 +242,34 @@
     return charJobs[k];
   }
 
+  // ---------- 판 배경 3장 (2026-11-04 여러 판): 판을 고를 때 그 판 배경만 불러옴. 같은 배경은 한 번만 ----------
+  // bg = 판의 bg { far, mid, ground }. 돌려주는 값 = { far: 그림, mid: 그림, ground: 그림 }. 배경 HD 는 _k = 0.5 (1 도트 = 2 점)
+  var bgJobs = {};
+  function ensureBg(bg) {
+    if (!bg) return Promise.resolve({});
+    var key = ['far', 'mid', 'ground'].map(function (k) { return bg[k] ? bg[k].img : ''; }).join('|');
+    if (bgJobs[key]) return bgJobs[key];
+    var out = {};
+    bgJobs[key] = Promise.all(['far', 'mid', 'ground'].map(function (k) {
+      if (!bg[k]) return null;
+      return loadImage(bg[k].img).then(function (im) { if (im) prepList([im], 1, null); out[k] = im; });
+    })).then(function () { return out; });
+    return bgJobs[key];
+  }
+  // 그림 묶음 하나(장식 소품 등): frames = 경로 목록, base = 그리는 배율, pivot = 기준점(그림 점 단위로 바꿔 둠). 같은 목록은 한 번만
+  var setJobs = {};
+  function loadSet(frames, base, pivot) {
+    var key = (frames || []).join('|');
+    if (!setJobs[key]) setJobs[key] = loadList(frames).then(function (l) {
+      l = l.filter(Boolean);
+      if (l.length) prepList(l, base, pivot);
+      return l;
+    });
+    return setJobs[key];
+  }
+
   window.Assets = {
-    shrink: shrink, blit: blit, centerOf: centerOf, copyMeta: copyMeta, ensureChar: ensureChar,
+    shrink: shrink, blit: blit, centerOf: centerOf, copyMeta: copyMeta, ensureChar: ensureChar, ensureBg: ensureBg, loadSet: loadSet,
     progress: prog,
     isHD: function () { return !!hd; },
     // first = 처음에 꼭 있어야 하는 캐릭터 묶음 이름들(나머지는 Assets.loadRest 로 나중에)
@@ -303,11 +329,9 @@
           out.enemies[k] = o;
         }));
       });
-      // 배경 3장 + 먼지 효과. 배경 HD 는 _k = 0.5 (1 도트 = 2 점)
+      // 배경 3장(지금 판 = CFG.bg) + 먼지 효과. 다른 판 배경은 판을 고를 때 Assets.ensureBg 로
       out.bg = {};
-      if (cfg.bg) ['far', 'mid', 'ground'].forEach(function (k) {
-        jobs.push(loadImage(cfg.bg[k].img).then(function (im) { if (im) prepList([im], 1, null); out.bg[k] = im; }));
-      });
+      if (cfg.bg) jobs.push(ensureBg(cfg.bg).then(function (b) { out.bg = b; }));
       if (cfg.dust) jobs.push(loadList(cfg.dust.frames).then(function (l) { out.dust = l.filter(Boolean); prepList(out.dust, S, cfg.dust.pivot); }));
       if (art.fx) {
         // slash/impact + 그 밖의 그림 묶음(법사 magic_bolt, 기술 효과 skill_*): art.fx 안의 「경로 목록」은 전부 같은 이름으로 불러 둔다

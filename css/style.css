@@ -26,7 +26,7 @@ body.smooth #screen { image-rendering: auto; }
 /* 위: 고르기 버튼 */
 .topbar {
   position: absolute; top: max(8px, env(safe-area-inset-top)); left: max(10px, env(safe-area-inset-left));
-  display: flex; gap: 8px; z-index: 5;
+  display: flex; gap: 8px; z-index: 6;   /* 스테이지 고르기(5) 위 */
 }
 .seg { display: flex; border: 2px solid #0008; background: #0006; border-radius: 6px; overflow: hidden; }
 .seg button {
@@ -100,7 +100,34 @@ body.smooth #screen { image-rendering: auto; }
   font: inherit; font-size: 16px; font-weight: 800; padding: 10px 18px; border-radius: 8px; border: 2px solid #0008; cursor: pointer; text-decoration: none;
 }
 .rbtns button { background: #f2c14e; color: #2a1a12; }
-.rbtns a { background: #3a3350; color: #eee; }
+.rbtns a, .rbtns button.sub { background: #3a3350; color: #eee; }
+.rbtns { flex-wrap: wrap; }
+.rbtns button[hidden] { display: none; }
+.result.all h2 { color: #7fe0ff; }
+/* 키보드로 고른 버튼 표시 (결과 화면 · 스테이지 고르기) */
+.rbtns button:focus-visible, .rbtns a:focus-visible, .sbtn:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+
+/* 스테이지 고르기 (폰 조작판보다 위, 위 고르기 버튼 .topbar 보다 아래 → 직업·성별은 고르면서 바꿀 수 있음) */
+.stagesel { position: fixed; inset: 0; z-index: 5; display: flex; align-items: center; justify-content: center; background: #0a0812b0; padding: 52px 12px 12px; }
+.stagesel[hidden] { display: none; }
+.stagesel .box { text-align: center; padding: 16px 20px; background: #1c1628ee; border: 3px solid #0008; border-radius: 10px; max-width: 92vw; max-height: 100%; overflow: auto; }
+.stagesel h2 { margin: 0 0 12px; font-size: 26px; letter-spacing: 2px; color: #ffd23f; text-shadow: 3px 3px 0 #2a1020; }
+.slist { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; max-width: 560px; }
+.sbtn {
+  position: relative; font: inherit; width: 96px; min-height: 76px; padding: 8px 6px; border-radius: 8px; border: 2px solid #0008; cursor: pointer;
+  background: #f2c14e; color: #2a1a12; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+}
+.sbtn b { font-size: 26px; line-height: 1; font-weight: 900; }
+.sbtn span { font-size: 11px; font-weight: 700; line-height: 1.2; }
+.sbtn i { position: absolute; top: -7px; right: -6px; font-style: normal; font-size: 10px; font-weight: 800; background: #3fae4a; color: #fff; padding: 1px 5px; border-radius: 6px; border: 2px solid #0008; }
+.sbtn.locked { background: #3a3350; color: #8a82a6; cursor: default; }
+.shint { margin: 12px 0 0; font-size: 12px; color: #bbb; }
+@media (pointer: coarse) { .shint { display: none; } }
+@media (max-height: 420px) {
+  .stagesel h2 { font-size: 20px; margin-bottom: 8px; }
+  .sbtn { width: 84px; min-height: 64px; }
+  .shint { margin-top: 8px; }
+}
 
 .combo {
   position: absolute; top: max(10px, env(safe-area-inset-top)); right: max(14px, env(safe-area-inset-right));

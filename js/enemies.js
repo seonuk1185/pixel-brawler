@@ -39,7 +39,22 @@
     this.downT = 0;                    // 넘어진 뒤 지난 시간
     this.stagT = 0;                    // 휘청 지난 시간 (보스)
     this.stagDone = {};                // 이미 휘청한 체력 문턱
+    // 판마다 강하게 / 색만 바꾼 적 (main.js 가 만든 뒤 넣음): dmgMul = 플레이어에게 주는 데미지 배율, label = 보스 막대 이름
+    this.dmgMul = 1; this.variant = null; this.label = this.T.label || type;
+    // 미리 서 있는 적(판 waves 의 placed): asleep = 아직 못 알아챔(제자리에 가만히), alertT = 깬 뒤 「!」 보이며 멈춰 있는 시간
+    this.asleep = false; this.alertT = 0; this.pose = 'idle'; this.group = null;
   }
+
+  // 미리 세워 두기: pose = 쉬는 그림 이름(없으면 idle), group = 같이 깨는 무리 이름
+  Enemy.prototype.sleep = function (pose, group) {
+    this.asleep = true; this.pose = pose || 'idle'; this.group = group || null;
+    this.state = 'idle'; this.animT = rand(0, 1000);   // 여럿이 똑같이 숨 쉬지 않게
+  };
+  // 알아챔: alertMs 동안 「!」 보이며 멈춰 있다가 싸움
+  Enemy.prototype.wake = function (alertMs) {
+    if (!this.asleep) return;
+    this.asleep = false; this.alertT = alertMs || 0; this.animT = 0;
+  };
 
   function sum(d) { var s = 0; for (var i = 0; i < d.length; i++) s += d[i]; return s; }
 
@@ -94,6 +109,7 @@
     opts = opts || {};
     if (!this.alive()) return null;
     if (this.state === 'down' && !opts.force) return null;
+    this.asleep = false; this.alertT = 0;   // 자다가 맞으면 바로 깸(「!」 없이)
     var T = this.T, AI = this.cfg.ai, R = AI.react;
     var before = this.hp / this.maxHp;
     this.hp = Math.max(0, this.hp - dmg);
@@ -207,6 +223,13 @@
       }
       this.keepInView(ctx);
       return;
+    }
+    // 미리 서 있는 적: 깰 때까지 제자리(화면 안으로 붙잡지도 않음). 깬 뒤 잠깐 「!」 보이며 플레이어 쪽을 봄
+    if (this.asleep) { this.setMove(0, 0); return; }
+    if (this.alertT > 0) {
+      this.alertT -= dtMs;
+      if (Math.abs(p.x - this.x) > 2) this.dir = p.x > this.x ? 1 : -1;
+      this.setMove(0, 0); this.keepInView(ctx); return;
     }
     if (this.cool > 0) this.cool -= dtMs * (this.enraged ? 1 / this.T.enrage.cooldownMul : 1);
 
@@ -368,6 +391,7 @@
       return this.frameAt(s.anim, a.t).img;
     }
     if (this.state === 'walk') return this.frameAt(T.walkAnim, this.animT).img;
+    if (this.asleep && this.pose !== 'idle' && this.hasAnim(this.pose)) return this.frameAt(this.pose, this.animT).img;   // 쉬는 그림(있을 때만)
     return this.frameAt('idle', this.animT).img;
   };
 
@@ -427,6 +451,12 @@
     }
 
     g.restore();
+    // 알아챔: 머리 위 노란 「!」 (깨고 alertT 동안). 처음 조금은 위로 튀어 오름
+    if (this.alertT > 0 && this.alive()) {
+      var ay = y - Math.round(T.height) - 12 - (this.alertT > (this.cfg.ai.wake.alertMs || 300) - 80 ? 3 : 0);
+      g.fillStyle = '#2a1020'; g.fillRect(x - 3, ay - 1, 6, 10); g.fillRect(x - 3, ay + 10, 6, 5);
+      g.fillStyle = '#ffd23f'; g.fillRect(x - 2, ay, 4, 8); g.fillRect(x - 2, ay + 11, 4, 3);
+    }
     // 보스 화남: 머리 위 빨간 김
     if (this.enraged && this.alive() && Math.floor(performance.now() / 160) % 2) {
       var hx = Math.round(this.dir * 14 * AS());

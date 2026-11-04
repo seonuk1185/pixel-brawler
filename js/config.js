@@ -478,6 +478,17 @@
     return out;
   }
 
+  // ---------- 1단계 배경 = 숲 (art\stage1-bg 에서 복사) ----------
+  // 뒤 → 앞 순서. parallax = 카메라가 1 움직일 때 그 층이 움직이는 비율. mid 는 판 끝에서 그림이 딱 끝나게 자동으로 맞춤(최대 0.5)
+  // floorY = 그림 속 바닥(풀 경계)이 시작하는 높이, laneTop/laneBottom = 그림 속 걸을 수 있는 길(흙길)
+  // 판마다 bg 를 따로 둔다(아래 stages). 새 배경 = 이것과 같은 모양으로 하나 더 만들어 그 판 bg 에 넣기
+  var BG_FOREST = {
+    far:    { img: 'assets/bg/stage1/far.png',    w: 512,  tile: true,  parallax: 0.15 },
+    mid:    { img: 'assets/bg/stage1/mid.png',    w: 1658, tile: false, parallax: 0.5 },
+    ground: { img: 'assets/bg/stage1/ground.png', w: 723,  tile: true,  parallax: 1.0 },
+    height: 240, floorY: 144, laneTop: 158, laneBottom: 230
+  };
+
   window.CFG = {
     version: 'stage1-proto-2',
     artSet: artSet,
@@ -716,7 +727,10 @@
         juggleHits: 4, juggleWindowMs: 1500,
         lyingMs: 500,         // 넘어짐 그림이 끝난 뒤 더 누워 있는 시간
         getupCoolMs: 600      // 일어난 뒤 바로 공격하지 않는 시간
-      }
+      },
+      // 미리 서 있는 적(판 waves 의 placed)이 깨는 조건: 플레이어가 dist 도트 안으로 오면(크기 배율 안 곱함, 화면 도트 그대로)
+      //   깨면 머리 위 「!」를 alertMs 동안 보이며 멈춰 있다가 싸움. 같은 무리(group)는 groupDelayMs 안에서 조금씩 늦게 깸
+      wake: { dist: 90, alertMs: 300, groupDelayMs: 150 }
     },
 
     // ---------- 적 종류 ----------
@@ -813,35 +827,105 @@
       }
     },
 
-    // ---------- 1단계 판 ----------
-    // width = 판 전체 길이(도트). waves = 화면이 멈추는 곳(at = 카메라 왼쪽 끝 위치, 'end' = 맨 끝 보스방)
-    //   spawn = [종류, 나오는 쪽('L'/'R'), 몇 ms 뒤에] 순서대로. 다 잡으면 「GO →」
-    // healOnClear = 웨이브를 깰 때마다 체력 회복
-    stage: {
-      name: 'STAGE 1  숲길',
-      width: 2880,
-      healOnClear: 15,
-      bgTop: '#7fb2e5',           // 화면이 배경보다 높을 때 위쪽 하늘 색 (실제로는 배경 맨 윗줄을 늘려 씀)
-      waves: [
-        { at: 120,  spawn: [['goblin', 'R', 0], ['goblin', 'R', 600], ['goblin', 'L', 2200]] },
-        { at: 500,  spawn: [['wolf', 'R', 0], ['goblin', 'L', 400], ['wolf', 'R', 1800], ['goblin', 'R', 2600]] },
-        { at: 880,  spawn: [['goblin', 'R', 0], ['goblin', 'R', 300], ['goblin', 'L', 900], ['goblin', 'R', 3800], ['goblin', 'L', 4300]] },
-        { at: 1260, spawn: [['wolf', 'R', 0], ['wolf', 'L', 500], ['goblin', 'R', 1200], ['wolf', 'R', 3400], ['goblin', 'L', 3800]] },
-        { at: 1650, spawn: [['goblin', 'R', 0], ['goblin', 'L', 200], ['wolf', 'R', 1000], ['goblin', 'R', 3600], ['wolf', 'L', 4000], ['goblin', 'R', 4800], ['wolf', 'R', 5400]] },
-        { at: 2040, spawn: [['wolf', 'R', 0], ['wolf', 'R', 300], ['goblin', 'L', 700], ['goblin', 'R', 2800], ['goblin', 'L', 3200], ['wolf', 'R', 4200]] },
-        { at: 'end', boss: true, spawn: [['orc', 'R', 0]] }
-      ]
+    // ---------- 스테이지 (2026-11-04: 여러 판) ----------
+    // 순서대로 1, 2, 3 … 판. 판 하나 = { id, name, width, healOnClear, bgTop, bg, waves, hpMul, dmgMul }
+    //   width = 판 전체 길이(도트). waves = 화면이 멈추는 곳(at = 카메라 왼쪽 끝 위치, 'end' = 맨 끝 보스방)
+    //   spawn = [종류, 나오는 쪽('L'/'R'), 몇 ms 뒤에, { variant: 'ice' }(없어도 됨)] 순서대로. 다 잡으면 「GO →」
+    //   placed = 미리 서 있는 적(2026-11-04): [종류, x, y, { group, pose, variant, dir }]
+    //     x = 그 웨이브 화면 왼쪽 끝(at)에서 몇 도트 오른쪽, y = 걷는 길 안 위치(0 = 맨 위, 1 = 맨 아래)
+    //     카메라가 다가가면 그 자리에 가만히 서 있다가 → 플레이어가 ai.wake.dist 안으로 오거나 / 화면이 고정되거나 / 맞으면 깸
+    //     → 머리 위 「!」 잠깐(ai.wake.alertMs) → 보통 적처럼 싸움. group 이 같으면 하나만 깨도 다 깸. 웨이브 클리어에 같이 셈
+    //     pose = 쉬는 그림 이름(적 anims 에 그 그림이 있을 때만, 없으면 idle). dir = 바라보는 쪽(-1 왼쪽 기본, 1 오른쪽)
+    //   props = 장식 소품(2026-11-04): [{ type, x, y }] x = 판 위 도트, y = 걷는 길 안 위치(0~1). 그림은 CFG.propTypes[type]
+    //   healOnClear = 웨이브를 깰 때마다 체력 회복
+    //   hpMul / dmgMul = 이 판 적 전부의 체력·공격력 배율(없으면 1) → 예전 몬스터를 「강한 버전」으로 다시 씀
+    //   bg = 배경 3장(위 BG_FOREST 설명). 판을 시작할 때 그 판 배경만 불러온다(main.js useStage → Assets.ensureBg)
+    // 새 판 넣기: 아래 목록 끝에 { id: 4, … } 하나 추가하면 끝(스테이지 고르기 화면·다음 스테이지는 자동)
+    // 지금 하고 있는 판은 main.js 가 CFG.stage(+ CFG.bg = 그 판 bg)에 넣어 둔다 → 다른 코드는 예전처럼 CFG.stage 를 읽음
+    stages: [
+      {
+        id: 1,
+        name: 'STAGE 1  숲길',
+        width: 2880,
+        healOnClear: 15,
+        bgTop: '#7fb2e5',           // 화면이 배경보다 높을 때 위쪽 하늘 색 (실제로는 배경 맨 윗줄을 늘려 씀)
+        bg: BG_FOREST,
+        waves: [
+          { at: 120,  spawn: [['goblin', 'R', 0], ['goblin', 'R', 600], ['goblin', 'L', 2200]] },
+          // 2: 길을 지키는 늑대 한 마리가 미리 서 있음 + 옆에서 지원
+          { at: 500,  placed: [['wolf', 330, 0.5]],
+                      spawn: [['goblin', 'L', 400], ['wolf', 'R', 1800], ['goblin', 'R', 2600]] },
+          // 3: 모닥불 둘레 고블린 둘(camp1, 하나 깨면 둘 다 깸) + 옆에서 지원
+          { at: 880,  placed: [['goblin', 300, 0.3, { group: 'camp1' }], ['goblin', 350, 0.75, { group: 'camp1' }]],
+                      spawn: [['goblin', 'L', 900], ['goblin', 'R', 3800], ['goblin', 'L', 4300]] },
+          { at: 1260, spawn: [['wolf', 'R', 0], ['wolf', 'L', 500], ['goblin', 'R', 1200], ['wolf', 'R', 3400], ['goblin', 'L', 3800]] },
+          // 5: 고블린 + 늑대가 같이 쉬고 있음(camp2) + 옆에서 지원
+          { at: 1650, placed: [['goblin', 310, 0.4, { group: 'camp2' }], ['wolf', 370, 0.7, { group: 'camp2' }]],
+                      spawn: [['wolf', 'R', 1000], ['goblin', 'R', 3600], ['wolf', 'L', 4000], ['goblin', 'R', 4800], ['wolf', 'R', 5400]] },
+          { at: 2040, spawn: [['wolf', 'R', 0], ['wolf', 'R', 300], ['goblin', 'L', 700], ['goblin', 'R', 2800], ['goblin', 'L', 3200], ['wolf', 'R', 4200]] },
+          { at: 'end', boss: true, spawn: [['orc', 'R', 0]] }
+        ],
+        // 장식(소품): 3번 웨이브 고블린 모닥불. 그림은 아직 없음(CFG.propTypes 에 넣으면 보임, 없으면 ?debug=1 에서만 표시)
+        props: [{ type: 'campfire', x: 880 + 325, y: 0.52 }]
+      },
+      // ===== 임시 2단계: 새 그림이 오면 배경·적·웨이브를 통째로 바꾼다. 지금은 1단계 그림 그대로 + 늑대 많이 + 조금 강하게 =====
+      {
+        id: 2,
+        name: 'STAGE 2  깊은 숲 (임시)',
+        width: 2880,
+        healOnClear: 12,
+        bgTop: '#7fb2e5',
+        bg: BG_FOREST,               // 임시: 1단계 배경
+        hpMul: 1.15, dmgMul: 1.1,
+        waves: [
+          { at: 120,  spawn: [['wolf', 'R', 0], ['goblin', 'R', 500], ['goblin', 'L', 1600]] },
+          { at: 500,  spawn: [['wolf', 'R', 0], ['wolf', 'L', 300], ['goblin', 'R', 1400], ['wolf', 'R', 2400, { variant: 'ice' }]] },
+          { at: 880,  spawn: [['goblin', 'R', 0], ['goblin', 'L', 200], ['wolf', 'R', 800], ['goblin', 'R', 3000], ['wolf', 'L', 3500], ['goblin', 'R', 4200]] },
+          { at: 1260, spawn: [['wolf', 'R', 0, { variant: 'ice' }], ['wolf', 'L', 400, { variant: 'ice' }], ['goblin', 'R', 1000], ['wolf', 'R', 3000], ['goblin', 'L', 3400], ['goblin', 'R', 3800]] },
+          { at: 1650, spawn: [['goblin', 'R', 0], ['wolf', 'L', 200], ['wolf', 'R', 900], ['goblin', 'R', 3200], ['wolf', 'L', 3600, { variant: 'ice' }], ['goblin', 'R', 4400], ['wolf', 'R', 5000]] },
+          { at: 2040, spawn: [['wolf', 'R', 0], ['wolf', 'R', 300], ['wolf', 'L', 600, { variant: 'ice' }], ['goblin', 'R', 2600], ['goblin', 'L', 3000], ['wolf', 'R', 3800], ['goblin', 'L', 4400]] },
+          { at: 'end', boss: true, spawn: [['orc', 'R', 0]] }
+        ]
+      },
+      // ===== 임시 3단계: 1단계 그림 그대로 + 적 많이 + 더 강하게 + 보스 = 붉은 오크(색만 바꿈) =====
+      {
+        id: 3,
+        name: 'STAGE 3  폐허 (임시)',
+        width: 3200,
+        healOnClear: 10,
+        bgTop: '#7fb2e5',
+        bg: BG_FOREST,               // 임시: 1단계 배경
+        hpMul: 1.3, dmgMul: 1.2,
+        waves: [
+          { at: 120,  spawn: [['goblin', 'R', 0], ['goblin', 'L', 300], ['wolf', 'R', 900], ['goblin', 'R', 1800]] },
+          { at: 520,  spawn: [['wolf', 'R', 0, { variant: 'ice' }], ['wolf', 'L', 300, { variant: 'ice' }], ['goblin', 'R', 1200], ['goblin', 'L', 1600], ['wolf', 'R', 3000]] },
+          { at: 920,  spawn: [['goblin', 'R', 0], ['goblin', 'R', 250], ['goblin', 'L', 500], ['wolf', 'R', 2400], ['goblin', 'L', 3000], ['goblin', 'R', 3400], ['wolf', 'L', 4000]] },
+          { at: 1320, spawn: [['wolf', 'R', 0], ['wolf', 'L', 300], ['wolf', 'R', 700, { variant: 'ice' }], ['goblin', 'R', 2200], ['goblin', 'L', 2600], ['wolf', 'R', 3600]] },
+          { at: 1740, spawn: [['goblin', 'R', 0], ['goblin', 'L', 200], ['wolf', 'R', 700], ['wolf', 'L', 1100], ['goblin', 'R', 3200], ['goblin', 'L', 3500], ['wolf', 'R', 4300, { variant: 'ice' }], ['goblin', 'R', 5000]] },
+          { at: 2160, spawn: [['wolf', 'R', 0], ['wolf', 'R', 250], ['goblin', 'L', 500], ['goblin', 'L', 800], ['wolf', 'R', 2600, { variant: 'ice' }], ['goblin', 'R', 3000], ['goblin', 'L', 3400], ['wolf', 'R', 4200]] },
+          { at: 2560, spawn: [['goblin', 'R', 0], ['goblin', 'L', 0], ['wolf', 'R', 600], ['wolf', 'L', 900], ['goblin', 'R', 3000], ['wolf', 'L', 3400, { variant: 'ice' }]] },
+          { at: 'end', boss: true, spawn: [['orc', 'R', 0, { variant: 'ember' }]] }
+        ]
+      }
+    ],
+
+    // ---------- 색만 바꾼 적 (variant) ----------
+    // 웨이브에서 ['wolf', 'R', 0, { variant: 'ice' }] 처럼 쓰면 그 적 그림을 이 색으로 바꿔 그린다(그림 파일 없이 코드로).
+    //   hue = 색상환 돌리기(도), sat = 채도 배율, bright = 밝기 배율 (CSS filter 의 hue-rotate / saturate / brightness 와 같음)
+    //   color + colorK = 그 위에 이 색을 colorK 만큼 덧칠(회색·흰색처럼 색상환을 돌려도 안 바뀌는 그림용, 없으면 안 함)
+    //   hpMul / dmgMul = 이 변종만 추가로 강하게(판 배율에 곱함, 없으면 1). label = 보스 막대 이름 앞에 붙는 말
+    //   판을 시작할 때 그 판에 나오는 변종 그림만 한 번 구워 두고 계속 다시 씀(main.js tintArt) → 게임 중 느려지지 않음
+    variants: {
+      ice:   { label: '얼음', hue: 180, sat: 0.8, bright: 1.15, color: '#8fd8ff', colorK: 0.35, hpMul: 1.1 },   // 회색 늑대 → 푸른 늑대(회색은 색상환을 돌려도 그대로라 color 로 물들임)
+      ember: { label: '붉은', hue: 270, sat: 1.2, bright: 0.95, dmgMul: 1.1 }   // 연두 오크 → 붉은 오크
     },
 
-    // ---------- 1단계 배경 (art\stage1-bg 에서 복사) ----------
-    // 뒤 → 앞 순서. parallax = 카메라가 1 움직일 때 그 층이 움직이는 비율. mid 는 판 끝에서 그림이 딱 끝나게 자동으로 맞춤(최대 0.5)
-    // floorY = 그림 속 바닥(풀 경계)이 시작하는 높이, laneTop/laneBottom = 그림 속 걸을 수 있는 길(흙길)
-    bg: {
-      far:    { img: 'assets/bg/stage1/far.png',    w: 512,  tile: true,  parallax: 0.15 },
-      mid:    { img: 'assets/bg/stage1/mid.png',    w: 1658, tile: false, parallax: 0.5 },
-      ground: { img: 'assets/bg/stage1/ground.png', w: 723,  tile: true,  parallax: 1.0 },
-      height: 240, floorY: 144, laneTop: 158, laneBottom: 230
-    },
+    // ---------- 장식 소품 그림 (2026-11-04) ----------
+    // 판의 props 가 쓰는 그림. 그림이 아직 없는 종류는 안 그림(?debug=1 이면 자리 표시만).
+    //   frames = 그림 경로 목록(seq 로), fps = 1초에 장 수(1장이면 0), pivot = 그림 속 바닥 가운데(원래 크기), scale = 그리는 배율(없으면 actorScale)
+    //   예) campfire: { frames: seq('assets/props/campfire_', 4), fps: 8, pivot: { x: 32, y: 60 } }
+    //   나중에 부서지는 소품(hp)도 여기 수치를 더하는 식으로 넣을 수 있게 판 props 는 { type, x, y } 객체로 둔다
+    propTypes: {},
 
     // 먼지 효과(오크 돌진): 112x64, 바닥 가운데 기준
     dust: { frames: seq('assets/fx/dust_', 5), pivot: { x: 56, y: 60 }, fps: 12 },
@@ -879,6 +963,10 @@
     },
     motions: MOTIONS
   };
+
+  // 지금 판(호환용): 다른 코드는 예전처럼 CFG.stage / CFG.bg 를 읽는다. 판을 바꿀 때 main.js useStage 가 다시 넣음
+  window.CFG.stage = window.CFG.stages[0];
+  window.CFG.bg = window.CFG.stage.bg;
 
   // ---------- 기술 그림 끼워 넣기: 동작 그림 묶음 → 각 옷 캐릭터 anims, 효과 그림 → art.fx + magic(기준점) ----------
   (function addSkillArt(C) {
