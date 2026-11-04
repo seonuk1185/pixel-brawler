@@ -1,7 +1,7 @@
 // 게임 본체: 화면 크기, 배경, 매 장면 갱신, 타격 처리
 // 기본 = 스테이지 판(웨이브 + 보스, 여러 판). 주소 뒤 ?mode=practice = 예전 허수아비 연습장
 // 주소 뒤 ?stage=N = 판 번호(config stages 의 id) N 인 판으로 바로 시작(시험용, 잠금 무시). ?bot=1 이면 고르기 화면 없이 바로 시작
-//   (2026-11-04: 5단계가 아직 없어서 목록 = 1 2 3 4 6. ?stage=6 = 해적 항구. 없는 번호면 무시)
+//   (2026-11-04: 5단계가 아직 없어서 목록 = 1 2 3 4 6 7. ?stage=6 = 해적 항구, ?stage=7 = 화산. 없는 번호면 무시)
 (function () {
   var CFG = window.CFG, J = CFG.juice;
   var AS = CFG.actorScale || 1;   // 캐릭터 크기: 코드에 바로 적힌 거리·높이와 손맛의 밀림 거리(juice.knockback)에 곱한다
@@ -11,25 +11,46 @@
   if (params.get('slow')) J.timeScale = +params.get('slow') || 1;
 
   // ---------- 스테이지 고르기 (2026-11-04) ----------
-  // 열린 판 = 깬 판 + 1. 깬 판 번호는 이 브라우저에 저장(localStorage). 저장이 막혀 있어도 게임은 됨(이번에 연 동안만 기억)
-  //   코드 안의 판 번호(G.stageNo, urlStage, 저장 값) = 목록 순서(1부터). 화면에 보이는 번호·주소 ?stage= = 판 id(config stages)
+  // 판이 열리는 조건 = 목록에서 바로 앞 판을 깸(첫 판은 늘 열림). 깬 판은 이 브라우저에 저장(localStorage). 저장이 막혀 있어도 게임은 됨(이번에 연 동안만 기억)
+  //   코드 안의 판 번호(G.stageNo, urlStage) = 목록 순서(1부터). 화면에 보이는 번호·주소 ?stage= = 판 id(config stages)
+  //   저장 = 깬 판 「id」 목록(2026-11-04 7단계 때 바꿈): 예전처럼 목록 순서로 저장하면 5단계를 6 앞에 끼울 때 예전 저장이 한 칸씩 어긋남
   var STAGES = CFG.stages;
   function stageIndexOfId(id) { for (var i = 0; i < STAGES.length; i++) if (STAGES[i].id === id) return i + 1; return 0; }
   var urlStage = stageIndexOfId(parseInt(params.get('stage'), 10));
-  var SAVE_KEY = 'pixelBrawler.cleared';
-  var clearedMem = 0;
+  var SAVE_IDS = 'pixelBrawler.clearedIds';   // 지금 저장: 깬 판 id 목록 JSON, 예: [1,2,3,4,6]
+  var SAVE_OLD = 'pixelBrawler.cleared';      // 예전 저장: 깬 판 「수」 N(목록 순서 앞에서 N개를 깸) → 처음 한 번 id 목록으로 옮김
+  var OLD_ORDER = [1, 2, 3, 4, 6];            // 예전 저장을 쓰던 때(7단계 전)의 판 목록 순서(id). 예전 값 N = 이 목록 앞 N개
+  var clearedMem = {};                        // 저장이 막혀 있을 때도 이번에 깬 판은 기억
   function loadCleared() {
-    var n = 0;
-    try { n = parseInt(localStorage.getItem(SAVE_KEY), 10) || 0; } catch (e) {}
-    return Math.max(n, clearedMem);
+    var out = {}, k;
+    try {
+      var raw = localStorage.getItem(SAVE_IDS);
+      if (raw) JSON.parse(raw).forEach(function (id) { if (typeof id === 'number') out[id] = true; });
+      else {
+        var n = parseInt(localStorage.getItem(SAVE_OLD), 10) || 0;
+        if (n > 0) {
+          OLD_ORDER.slice(0, n).forEach(function (id) { out[id] = true; });
+          localStorage.setItem(SAVE_IDS, JSON.stringify(Object.keys(out).map(Number)));   // 옮긴 결과를 새 이름으로 저장(예전 값은 그대로 둠)
+        }
+      }
+    } catch (e) {}
+    for (k in clearedMem) out[k] = true;
+    return out;
   }
-  function saveCleared(n) {
-    clearedMem = Math.max(clearedMem, n);
-    try { if (n > (parseInt(localStorage.getItem(SAVE_KEY), 10) || 0)) localStorage.setItem(SAVE_KEY, String(n)); } catch (e) {}
+  function isCleared(id) { return !!loadCleared()[id]; }
+  function saveCleared(id) {
+    clearedMem[id] = true;
+    try {
+      var c = loadCleared(); c[id] = true;
+      localStorage.setItem(SAVE_IDS, JSON.stringify(Object.keys(c).map(Number).sort(function (a, b) { return a - b; })));
+    } catch (e) {}
   }
-  function unlockedMax() { return urlStage || CFG.stagesAllOpen ? STAGES.length : Math.min(STAGES.length, loadCleared() + 1); }
-  // 처음 판: ?stage=N, 아니면 열린 판 중 마지막(고르기 화면 뒤에 미리 보임). 다 열어 둔 시험 기간엔 아직 안 깬 첫 판
-  var startNo = urlStage || (CFG.stagesAllOpen ? Math.min(STAGES.length, loadCleared() + 1) : unlockedMax());
+  // 목록 n 번째(1부터) 판이 열렸나: 시험(?stage=N)·다 열어 둔 기간이면 다, 아니면 첫 판 + 바로 앞 판을 깬 판
+  function isOpen(n) { return !!urlStage || !!CFG.stagesAllOpen || n <= 1 || isCleared(STAGES[n - 2].id); }
+  // 아직 안 깬 첫 판(목록 순서). 다 깼으면 마지막 판
+  function firstUncleared() { var c = loadCleared(); for (var i = 0; i < STAGES.length; i++) if (!c[STAGES[i].id]) return i + 1; return STAGES.length; }
+  // 처음 판: ?stage=N, 아니면 아직 안 깬 첫 판(앞 판을 다 깼으니 열려 있음, 고르기 화면 뒤에 미리 보임)
+  var startNo = urlStage || firstUncleared();
   CFG.stage = STAGES[startNo - 1]; CFG.bg = CFG.stage.bg;
 
   var canvas = document.getElementById('screen');
@@ -374,6 +395,18 @@
     if (P.t <= 0) p.poison = null;
   }
 
+  // 불 뿜기에 계속 서 있음(7단계 와이번 breath): 처음 맞은 뒤 깜빡임(무적) 중에도 tickMs 마다 spec.burn 만큼 탐(움찔·밀림 없음).
+  //   독처럼 체력 1 아래로는 안 내려감(불길에서 비키면 그만). 넘어짐·잡힘·기술 무적·쓰러짐 중에는 안 탐
+  function burnPlayer(e, spec) {
+    var p = G.player;
+    if (!spec.burn || p.state === 'dead' || p.state === 'down' || p.state === 'held') return;
+    if (p.state === 'skill' && Skills.invulnerable(p)) return;
+    var n = Math.max(1, Math.round(rand(spec.burn[0], spec.burn[1]) * (e.dmgMul || 1)));
+    if (!p.god) { n = Math.min(n, p.hp - 1); if (n <= 0) return; p.hp -= n; }
+    FX.damage(p.x, p.y - (p.z || 0) - 112 * AS, n, false, J, '#ffa040', null, 'player');
+    if (Skills.debris) Skills.debris(p.x, p.y - 50 * AS, p.y, 4, { cols: ['#fff2a0', '#ffb040', '#ff5a1a'], glow: true, sp: 70, size: 1.3, ms: 360, g: -40, spread: 0.8 });
+  }
+
   // ---------- 미라 잡기 (2026-11-04): 닿으면 붙잡힘 → 버튼 연타로 빨리 풀림 → 놓으면서 데미지 + 내던짐 ----------
   // 잡을 수 있나: 쓰러짐·넘어짐·이미 잡힘·무적(깜빡임·기술 무적)·공중이면 못 잡음(헛손질)
   function grabPlayer(e, spec) {
@@ -448,7 +481,7 @@
   // 적 하나 만들기: 판 배율(hpMul·dmgMul) + 변종(색·배율) 적용. opt = { variant }
   function makeEnemy(type, x, y, opt) {
     var S = G.stage, T = CFG.enemies[type], st = CFG.stage;
-    var vk = opt && opt.variant, V = vk && CFG.variants ? CFG.variants[vk] : null;
+    var vk = (opt && opt.variant) || T.variant, V = vk && CFG.variants ? CFG.variants[vk] : null;   // T.variant = 늘 그 색으로 나오는 적(7단계 용암 골렘)
     var e = new Enemy(type, CFG, V ? tintArt(type, vk) : G.assets.enemies[type], x, y);
     var hm = (st.hpMul || 1) * (V && V.hpMul || 1), dm = (st.dmgMul || 1) * (V && V.dmgMul || 1);
     if (hm !== 1) e.hp = e.maxHp = Math.round(e.maxHp * hm);
@@ -532,8 +565,33 @@
       g.fillStyle = V.color; g.fillRect(0, 0, c.width, c.height);
       g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
     }
+    if (V.glow || V.keep) { try { glowPixels(g, img, c.width, c.height, V); } catch (e) {} }   // 파일로 열면 점을 못 읽음 → 빛 없이
+    g.filter = 'none';
     return Assets.copyMeta(img, c);
   }
+  // 빛나는 자리(7단계 용암 골렘): 원래 그림에서 색상이 V.glow.hue 범위인 점(이끼) → V.glow.color(원래 밝기만큼, 어두운 몸 위에서 빛남),
+  //   V.keep.hue 범위의 진한 점(가슴 핵) → 원래 색 그대로. 나머지는 위에서 어둡게 바꾼 색
+  function glowPixels(g, img, w, h, V) {
+    var o = document.createElement('canvas'); o.width = w; o.height = h;
+    var og = o.getContext('2d'); og.drawImage(img, 0, 0);
+    var src = og.getImageData(0, 0, w, h).data, d = g.getImageData(0, 0, w, h), p = d.data;
+    var GL = V.glow, KP = V.keep, gc = GL ? hexRgb(GL.color) : null;
+    for (var i = 0; i < p.length; i += 4) {
+      if (!src[i + 3]) continue;
+      var r = src[i], gg = src[i + 1], b = src[i + 2], mx = Math.max(r, gg, b), mn = Math.min(r, gg, b), sat = mx ? (mx - mn) / mx : 0, hue = 0;
+      if (mx > mn) {
+        hue = mx === r ? 60 * (((gg - b) / (mx - mn)) % 6) : mx === gg ? 60 * ((b - r) / (mx - mn) + 2) : 60 * ((r - gg) / (mx - mn) + 4);
+        if (hue < 0) hue += 360;
+      }
+      if (KP && sat >= KP.sat && hue >= KP.hue[0] && hue <= KP.hue[1] && mx >= (KP.light || 0)) { p[i] = r; p[i + 1] = gg; p[i + 2] = b; continue; }
+      if (GL && sat >= GL.sat && hue >= GL.hue[0] && hue <= GL.hue[1]) {
+        var k = 0.45 + 0.75 * mx / 255;   // 밝은 이끼일수록 더 밝은 용암
+        p[i] = Math.min(255, gc[0] * k); p[i + 1] = Math.min(255, gc[1] * k); p[i + 2] = Math.min(255, gc[2] * k);
+      }
+    }
+    g.putImageData(d, 0, 0);
+  }
+  function hexRgb(h) { var n = parseInt(h.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; }
   // CSS hue-rotate / saturate / brightness 와 같은 색 계산(W3C filter 행렬)
   function tintPixels(g, w, h, V) {
     var a = (V.hue || 0) * Math.PI / 180, cs = Math.cos(a), sn = Math.sin(a), s = V.sat != null ? V.sat : 1, b = V.bright != null ? V.bright : 1;
@@ -555,7 +613,10 @@
   // 판에 나오는 변종 그림을 판 시작할 때 미리 구움(게임 중 멈칫 없게)
   function bakeStageVariants() {
     CFG.stage.waves.forEach(function (w) {
-      (w.spawn || []).concat(w.placed || []).forEach(function (s) { if (s[3] && s[3].variant) tintArt(s[0], s[3].variant); });
+      (w.spawn || []).concat(w.placed || []).forEach(function (s) {
+        if (s[3] && s[3].variant) tintArt(s[0], s[3].variant);
+        else if (CFG.enemies[s[0]] && CFG.enemies[s[0]].variant) tintArt(s[0], CFG.enemies[s[0]].variant);
+      });
     });
   }
 
@@ -664,15 +725,23 @@
   // { e: 쏜 적, s: 공격 수치, x: 지금 가로 위치, z: 줄(발 y), h: 땅에서 높이(그림만), dir, trav: 날아간 거리, t, art }
   //   맞음 = 가로로 플레이어 몸(hurtbox x)에 닿음 + 줄이 s.depth 안 + 점프 높이 s.dodgeZ 아래(높이는 안 봄: 총구가 머리보다 높은 선장 권총도 같게)
   //   맞으면 사라짐. 플레이어가 깜빡임(무적)·기술 무적이면 그냥 지나감. range 까지 가거나 보스가 쓰러지면 사라짐
+  //   7단계 불 도깨비 불덩이도 같은 길: s.proj = 날아가는 그림(없으면 bullet), s.muzzle = 총구 연기(없으면 smoke, null = 안 씀),
+  //     s.impact = 맞거나 끝까지 가면 그 자리(바닥)에서 터지는 그림(fxArt 이름, 없으면 안 터짐)
   var shots = [];
   function fireShot(e, s) {
     var F = G.assets.enemyFx && G.assets.enemyFx[e.type];
     var mx = e.x + e.dir * s.spawn.x, my = e.y + s.spawn.y;
-    shots.push({ e: e, s: s, x: mx, z: e.y, h0: -s.spawn.y, h: -s.spawn.y, dir: e.dir, trav: 0, t: 0, art: F && F.bullet });
-    var SM = F && F.smoke;
+    shots.push({ e: e, s: s, x: mx, z: e.y, h0: -s.spawn.y, h: -s.spawn.y, dir: e.dir, trav: 0, t: 0, art: F && F[s.proj || 'bullet'], imp: F && s.impact ? F[s.impact] : null });
+    var SM = F && s.muzzle !== null ? F[s.muzzle || 'smoke'] : null;
     if (SM && SM.frames.length) FX.sprite(mx, my, SM.frames, SM.fps, SM.pivot, e.dir > 0, false);   // 총구 연기(그림은 왼쪽을 봄)
     if (Skills.debris) Skills.debris(mx, my, e.y, 4, { cols: ['#fff2a0', '#ffb040', '#ffffff'], glow: true, sp: 110, size: 1.2, ms: 160 });   // 불꽃 튐
-    FX.shake(J.shakePx * 0.35, 70);
+    FX.shake(J.shakePx * (s.proj ? 0.15 : 0.35), 70);   // 던지는 불덩이는 총보다 약하게
+  }
+  // 불덩이 터짐(s.impact 그림, 바닥 기준) + 불씨
+  function shotImpact(b) {
+    var I = b.imp;
+    if (I && I.frames.length) FX.sprite(b.x, b.z, I.frames, I.fps, I.pivot, b.dir > 0, false);
+    if (Skills.debris) Skills.debris(b.x, b.z - b.h, b.z, 6, { cols: ['#fff2a0', '#ffb040', '#ff6a1a', '#5a4a44'], glow: true, sp: 120, size: 1.4, ms: 320 });
   }
   function shotsStep(dt) {
     var p = G.player, S = G.stage, hb = null;
@@ -689,10 +758,11 @@
           var w = s.box.w / 2;
           if (b.x + w > hb.x0 && b.x - w < hb.x1 && onPlayerHit({ x: b.x - b.dir * 30, dmgMul: b.e.dmgMul, T: b.e.T }, s)) {
             gone = true;
-            if (Skills.debris) Skills.debris(b.x, b.z - b.h, b.z, 5, { cols: ['#fff2a0', '#ffd060', '#c8c8c8'], glow: true, sp: 120, size: 1.2, ms: 220 });
+            if (b.imp) shotImpact(b);
+            else if (Skills.debris) Skills.debris(b.x, b.z - b.h, b.z, 5, { cols: ['#fff2a0', '#ffd060', '#c8c8c8'], glow: true, sp: 120, size: 1.2, ms: 220 });
           }
         }
-        if (b.trav >= s.range - 0.01) gone = true;
+        if (b.trav >= s.range - 0.01) { if (!gone && b.imp) shotImpact(b); gone = true; }   // 끝까지 날아간 불덩이도 그 자리에서 터짐
       }
       if (gone) shots.splice(i, 1);
     }
@@ -878,7 +948,7 @@
       Input.setOverride(ax); return;
     }
     var side = best.x > p.x ? 1 : -1;
-    var want = ({ goblin: 42, wolf: 58, orc: 72, bat: 46, skeleton: 44, golem: 76, mummy: 46, scorpion: 80, lizard: 46, toad: 74, gunner: 40, captain: 70 }[best.type] || 50) * AS;
+    var want = ({ goblin: 42, wolf: 58, orc: 72, bat: 46, skeleton: 44, golem: 76, mummy: 46, scorpion: 80, lizard: 46, toad: 74, gunner: 40, captain: 70, imp: 44, lavagolem: 76, wyvern: 80 }[best.type] || 50) * AS;
     var sv = Props.steer(p, R, best.x - side * want, best.y, world, best.x);   // 막는 소품: 목표가 그 안이면 옆으로, 앞에 있으면 돌아감
     var tx = sv.x, ty = best.y;
     var ex = tx - p.x, ey = ty - p.y, my = sv.y - p.y;   // 공격 조건은 원래 줄(ey), 움직임은 돌아가는 줄(my)
@@ -1118,7 +1188,7 @@
     S.result = kind;
     Input.setOverride(null);
     var last = G.stageNo >= STAGES.length, clear = kind === 'clear';
-    if (clear) saveCleared(G.stageNo);
+    if (clear) saveCleared(CFG.stage.id);   // 깬 판 id 저장
     document.getElementById('resTitle').textContent = !clear ? 'GAME OVER' : last ? 'ALL CLEAR!' : 'STAGE CLEAR!';
     resultEl.className = 'result ' + kind + (clear && last ? ' all' : '');
     document.getElementById('resStats').innerHTML =
@@ -1201,13 +1271,13 @@
   // 스테이지 고르기 화면: 열린 판만 누를 수 있음(잠긴 판 = 회색). 고르는 동안 게임은 멈춤
   var selEl = document.getElementById('stageSel');
   function openStageSelect() {
-    var list = document.getElementById('stageList'), max = unlockedMax(), cleared = loadCleared(), focus = null;
+    var list = document.getElementById('stageList'), cleared = loadCleared(), focus = null;
     list.innerHTML = '';
     STAGES.forEach(function (st, i) {
-      var n = i + 1, b = document.createElement('button'), open = n <= max;
-      b.type = 'button'; b.className = 'sbtn' + (open ? '' : ' locked') + (n <= cleared ? ' cleared' : '');
+      var n = i + 1, b = document.createElement('button'), open = isOpen(n), done = !!cleared[st.id];
+      b.type = 'button'; b.className = 'sbtn' + (open ? '' : ' locked') + (done ? ' cleared' : '');
       b.disabled = !open;
-      b.innerHTML = '<b>' + st.id + '</b><span>' + (open ? st.name.replace(/^STAGE\s*\d+\s*/, '') : '잠김') + '</span>' + (n <= cleared ? '<i>클리어</i>' : '');
+      b.innerHTML = '<b>' + st.id + '</b><span>' + (open ? st.name.replace(/^STAGE\s*\d+\s*/, '') : '잠김') + '</span>' + (done ? '<i>클리어</i>' : '');
       b.addEventListener('click', function () { closeMenu(selEl); G.paused = false; goStage(n); });
       list.appendChild(b);
       if (open && (n === G.stageNo || !focus)) focus = b;
@@ -1228,7 +1298,8 @@
       burst: rockBurst,       // 골렘 내려찍기 땅 터짐
       debris: function (x, y, n, cols) { if (Skills.debris) Skills.debris(x, y - 6 * AS, y, n, { cols: cols, sp: 150, size: 2.2, ms: 600 }); },   // 두꺼비 배치기 흙탕물
       grabPlayer: grabPlayer, grabMash: grabMash, releaseGrab: releaseGrab,   // 미라 잡기
-      fireShot: fireShot, dropCannon: dropCannon                               // 6단계 총알 · 대포알
+      fireShot: fireShot, dropCannon: dropCannon,                              // 6단계 총알 · 대포알 (7단계 불덩이도 fireShot)
+      burnPlayer: burnPlayer                                                   // 7단계 와이번 불 뿜기에 계속 서 있음
     };
     Object.defineProperty(E, 'player', { get: function () { return G.player; } });
     return E;
@@ -1392,7 +1463,7 @@
         player: { hp: p.hp, state: p.state, x: Math.round(p.x), y: Math.round(p.y), z: Math.round(p.z * 10) / 10,
           frame: p.char ? p.currentFrame() : null, ratk: p.ratk ? p.ratk.phase : null, skill: p.sk ? p.sk.d.key + '@' + Math.round(p.sk.t) : null, cd: p.skillCd },
         enemies: G.enemies.map(function (e) { return e.type + (e.variant ? '(' + e.variant + ')' : '') + ':' + (e.asleep ? 'asleep' : e.alertT > 0 ? 'alert' : e.state) +
-          (e.atk && e.atk.spec.type === 'burrow' ? '/' + e.atk.phase : '') + (e.atk && e.atk.held ? '/hold' : '') + (e.atk ? '/' + e.atk.name : '') + (e.airborne() ? '/air' : '') + ':' + e.hp + '@' + Math.round(e.x) + ',' + Math.round(e.y); }),
+          (e.atk && (e.atk.spec.type === 'burrow' || e.atk.spec.type === 'dive') ? '/' + e.atk.phase : '') + (e.atk && e.atk.held ? '/hold' : '') + (e.atk ? '/' + e.atk.name : '') + (e.airborne() ? '/air' : '') + ':' + e.hp + '@' + Math.round(e.x) + ',' + Math.round(e.y); }),
         poison: p.poison ? Math.round(p.poison.t) : 0,
         hits: G.hits, maxCombo: G.maxCombo, rocks: rocks.length, puddles: puddles.length, shots: shots.length, cannons: cannons.length, stageId: CFG.stage.id,
         props: Props.list.map(function (pr) { return pr.type + ':' + (pr.state === 'idle' ? pr.hitsLeft : pr.state) + '@' + Math.round(pr.x) + ',' + Math.round(pr.y); }),

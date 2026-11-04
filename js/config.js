@@ -520,6 +520,14 @@
     ground: { img: 'assets/bg/stage6/ground.png', w: 684,  tile: true,  parallax: 1.0 },
     height: 240, floorY: 144, laneTop: 158, laneBottom: 230
   };
+  // ---------- 7단계 배경 = 화산 (art\stage7-bg 에서 복사, 2026-11-04) ----------
+  // 흑요석 첨탑·용암 폭포 → 불의 교단 폐허 신전/대장간 → 용의 둥지 입구. 크기·바닥·걷는 길은 1~6단계와 같음(mid 3장 = 2단계와 같은 길이)
+  var BG_VOLCANO = {
+    far:    { img: 'assets/bg/stage7/far.png',    w: 512,  tile: true,  parallax: 0.15 },
+    mid:    { img: 'assets/bg/stage7/mid.png',    w: 1247, tile: false, parallax: 0.5 },
+    ground: { img: 'assets/bg/stage7/ground.png', w: 704,  tile: true,  parallax: 1.0 },
+    height: 240, floorY: 144, laneTop: 158, laneBottom: 230
+  };
 
   window.CFG = {
     version: 'stage1-proto-2',
@@ -1216,6 +1224,138 @@
                      spread: { x: 50, y: 14 }, radius: 40, depth: 16, dodgeZ: 24, holdMs: 300, gapMs: 9000, firstMs: 4000,
                      dmg: [16, 20], knock: 30, flinchMs: 450, heavy: true, shake: 2.4, when: [60, 600], weight: 2 }
         }
+      },
+
+      // ===== 7단계 적 (art\stage7-enemies 에서 복사, 2026-11-04). 수치 = 그 폴더 anchors_*.json 의 suggest =====
+      // 불 도깨비: 늑대처럼 치고 빠지기(retreatMs) + 불덩이 던지기. 고블린 크기(그림 칸·기준점 같음), 몸은 웅크린 70도트
+      //   claw = 불 발톱 할퀴기: 2장 발톱 치켜듦(예고) → 3장 달려들며 내리긋기(맞음, move 로 26 앞으로) → 4장 끝까지(reachF[4] 가까이)
+      //   fireball = 불덩이 던지기(6단계 총알과 같은 type 'shot': 쏜 사람 줄을 따라 똑바로). 2장 팔 뒤로(예고 300ms, 총잡이 500ms 보다 짧게
+      //     = 빨간 겨눔 선) → 3장 던짐(spawn = 손 자리). proj = 날아가는 그림, impact = 맞거나 끝까지 가면 터지는 그림(fxArt 이름), muzzle = 총구 연기(없음)
+      //     maxShooters = 같은 종류가 동시에 던지는 최대 수(도깨비 여럿이 한꺼번에 던지지 않게), gapMs = 한 번 던지면 이 시간 동안 안 던짐(대신 붙어서 할퀴기),
+      //     firstMs = 나타나서 처음 던질 수 있을 때까지(처음엔 달려와서 할퀴기)
+      //   잡몹 공격이 여럿: 거리가 when 안인 것 중 weight 로 고름(가까우면 할퀴기, 140~300 떨어져 있으면 던지기)
+      imp: {
+        label: '불 도깨비', frameW: 176, frameH: 136, pivot: { x: 92, y: 130 },
+        anims: enemyAnims('imp', {
+          idle: [4, 8, true], run: [8, 14, true],
+          attack: [5, 12, false, [1, 2, 2, 2, 3, 4, 4, 5]],          // 할퀴기: 1 웅크림 · 2 발톱 치켜듦(예고 250ms) · 3 내리긋기(맞음) · 4 끝까지 · 5 복귀
+          attack2: [5, 10, false, [1, 1, 2, 2, 2, 3, 4, 4, 5]],      // 불덩이: 1 손에 불덩이 · 2 팔 뒤로(예고) · 3 던짐 · 4 · 5 복귀
+          hit: [3, 10, false, [1, 2, 2, 3]],
+          hit2: [3, 10, false, [1, 1, 2, 2, 3]],
+          knockdown: [5, 10, false, [1, 2, 2, 3, 4, 5, 4, 5]],
+          getup: [3, 8, false, [1, 1, 2, 2, 3]],
+          death: [5, 9, false, [1, 2, 3, 4, 5]]                      // 금이 하얗게 달아오름 → 불길에 터짐 → 재 무더기 + 두 뿔
+        }),
+        fxArt: {
+          fireball: { frames: seq(EN + 'fireball/fireball_', 4), pivot: { x: 13, y: 16 }, fps: 14 },   // 날아가는 불덩이(공 가운데 기준, 불꼬리가 오른쪽 = 왼쪽으로 날아감)
+          burst:    { frames: seq(EN + 'burst/burst_', 4),       pivot: { x: 32, y: 44 }, fps: 12 }    // 불꽃 터짐(바닥 가운데 기준, 한 번)
+        },
+        walkAnim: 'run',
+        down: { slide: 80, lyingFrames: [3, 4, 5] },
+        hp: 45, speedX: 112, speedY: 62, radius: 14, height: 72,
+        hurtbox: { x0: -12, x1: 28, yTop: -70, yBot: 0 },
+        engage: 60, hover: [140, 200], range: [24, 300], alignY: 8, cooldown: [1200, 2200], firstCooldown: [300, 1200],
+        retreatMs: 900,           // 할퀴고(던지고) 난 뒤 뒤로 빠지는 시간 (치고 빠지기)
+        knockResist: 1.2, deathKnock: 220,
+        attacks: {
+          claw:     { anim: 'attack', active: [3, 4], telegraph: [2], reach: { x0: 14, x1: 76, yTop: -62, yBot: -2 }, reachF: { 4: { x0: 14, x1: 57, yTop: -55, yBot: -8 } },
+                      depth: 12, dmg: [5, 7], knock: 12, move: { frames: [3, 4], dist: 26 }, when: [24, 80], weight: 3 },
+          fireball: { type: 'shot', anim: 'attack2', telegraph: [2], spawnFrame: 3, spawn: { x: 62, y: -48 }, aimH: 48, dropPx: 0,
+                      proj: 'fireball', impact: 'burst', muzzle: null, maxShooters: 1, gapMs: 8000, firstMs: 2500,
+                      speed: 210, range: 300, box: { w: 14, h: 14 }, depth: 10, dodgeZ: 20,
+                      dmg: [4, 6], knock: 14, flinchMs: 300, when: [110, 300], weight: 1 }
+        }
+      },
+      // 용암 골렘(7단계 정예): 2단계 돌 골렘 그림을 「용암」 색(variant 'lava')으로 바꿔 쓰는 「보스가 아닌」 강한 적(체력 막대 없음, 판 보스는 와이번)
+      //   보스 규칙(체력 문턱 휘청·화남·졸개)은 없고, 공격 중 안 끊김(superArmor) + 한 번 움찔하면 staggerCdMs 동안 안 움찔(무한 콤보 없음)
+      //   넘어짐 그림이 없어서 안 넘어짐. 그림·효과는 돌 골렘과 같은 파일(한 번만 받음), 공격은 골렘과 같고 데미지만 낮춤
+      //   variant = 늘 이 색으로 나옴(웨이브에 { variant } 를 안 적어도). showTelegraph = 잡몹이어도 바닥 예고 띠
+      lavagolem: {
+        label: '골렘', variant: 'lava', frameW: 320, frameH: 232, pivot: { x: 168, y: 226 },
+        anims: enemyAnims('golem', {
+          idle: [4, 5, true], walk: [6, 8, true],
+          attack1: [5, 8, false, [1, 2, 2, 2, 2, 3, 4, 4, 4, 5]],
+          attack2: [5, 9, false, [1, 1, 1, 2, 3, 4, 4, 5]],
+          special: [5, 8, false, [1, 1, 2, 3, 3, 3, 3, 4, 4, 5]],
+          hit: [3, 8, false, [1, 2, 2, 3]],
+          hit2: [3, 8, false, [1, 1, 2, 2, 3]],
+          death: [5, 6, false, [1, 1, 2, 2, 3, 4, 5]]
+        }),
+        fxArt: {
+          boulder:   { frames: seq(EN + 'boulder/boulder_', 4),     pivot: { x: 32, y: 32 }, fps: 12 },
+          rockburst: { frames: seq(EN + 'rockburst/rockburst_', 5), pivot: { x: 64, y: 84 }, fps: 12 }
+        },
+        walkAnim: 'walk',
+        hp: 240, speedX: 30, speedY: 24, radius: 42, height: 150,
+        hurtbox: { x0: -34, x1: 55, yTop: -150, yBot: 0 },
+        engage: 70, hover: [90, 130], range: [30, 300], alignY: 10, cooldown: [2000, 3000], firstCooldown: [1200, 1800],
+        knockResist: 0.25, deathKnock: 60,
+        staggerCdMs: 2200,
+        superArmor: true,
+        attacks: {
+          slam:  { anim: 'attack1', active: [3, 4], reach: { x0: 30, x1: 100, yTop: -80, yBot: 0 }, depth: 16, showTelegraph: true,
+                   dmg: [9, 12], knock: 30, flinchMs: 420, telegraph: [2], shake: 2.0, when: [30, 100], weight: 2, heavy: true,
+                   burst: { x: 85, scale: 0.6 } },
+          sweep: { anim: 'attack2', active: [3, 4], reach: { x0: 30, x1: 136, yTop: -125, yBot: -60 }, depth: 14, showTelegraph: true,
+                   dmg: [8, 10], knock: 26, flinchMs: 380, telegraph: [1], shake: 1.3, when: [60, 150], weight: 3 },
+          throw: { type: 'throw', anim: 'special', telegraph: [1, 3], spawnFrame: 4, spawn: { x: 110, y: -112 },
+                   flightMs: 700, arcPeak: 60, maxRange: 280, radius: 38, depth: 16, dodgeZ: 24, gapMs: 5000,
+                   dmg: [9, 12], knock: 26, flinchMs: 420, shake: 2.2, when: [120, 300], weight: 2, heavy: true }
+        }
+      },
+      // 붉은 와이번(7단계 보스): 오크·골렘·전갈·두꺼비·선장과 같은 보스 규칙(공격 중 안 끊김, 체력 66%·33% 휘청, 절반에서 화남 + 도깨비 부름)
+      //   그림 칸 400x256(두꺼비와 같음), 휘청 3장 = 배를 깔고 날개를 늘어뜨림 = 때릴 기회(1000ms, 몸이 낮고 넓어서 stagger.hurtbox)
+      //   공격: combo = 물기 + 꼬리 휘두르기(1장 고개 젖히고 포효 = 예고 → 2장 물기 → 4장 꼬리(reachF[4]), multiHit = 장마다 한 번씩)
+      //         breath = 불 뿜기(type 'breath'): 1장 고개 젖힘·목이 달아오름(예고 550ms, 바닥 빨간 띠 = 불길 길이)
+      //           → 2·3·4장 반복(1초) 동안 입 앞 긴 상자(reach)에 tickMs 마다 불 데미지: 처음 닿으면 보통 맞음(dmg, 움찔),
+      //             그 뒤 계속 서 있으면(맞은 뒤 깜빡임 중) burn 만큼씩 탐(독처럼 체력 1 아래로는 안 내려감) → 줄을 바꾸면 피함
+      //           fx = 불길 그림(breath, 오른쪽 끝 = 잘린 면)을 입 앞 attach 에 붙여 segments 개 앞으로 이어 그림(segW = 한 개 길이), growMs = 처음 뻗어 나가는 시간
+      //         dive = 날아올라 내리꽂기(type 'dive'): fly 1장 웅크리고 날개 치켜듦(예고 420ms) → 2·3장 떠오름(z 까지) → fly 4·5장 맴돌며 플레이어 쪽으로
+      //           (hover: speed, 최대 maxMs, catchR 안으로 오면 멈춤. 바닥에 그림자 + 빨간 원 = 떨어질 자리) → warnMs 동안 그 자리에서 빨간 원이 진해짐
+      //           → dive 1장 fallMs 동안 떨어짐 → 2장 쾅(radius·depth 안이면 맞음, 넘어짐, 크게 흔들림, 높이 dodgeZ 넘게 뛰면 피함) slamMs → 3장 일어남 recoverMs
+      //           공중(떠오름~떨어짐)에서는 땅에서 하는 공격은 안 맞음 — 점프 공격(플레이어가 jumpZ 넘게 떠 있을 때)만 맞음. 거리 상관없이 씀(when 0~), 한 번 쓰면 gapMs 동안 안 씀
+      //   rim = 붉은 하늘에 붉은 몸이 묻히지 않게 그림 둘레에 어두운 테두리(px = 캔버스 점, alpha = 진하기)
+      wyvern: {
+        label: '붉은 와이번', boss: true, frameW: 400, frameH: 256, pivot: { x: 248, y: 250 },
+        anims: enemyAnims('wyvern', {
+          idle: [4, 5, true], walk: [6, 8, true],
+          attack1: [5, 9, false, [1, 1, 1, 1, 2, 2, 3, 4, 4, 5]],                 // 물기+꼬리: 1 포효(예고 450ms) · 2 물기 · 3 몸 돌림 · 4 꼬리 · 5 복귀
+          attack2: [5, 9, false, [1, 1, 1, 1, 1, 2, 3, 4, 2, 3, 4, 2, 3, 4, 5]],  // 불 뿜기: 1 목이 달아오름(예고 550ms) · 2-3-4 불길 세 번(1초) · 5 입 닫음
+          fly: [5, 9, false, null],                                                 // 날아오르기·맴돌기: 장마다 시간은 아래 dive 수치(코드에서)
+          dive: [3, 10, false, null],                                               // 내리꽂기: 1 떨어짐 · 2 쾅 · 3 일어남
+          hit: [3, 8, false, [1, 2, 2, 3]],
+          hit2: [3, 8, false, [1, 1, 2, 2, 3]],
+          stagger: [4, 7, false, null],                                             // 휘청: 장마다 시간은 아래 stagger.d (3장 = 배 깔고 뻗음)
+          death: [5, 6, false, [1, 1, 2, 2, 3, 4, 5]]                               // 마지막 포효 → 뒤로 넘어감 → 옆으로 쓰러짐
+        }),
+        fxArt: {
+          breath: { frames: seq(EN + 'breath/breath_', 4), pivot: { x: 125, y: 32 }, fps: 14 }   // 불길 한 토막(기준 = 오른쪽 잘린 면 가운데, 불 머리가 왼쪽)
+        },
+        walkAnim: 'walk',
+        rim: { color: '#1a0608', px: 1, alpha: 0.85 },
+        hp: 1000, speedX: 38, speedY: 28, radius: 48, height: 150,
+        hurtbox: { x0: -62, x1: 58, yTop: -150, yBot: 0 },
+        engage: 80, hover: [80, 110], range: [40, 180], alignY: 10, cooldown: [1000, 1800], firstCooldown: [1200, 1500],
+        knockResist: 0.2, deathKnock: 50,
+        staggerCdMs: 2200,
+        superArmor: true,
+        stagger: { at: [0.66, 0.33], onWall: false, d: [260, 160, 1000, 320], hurtbox: { x0: -112, x1: 113, yTop: -85, yBot: 0 } },
+        enrageAt: 0.5,
+        enrage: { speedMul: 1.25, cooldownMul: 0.7, summon: ['imp', 'imp', 'imp'] },
+        attacks: {
+          combo:  { anim: 'attack1', active: [2, 4], multiHit: true, telegraph: [1], depth: 14,
+                    reach: { x0: 50, x1: 142, yTop: -120, yBot: -80 }, reachF: { 4: { x0: 20, x1: 142, yTop: -82, yBot: -42 } },
+                    dmg: [12, 16], knock: 30, flinchMs: 420, shake: 1.6, when: [40, 150], weight: 3 },
+          breath: { type: 'breath', anim: 'attack2', telegraph: [1], active: [2, 3, 4], depth: 14,
+                    reach: { x0: 55, x1: 255, yTop: -114, yBot: -58 }, tickMs: 160,
+                    dmg: [4, 6], burn: [1, 2], knock: 8, flinchMs: 200, shake: 0.6, when: [70, 300], weight: 2,
+                    fx: { art: 'breath', attach: { x: 135, y: -86 }, segW: 119, segments: 1, growMs: 140 } },
+          dive:   { type: 'dive', anim: 'fly', diveAnim: 'dive', telegraph: [1],
+                    takeoffMs: [420, 120, 140], z: 80, hover: { fps: 9, speed: 170, maxMs: 1400, catchR: 8 }, warnMs: 450,
+                    fallMs: 200, slamMs: 320, recoverMs: 320, jumpZ: 8,
+                    radius: 110, depth: 24, dodgeZ: 24,
+                    dmg: [16, 20], knock: 40, flinchMs: 520, shake: 3.2, heavy: true, when: [0, 600], weight: 2, gapMs: 9000, firstMs: 5000 }
+        }
       }
     },
 
@@ -1236,7 +1376,8 @@
     //   bg = 배경 3장(위 BG_FOREST 설명). 판을 시작할 때 그 판 배경만 불러온다(main.js useStage → Assets.ensureBg)
     // 새 판 넣기: 아래 목록에 { id, … } 하나 추가하면 끝(스테이지 고르기 화면·다음 스테이지는 자동)
     //   id = 판 번호(고르기 화면 숫자 · 주소 ?stage=N 이 이 번호). 목록 순서 = 노는 순서(다음 스테이지 · 잠금 풀림은 목록 순서대로)
-    //   → 번호를 건너뛰어도 됨(2026-11-04: 5단계 설산은 그림이 아직이라 목록 = 1 2 3 4 6, 나중에 6 앞에 { id: 5 } 끼움)
+    //   → 번호를 건너뛰어도 됨(2026-11-04: 5단계 설산은 그림이 아직이라 목록 = 1 2 3 4 6 7, 나중에 6 앞에 { id: 5 } 끼움)
+    //   깬 판은 id 로 저장(main.js) → 5단계를 끼워도 예전 저장이 어긋나지 않음
     // 지금 하고 있는 판은 main.js 가 CFG.stage(+ CFG.bg = 그 판 bg)에 넣어 둔다 → 다른 코드는 예전처럼 CFG.stage 를 읽음
     // 시험 기간(2026-11-04 형님): 스테이지 고르기에서 모든 판을 처음부터 열어 둠. 정식으로 낼 때 false
     stagesAllOpen: true,
@@ -1432,6 +1573,47 @@
           { type: 'firepan',   x: 2040 + 332, y: 0.48 },
           { type: 'rumbarrel', x: 2250, y: 0.78, drop: 'meat' }    // 6번 웨이브 화면 = 보스방 바로 앞
         ]
+      },
+      // ===== 7단계: 화산 (2026-11-04 새 그림: 배경·소품·불 도깨비·붉은 와이번, 용암 골렘 = 2단계 골렘 색 바꿈) =====
+      // 6단계보다 한 단계 어렵게(체력·공격 x1.4): 새 적 불 도깨비(치고 빠지기 + 불덩이) + 해골·도마뱀·미라·총잡이 섞음,
+      //   용암 구멍 둘레에 미리 서 있는 무리 3곳 + 옆에서 지원, 5번 웨이브 = 용암 골렘(정예, 보스 아님), 보스 = 붉은 와이번(물기·불 뿜기·내리꽂기)
+      {
+        id: 7,
+        name: 'STAGE 7  화산',
+        width: 2880,
+        healOnClear: 18,            // 불덩이가 멀리서 조금씩 깎고 5번 웨이브 용암 골렘이 아프므로 웨이브마다 조금 더 회복(6단계 14)
+        bgTop: '#5c181d',           // 화면이 배경보다 높을 때 위쪽 하늘 색 (실제로는 배경 맨 윗줄 = 짙은 재빛 빨강을 늘려 씀)
+        bg: BG_VOLCANO,
+        hpMul: 1.4, dmgMul: 1.4,
+        waves: [
+          // 1: 흑요석 첨탑 — 불 도깨비 첫 등장(해골이 앞을 막음)
+          { at: 120,  spawn: [['imp', 'R', 0], ['skeleton', 'R', 700], ['imp', 'L', 2200]] },
+          // 2: 용암 구멍(500 + 326) 옆에 도깨비 + 도마뱀(camp1, 하나 깨면 둘 다 깸) + 옆에서 지원
+          { at: 500,  placed: [['imp', 288, 0.36, { group: 'camp1', dir: 1 }], ['lizard', 364, 0.58, { group: 'camp1' }]],
+                      spawn: [['goblin', 'L', 700], ['imp', 'R', 2400]] },
+          { at: 880,  spawn: [['imp', 'R', 0], ['mummy', 'L', 500], ['gunner', 'R', 1300], ['skeleton', 'L', 3000], ['goblin', 'R', 3600]] },
+          // 4: 폐허 신전 용암 구멍(1260 + 330) 둘레에 도깨비 둘 + 해골(camp2) + 옆에서 지원
+          { at: 1260, placed: [['imp', 292, 0.34, { group: 'camp2', dir: 1 }], ['skeleton', 372, 0.44, { group: 'camp2' }], ['imp', 340, 0.8, { group: 'camp2' }]],
+                      spawn: [['lizard', 'R', 1200], ['imp', 'L', 3400], ['goblin', 'R', 4200]] },
+          // 5: 대장간 앞 — 용암 골렘(정예) + 도깨비 둘
+          { at: 1650, spawn: [['lavagolem', 'R', 0], ['imp', 'L', 2500], ['imp', 'R', 6000]] },
+          // 6: 용의 둥지 입구 용암 구멍(2040 + 332)을 지키는 도깨비 둘(lair) + 옆에서 지원
+          { at: 2040, placed: [['imp', 296, 0.3, { group: 'lair', dir: 1 }], ['imp', 368, 0.66, { group: 'lair' }]],
+                      spawn: [['skeleton', 'R', 600], ['lizard', 'L', 1000], ['imp', 'R', 2800], ['goblin', 'L', 3400], ['imp', 'R', 4000]] },
+          { at: 'end', boss: true, spawn: [['wyvern', 'R', 0]] }
+        ],
+        // 소품: 불씨 항아리·쇠테 광석 상자(부서짐) + 끓는 용암 구멍 3개(장식, 무리 자리). 보스 앞 항아리는 고기가 꼭 나옴
+        props: [
+          { type: 'firepot',   x: 430,  y: 0.72 },
+          { type: 'orecrate',  x: 700,  y: 0.22 },
+          { type: 'magmavent', x: 500 + 326, y: 0.47 },
+          { type: 'firepot',   x: 1150, y: 0.7 },
+          { type: 'orecrate',  x: 1480, y: 0.26 },
+          { type: 'magmavent', x: 1260 + 330, y: 0.56 },
+          { type: 'orecrate',  x: 1860, y: 0.32, drop: 'bread' },
+          { type: 'magmavent', x: 2040 + 332, y: 0.48 },
+          { type: 'firepot',   x: 2250, y: 0.78, drop: 'meat' }    // 6번 웨이브 화면 = 보스방 바로 앞
+        ]
       }
     ],
 
@@ -1449,7 +1631,12 @@
       // 4단계(2026-11-04): 회색 늑대·흰 해골 → 모래 빛(누런 갈색). 회색·흰색이라 색상환 대신 color 로 물들임
       sand:  { label: '모래', hue: 0, sat: 0.9, bright: 1.0, color: '#d8a860', colorK: 0.38, hpMul: 1.1 },
       // 6단계(2026-11-04): 흰 해골·초록 고블린 → 바닷물에 전 「해적」 빛(칙칙한 푸른 회색). 흰색이 많아 color 로 물들임
-      pirate: { label: '해적', hue: 0, sat: 0.8, bright: 0.92, color: '#4a6a94', colorK: 0.34, hpMul: 1.1 }
+      pirate: { label: '해적', hue: 0, sat: 0.8, bright: 0.92, color: '#4a6a94', colorK: 0.34, hpMul: 1.1 },
+      // 7단계(2026-11-04): 회갈색 돌 골렘 → 「용암」 골렘(검은 현무암 몸 + 이끼 자리가 주황 용암으로 빛남)
+      //   glow = 원래 그림에서 색상(hue, 도)이 이 범위이고 채도가 sat 넘는 점(골렘의 초록 이끼)을 color 로 바꿈(원래 밝기만큼, 어두운 몸 위에서 빛나 보이게)
+      //     keep = 이 색상 범위의 진하고 밝은(가장 밝은 채널 light 이상) 점(가슴 주황 핵)은 어둡게 하지 않고 원래 색 그대로
+      lava:  { label: '용암', hue: 0, sat: 0.15, bright: 0.5, color: '#3a1610', colorK: 0.35,
+               glow: { hue: [48, 175], sat: 0.25, color: '#ff7a1e' }, keep: { hue: [8, 40], sat: 0.55, light: 150 } }
     },
 
     // ---------- 소품 그림 (2026-11-04, art\stage1-props 에서 복사 → assets/props/stage1/…, 크기·기준점은 props.json) ----------
@@ -1573,6 +1760,31 @@
         frames: seq('assets/props/stage6/firepan/burn_', 6), fps: 10,
         pivot: { x: 25, y: 79 }, solid: false, shadow: 16,
         glow: { r: 66, y: 46, color: '#ff9a3a', alpha: 0.3 }
+      },
+      // ----- 7단계 소품 (art\stage7-props 에서 복사 → assets/props/stage7/…, 크기·기준점은 그 폴더 props.json) -----
+      // 이름이 3단계 항아리(pot)·1단계 상자(crate)와 겹쳐서 종류 이름만 따로(그림 폴더 이름은 그대로)
+      // 불씨 항아리(검은 테두리 토기, 뚜껑에 불씨): 고블린 가슴 높이. 토기·검은 테·불씨 조각
+      firepot: {
+        frames: ['intact', 'cracked', 'damaged'].map(function (s) { return 'assets/props/stage7/pot/' + s + '_01.png'; }), fps: 0,
+        breakFrames: seq('assets/props/stage7/pot/break_', 4),
+        pivot: { x: 52, y: 75 }, solid: true, footprint: { w: 44, depth: 16 },
+        hits: 3, hurtbox: { x: -25, y: -62, w: 50, h: 61 }, shadow: 22,
+        chips: ['#b8603a', '#7a3a22', '#2a2224', '#ff9a3a', '#ffd060']
+      },
+      // 쇠테 두른 광석 상자(그을린 판자, 위에 빛나는 광석): 주인공 허리~가슴 높이. 판자·쇠테·광석 조각
+      orecrate: {
+        frames: ['intact', 'cracked', 'damaged'].map(function (s) { return 'assets/props/stage7/crate/' + s + '_01.png'; }), fps: 0,
+        breakFrames: seq('assets/props/stage7/crate/break_', 4),
+        pivot: { x: 47, y: 77 }, solid: true, footprint: { w: 65, depth: 18 },
+        hits: 3, hurtbox: { x: -34, y: -70, w: 69, h: 69 }, shadow: 34,
+        chips: ['#4a3628', '#2a2224', '#6a6a72', '#ff8a2a', '#ffd060']
+      },
+      // 끓는 용암 구멍(현무암 고리 + 부글거리는 용암): 바닥 장식(밟고 지나감, 안 부서짐, 안 아픔). 고리는 그대로, 용암·거품·김만 움직이는 6장 반복 8fps
+      //   그림이 작아서(원래 44도트) scale 로 조금 크게 그림(actorScale 0.55 x 약 1.35). 빛 = 바닥에 깔린 주황
+      magmavent: {
+        frames: seq('assets/props/stage7/vent/bubble_', 6), fps: 8, scale: 0.75,
+        pivot: { x: 26, y: 47 }, solid: false,
+        glow: [{ r: 56, y: 8, color: '#ff6a1a', alpha: 0.34 }, { r: 26, y: 14, color: '#ffc040', alpha: 0.22 }]
       }
     },
     // ---------- 부서지는 소품 공통 (상자·통) ----------
@@ -1756,6 +1968,9 @@
         mul(a.leap, ['max', 'aimAt'], S); mul(a.puddle, ['radius', 'depth'], S);
         // 6단계: 총알 거리·크기·날아가는 높이(speed 는 위에서), 대포알 떨어지는 높이·흩어지는 폭
         mul(a, ['range', 'aimH', 'dropPx', 'dropHeight'], S); mul(a.box, ['w', 'h'], S); mul(a.spread, ['x', 'y'], S);
+        // 7단계: 와이번 불길 그림 붙는 자리·한 토막 길이, 내리꽂기 나는 높이·맴돌 때 속도·멈추는 거리·점프 공격 높이
+        if (a.fx && a.fx.attach) { mul(a.fx.attach, ['x', 'y'], S); mul(a.fx, ['segW'], S); }
+        mul(a, ['z', 'jumpZ'], S); mul(a.hover, ['speed', 'catchR'], S);
       });
       // 6단계 총잡이 거리 두기
       if (T.ranged) { arr(T.ranged.keep); mul(T.ranged, ['tooClose'], S); }

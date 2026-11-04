@@ -1,6 +1,7 @@
 // 적: 고블린 · 늑대 · 오크 족장(보스) + 2단계 박쥐(나는 적) · 해골 병사(방패 막기) · 돌 골렘(보스, 바위 던지기)
 //   + 3단계 도마뱀 전사(찌르기·달려들기) · 거대 두꺼비(보스, 배치기·혀·독 뱉기) + 4단계 미라(잡기) · 전갈 왕(보스, 땅속 숨기)
-//   + 6단계 해적 총잡이(멀리서 쏨, 거리 두기) · 해적 선장(보스, 칼 두 번·권총·대포 일제 사격). 수치는 전부 config.js 의 enemies.
+//   + 6단계 해적 총잡이(멀리서 쏨, 거리 두기) · 해적 선장(보스, 칼 두 번·권총·대포 일제 사격)
+//   + 7단계 불 도깨비(치고 빠지기·불덩이) · 용암 골렘(정예, 골렘 색 바꿈) · 붉은 와이번(보스, 물기·불 뿜기·날아올라 내리꽂기). 수치는 전부 config.js 의 enemies.
 // 그림은 전부 「왼쪽을 봄」 → 그릴 때 ctx.scale(-dir, 1)  (dir = 1 이면 오른쪽을 봄)
 (function () {
   var uid = 0;
@@ -91,13 +92,27 @@
   };
 
   // 지금 맞을 수 있나 (넘어짐~일어남 동안은 무적)
-  Enemy.prototype.canBeHit = function () { return this.alive() && this.state !== 'down' && !this.hidden && !this.burrowInvuln() && !this.airborne(); };
-  // 공중(두꺼비 배치기 leap 의 뛰는 그림 2·3장): 안 맞고, 몸끼리 안 밀림(main.js separate)
+  //   7단계 와이번이 날아 있는 동안(diveAir)은 땅에서 하는 공격은 안 맞고, 플레이어가 jumpZ 넘게 떠 있을 때(점프 공격)만 맞음
+  Enemy.prototype.canBeHit = function () {
+    if (!this.alive() || this.state === 'down' || this.hidden || this.burrowInvuln()) return false;
+    if (this.diveAir()) return !!(this.lastP && (this.lastP.z || 0) > this.atk.spec.jumpZ);
+    return !this.airborne();
+  };
+  // 공중(두꺼비 배치기 leap 의 뛰는 그림 2·3장 / 와이번 날아오름~떨어짐): 안 맞고, 몸끼리 안 밀림(main.js separate)
   Enemy.prototype.airborne = function () {
     var a = this.atk;
-    if (this.state !== 'attack' || !a || a.spec.type !== 'leap') return false;
+    if (this.state !== 'attack' || !a) return false;
+    if (a.spec.type === 'dive') return this.diveAir();
+    if (a.spec.type !== 'leap') return false;
     return inList(a.spec.leap.frames, this.frameAt(a.spec.anim, a.t).no);
   };
+  // 와이번 날아오르기(dive): 땅을 떠난 단계(떠오름 2·3장 · 맴돌기 · 경고 · 떨어짐)
+  Enemy.prototype.diveAir = function () {
+    var a = this.atk;
+    return this.state === 'attack' && !!a && a.spec.type === 'dive' && (a.phase === 'hover' || a.phase === 'warn' || a.phase === 'fall' || (a.phase === 'takeoff' && a.z > 0));
+  };
+  // 지금 땅에서 떠 있는 높이(그림·몸 판정을 그만큼 위로, 그림자는 땅에)
+  Enemy.prototype.flyZ = function () { var a = this.atk; return this.state === 'attack' && a && a.spec.type === 'dive' ? a.z || 0 : 0; };
   // 땅속 숨기 무적 장: 파고드는 그림 invuln(3·4장) / 솟구치는 그림 eruptInvuln(1장) / 땅속(둔덕·떨림)
   Enemy.prototype.burrowInvuln = function () {
     var a = this.atk;
@@ -140,8 +155,8 @@
   Enemy.prototype.hurtbox = function () {
     var h = this.T.hurtbox, SG = this.T.stagger;
     if (this.state === 'stagger' && SG && SG.hurtbox && this.staggerIdx() === 2) h = SG.hurtbox;   // 휘청 3장(전갈 뒤집힘) = 몸이 더 넓게 누움
-    var xa = this.x + h.x0 * this.dir, xb = this.x + h.x1 * this.dir;
-    return { x0: Math.min(xa, xb), x1: Math.max(xa, xb), y0: this.y + h.yTop, y1: this.y + h.yBot, z: this.y };
+    var xa = this.x + h.x0 * this.dir, xb = this.x + h.x1 * this.dir, z = this.flyZ();   // 날아 있으면 그만큼 위로(점프 공격 판정과 맞춤)
+    return { x0: Math.min(xa, xb), x1: Math.max(xa, xb), y0: this.y - z + h.yTop, y1: this.y - z + h.yBot, z: this.y };
   };
   // 공격 판정 상자
   Enemy.prototype.attackBox = function (r, depth) {
@@ -221,6 +236,7 @@
   // 매 장면 갱신. ctx = { player, now, enemies, view: {x0,x1}, world, fx(dust 등), onPlayerHit(fn) }
   Enemy.prototype.update = function (dtMs, ctx) {
     var T = this.T, dt = dtMs / 1000, p = ctx.player;
+    this.lastP = p;                    // 날아 있을 때 점프 공격만 맞게(canBeHit)
     this.animT += dtMs;
     this.clock += dtMs;
     if (this.flashT > 0) this.flashT -= dtMs;
@@ -364,10 +380,10 @@
     this.x += vx * dt; this.y += vy * dt;
     if (Math.abs(p.x - this.x) > 2) this.dir = p.x > this.x ? 1 : -1;   // 뒷걸음질 때도 플레이어 쪽을 봄
   };
-  // 지금 총을 겨누고 있는 잡몹 수
-  function shooters(ctx) {
+  // 지금 총을 겨누고 있는 잡몹 수 (type = 그 종류만 셈: 7단계 불 도깨비는 도깨비끼리만)
+  function shooters(ctx, type) {
     var n = 0;
-    ctx.enemies.forEach(function (e) { if (e.state === 'attack' && e.atk && e.atk.spec.type === 'shot' && !e.T.boss) n++; });
+    ctx.enemies.forEach(function (e) { if (e.state === 'attack' && e.atk && e.atk.spec.type === 'shot' && !e.T.boss && (!type || e.type === type)) n++; });
     return n;
   }
 
@@ -387,8 +403,10 @@
       if (keys.length === 1) return keys[0];
       // 공격이 여럿(3단계 도마뱀 찌르기·달려들기): 거리가 when 안인 것 중 무게(weight)로
       //   gapMs = 그 공격을 한 번 쓰면 이 시간 동안은 안 씀(달려들기가 다가올 때마다 나오지 않게)
+      //   maxShooters = 던지기(type 'shot')는 같은 종류가 이만큼 이미 던지고 있으면 안 씀, firstMs = 나타나서 처음 쓸 수 있을 때까지(7단계 불 도깨비)
       var self = this, ok = keys.filter(function (k) { var A = T.attacks[k], w = A.when;
-        if (A.gapMs && self.clock - (self.usedAt[k] != null ? self.usedAt[k] : -1e9) < A.gapMs) return false;
+        if (A.gapMs && self.clock - (self.usedAt[k] != null ? self.usedAt[k] : (A.firstMs != null ? A.firstMs - A.gapMs : -1e9)) < A.gapMs) return false;
+        if (A.type === 'shot' && A.maxShooters && shooters(ctx, self.type) >= A.maxShooters) return false;
         return !w || (adx >= w[0] && adx <= w[1]); }), tot = 0;
       if (!ok.length) return null;
       ok.forEach(function (k) { tot += T.attacks[k].weight || 1; });
@@ -400,7 +418,7 @@
     var opts = [], sum = 0, self = this;
     Object.keys(T.attacks).forEach(function (k) {
       var a = T.attacks[k];
-      var yOk = a.type === 'charge' ? ady <= 40 * AS() : (a.type === 'throw' || a.type === 'burrow' || a.type === 'barrage') ? true : ady <= T.alignY;   // 바위 던지기·땅속 숨기·대포 사격은 줄 상관없음
+      var yOk = a.type === 'charge' ? ady <= 40 * AS() : (a.type === 'throw' || a.type === 'burrow' || a.type === 'barrage' || a.type === 'dive') ? true : ady <= T.alignY;   // 바위 던지기·땅속 숨기·대포 사격·날아올라 내리꽂기는 줄 상관없음
       if (a.type === 'burrow' && self.clock - self.lastBurrowAt < (a.gapMs || 0)) return;   // 한 번 숨은 뒤 gapMs 동안은 안 숨음
       // 그 밖의 gapMs(선장 대포 사격): 한 번 쓰면 이 시간 동안 안 씀. firstMs = 나타난 뒤 처음 쓸 수 있을 때까지
       if (a.type !== 'burrow' && a.gapMs) {
@@ -441,8 +459,17 @@
     if (spec.type === 'burrow') return this.updateBurrow(dtMs, ctx);
     if (spec.type === 'leap') return this.updateLeap(dtMs, ctx);
     if (spec.type === 'barrage') return this.updateBarrage(dtMs, ctx);
+    if (spec.type === 'dive') return this.updateDive(dtMs, ctx);
     var fr = this.frameAt(spec.anim, a.t);
     if (fr.done) { this.endAttack(); return; }
+    // 불 뿜기(7단계 와이번): 불길 장(active) 동안 tickMs 마다 입 앞 긴 상자 확인 → 처음 닿으면 보통 맞음, 그 뒤엔 타는 데미지(main.js ctx.burnPlayer)
+    if (spec.type === 'breath') {
+      if (!inList(spec.active, fr.no)) return;
+      if (a.fireT == null) { a.fireT = 0; a.tickT = 0; ctx.shake(spec.shake || 0.6); }
+      a.fireT += dtMs; a.tickT -= dtMs;
+      if (a.tickT <= 0) { a.tickT += spec.tickMs; this.breathTick(spec, ctx); }
+      return;
+    }
     // 총 쏘기(6단계 총잡이·선장 권총): 겨누는 동안 방향·줄 고정 → spawnFrame 그림에서 총알 하나(main.js ctx.fireShot)
     if (spec.type === 'shot') {
       if (!a.fired && fr.no >= spec.spawnFrame) { a.fired = true; if (ctx.fireShot) ctx.fireShot(this, spec); }
@@ -585,6 +612,63 @@
     if (fr.done && a.dropped >= s.count && a.t - a.lastDrop >= (s.holdMs || 0)) this.endAttack();
   };
 
+  // 불 뿜기 한 번 확인: 상자(reach, 위아래 depth)에 플레이어 몸이 닿으면 → 맞을 수 있으면 보통 맞음(onPlayerHit),
+  //   맞은 뒤 깜빡임(무적) 중이면 타는 데미지(burnPlayer: 작게, 체력 1 아래로는 안 내려감)
+  Enemy.prototype.breathTick = function (spec, ctx) {
+    var p = ctx.player, b = this.attackBox(spec.reach, spec.depth), h = p.hurtbox();
+    if (!(b.x0 < h.x1 && b.x1 > h.x0 && b.y0 < h.y1 && b.y1 > h.y0 && Math.abs(b.z - h.z) <= b.depth)) return;
+    if (ctx.onPlayerHit(this, spec)) { this.atk.hit = true; return; }
+    if (ctx.burnPlayer) ctx.burnPlayer(this, spec);
+  };
+
+  // 와이번 날아올라 내리꽂기(dive): takeoff(fly 1장 예고 → 2·3장 떠오름 z 0→높이) → hover(fly 4·5장, 플레이어 쪽으로 날아감, 최대 maxMs)
+  //   → warn(그 자리에 멈춰 빨간 원이 진해짐) → fall(dive 1장, z 높이→0) → slam(dive 2장 쾅: 판정 한 번 + 크게 흔들림 + 양쪽 먼지·돌)
+  //   → recover(dive 3장) → 끝. a.z = 지금 높이(그림·몸 판정·그림자 크기)
+  Enemy.prototype.updateDive = function (dtMs, ctx) {
+    var a = this.atk, s = a.spec, dt = dtMs / 1000, p = ctx.player, HV = s.hover, w = ctx.world;
+    if (a.phase === 'wind') { a.phase = 'takeoff'; a.t = dtMs; a.z = 0; if (Math.abs(p.x - this.x) > 4) this.dir = p.x > this.x ? 1 : -1; }
+    if (a.phase === 'takeoff') {
+      var t0 = s.takeoffMs[0], up = s.takeoffMs[1] + s.takeoffMs[2];
+      if (a.t >= t0) {
+        if (!a.lifted) { a.lifted = true; ctx.dust(this.x - 30 * AS(), this.y, -1); ctx.dust(this.x + 30 * AS(), this.y, 1); ctx.shake(0.8); }
+        var u = Math.min(1, (a.t - t0) / up);
+        a.z = s.z * (1 - (1 - u) * (1 - u));   // 처음 빠르게 → 위에서 느리게
+      }
+      if (a.t >= t0 + up) { a.phase = 'hover'; a.t = 0; a.z = s.z; }
+      return;
+    }
+    if (a.phase === 'hover') {
+      var dx = p.x - this.x, dy = p.y - this.y, d = Math.hypot(dx, dy), sp = HV.speed * this.speedMul() * dt;
+      if (p.state !== 'dead' && d > 0.5) { this.x += dx / d * Math.min(d, sp); this.y += dy / d * Math.min(d, sp); }
+      this.y = Math.max(w.laneTop, Math.min(w.laneBottom, this.y));
+      if (Math.abs(dx) > 2) this.dir = dx > 0 ? 1 : -1;
+      a.z = s.z + Math.sin(a.t / 140) * 2 * AS();   // 날갯짓에 맞춰 살짝 오르내림
+      if ((Math.abs(dx) <= HV.catchR && Math.abs(dy) <= HV.catchR) || a.t >= HV.maxMs || p.state === 'dead') { a.phase = 'warn'; a.t = 0; a.tx = this.x; a.ty = this.y; }
+      return;
+    }
+    if (a.phase === 'warn') {
+      a.z = s.z + Math.sin(a.t / 70) * 1.5 * AS();
+      if (a.t >= s.warnMs) { a.phase = 'fall'; a.t = 0; }
+      return;
+    }
+    if (a.phase === 'fall') {
+      var f = Math.min(1, a.t / s.fallMs);
+      a.z = s.z * (1 - f * f);   // 점점 빨리
+      if (a.t >= s.fallMs) {
+        a.phase = 'slam'; a.t = 0; a.z = 0;
+        ctx.shake(s.shake); ctx.dust(this.x - 40 * AS(), this.y, -1); ctx.dust(this.x + 40 * AS(), this.y, 1);
+        if (ctx.debris) ctx.debris(this.x, this.y, 14, ['#3a2a2a', '#5a4a44', '#ff8a2a', '#ffd060', '#2a2224']);   // 현무암 조각 + 불씨
+        // 판정 한 번: 가로 radius · 위아래 depth 안 + 높이 dodgeZ 아래(점프로 피함)
+        if (p.state !== 'dead' && Math.abs(p.x - this.x) <= s.radius && Math.abs(p.y - this.y) <= s.depth && (p.z || 0) <= s.dodgeZ) {
+          a.hit = true; ctx.onPlayerHit(this, s);
+        }
+      }
+      return;
+    }
+    if (a.phase === 'slam') { if (a.t >= s.slamMs) { a.phase = 'recover'; a.t = 0; } return; }
+    if (a.t >= s.recoverMs) this.endAttack();
+  };
+
   // 오크 어깨 돌진: 웅크림(예고) → 돌진(미끄러짐 + 먼지) → 부딪힘 → 복귀
   Enemy.prototype.updateCharge = function (dtMs, ctx) {
     var a = this.atk, s = a.spec, dt = dtMs / 1000, p = ctx.player;
@@ -641,6 +725,13 @@
         return imgs[0];
       }
       if (a.held) return imgs[s.grab.holdFrame - 1] || imgs[imgs.length - 1];   // 미라: 붙잡고 있는 동안(움켜쥔 손)
+      if (s.type === 'dive') {   // 와이번: fly 1→2→3(떠오름) → 4·5 반복(맴돌기) / dive 1(떨어짐) · 2(쾅) · 3(일어남)
+        var dv = this.art[s.diveAnim];
+        if (a.phase === 'wind') return imgs[0];
+        if (a.phase === 'takeoff') { var tm = s.takeoffMs; return imgs[a.t < tm[0] ? 0 : a.t < tm[0] + tm[1] ? 1 : 2]; }
+        if (a.phase === 'hover' || a.phase === 'warn') return imgs[3 + Math.floor(this.clock * s.hover.fps / 1000) % 2];
+        return dv[a.phase === 'fall' ? 0 : a.phase === 'slam' ? 1 : 2];
+      }
       if (s.type === 'burrow') {
         if (a.phase === 'erupt') return this.frameAt(s.eruptAnim, a.t).img;
         if (a.phase === 'dig' || a.phase === 'wind') return this.frameAt(s.anim, a.t).img;
@@ -704,6 +795,13 @@
     }
     if (s.type === 'shot') { this.drawAim(g, camX); return; }   // 총: 겨누는 동안 빨간 겨눔 선
     if (s.type === 'barrage') return;                            // 대포 사격: 떨어질 자리는 main.js 가 그림(그림자 + 빨간 원)
+    if (s.type === 'dive') {     // 와이번 내리꽂기: 날아 있는 동안 몸 밑(떨어질 자리)에 빨간 원. 맴도는 동안 옅게 따라가다가 경고·떨어짐에서 진하게
+      var ry = Math.max(s.depth, s.radius * 0.3);
+      if (a.phase === 'hover' || (a.phase === 'takeoff' && a.z > 0)) drawRing(g, camX, this.x, this.y, s.radius, ry, 0, true);
+      else if (a.phase === 'warn') drawRing(g, camX, a.tx, a.ty, s.radius, ry, a.t / (s.warnMs + s.fallMs), false);
+      else if (a.phase === 'fall') drawRing(g, camX, a.tx, a.ty, s.radius, ry, (s.warnMs + a.t) / (s.warnMs + s.fallMs), false);
+      return;
+    }
     if (a.held) return;
     if (s.type === 'charge') {
       if (a.phase !== 'wind') return;
@@ -761,22 +859,25 @@
       var len = this.frameAt('death', 0).len, t = this.deadT - len - AI.deathHoldMs;
       if (t > 0) { if (Math.floor(t / 70) % 2 === 0) return; alpha = Math.max(0.2, 1 - t / AI.deathFadeMs); }
     }
-    window.drawShadow(g, x, y, T.radius * 1.1);
+    var fz = this.flyZ();   // 7단계 와이번: 날아 있는 높이(그림만 위로, 그림자는 땅에서 작아짐)
+    window.drawShadow(g, x, y, T.radius * 1.1 * (fz > 0 ? Math.max(0.55, 1 - fz / (120 * AS())) : 1));
     if (!img) return;
     // 나는 적: 떠 있는 동안(서 있기·날기) 위아래로 살짝 흔들림(그림자는 그대로 땅에)
     var by = 0;
     if (T.flying && T.flying.bob && (this.state === 'idle' || this.state === 'walk')) by = snapPx(Math.sin(this.clock / T.flying.bobMs * Math.PI * 2) * T.flying.bob);
     g.save();
     g.globalAlpha = alpha;
-    g.translate(x, y + by);
+    g.translate(x, y + by - snapPx(fz));
     var ds = T.drawScale || 1;    // 6단계 선장: 그림만 조금 크게(판정은 config 에서 같이 키움)
     g.scale(-this.dir * ds, ds);  // 그림이 왼쪽을 보므로 반대로
+    if (T.rim) drawRim(g, img, T.pivot, T.rim);   // 7단계 와이번: 붉은 하늘에 안 묻히게 어두운 테두리
     Assets.blit(g, img, T.pivot.x, T.pivot.y);
     if (this.flashT > 0) {
       var s = FX.whiteSilhouette(img, 0, 0, img.width, img.height, 1);
       g.globalAlpha = alpha * Math.min(1, this.flashT / (this.cfg.juice.flashMs * 0.5));
       Assets.blit(g, img, T.pivot.x, T.pivot.y, s);
     }
+    if (this.state === 'attack' && this.atk.spec.type === 'breath') this.drawBreath(g);   // 불 뿜기: 입 앞 불길(몸과 같은 좌표 = 왼쪽을 보는 그림 기준)
 
     g.restore();
     // 보스 휘청: 가슴 핵 주황 빛(1·2·4 장, 3장 = 핵 꺼짐 = 때릴 기회). core.x = 앞 +
@@ -811,6 +912,36 @@
       g.fillStyle = '#0f0'; g.fillRect(x - 1, y - 1, 3, 3);
     }
   };
+
+  // 불 뿜기 불길(fxArt[fx.art], 7단계 와이번): 불길 장(active) 동안 입 앞 attach(앞 +)에 그림 기준점(오른쪽 잘린 면)을 붙이고
+  //   앞으로 segW 마다 segments 개 이어 그림. 처음 growMs 동안 입에서 앞으로 뻗어 나감(가로로 늘어남). 지금 좌표 = 왼쪽을 보는 그림 기준(앞 = -x)
+  Enemy.prototype.drawBreath = function (g) {
+    var a = this.atk, s = a.spec, B = s.fx, F = window.GAME && GAME.assets && GAME.assets.enemyFx && GAME.assets.enemyFx[this.type], A = F && F[B.art];
+    if (a.fireT == null || !inList(s.active, this.frameAt(s.anim, a.t).no) || !A || !A.frames.length) return;
+    var im = A.frames[Math.floor(a.fireT * A.fps / 1000) % A.frames.length];
+    var grow = Math.min(1, (a.fireT + 16) / (B.growMs || 1));
+    g.save();
+    g.translate(-B.attach.x, B.attach.y);
+    g.scale(grow, 1);
+    for (var i = 0; i < (B.segments || 1); i++) { Assets.blit(g, im, A.pivot.x, A.pivot.y); g.translate(-B.segW, 0); }
+    g.restore();
+  };
+
+  // 어두운 테두리(rim): 그림 실루엣을 어두운 색으로 칠해 위·아래·왼·오른쪽으로 px(캔버스 점)씩 밀어 그림 → 그 위에 원래 그림.
+  //   실루엣은 그림마다 한 번만 만들어 둠(img._rim). 지금 좌표는 Enemy.draw 의 그림 좌표(blit 와 같음)
+  function drawRim(g, img, pv, R) {
+    if (!img) return;
+    if (!img._rim) {
+      var c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+      var cg = c.getContext('2d'); cg.drawImage(img, 0, 0);
+      cg.globalCompositeOperation = 'source-in'; cg.fillStyle = R.color; cg.fillRect(0, 0, c.width, c.height);
+      img._rim = c;
+    }
+    var k = img._k || 1, ox = img._ox || 0, oy = img._oy || 0, d = (R.px || 1) / ((window.CFG && CFG.view.renderScale) || 1) / k;   // 캔버스 점 → 그림 점
+    g.save(); g.scale(k, k); g.globalAlpha *= R.alpha != null ? R.alpha : 1;
+    [[-d, 0], [d, 0], [0, -d], [0, d]].forEach(function (o) { g.drawImage(img._rim, ox - pv.x + o[0], oy - pv.y + o[1]); });
+    g.restore();
+  }
 
   // 땅속으로 다가오는 모래 둔덕(fxArt.mound, 오른쪽으로 가면 뒤집기). 처음 100ms 는 파고든 둔덕(burrow 4장)보다 좁아서 조금 크게,
   //   warn(곧 솟구침) 동안 좌우로 떨림. 그림이 없으면 모래색 반원
