@@ -681,6 +681,9 @@
       // 달리며 공격의 밀고 가는 작은 타(2026-11-03): 보통 숫자보다 작고(large 8도트) 하늘색 → 마무리 숫자와 구분
       push: { font: 'large', scale: 1, top: '#e8fbff', bottom: '#8fd6ff', outline: '#163048', shadow: 'rgba(8,14,30,0.35)',
               pop: { top: '#ffffff', bottom: '#d8f4ff' } },
+      // 음식 먹고 회복한 양(2026-11-04): 초록 숫자, 보통 숫자와 같은 크기
+      heal: { font: 'mid', scale: 1, top: '#d6ffc4', bottom: '#4cd64a', outline: '#123a16', shadow: 'rgba(6,30,10,0.35)',
+              pop: { top: '#ffffff', bottom: '#a8ff8a' } },
       hurtBottom: '#b82c26',
       popK: 0.12,
       // 여러 번 한꺼번에 맞을 때 숫자 쌓기 (2026-11-03, 메이플처럼 위로 줄 세움, fx.js 의 FX.damage)
@@ -836,7 +839,9 @@
     //     카메라가 다가가면 그 자리에 가만히 서 있다가 → 플레이어가 ai.wake.dist 안으로 오거나 / 화면이 고정되거나 / 맞으면 깸
     //     → 머리 위 「!」 잠깐(ai.wake.alertMs) → 보통 적처럼 싸움. group 이 같으면 하나만 깨도 다 깸. 웨이브 클리어에 같이 셈
     //     pose = 쉬는 그림 이름(적 anims 에 그 그림이 있을 때만, 없으면 idle). dir = 바라보는 쪽(-1 왼쪽 기본, 1 오른쪽)
-    //   props = 장식 소품(2026-11-04): [{ type, x, y }] x = 판 위 도트, y = 걷는 길 안 위치(0~1). 그림은 CFG.propTypes[type]
+    //   props = 소품(2026-11-04): [{ type, x, y, drop }] x = 판 위 도트(소품 가운데), y = 걷는 길 안 위치(0~1). 그림·수치는 CFG.propTypes[type]
+    //     drop = 부서질 때 나오는 음식: 'meat' / 'bread' / 'none' / 'random'(없으면 random = CFG.props.drop 확률)
+    //     막는 소품(상자·통)은 걷는 길을 다 막지 않게 위아래로 비켜 두기(길 폭 약 72도트, 상자 하나가 약 10도트를 막음)
     //   healOnClear = 웨이브를 깰 때마다 체력 회복
     //   hpMul / dmgMul = 이 판 적 전부의 체력·공격력 배율(없으면 1) → 예전 몬스터를 「강한 버전」으로 다시 씀
     //   bg = 배경 3장(위 BG_FOREST 설명). 판을 시작할 때 그 판 배경만 불러온다(main.js useStage → Assets.ensureBg)
@@ -855,8 +860,8 @@
           // 2: 길을 지키는 늑대 한 마리가 미리 서 있음 + 옆에서 지원
           { at: 500,  placed: [['wolf', 330, 0.5]],
                       spawn: [['goblin', 'L', 400], ['wolf', 'R', 1800], ['goblin', 'R', 2600]] },
-          // 3: 모닥불 둘레 고블린 둘(camp1, 하나 깨면 둘 다 깸) + 옆에서 지원
-          { at: 880,  placed: [['goblin', 300, 0.3, { group: 'camp1' }], ['goblin', 350, 0.75, { group: 'camp1' }]],
+          // 3: 모닥불(880 + 326) 양옆에 앉은 고블린 둘(camp1, 하나 깨면 둘 다 깸, 서로 불을 보고 있음) + 옆에서 지원
+          { at: 880,  placed: [['goblin', 288, 0.38, { group: 'camp1', dir: 1 }], ['goblin', 364, 0.56, { group: 'camp1' }]],
                       spawn: [['goblin', 'L', 900], ['goblin', 'R', 3800], ['goblin', 'L', 4300]] },
           { at: 1260, spawn: [['wolf', 'R', 0], ['wolf', 'L', 500], ['goblin', 'R', 1200], ['wolf', 'R', 3400], ['goblin', 'L', 3800]] },
           // 5: 고블린 + 늑대가 같이 쉬고 있음(camp2) + 옆에서 지원
@@ -865,8 +870,16 @@
           { at: 2040, spawn: [['wolf', 'R', 0], ['wolf', 'R', 300], ['goblin', 'L', 700], ['goblin', 'R', 2800], ['goblin', 'L', 3200], ['wolf', 'R', 4200]] },
           { at: 'end', boss: true, spawn: [['orc', 'R', 0]] }
         ],
-        // 장식(소품): 3번 웨이브 고블린 모닥불. 그림은 아직 없음(CFG.propTypes 에 넣으면 보임, 없으면 ?debug=1 에서만 표시)
-        props: [{ type: 'campfire', x: 880 + 325, y: 0.52 }]
+        // 소품: 3번 웨이브 고블린 모닥불 + 길가 상자·통(웨이브 화면 안에 보이게). 보스 앞 통 하나는 고기가 꼭 나옴
+        props: [
+          { type: 'crate',    x: 420,  y: 0.25 },
+          { type: 'barrel',   x: 780,  y: 0.72 },
+          { type: 'campfire', x: 880 + 326, y: 0.46 },
+          { type: 'crate',    x: 1480, y: 0.66 },
+          { type: 'barrel',   x: 1516, y: 0.3 },
+          { type: 'crate',    x: 1870, y: 0.42, drop: 'bread' },
+          { type: 'barrel',   x: 2330, y: 0.56, drop: 'meat' }    // 6번 웨이브 화면 끝 = 보스방 바로 앞
+        ]
       },
       // ===== 임시 2단계: 새 그림이 오면 배경·적·웨이브를 통째로 바꾼다. 지금은 1단계 그림 그대로 + 늑대 많이 + 조금 강하게 =====
       {
@@ -885,6 +898,10 @@
           { at: 1650, spawn: [['goblin', 'R', 0], ['wolf', 'L', 200], ['wolf', 'R', 900], ['goblin', 'R', 3200], ['wolf', 'L', 3600, { variant: 'ice' }], ['goblin', 'R', 4400], ['wolf', 'R', 5000]] },
           { at: 2040, spawn: [['wolf', 'R', 0], ['wolf', 'R', 300], ['wolf', 'L', 600, { variant: 'ice' }], ['goblin', 'R', 2600], ['goblin', 'L', 3000], ['wolf', 'R', 3800], ['goblin', 'L', 4400]] },
           { at: 'end', boss: true, spawn: [['orc', 'R', 0]] }
+        ],
+        props: [
+          { type: 'crate',  x: 700,  y: 0.32 },
+          { type: 'barrel', x: 1450, y: 0.66, drop: 'meat' }
         ]
       },
       // ===== 임시 3단계: 1단계 그림 그대로 + 적 많이 + 더 강하게 + 보스 = 붉은 오크(색만 바꿈) =====
@@ -905,6 +922,11 @@
           { at: 2160, spawn: [['wolf', 'R', 0], ['wolf', 'R', 250], ['goblin', 'L', 500], ['goblin', 'L', 800], ['wolf', 'R', 2600, { variant: 'ice' }], ['goblin', 'R', 3000], ['goblin', 'L', 3400], ['wolf', 'R', 4200]] },
           { at: 2560, spawn: [['goblin', 'R', 0], ['goblin', 'L', 0], ['wolf', 'R', 600], ['wolf', 'L', 900], ['goblin', 'R', 3000], ['wolf', 'L', 3400, { variant: 'ice' }]] },
           { at: 'end', boss: true, spawn: [['orc', 'R', 0, { variant: 'ember' }]] }
+        ],
+        props: [
+          { type: 'barrel', x: 900,  y: 0.5 },
+          { type: 'crate',  x: 1700, y: 0.3 },
+          { type: 'barrel', x: 2640, y: 0.7, drop: 'meat' }
         ]
       }
     ],
@@ -920,12 +942,59 @@
       ember: { label: '붉은', hue: 270, sat: 1.2, bright: 0.95, dmgMul: 1.1 }   // 연두 오크 → 붉은 오크
     },
 
-    // ---------- 장식 소품 그림 (2026-11-04) ----------
+    // ---------- 소품 그림 (2026-11-04, art\stage1-props 에서 복사 → assets/props/stage1/…, 크기·기준점은 props.json) ----------
     // 판의 props 가 쓰는 그림. 그림이 아직 없는 종류는 안 그림(?debug=1 이면 자리 표시만).
-    //   frames = 그림 경로 목록(seq 로), fps = 1초에 장 수(1장이면 0), pivot = 그림 속 바닥 가운데(원래 크기), scale = 그리는 배율(없으면 actorScale)
-    //   예) campfire: { frames: seq('assets/props/campfire_', 4), fps: 8, pivot: { x: 32, y: 60 } }
-    //   나중에 부서지는 소품(hp)도 여기 수치를 더하는 식으로 넣을 수 있게 판 props 는 { type, x, y } 객체로 둔다
-    propTypes: {},
+    //   frames = 그림 경로 목록(seq 로, 부서지는 소품은 멀쩡 → 금 감 → 많이 부서짐 3장), fps = 1초에 장 수(0 = 멈춘 그림, 맞은 횟수로 장을 고름)
+    //   pivot = 그림 속 바닥 가운데(원래 크기), scale = 그리는 배율(없으면 actorScale)
+    //   아래 거리 값은 전부 원래 그림 크기(1배) 기준 → 맨 아래 scaleActors 가 actorScale 로 줄인다
+    //   solid = 못 지나감: footprint = 바닥에서 막는 상자 { w = 가로(기준점 가운데), depth = 위아래(걷는 길) 두께 }
+    //   hits = 몇 번 맞으면 부서지나(CFG.props), hurtbox = 맞는 상자(기준점에서 x, y = 왼쪽 위, w, h), breakFrames = 부서지는 그림(14fps 한 번)
+    //   shadow = 발밑 그림자 반폭(없으면 안 그림), glow = 바닥 빛 { r, y(기준점 위로), color, alpha } (모닥불)
+    propTypes: {
+      crate: {
+        frames: ['intact', 'cracked', 'damaged'].map(function (s) { return 'assets/props/stage1/crate/' + s + '_01.png'; }), fps: 0,
+        breakFrames: seq('assets/props/stage1/crate/break_', 4),
+        pivot: { x: 51, y: 89 }, solid: true, footprint: { w: 52, depth: 18 },
+        hits: 3, hurtbox: { x: -27, y: -49, w: 54, h: 48 }, shadow: 26
+      },
+      barrel: {
+        frames: ['intact', 'cracked', 'damaged'].map(function (s) { return 'assets/props/stage1/barrel/' + s + '_01.png'; }), fps: 0,
+        breakFrames: seq('assets/props/stage1/barrel/break_', 4),
+        pivot: { x: 47, y: 96 }, solid: true, footprint: { w: 42, depth: 18 },
+        hits: 3, hurtbox: { x: -23, y: -60, w: 46, h: 59 }, shadow: 22
+      },
+      // 모닥불: 장식(지나갈 수 있음, 안 부서짐). 돌·장작은 그대로, 불꽃만 움직이는 6장 반복
+      campfire: {
+        frames: seq('assets/props/stage1/campfire/burn_', 6), fps: 10,
+        pivot: { x: 29, y: 73 }, solid: false, shadow: 20,
+        glow: { r: 70, y: 22, color: '#ff9a3a', alpha: 0.32 }
+      }
+    },
+    // ---------- 부서지는 소품 공통 (상자·통) ----------
+    //   보통 타 1번 = 한 단계(멀쩡 → 금 감 → 많이 부서짐 → 부서짐). 콤보 마무리 타 = 2단계. 기술 / 데미지 oneShotDmg 이상 = 한 번에 부서짐
+    //   hitGapMs = 이 시간 안에 또 맞으면 안 셈(여러 판정이 한꺼번에 닿아도 한 단계만), flashMs = 하얀 번쩍, wobbleMs·wobble = 흔들림(도트)
+    //   breakFps = 부서지는 그림 속도, holdMs = 마지막 장(잔해 더미)을 보여 주는 시간, fadeMs = 그다음 흐려지며 사라지는 시간
+    //   hitAbove = 맞는 상자를 물체 위로 늘리는 높이(원래 크기): 허리 높이 상자를 얼굴 높이 주먹·베기로도 맞힘
+    //   actorDepth = 몸끼리 막을 때 캐릭터 발 두께(위아래 반폭, 도트 그대로), lookAhead = 적·자동 조종이 앞 몇 도트 안의 소품을 돌아가나
+    //   drop = 판 props 에 drop 이 없거나 'random' 일 때: 고기·빵이 나올 확률(나머지 = 안 나옴)
+    props: {
+      oneShotDmg: 30, hitGapMs: 90, flashMs: 80, wobbleMs: 160, wobble: 1.5,
+      breakFps: 14, holdMs: 600, fadeMs: 400, hitAbove: 40,
+      actorDepth: 3, lookAhead: 48,
+      drop: { meat: 0.2, bread: 0.35 },
+      woodColors: ['#c8894a', '#9a5f30', '#6e4022', '#e0b070']   // 나뭇조각 색
+    },
+    // ---------- 음식 (부서진 소품에서 나옴, 밟으면 체력 회복) ----------
+    //   heal = 회복량(최대 체력은 안 넘음), frames = 그림(같은 기준점), pickup = 줍는 거리 { r = 가로, depth = 위아래 }(원래 크기)
+    //   lifeMs = 바닥에 남아 있는 시간, blinkMs = 사라지기 전 깜빡이는 시간, hop = 나올 때 튀어 오르는 높이(원래 크기), pickupDelayMs = 나오자마자 줍지 않게
+    food: {
+      pivot: { x: 30, y: 26 },
+      items: {
+        meat:  { frame: 'assets/props/stage1/food/meat_01.png',  heal: 40 },
+        bread: { frame: 'assets/props/stage1/food/bread_01.png', heal: 20 }
+      },
+      pickup: { r: 16, depth: 12 }, lifeMs: 15000, blinkMs: 3000, hop: 22, pickupDelayMs: 250, shadow: 12
+    },
 
     // 먼지 효과(오크 돌진): 112x64, 바닥 가운데 기준
     dust: { frames: seq('assets/fx/dust_', 5), pivot: { x: 56, y: 60 }, fps: 12 },
@@ -1063,5 +1132,12 @@
         arr(a.when);
       });
     });
+    // 소품·음식: 맞는 상자·막는 상자·그림자·빛·줍는 거리·튀어 오름 (그림은 assets.js 가 actorScale 로 그림)
+    Object.keys(C.propTypes || {}).forEach(function (k) {
+      var D = C.propTypes[k];
+      mul(D.hurtbox, ['x', 'y', 'w', 'h'], S); mul(D.footprint, ['w', 'depth'], S); mul(D, ['shadow'], S); mul(D.glow, ['r', 'y'], S);
+    });
+    mul(C.props, ['hitAbove'], S);
+    if (C.food) { mul(C.food.pickup, ['r', 'depth'], S); mul(C.food, ['hop', 'shadow'], S); }
   })(window.CFG);
 })();

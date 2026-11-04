@@ -250,6 +250,7 @@
     else { tx = p.x + this.side * this.hoverD; ty = p.y + this.yOff; }
     if (this.retreatT > 0) { tx = p.x + this.side * (T.engage + 90 * AS()); ty = p.y + this.yOff; }
     ty = Math.max(ctx.world.laneTop, Math.min(ctx.world.laneBottom, ty));
+    if (ctx.steer) { var sv = ctx.steer(this, tx, ty); tx = sv.x; ty = sv.y; }   // 막는 소품(상자·통): 목표가 그 안이면 옆으로, 앞에 있으면 위나 아래로 돌아감 (props.js)
     var mx = tx - this.x, my = ty - this.y;
     var vx = Math.abs(mx) > 4 ? Math.sign(mx) * T.speedX * this.speedMul() : 0;
     var vy = Math.abs(my) > 3 ? Math.sign(my) * T.speedY * this.speedMul() : 0;

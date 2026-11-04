@@ -189,11 +189,12 @@
   }
 
   // 번개가 겨눌 적: 앞쪽(바라보는 쪽) range 안, 위아래 aim.depth 안, 가까운 순. 1번 = 가장 가까운 적, 2·3번 = 그다음(적이 모자라면 마지막 적 다시)
+  //   소품(상자·통, isProp)은 안 겨눔 (떨어진 번개에 같이 맞는 것은 됨)
   function aimTargets(p, K) {
     var A = K.aim; if (!A) return null;
     var list = [];
     H.targets().forEach(function (t) {
-      if (!t || (t.canBeHit && !t.canBeHit()) || (t.alive && !t.alive())) return;
+      if (!t || t.isProp || (t.canBeHit && !t.canBeHit()) || (t.alive && !t.alive())) return;
       var dx = (t.x - p.x) * p.dir;
       if (dx < -6 * AS() || dx > A.range || Math.abs(t.y - p.y) > A.depth) return;
       list.push({ t: t, d: Math.abs(dx) + Math.abs(t.y - p.y) * 0.5 });
@@ -723,6 +724,8 @@
     clear: function () { bolts.length = 0; rings.length = 0; ghosts.length = 0; arts.length = 0; waves.length = 0; parts.length = 0; glows.length = 0; flash = null; },
     // 화면 번쩍(콤보 마무리 타도 씀): { color, alpha, ms }
     flash: function (f) { doFlash(f); },
+    // 파편·둥근 빛(소품 나뭇조각·음식 반짝임도 씀, props.js)
+    debris: debris, glow: glow,
 
     state: function () { return { bolts: bolts.length, rings: rings.length, ghosts: ghosts.length, arts: arts.length, flash: !!flash }; }
   };
