@@ -2,7 +2,8 @@
 //   + 3단계 도마뱀 전사(찌르기·달려들기) · 거대 두꺼비(보스, 배치기·혀·독 뱉기) + 4단계 미라(잡기) · 전갈 왕(보스, 땅속 숨기)
 //   + 5단계 설인(느리고 단단, 두 주먹 내려찍기) · 서리 거인(보스, 몽둥이 내려찍기·휘두르기·얼음 가시 줄)
 //   + 6단계 해적 총잡이(멀리서 쏨, 거리 두기) · 해적 선장(보스, 칼 두 번·권총·대포 일제 사격)
-//   + 7단계 불 도깨비(치고 빠지기·불덩이) · 용암 골렘(정예, 골렘 색 바꿈) · 붉은 와이번(보스, 물기·불 뿜기·날아올라 내리꽂기). 수치는 전부 config.js 의 enemies.
+//   + 7단계 불 도깨비(치고 빠지기·불덩이) · 용암 골렘(정예, 골렘 색 바꿈) · 붉은 와이번(보스, 물기·불 뿜기·날아올라 내리꽂기)
+//   + 8단계 유령 기사(내려베기·옅어져 돌진 찌르기) · 흡혈 백작(보스, 발톱·박쥐 떼·안개 순간이동 물어 빨기). 수치는 전부 config.js 의 enemies.
 // 그림은 전부 「왼쪽을 봄」 → 그릴 때 ctx.scale(-dir, 1)  (dir = 1 이면 오른쪽을 봄)
 (function () {
   var uid = 0;
@@ -95,7 +96,7 @@
   // 지금 맞을 수 있나 (넘어짐~일어남 동안은 무적)
   //   7단계 와이번이 날아 있는 동안(diveAir)은 땅에서 하는 공격은 안 맞고, 플레이어가 jumpZ 넘게 떠 있을 때(점프 공격)만 맞음
   Enemy.prototype.canBeHit = function () {
-    if (!this.alive() || this.state === 'down' || this.hidden || this.burrowInvuln()) return false;
+    if (!this.alive() || this.state === 'down' || this.hidden || this.burrowInvuln() || this.faded() || this.teleInvuln()) return false;
     if (this.diveAir()) return !!(this.lastP && (this.lastP.z || 0) > this.atk.spec.jumpZ);
     return !this.airborne();
   };
@@ -111,6 +112,19 @@
   Enemy.prototype.diveAir = function () {
     var a = this.atk;
     return this.state === 'attack' && !!a && a.spec.type === 'dive' && (a.phase === 'hover' || a.phase === 'warn' || a.phase === 'fall' || (a.phase === 'takeoff' && a.z > 0));
+  };
+  // 8단계 유령 기사 돌진(공격 fade 장): 몸이 옅어진 동안 = 안 맞음, 몸끼리 안 밀림(main.js separate), 반투명으로 그림
+  Enemy.prototype.faded = function () {
+    var a = this.atk;
+    return this.state === 'attack' && !!a && !!a.spec.fade && inList(a.spec.fade, this.frameAt(a.spec.anim, a.t).no);
+  };
+  // 8단계 흡혈 백작 안개 순간이동(teleport): 사라지는 그림 invuln 장(2·3) · 숨음(hidden, 안개 모임) · 나타나는 그림 1장 = 안 맞음
+  Enemy.prototype.teleInvuln = function () {
+    var a = this.atk;
+    if (this.state !== 'attack' || !a || a.spec.type !== 'teleport') return false;
+    if (a.phase === 'vanish') return inList(a.spec.invuln, this.frameAt(a.spec.anim, a.t).no);
+    if (a.phase === 'appear') return this.frameAt(a.spec.appearAnim, a.t).no === 1;
+    return a.phase === 'hidden' || a.phase === 'gather';
   };
   // 지금 땅에서 떠 있는 높이(그림·몸 판정을 그만큼 위로, 그림자는 땅에)
   Enemy.prototype.flyZ = function () { var a = this.atk; return this.state === 'attack' && a && a.spec.type === 'dive' ? a.z || 0 : 0; };
@@ -422,8 +436,10 @@
     var opts = [], sum = 0, self = this;
     Object.keys(T.attacks).forEach(function (k) {
       var a = T.attacks[k];
-      var yOk = a.type === 'charge' ? ady <= 40 * AS() : (a.type === 'throw' || a.type === 'burrow' || a.type === 'barrage' || a.type === 'dive' || a.type === 'spikes') ? true : ady <= T.alignY;   // 바위 던지기·땅속 숨기·대포 사격·날아올라 내리꽂기·얼음 가시 줄은 줄 상관없음
+      var yOk = a.type === 'charge' ? ady <= 40 * AS() : (a.type === 'throw' || a.type === 'burrow' || a.type === 'barrage' || a.type === 'dive' || a.type === 'spikes' || a.type === 'teleport') ? true : ady <= T.alignY;   // 바위 던지기·땅속 숨기·대포 사격·날아올라 내리꽂기·얼음 가시 줄·순간이동은 줄 상관없음
       if (a.type === 'burrow' && self.clock - self.lastBurrowAt < (a.gapMs || 0)) return;   // 한 번 숨은 뒤 gapMs 동안은 안 숨음
+      // 안개 순간이동 물기(8단계 흡혈 백작): 플레이어가 공중·넘어짐·이미 잡힘이면 안 씀
+      if (a.type === 'teleport') { var pp = ctx.player; if ((pp.z || 0) > 4 || pp.state === 'down' || pp.state === 'held' || pp.state === 'dead') return; }
       // 그 밖의 gapMs(선장 대포 사격): 한 번 쓰면 이 시간 동안 안 씀. firstMs = 나타난 뒤 처음 쓸 수 있을 때까지
       if (a.type !== 'burrow' && a.gapMs) {
         var last = self.usedAt[k] != null ? self.usedAt[k] : (a.firstMs != null ? a.firstMs - a.gapMs : -1e9);
@@ -464,6 +480,7 @@
     if (spec.type === 'leap') return this.updateLeap(dtMs, ctx);
     if (spec.type === 'barrage') return this.updateBarrage(dtMs, ctx);
     if (spec.type === 'dive') return this.updateDive(dtMs, ctx);
+    if (spec.type === 'teleport') return this.updateTeleport(dtMs, ctx);
     var fr = this.frameAt(spec.anim, a.t);
     if (fr.done) { this.endAttack(); return; }
     // 불 뿜기(7단계 와이번): 불길 장(active) 동안 tickMs 마다 입 앞 긴 상자 확인 → 처음 닿으면 보통 맞음, 그 뒤엔 타는 데미지(main.js ctx.burnPlayer)
@@ -476,7 +493,16 @@
     }
     // 총 쏘기(6단계 총잡이·선장 권총): 겨누는 동안 방향·줄 고정 → spawnFrame 그림에서 총알 하나(main.js ctx.fireShot)
     if (spec.type === 'shot') {
-      if (!a.fired && fr.no >= spec.spawnFrame) { a.fired = true; if (ctx.fireShot) ctx.fireShot(this, spec); }
+      if (!a.fired && fr.no >= spec.spawnFrame) {
+        a.fired = true;
+        // 화난 흡혈 백작 박쥐 떼(spec.enraged): count 무리를 lanes 줄마다 gapMs 씩 늦게(양옆은 scale 만큼 작게)
+        var EG = this.enraged && spec.enraged;
+        if (ctx.fireShot) {
+          if (EG) for (var q = 0; q < EG.count; q++) ctx.fireShot(this, spec, { dz: EG.lanes[q] || 0, wait: q * (EG.gapMs || 0), scale: (EG.scale && EG.scale[q]) || 1 });
+          else ctx.fireShot(this, spec);
+        }
+        if (spec.shake && this.T.boss) ctx.shake(spec.shake);
+      }
       return;
     }
     // 얼음 가시 줄(5단계 서리 거인): aimMs 동안 플레이어 쪽을 겨눔(줄이 따라감) → 그다음 고정 → spawnFrame 그림(손바닥으로 땅 침)에서
@@ -543,9 +569,13 @@
     var n = ctx.grabMash ? ctx.grabMash() : 0;
     if (n) a.holdT -= n * G.mashMs;
     if (p.state !== 'held' || p.heldBy !== this) { a.held = false; this.endAttack(); return; }   // 어쩌다 풀려 버림
+    // 피 빨기(8단계 흡혈 백작 drain): 잡고 있는 동안 everyMs 마다 플레이어 체력을 빨고 자기 체력을 채움(main.js ctx.drainPlayer)
+    var D = a.spec.drain;
+    if (D) { a.drainT = (a.drainT || 0) + dtMs; while (a.drainT >= D.everyMs) { a.drainT -= D.everyMs; if (ctx.drainPlayer) ctx.drainPlayer(this, a.spec); } }
     if (a.holdT <= 0 && a.heldT >= G.minMs) {
       a.held = false;
       if (ctx.releaseGrab) ctx.releaseGrab(this, a.spec);
+      if (a.spec.type === 'teleport') { a.phase = 'recover'; a.t = 0; return; }   // 흡혈 백작: 물기 3장 자세로 잠깐 → 끝
       var A = this.T.anims[a.spec.anim], k = A.playback.indexOf(G.holdFrame + 1);
       a.t = (k < 0 ? A.playback.length : k) * 1000 / A.fps;   // 다음 장(5 복귀)부터
     }
@@ -700,6 +730,52 @@
     if (a.t >= s.recoverMs) this.endAttack();
   };
 
+  // 흡혈 백작 안개 순간이동 물기(teleport, 8단계): vanish(망토로 감쌈 → 연기로 흩어짐, invuln 장부터 안 맞음) → hidden(안 보임, 옛 자리에 안개 퍼짐, hiddenMs)
+  //   → 자리 고름 = 플레이어 등 뒤 behind(바라보는 반대쪽. 화면 밖이면 앞쪽), 같은 줄, 플레이어 쪽을 봄 → gather(그 자리에 안개가 모임 + 바닥 빨간 원, gatherMs. 자리 고정)
+  //   → appear(1 빚어짐 = 안 맞음 · 2 덤빔 = lunge 만큼 앞으로) → bite 1장 잡기 한 번(reach, 미라 잡기와 같은 tryHitPlayer → grabPlayer)
+  //   → 잡으면 updateHold(피 빨기 drain, 연타로 빨리 풀림 → 놓으면서 내던짐 → recover) / 못 잡으면 miss(헛물기 missMs = 때릴 기회) → 끝
+  //   숨어 있는 동안도 state = 'attack' → main.js 막힘 지킴이(rescueStuck)가 옮기지 않음
+  Enemy.prototype.updateTeleport = function (dtMs, ctx) {
+    var a = this.atk, s = a.spec, p = ctx.player, w = ctx.world, fr;
+    if (a.phase === 'wind') { a.phase = 'vanish'; a.t = dtMs; if (Math.abs(p.x - this.x) > 4) this.dir = p.x > this.x ? 1 : -1; }
+    if (a.phase === 'vanish') {
+      fr = this.frameAt(s.anim, a.t);
+      if (!a.puffed && fr.no >= s.invuln[0]) { a.puffed = true; if (ctx.mist) ctx.mist(this, this.x, this.y); }   // 연기로 흩어지기 시작: 옛 자리에 안개
+      if (fr.done) { a.phase = 'hidden'; a.t = 0; this.hidden = true; }
+      return;
+    }
+    if (a.phase === 'hidden') {
+      if (a.t < s.hiddenMs) return;
+      var V = ctx.view, m = 30 * AS(), face = p.dir || 1, x = p.x - face * s.behind;
+      if (x < V.x0 + m || x > V.x1 - m) x = p.x + face * s.behind;   // 등 뒤가 화면 끝 밖이면 앞쪽에서
+      this.x = Math.max(V.x0 + m, Math.min(V.x1 - m, x));
+      this.y = Math.max(w.laneTop, Math.min(w.laneBottom, p.y));
+      this.dir = p.x >= this.x ? 1 : -1;
+      this.vx = 0;
+      a.phase = 'gather'; a.t = 0;
+      return;
+    }
+    if (a.phase === 'gather') {   // 안개가 모임(예고): 자리는 고정
+      if (a.t >= s.gatherMs) { a.phase = 'appear'; a.t = 0; this.hidden = false; if (ctx.mist) ctx.mist(this, this.x, this.y); }
+      return;
+    }
+    if (a.phase === 'appear') {
+      fr = this.frameAt(s.appearAnim, a.t);
+      if (fr.no === 2 && s.lunge) {   // 덤빔: 2장이 보이는 동안 lunge 만큼 고르게 앞으로
+        var A = this.T.anims[s.appearAnim], n2 = A.playback.filter(function (k) { return k === 2; }).length;
+        this.x += this.dir * s.lunge * dtMs / (n2 * fr.step);
+      }
+      if (fr.done) { a.phase = 'bite'; a.t = 0; }
+      return;
+    }
+    if (a.phase === 'bite') {     // 물기 1장: 잡기 한 번. 잡으면 다음 장면부터 updateHold
+      if (!a.tried) { a.tried = true; this.tryHitPlayer(s, s.reach, ctx); if (!a.held) { a.phase = 'miss'; a.t = 0; } }
+      return;
+    }
+    if (a.phase === 'miss') { if (a.t >= s.missMs) this.endAttack(); return; }
+    if (a.t >= 380) this.endAttack();   // recover: 놓은 뒤 물기 3장 자세로 잠깐
+  };
+
   // 오크 어깨 돌진: 웅크림(예고) → 돌진(미끄러짐 + 먼지) → 부딪힘 → 복귀
   Enemy.prototype.updateCharge = function (dtMs, ctx) {
     var a = this.atk, s = a.spec, dt = dtMs / 1000, p = ctx.player;
@@ -754,6 +830,15 @@
         if (a.phase === 'run') return imgs[2 + (Math.floor(a.t / s.stepMs) % 2)];
         if (a.phase === 'impact') return imgs[4];
         return imgs[0];
+      }
+      if (s.type === 'teleport') {   // 흡혈 백작: vanish → (숨음 = 안 그림) → appear → bite 1(잡기·헛물기) / 잡고 있는 동안 bite 2·3 반복(피 빨기) / 놓은 뒤 3
+        var bt = this.art[s.biteAnim];
+        if (a.held) return bt[[1, 1, 2, 2, 2, 2][Math.floor(a.heldT / 125) % 6]];
+        if (a.phase === 'wind' || a.phase === 'vanish') return this.frameAt(s.anim, a.t).img;
+        if (a.phase === 'appear') return this.frameAt(s.appearAnim, a.t).img;
+        if (a.phase === 'bite' || a.phase === 'miss') return bt[0];
+        if (a.phase === 'recover') return bt[2];
+        return null;
       }
       if (a.held) return imgs[s.grab.holdFrame - 1] || imgs[imgs.length - 1];   // 미라: 붙잡고 있는 동안(움켜쥔 손)
       if (s.type === 'dive') {   // 와이번: fly 1→2→3(떠오름) → 4·5 반복(맴돌기) / dive 1(떨어짐) · 2(쾅) · 3(일어남)
@@ -840,6 +925,13 @@
       else if (a.phase === 'fall') drawRing(g, camX, a.tx, a.ty, s.radius, ry, (s.warnMs + a.t) / (s.warnMs + s.fallMs), false);
       return;
     }
+    if (s.type === 'teleport') {   // 안개 순간이동 물기: 안개가 모이는 동안 ~ 잡기 직전까지 잡힐 자리(물기 판정 가운데)에 빨간 원이 진해짐
+      if (a.phase !== 'gather' && a.phase !== 'appear') return;
+      var TA = this.T.anims[s.appearAnim], apMs = TA.playback.length * 1000 / TA.fps, tk = (a.phase === 'gather' ? a.t : s.gatherMs + a.t) / (s.gatherMs + apMs);
+      var cxr = a.phase === 'gather' ? (s.reach.x0 + s.reach.x1) / 2 + (s.lunge || 0) : (s.reach.x0 + s.reach.x1) / 2 + (s.lunge || 0) * (1 - Math.min(1, a.t / apMs));
+      drawRing(g, camX, this.x + this.dir * cxr, this.y, (s.reach.x1 - s.reach.x0) / 2 + 8 * AS(), s.depth, tk, false);
+      return;
+    }
     if (a.held) return;
     if (s.type === 'charge') {
       if (a.phase !== 'wind') return;
@@ -874,6 +966,9 @@
     var xa = Math.round(Math.min(x0, x1)), w = Math.round(Math.abs(x1 - x0));
     var blink = Math.floor(performance.now() / 80) % 2;
     var d = s.depth, y0 = Math.round(this.y - d), h = Math.round(d * 2);
+    // 화난 흡혈 백작 박쥐 떼(세 줄): 바닥 줄 표시를 위아래 줄까지 넓게
+    var EG = this.enraged && s.enraged;
+    if (EG) { var lo = Math.min.apply(null, EG.lanes), hi = Math.max.apply(null, EG.lanes); y0 = Math.round(this.y + lo - d); h = Math.round(hi - lo + d * 2); }
     g.fillStyle = 'rgba(255,40,30,' + (a.t < aimMs ? 0.05 : 0.08 + 0.1 * k) + ')';
     g.fillRect(xa, y0, w, h);
     if (a.t < aimMs) return;
@@ -891,7 +986,10 @@
     var T = this.T, img = this.currentImg();
     var x = snapPx(this.x - camX), y = snapPx(this.y);
     var AI = this.cfg.ai;
-    if (this.hidden) { this.drawMound(g, x, y); return; }   // 땅속(전갈 왕): 모래 둔덕만
+    if (this.hidden) {   // 땅속(전갈 왕): 모래 둔덕만 / 안개 속(흡혈 백작 순간이동): 몸은 안 보이고, 모이는 동안 안개만
+      if (this.atk && this.atk.spec.type === 'teleport') { this.drawGather(g, x, y); return; }
+      this.drawMound(g, x, y); return;
+    }
     var alpha = 1;
     if (this.state === 'dead') {
       var len = this.frameAt('death', 0).len, t = this.deadT - len - AI.deathHoldMs;
@@ -903,6 +1001,10 @@
     // 나는 적: 떠 있는 동안(서 있기·날기) 위아래로 살짝 흔들림(그림자는 그대로 땅에)
     var by = 0;
     if (T.flying && T.flying.bob && (this.state === 'idle' || this.state === 'walk')) by = snapPx(Math.sin(this.clock / T.flying.bobMs * Math.PI * 2) * T.flying.bob);
+    // 8단계 유령 기사: 서 있거나 미끄러질 때 둥실(땅의 적, 그림자는 그대로)
+    if (T.glide && (this.state === 'idle' || this.state === 'walk')) by = snapPx(Math.sin(this.clock / T.glide.bobMs * Math.PI * 2) * T.glide.bob);
+    var faded = this.faded();   // 유령 기사 돌진 중 옅어진 장: 반투명
+    if (faded) alpha *= 0.6;
     g.save();
     g.globalAlpha = alpha;
     g.translate(x, y + by - snapPx(fz));
@@ -910,7 +1012,7 @@
     g.scale(-this.dir * ds, ds);  // 그림이 왼쪽을 보므로 반대로
     if (T.rim) drawRim(g, img, T.pivot, T.rim);   // 7단계 와이번: 붉은 하늘에 안 묻히게 어두운 테두리
     Assets.blit(g, img, T.pivot.x, T.pivot.y);
-    if (this.flashT > 0) {
+    if (this.flashT > 0 && !faded) {
       var s = FX.whiteSilhouette(img, 0, 0, img.width, img.height, 1);
       g.globalAlpha = alpha * Math.min(1, this.flashT / (this.cfg.juice.flashMs * 0.5));
       Assets.blit(g, img, T.pivot.x, T.pivot.y, s);
@@ -980,6 +1082,16 @@
     [[-d, 0], [d, 0], [0, -d], [0, d]].forEach(function (o) { g.drawImage(img._rim, ox - pv.x + o[0], oy - pv.y + o[1]); });
     g.restore();
   }
+
+  // 흡혈 백작 순간이동: 나타날 자리에 안개가 모임(gather) = 안개 그림(fxArt.mist)을 거꾸로(흩어진 끝 → 큰 소용돌이) 재생, 처음엔 옅게
+  Enemy.prototype.drawGather = function (g, x, y) {
+    var a = this.atk, s = a.spec, F = window.GAME && GAME.assets && GAME.assets.enemyFx && GAME.assets.enemyFx[this.type], M = F && F.mist;
+    if (a.phase !== 'gather' || !M || !M.frames.length) return;
+    var u = Math.min(1, a.t / s.gatherMs), n = M.frames.length, i = Math.max(1, n - 1 - Math.floor(u * (n - 1)));   // 5 → 2장
+    g.save(); g.globalAlpha = 0.35 + 0.65 * u; g.translate(x, y); g.scale(-this.dir, 1);
+    Assets.blit(g, M.frames[Math.min(n - 1, i)], M.pivot.x, M.pivot.y);
+    g.restore();
+  };
 
   // 땅속으로 다가오는 모래 둔덕(fxArt.mound, 오른쪽으로 가면 뒤집기). 처음 100ms 는 파고든 둔덕(burrow 4장)보다 좁아서 조금 크게,
   //   warn(곧 솟구침) 동안 좌우로 떨림. 그림이 없으면 모래색 반원

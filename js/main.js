@@ -1,7 +1,7 @@
 // 게임 본체: 화면 크기, 배경, 매 장면 갱신, 타격 처리
 // 기본 = 스테이지 판(웨이브 + 보스, 여러 판). 주소 뒤 ?mode=practice = 예전 허수아비 연습장
 // 주소 뒤 ?stage=N = 판 번호(config stages 의 id) N 인 판으로 바로 시작(시험용, 잠금 무시). ?bot=1 이면 고르기 화면 없이 바로 시작
-//   (2026-11-04: 목록 = 1 2 3 4 5 6 7. ?stage=5 = 눈 덮인 산, ?stage=6 = 해적 항구, ?stage=7 = 화산. 없는 번호면 무시)
+//   (2026-11-04: 목록 = 1 2 3 4 5 6 7 8. ?stage=5 = 눈 덮인 산, ?stage=6 = 해적 항구, ?stage=7 = 화산, ?stage=8 = 유령 고성. 없는 번호면 무시)
 (function () {
   var CFG = window.CFG, J = CFG.juice;
   var AS = CFG.actorScale || 1;   // 캐릭터 크기: 코드에 바로 적힌 거리·높이와 손맛의 밀림 거리(juice.knockback)에 곱한다
@@ -425,6 +425,28 @@
     grabMash();   // 잡히기 전에 눌러 둔 버튼은 안 셈
     return true;
   }
+  // 피 빨기(8단계 흡혈 백작 mistBite drain): 붙잡힌 동안 everyMs 마다 플레이어 체력 drain.dmg(판·변종 공격력 배율) → 백작 체력 drain.heal 회복.
+  //   독처럼 체력 1 아래로는 안 내려감(놓을 때 내던지는 타는 보통 데미지). 목에서 백작 입으로 붉은 방울
+  function drainPlayer(e, spec) {
+    var p = G.player, D = spec.drain;
+    if (p.state !== 'held' || p.heldBy !== e || !e.alive()) return;
+    var n = Math.max(1, Math.round(D.dmg * (e.dmgMul || 1)));
+    if (!p.god) n = Math.min(n, p.hp - 1);
+    if (n > 0) {
+      if (!p.god) p.hp -= n;
+      FX.damage(p.x, p.y - (p.z || 0) - 112 * AS, n, false, J, '#ff3a5a', null, 'player');
+    }
+    var h = Math.min(D.heal || 0, e.maxHp - e.hp);
+    if (h > 0) { e.hp += h; FX.damage(e.x, e.y - e.T.height - 8, h, false, J, null, 'heal', e.id + ':heal'); }
+    if (Skills.debris) Skills.debris(p.x + (e.x - p.x) * 0.3, p.y - 64 * AS, p.y, 4, { cols: ['#ff3a4a', '#a0101c', '#ff8a8a'], glow: true, sp: 60, size: 1.4, ms: 380, g: -30, spread: 0.7 });
+    FX.shake(J.shakePx * 0.3, 80);
+  }
+  // 안개 + 박쥐 구름(8단계 흡혈 백작 fxArt.mist): 사라지는 자리 · 나타나는 자리에 한 번(바닥 기준, 캐릭터 앞)
+  function mistPuff(e, x, y) {
+    var F = G.assets.enemyFx && G.assets.enemyFx[e.type], M = F && F.mist;
+    if (M && M.frames.length) FX.sprite(x, y, M.frames, M.fps, M.pivot, e.dir > 0, false);
+    if (Skills.debris) Skills.debris(x, y - 40 * AS, y, 6, { cols: ['#c8c8d8', '#8a8aa0', '#e8e8f0'], sp: 60, size: 1.6, ms: 520, g: -40, spread: 1.2 });
+  }
   // 붙잡힌 동안 누른 버튼 수(공격·점프·기술 A/B, 한 번 누름 = 한 번)
   function grabMash() {
     var n = 0, ms = 400;
@@ -733,11 +755,15 @@
   //   맞으면 사라짐. 플레이어가 깜빡임(무적)·기술 무적이면 그냥 지나감. range 까지 가거나 보스가 쓰러지면 사라짐
   //   7단계 불 도깨비 불덩이도 같은 길: s.proj = 날아가는 그림(없으면 bullet), s.muzzle = 총구 연기(없으면 smoke, null = 안 씀),
   //     s.impact = 맞거나 끝까지 가면 그 자리(바닥)에서 터지는 그림(fxArt 이름, 없으면 안 터짐)
+  //   8단계 흡혈 백작 박쥐 떼도 같은 길(proj = 'bats'). o = { dz: 줄을 위아래로 옮김, wait: 이만큼 늦게 출발(그동안 안 보임), scale: 그림 크기 } (화난 뒤 세 무리)
+  //     s.hitCols = 맞을 때 튀는 조각 색(없으면 불꽃색)
   var shots = [];
-  function fireShot(e, s) {
+  function fireShot(e, s, o) {
     var F = G.assets.enemyFx && G.assets.enemyFx[e.type];
-    var mx = e.x + e.dir * s.spawn.x, my = e.y + s.spawn.y;
-    shots.push({ e: e, s: s, x: mx, z: e.y, h0: -s.spawn.y, h: -s.spawn.y, dir: e.dir, trav: 0, t: 0, art: F && F[s.proj || 'bullet'], imp: F && s.impact ? F[s.impact] : null });
+    var mx = e.x + e.dir * s.spawn.x, my = e.y + s.spawn.y, z = clamp(e.y + ((o && o.dz) || 0), world.laneTop, world.laneBottom);
+    shots.push({ e: e, s: s, x: mx, z: z, h0: -s.spawn.y, h: -s.spawn.y, dir: e.dir, trav: 0, t: 0, wait: (o && o.wait) || 0, sc: (o && o.scale) || 1,
+                 art: F && F[s.proj || 'bullet'], imp: F && s.impact ? F[s.impact] : null });
+    if (o && o.wait) return;   // 늦게 나가는 무리: 연기·불꽃은 첫 무리 때만
     var SM = F && s.muzzle !== null ? F[s.muzzle || 'smoke'] : null;
     if (SM && SM.frames.length) FX.sprite(mx, my, SM.frames, SM.fps, SM.pivot, e.dir > 0, false);   // 총구 연기(그림은 왼쪽을 봄)
     if (Skills.debris) Skills.debris(mx, my, e.y, 4, { cols: ['#fff2a0', '#ffb040', '#ffffff'], glow: true, sp: 110, size: 1.2, ms: 160 });   // 불꽃 튐
@@ -753,8 +779,9 @@
     var p = G.player, S = G.stage, hb = null;
     for (var i = shots.length - 1; i >= 0; i--) {
       var b = shots[i], s = b.s, move = s.speed * dt / 1000, n = Math.max(1, Math.ceil(move / 6)), gone = false;
-      b.t += dt;
       if (S.bossDownT >= 0 || S.result) { shots.splice(i, 1); continue; }
+      if (b.wait > 0) { b.wait -= dt; continue; }   // 늦게 나가는 무리(화난 흡혈 백작 박쥐 떼)
+      b.t += dt;
       for (var k = 0; k < n && !gone; k++) {
         var m = Math.min(move / n, s.range - b.trav);
         b.x += b.dir * m; b.trav += m;
@@ -765,7 +792,7 @@
           if (b.x + w > hb.x0 && b.x - w < hb.x1 && onPlayerHit({ x: b.x - b.dir * 30, dmgMul: b.e.dmgMul, T: b.e.T }, s)) {
             gone = true;
             if (b.imp) shotImpact(b);
-            else if (Skills.debris) Skills.debris(b.x, b.z - b.h, b.z, 5, { cols: ['#fff2a0', '#ffd060', '#c8c8c8'], glow: true, sp: 120, size: 1.2, ms: 220 });
+            else if (Skills.debris) Skills.debris(b.x, b.z - b.h, b.z, 5, { cols: s.hitCols || ['#fff2a0', '#ffd060', '#c8c8c8'], glow: !s.hitCols, sp: 120, size: 1.2, ms: 220 });
           }
         }
         if (b.trav >= s.range - 0.01) { if (!gone && b.imp) shotImpact(b); gone = true; }   // 끝까지 날아간 불덩이도 그 자리에서 터짐
@@ -775,12 +802,13 @@
   }
   function drawShots(camX, under) {
     shots.forEach(function (b) {
+      if (b.wait > 0) return;   // 아직 안 나간 무리
       var x = snap(b.x - camX);
-      if (under) { window.drawShadow(ctx, x, snap(b.z), 3 * AS); return; }   // 바닥에 작은 그림자 = 총알이 지나가는 줄
+      if (under) { window.drawShadow(ctx, x, snap(b.z), (b.s.box.w > 30 * AS ? 12 : 3) * AS * b.sc); return; }   // 바닥에 그림자 = 지나가는 줄(박쥐 떼는 크게)
       var y = snap(b.z - b.h), A = b.art;
       if (!A || !A.frames.length) { ctx.fillStyle = '#fff2a0'; ctx.fillRect(x - 2, y - 1, 4, 3); return; }
       var im = A.frames[Math.floor(b.t * A.fps / 1000) % A.frames.length];
-      ctx.save(); ctx.translate(x, y); if (b.dir > 0) ctx.scale(-1, 1);   // 그림은 왼쪽으로 날아감(꼬리가 오른쪽) → 오른쪽으로 쏘면 뒤집기
+      ctx.save(); ctx.translate(x, y); ctx.scale(b.dir > 0 ? -b.sc : b.sc, b.sc);   // 그림은 왼쪽으로 날아감(꼬리가 오른쪽) → 오른쪽으로 쏘면 뒤집기. sc = 작은 박쥐 무리
       Assets.blit(ctx, im, A.pivot.x, A.pivot.y); ctx.restore();
     });
   }
@@ -886,7 +914,8 @@
   function rescueStuck(dt) {
     var p = G.player, V = G.ectx.view, far = STUCK.far * AS, mv = STUCK.move * AS, S = G.stage;
     G.enemies.forEach(function (e) {
-      var busy = e.state === 'attack' || e.state === 'hit' || e.state === 'down' || e.state === 'stagger' || e.state === 'guard';
+      // 8단계: 흡혈 백작이 안개로 숨어 순간이동하는 동안(hidden, state 'attack')·유령 기사가 옅어져 돌진하는 동안도 공격 중 = 안 셈
+      var busy = e.state === 'attack' || e.state === 'hit' || e.state === 'down' || e.state === 'stagger' || e.state === 'guard' || e.hidden;
       if (!e.alive() || e.asleep || e.alertT > 0 || busy || p.state === 'dead' || p.state === 'held') { e.lostT = 0; e.lostX = null; return; }
       var on = e.x >= V.x0 && e.x <= V.x1;
       if (on && Math.abs(e.x - p.x) <= far) { e.lostT = 0; e.lostX = null; return; }
@@ -984,7 +1013,7 @@
     var pushing = p.state === 'runatk' && p.ratk && p.ratk.phase !== 'recover';
     if (p.state !== 'dead' && !(p.state === 'skill' && Skills.passThrough(p)) && !((p.z || 0) > overZ)) list.push({ o: p, r: CFG.hero.radius, m: 1, hero: true });
     G.enemies.forEach(function (e) {
-      if (!e.alive() || e.state === 'down' || e.hidden || e.airborne()) return;   // 넘어진 적은 밟고 지나갈 수 있음, 땅속(전갈 왕)·공중(두꺼비 배치기)도 지나감
+      if (!e.alive() || e.state === 'down' || e.hidden || e.airborne() || e.faded()) return;   // 넘어진 적은 밟고 지나갈 수 있음, 땅속(전갈 왕)·공중(두꺼비 배치기)·옅어진 유령 기사도 지나감
       var charging = e.state === 'attack' && e.atk && e.atk.spec.type === 'charge';
       list.push({ o: e, r: e.T.radius, m: charging ? 0 : (e.T.boss ? 0.08 : 1), boss: !!e.T.boss, out: !e.entered });
     });
@@ -1030,7 +1059,7 @@
       Input.setOverride(ax); return;
     }
     var side = best.x > p.x ? 1 : -1;
-    var want = ({ goblin: 42, wolf: 58, orc: 72, bat: 46, skeleton: 44, golem: 76, mummy: 46, scorpion: 80, lizard: 46, toad: 74, gunner: 40, captain: 70, imp: 44, lavagolem: 76, wyvern: 80, yeti: 50, giant: 82 }[best.type] || 50) * AS;
+    var want = ({ goblin: 42, wolf: 58, orc: 72, bat: 46, skeleton: 44, golem: 76, mummy: 46, scorpion: 80, lizard: 46, toad: 74, gunner: 40, captain: 70, imp: 44, lavagolem: 76, wyvern: 80, yeti: 50, giant: 82, ghost: 46, vampire: 66 }[best.type] || 50) * AS;
     var sv = Props.steer(p, R, best.x - side * want, best.y, world, best.x);   // 막는 소품: 목표가 그 안이면 옆으로, 앞에 있으면 돌아감
     var tx = sv.x, ty = best.y;
     var ex = tx - p.x, ey = ty - p.y, my = sv.y - p.y;   // 공격 조건은 원래 줄(ey), 움직임은 돌아가는 줄(my)
@@ -1384,7 +1413,8 @@
       grabPlayer: grabPlayer, grabMash: grabMash, releaseGrab: releaseGrab,   // 미라 잡기
       fireShot: fireShot, dropCannon: dropCannon,                              // 6단계 총알 · 대포알 (7단계 불덩이도 fireShot)
       spikeLine: spikeLine,                                                    // 5단계 서리 거인 얼음 가시 줄
-      burnPlayer: burnPlayer                                                   // 7단계 와이번 불 뿜기에 계속 서 있음
+      burnPlayer: burnPlayer,                                                  // 7단계 와이번 불 뿜기에 계속 서 있음
+      drainPlayer: drainPlayer, mist: mistPuff                                 // 8단계 흡혈 백작 피 빨기 · 안개
     };
     Object.defineProperty(E, 'player', { get: function () { return G.player; } });
     return E;
@@ -1548,7 +1578,7 @@
         player: { hp: p.hp, state: p.state, x: Math.round(p.x), y: Math.round(p.y), z: Math.round(p.z * 10) / 10,
           frame: p.char ? p.currentFrame() : null, ratk: p.ratk ? p.ratk.phase : null, skill: p.sk ? p.sk.d.key + '@' + Math.round(p.sk.t) : null, cd: p.skillCd },
         enemies: G.enemies.map(function (e) { return e.type + (e.variant ? '(' + e.variant + ')' : '') + ':' + (e.asleep ? 'asleep' : e.alertT > 0 ? 'alert' : e.state) +
-          (e.atk && (e.atk.spec.type === 'burrow' || e.atk.spec.type === 'dive') ? '/' + e.atk.phase : '') + (e.atk && e.atk.held ? '/hold' : '') + (e.atk ? '/' + e.atk.name : '') + (e.airborne() ? '/air' : '') + ':' + e.hp + '@' + Math.round(e.x) + ',' + Math.round(e.y); }),
+          (e.atk && (e.atk.spec.type === 'burrow' || e.atk.spec.type === 'dive' || e.atk.spec.type === 'teleport') ? '/' + e.atk.phase : '') + (e.faded() ? '/faded' : '') + (e.hidden ? '/hidden' : '') + (e.atk && e.atk.held ? '/hold' : '') + (e.atk ? '/' + e.atk.name : '') + (e.airborne() ? '/air' : '') + ':' + e.hp + '@' + Math.round(e.x) + ',' + Math.round(e.y); }),
         poison: p.poison ? Math.round(p.poison.t) : 0,
         hits: G.hits, maxCombo: G.maxCombo, rocks: rocks.length, puddles: puddles.length, shots: shots.length, cannons: cannons.length, spikes: spikes.length, stageId: CFG.stage.id,
         props: Props.list.map(function (pr) { return pr.type + ':' + (pr.state === 'idle' ? pr.hitsLeft : pr.state) + '@' + Math.round(pr.x) + ',' + Math.round(pr.y); }),

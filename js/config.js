@@ -536,6 +536,14 @@
     ground: { img: 'assets/bg/stage7/ground.png', w: 704,  tile: true,  parallax: 1.0 },
     height: 240, floorY: 144, laneTop: 158, laneBottom: 230
   };
+  // ---------- 8단계 배경 = 유령 고성 (art\stage8-bg 에서 복사, 2026-11-04) ----------
+  // 가고일 성문 → 대연회장(스테인드글라스·찢어진 깃발) → 지하묘지·흡혈귀 왕좌, 보름달 밤. 크기·바닥·걷는 길은 1~7단계와 같음
+  var BG_CASTLE = {
+    far:    { img: 'assets/bg/stage8/far.png',    w: 512,  tile: true,  parallax: 0.15 },
+    mid:    { img: 'assets/bg/stage8/mid.png',    w: 1245, tile: false, parallax: 0.5 },
+    ground: { img: 'assets/bg/stage8/ground.png', w: 703,  tile: true,  parallax: 1.0 },
+    height: 240, floorY: 144, laneTop: 158, laneBottom: 230
+  };
 
   window.CFG = {
     version: 'stage1-proto-2',
@@ -1442,6 +1450,106 @@
                     radius: 110, depth: 24, dodgeZ: 24,
                     dmg: [16, 20], knock: 40, flinchMs: 520, shake: 3.2, heavy: true, when: [0, 600], weight: 2, gapMs: 9000, firstMs: 5000 }
         }
+      },
+
+      // ===== 8단계 적 (art\stage8-enemies 에서 복사, 2026-11-04). 수치 = 그 폴더 anchors_*.json 의 suggest =====
+      // 유령 기사: 도마뱀 전사 크기 그림 칸(208x148, 찌르기 칼끝이 앞 104 까지라 칸이 넓음). 발 대신 연기 자락 → 땅 위를 미끄러지듯 다님(걷는 그림 = 미끄러짐)
+      //   glide = 서 있거나 다닐 때 위아래로 살짝 둥실(박쥐 flying.bob 처럼, 그림자는 땅에 그대로). 박쥐와 달리 「땅의 적」(소품에 막힘, 점프 공격 보너스 없음)
+      //   chop = 머리 위 내려베기: 1 칼 들기 · 2 투구 뒤로 칼 치켜듦 + 칼날·눈구멍이 번쩍(예고 약 400ms, 바닥 빨간 띠) · 3 초승달 빛 내려베기(맞음) · 4 칼끝 아래(reachF[4]) · 5 복귀
+      //   phase = 유령 돌진 찌르기: 1 웅크리고 칼을 허리에(예고 250ms, 바닥 빨간 띠) · 2 몸이 옅어짐(fade = 반투명, 안 맞음, 몸끼리 안 밀림)
+      //     → 2·3장 동안 move 로 70 앞으로 미끄러짐 · 3 다시 나타나며 쭉 찌름(맞음, 칼끝 앞 104) · 4 복귀.
+      //     거리가 when(60~150) 일 때만 = 플레이어가 떨어져 있을 때 거리를 좁히는 기술. gapMs = 한 번 쓰면 이 시간 동안 안 씀, firstMs = 나타나서 처음 쓰기까지
+      ghost: {
+        label: '유령 기사', frameW: 208, frameH: 148, pivot: { x: 124, y: 142 },
+        anims: enemyAnims('ghost', {
+          idle: [4, 6, true], walk: [8, 10, true],
+          attack: [5, 10, false, [1, 2, 2, 2, 2, 3, 4, 4, 5]],      // 내려베기: 1 들기 · 2 치켜듦·번쩍(예고 400ms) · 3 내려벰 · 4 칼끝 아래 · 5 복귀
+          attack2: [4, 12, false, [1, 1, 1, 2, 2, 3, 3, 4]],        // 유령 돌진: 1 웅크림(예고 250ms) · 2 옅어짐(안 맞음) · 3 찌름 · 4 복귀
+          hit: [3, 10, false, [1, 2, 2, 3]],
+          hit2: [3, 10, false, [1, 1, 2, 2, 3]],
+          knockdown: [5, 10, false, [1, 2, 2, 3, 4, 5, 4, 5]],
+          getup: [3, 8, false, [1, 1, 2, 2, 3]],                    // 방패 짚고 앉음 → 연기 모이며 떠오름 → 다시 둥실
+          death: [5, 8, false, [1, 2, 3, 4, 5]]                     // 눈빛 번쩍 → 갑옷이 푸른 연기로 흩어짐 → 빈 투구·망토·칼만 바닥에
+        }),
+        walkAnim: 'walk',
+        glide: { bob: 1.5, bobMs: 1300 },
+        down: { slide: 70, lyingFrames: [3, 4, 5] },
+        hp: 80, speedX: 48, speedY: 30, radius: 15, height: 94,
+        hurtbox: { x0: -20, x1: 24, yTop: -92, yBot: 0 },
+        engage: 50, hover: [110, 160], range: [24, 150], alignY: 7, cooldown: [1300, 2300], firstCooldown: [600, 1600],
+        knockResist: 0.9, deathKnock: 190,
+        attacks: {
+          chop:  { anim: 'attack', active: [3, 4], telegraph: [2], showTelegraph: true, depth: 12,
+                   reach: { x0: 20, x1: 48, yTop: -95, yBot: -10 }, reachF: { 4: { x0: 20, x1: 48, yTop: -72, yBot: -8 } },
+                   dmg: [7, 10], knock: 18, when: [0, 60], weight: 3 },
+          phase: { anim: 'attack2', active: [3], telegraph: [1], showTelegraph: true, fade: [2], depth: 12,
+                   reach: { x0: 20, x1: 104, yTop: -88, yBot: -50 }, move: { frames: [2, 3], dist: 70 },
+                   dmg: [5, 7], knock: 22, flinchMs: 340, when: [60, 150], weight: 2, gapMs: 9000, firstMs: 3000 }
+        }
+      },
+      // 흡혈 백작(8단계 보스): 오크·골렘·선장·와이번과 같은 보스 규칙(공격 중 안 끊김, 체력 66%·33% 휘청, 절반에서 화남 + 유령 기사·박쥐 부름)
+      //   그림 칸 320x232(오크·선장과 같음), 휘청 3장 = 한 무릎 꿇고 헐떡임, 망토 찢어짐 = 때릴 기회(1000ms, 몸이 낮고 넓어서 stagger.hurtbox)
+      //   rim = 검은 망토가 어두운 성·소품에 묻히지 않게 그림 둘레에 차가운 달빛 테두리(와이번의 어두운 테두리와 같은 코드, 색만 밝게)
+      //   공격: claws = 발톱 두 번(1장 두 손 치켜들고 쉿 = 예고 400ms → 2장 대각선 할퀴기 reachF[2] → 3장 길게 휘두르기 reachF[3], multiHit = 장마다 한 번씩)
+      //         batSweep = 망토 휘둘러 박쥐 떼(총잡이·불덩이와 같은 type 'shot' = 쏜 사람 줄을 따라 똑바로): 1 망토로 얼굴 가림 · 2 망토를 날개처럼 펼침(예고 550ms, 빨간 겨눔 선)
+      //           → 3장 휘두름 = 망토 끝(spawn)에서 박쥐 떼(proj = fxArt bats, 박쥐 3마리 한 무리)가 날아감. 처음 dropPx 동안 aimH 높이로 내려옴(그림만)
+      //           enraged = 화난 뒤: 박쥐 떼 count 무리를 lanes(줄 위아래 차이)마다 gapMs 씩 늦게, 양옆 무리는 scale 만큼 작게 → 줄을 크게 바꿔야 피함
+      //           hitCols = 맞을 때 튀는 조각 색(검은 날개·붉은 테)
+      //         mistBite = 안개 순간이동 + 물어 빨기(type 'teleport'):
+      //           vanish(1 망토로 몸을 감쌈 = 예고 · 2~3 연기 기둥으로 흩어짐, 2장부터 안 맞음) → 숨음(hidden: 안 보이고 안 맞음, mist 그림이 옛 자리에서 퍼짐)
+      //           → hiddenMs 뒤 자리를 고름 = 플레이어 「등 뒤」 behind 만큼(바라보는 반대쪽, 화면 밖이면 앞쪽) 같은 줄 → 그 자리에 gatherMs 동안 안개가 모이고 바닥에 빨간 원(예고)
+      //             → 자리는 그때 고정 = 비키거나(옆으로·위아래) 뛰어 있으면 피함 → appear(1 안개에서 다시 빚어짐 = 안 맞음 · 2 망토 펼치고 덤빔 = 앞으로 lunge 만큼)
+      //           → bite 1장 = 잡기 한 번(reach). 못 잡으면 missMs 동안 헛물기 자세(때릴 기회)
+      //           → 잡으면 미라 잡기(grab)와 같이 붙잡음: dist 앞에 붙여 두고 bite 2·3장 반복, drain.everyMs 마다 drain.dmg 만큼 피를 빨고(체력 1 아래로는 안 내려감) 백작은 drain.heal 만큼 회복
+      //             ms 동안(버튼 연타 한 번마다 mashMs 줄어듦, 그래도 minMs 는 잡혀 있음) → 놓으면서 dmg 데미지 + 내던짐(heavy = 넘어짐)
+      //           gapMs = 한 번 쓰면 이 시간 동안 안 씀, firstMs = 나타나서 처음 쓰기까지. 플레이어가 공중이면 안 씀
+      vampire: {
+        label: '흡혈 백작', boss: true, frameW: 320, frameH: 232, pivot: { x: 168, y: 226 },
+        anims: enemyAnims('vampire', {
+          idle: [4, 5, true], walk: [6, 7, true],
+          attack1: [5, 10, false, [1, 1, 1, 1, 2, 2, 3, 3, 4, 4, 5]],   // 발톱 두 번: 1 치켜듦·쉿(예고 400ms) · 2 대각선 할퀴기 · 3 길게 휘두르기 · 4 · 5 복귀
+          attack2: [5, 9, false, [1, 1, 2, 2, 2, 3, 4, 4, 5]],          // 박쥐 떼: 1 망토로 가림 · 2 망토 펼침(예고) · 3 휘두름 = 박쥐 · 4 망토 앞으로 · 5 복귀
+          vanish: [3, 8, false, [1, 1, 1, 2, 3, 3]],                    // 사라짐: 1 망토로 감쌈(예고) · 2 아래가 연기·박쥐로 · 3 연기 기둥(붉은 눈)
+          appear: [2, 8, false, [1, 1, 2, 2]],                          // 나타남: 1 연기에서 빚어짐(안 맞음) · 2 망토 펼치고 덤빔(예고)
+          bite: [3, 8, false, [1, 2, 2, 3, 3, 3, 3, 2, 3]],             // 물기: 1 두 손 뻗어 잡기 · 2 물기 · 3 피 빨기(잡고 있는 동안 2·3 반복)
+          hit: [3, 8, false, [1, 2, 2, 3]],
+          hit2: [3, 8, false, [1, 1, 2, 2, 3]],
+          stagger: [4, 7, false, null],                                  // 휘청: 장마다 시간은 아래 stagger.d (3장 = 한 무릎 꿇고 헐떡임)
+          death: [5, 6, false, [1, 1, 2, 2, 3, 4, 5]]                    // 비명·붉은 금 → 무릎 꿇고 재로 → 무너지며 박쥐가 날아감 → 빈 망토 밑 재 무더기
+        }),
+        fxArt: {
+          bats: { frames: seq(EN + 'bats/bats_', 4), pivot: { x: 52, y: 30 }, fps: 14 },   // 박쥐 떼(3마리 한 무리 가운데 기준, 왼쪽으로 날아감, 붉은 테두리)
+          mist: { frames: seq(EN + 'mist/mist_', 5), pivot: { x: 88, y: 172 }, fps: 10 }    // 안개 + 박쥐 구름(바닥 가운데 기준, 한 번)
+        },
+        walkAnim: 'walk',
+        rim: { color: '#9ab8ff', px: 1, alpha: 0.5 },
+        hp: 980, speedX: 38, speedY: 26, radius: 34, height: 156,
+        hurtbox: { x0: -30, x1: 24, yTop: -155, yBot: 0 },
+        engage: 70, hover: [70, 90], range: [30, 160], alignY: 10, cooldown: [950, 1700], firstCooldown: [1200, 1500],
+        knockResist: 0.2, deathKnock: 50,
+        staggerCdMs: 2200,
+        superArmor: true,
+        stagger: { at: [0.66, 0.33], onWall: false, d: [260, 160, 1000, 320], hurtbox: { x0: -70, x1: 49, yTop: -101, yBot: 0 } },
+        enrageAt: 0.5,
+        enrage: { speedMul: 1.25, cooldownMul: 0.7, summon: ['ghost', 'bat', 'ghost'] },
+        attacks: {
+          claws:    { anim: 'attack1', active: [2, 3], multiHit: true, telegraph: [1], depth: 14,
+                      reach: { x0: 10, x1: 94, yTop: -115, yBot: -20 },
+                      reachF: { 2: { x0: 10, x1: 40, yTop: -115, yBot: -20 }, 3: { x0: 20, x1: 94, yTop: -112, yBot: -60 } },
+                      dmg: [12, 15], knock: 24, flinchMs: 400, shake: 1.4, when: [30, 110], weight: 3 },
+          batSweep: { type: 'shot', anim: 'attack2', telegraph: [1, 2], spawnFrame: 3, spawn: { x: 96, y: -96 }, aimH: 70, dropPx: 60,
+                      proj: 'bats', impact: null, muzzle: null, hitCols: ['#1a1018', '#3a2030', '#c42834', '#ff6a6a'],
+                      speed: 240, range: 420, box: { w: 70, h: 30 }, depth: 14, dodgeZ: 20,
+                      enraged: { count: 3, lanes: [0, -16, 16], gapMs: 120, scale: [1, 0.8, 0.8] },
+                      dmg: [10, 13], knock: 16, flinchMs: 320, shake: 0.8, when: [120, 420], weight: 2 },
+          mistBite: { type: 'teleport', anim: 'vanish', appearAnim: 'appear', biteAnim: 'bite', telegraph: [1], invuln: [2, 3],
+                      hiddenMs: 650, gatherMs: 450, behind: 70, lunge: 16, missMs: 450, depth: 14,
+                      reach: { x0: 20, x1: 64, yTop: -140, yBot: -60 },
+                      dmg: [10, 13], knock: 26, flinchMs: 420, heavy: true, shake: 1.4,
+                      grab: { ms: 1400, mashMs: 120, minMs: 500, dist: 42 },
+                      drain: { everyMs: 200, dmg: 3, heal: 4 },
+                      when: [0, 600], weight: 2, gapMs: 9000, firstMs: 6000 }
+        }
       }
     },
 
@@ -1462,7 +1570,7 @@
     //   bg = 배경 3장(위 BG_FOREST 설명). 판을 시작할 때 그 판 배경만 불러온다(main.js useStage → Assets.ensureBg)
     // 새 판 넣기: 아래 목록에 { id, … } 하나 추가하면 끝(스테이지 고르기 화면·다음 스테이지는 자동)
     //   id = 판 번호(고르기 화면 숫자 · 주소 ?stage=N 이 이 번호). 목록 순서 = 노는 순서(다음 스테이지 · 잠금 풀림은 목록 순서대로)
-    //   → 번호를 건너뛰어도 됨(2026-11-04: 한동안 5단계 설산 그림이 없어서 목록 = 1 2 3 4 6 7 → 같은 날 6 앞에 { id: 5 } 끼움 = 1 2 3 4 5 6 7)
+    //   → 번호를 건너뛰어도 됨(2026-11-04: 한동안 5단계 설산 그림이 없어서 목록 = 1 2 3 4 6 7 → 같은 날 6 앞에 { id: 5 } 끼움 = 1 2 3 4 5 6 7, 뒤에 8단계 유령 고성)
     //   깬 판은 id 로 저장(main.js) → 5단계를 끼워도 예전 저장이 어긋나지 않음(4·6을 깨고 5는 안 깼으면: 6은 그대로 클리어, 5가 열림)
     // 지금 하고 있는 판은 main.js 가 CFG.stage(+ CFG.bg = 그 판 bg)에 넣어 둔다 → 다른 코드는 예전처럼 CFG.stage 를 읽음
     // 시험 기간(2026-11-04 형님): 스테이지 고르기에서 모든 판을 처음부터 열어 둠. 정식으로 낼 때 false
@@ -1739,6 +1847,47 @@
           { type: 'magmavent', x: 2040 + 332, y: 0.48 },
           { type: 'firepot',   x: 2250, y: 0.78, drop: 'meat' }    // 6번 웨이브 화면 = 보스방 바로 앞
         ]
+      },
+      // ===== 8단계: 유령 고성 (2026-11-04 새 그림: 배경·소품·유령 기사·흡혈 백작) =====
+      // 7단계보다 한 단계 어렵게(체력·공격 x1.5): 새 적 유령 기사(내려베기 + 옅어져 돌진 찌르기) + 해골·박쥐·미라(일부 「유령」 색) 섞음,
+      //   푸른 유령불 화로 둘레에 미리 서 있는 무리 3곳 + 옆에서 지원, 5번 웨이브 = 유령 기사 셋 + 미라, 보스 = 흡혈 백작(발톱·박쥐 떼·안개 순간이동 물기)
+      {
+        id: 8,
+        name: 'STAGE 8  유령 고성',
+        width: 2880,
+        healOnClear: 18,            // 7단계와 같음(박쥐 떼·물어 빨기가 아파서 더 어려워짐은 적 쪽에서)
+        bgTop: '#23236a',           // 화면이 배경보다 높을 때 위쪽 하늘 색 (실제로는 배경 맨 윗줄 = 짙은 남보라 밤하늘을 늘려 씀)
+        bg: BG_CASTLE,
+        hpMul: 1.5, dmgMul: 1.5,
+        waves: [
+          // 1: 가고일 성문 — 유령 기사 첫 등장(유령 해골이 같이, 뒤에서 박쥐)
+          { at: 120,  spawn: [['ghost', 'R', 0], ['skeleton', 'R', 700, { variant: 'spectral' }], ['bat', 'L', 2200]] },
+          // 2: 유령불 화로(500 + 326) 옆에 유령 기사 + 유령 해골(camp1, 하나 깨면 둘 다 깸) + 옆에서 지원
+          { at: 500,  placed: [['ghost', 288, 0.36, { group: 'camp1', dir: 1 }], ['skeleton', 364, 0.58, { group: 'camp1', variant: 'spectral' }]],
+                      spawn: [['bat', 'L', 700, { variant: 'spectral' }], ['ghost', 'R', 2400]] },
+          { at: 880,  spawn: [['ghost', 'R', 0], ['mummy', 'L', 500], ['bat', 'R', 1300], ['skeleton', 'L', 3000, { variant: 'spectral' }], ['ghost', 'R', 3600]] },
+          // 4: 대연회장 유령불 화로(1260 + 330) 둘레에 유령 기사 둘 + 유령 미라(camp2) + 옆에서 지원
+          { at: 1260, placed: [['ghost', 292, 0.34, { group: 'camp2', dir: 1 }], ['mummy', 372, 0.44, { group: 'camp2', variant: 'spectral' }], ['ghost', 340, 0.8, { group: 'camp2' }]],
+                      spawn: [['bat', 'R', 1200, { variant: 'spectral' }], ['skeleton', 'L', 3400], ['ghost', 'R', 4200]] },
+          // 5: 연회장 끝 — 유령 기사 셋이 몰려옴 + 미라
+          { at: 1650, spawn: [['ghost', 'R', 0], ['ghost', 'L', 600], ['mummy', 'R', 2200, { variant: 'spectral' }], ['ghost', 'R', 4200], ['bat', 'L', 4800]] },
+          // 6: 지하묘지 입구 유령불 화로(2040 + 332)를 지키는 유령 기사 둘(crypt) + 옆에서 지원
+          { at: 2040, placed: [['ghost', 296, 0.3, { group: 'crypt', dir: 1 }], ['ghost', 368, 0.66, { group: 'crypt' }]],
+                      spawn: [['skeleton', 'R', 600, { variant: 'spectral' }], ['mummy', 'L', 1000], ['bat', 'R', 2800, { variant: 'spectral' }], ['ghost', 'L', 3400], ['skeleton', 'R', 4000]] },
+          { at: 'end', boss: true, spawn: [['vampire', 'R', 0]] }
+        ],
+        // 소품: 나무 관·청동 유골 항아리(부서짐) + 푸른 유령불 화로 3개(장식, 무리 자리). 보스 앞 관은 고기가 꼭 나옴
+        props: [
+          { type: 'coffin',    x: 430,  y: 0.72 },
+          { type: 'bronzeurn', x: 700,  y: 0.22 },
+          { type: 'ghostfire', x: 500 + 326, y: 0.47 },
+          { type: 'coffin',    x: 1150, y: 0.7 },
+          { type: 'bronzeurn', x: 1480, y: 0.26 },
+          { type: 'ghostfire', x: 1260 + 330, y: 0.56 },
+          { type: 'bronzeurn', x: 1860, y: 0.32, drop: 'bread' },
+          { type: 'ghostfire', x: 2040 + 332, y: 0.48 },
+          { type: 'coffin',    x: 2250, y: 0.78, drop: 'meat' }    // 6번 웨이브 화면 = 보스방 바로 앞
+        ]
       }
     ],
 
@@ -1761,7 +1910,9 @@
       //   glow = 원래 그림에서 색상(hue, 도)이 이 범위이고 채도가 sat 넘는 점(골렘의 초록 이끼)을 color 로 바꿈(원래 밝기만큼, 어두운 몸 위에서 빛나 보이게)
       //     keep = 이 색상 범위의 진하고 밝은(가장 밝은 채널 light 이상) 점(가슴 주황 핵)은 어둡게 하지 않고 원래 색 그대로
       lava:  { label: '용암', hue: 0, sat: 0.15, bright: 0.5, color: '#3a1610', colorK: 0.35,
-               glow: { hue: [48, 175], sat: 0.25, color: '#ff7a1e' }, keep: { hue: [8, 40], sat: 0.55, light: 150 } }
+               glow: { hue: [48, 175], sat: 0.25, color: '#ff7a1e' }, keep: { hue: [8, 40], sat: 0.55, light: 150 } },
+      // 8단계(2026-11-04): 흰 해골·보라 박쥐·붕대 미라 → 창백한 「유령」 빛(푸른 청록, 조금 밝게). 흰색이 많아 color 로 물들임
+      spectral: { label: '유령', hue: 0, sat: 0.55, bright: 1.08, color: '#8fe8f0', colorK: 0.38, hpMul: 1.1 }
     },
 
     // ---------- 소품 그림 (2026-11-04, art\stage1-props 에서 복사 → assets/props/stage1/…, 크기·기준점은 props.json) ----------
@@ -1934,6 +2085,31 @@
         frames: seq('assets/props/stage5/campfire/burn_', 6), fps: 10,
         pivot: { x: 28, y: 77 }, solid: false, shadow: 20,
         glow: { r: 70, y: 18, color: '#ff9a3a', alpha: 0.32 }
+      },
+      // ----- 8단계 소품 (art\stage8-props 에서 복사 → assets/props/stage8/…, 크기·기준점은 그 폴더 props.json) -----
+      // 이름이 2단계 화로(brazier)와 겹쳐서 종류 이름만 따로(그림 폴더 이름은 그대로: coffin / urn / brazier)
+      // 세워 둔 나무 관(뚜껑에 십자가, 쇠 모서리, 거미줄): 주인공 가슴 높이. 검은 판자·쇠 장식·먼지 조각
+      coffin: {
+        frames: ['intact', 'cracked', 'damaged'].map(function (s) { return 'assets/props/stage8/coffin/' + s + '_01.png'; }), fps: 0,
+        breakFrames: seq('assets/props/stage8/coffin/break_', 4),
+        pivot: { x: 38, y: 80 }, solid: true, footprint: { w: 36, depth: 16 },
+        hits: 3, hurtbox: { x: -21, y: -73, w: 42, h: 72 }, shadow: 22,
+        chips: ['#4a3426', '#2e2018', '#6a6a72', '#b8a890', '#8a7a68']
+      },
+      // 받침돌 위 청동 유골 항아리(금 띠·해골 메달): 주인공 가슴 높이. 청동·금·돌 조각 + 회색 재
+      bronzeurn: {
+        frames: ['intact', 'cracked', 'damaged'].map(function (s) { return 'assets/props/stage8/urn/' + s + '_01.png'; }), fps: 0,
+        breakFrames: seq('assets/props/stage8/urn/break_', 4),
+        pivot: { x: 39, y: 84 }, solid: true, footprint: { w: 40, depth: 16 },
+        hits: 3, hurtbox: { x: -23, y: -78, w: 46, h: 77 }, shadow: 24,
+        chips: ['#a0703a', '#6e4a26', '#e0b860', '#8a8a90', '#c8c4bc']
+      },
+      // 푸른 유령불 화로(해골 장식 쇠 그릇 + 세 다리): 장식(지나갈 수 있음, 안 부서짐). 받침·다리·그릇은 그대로, 푸른 불꽃만 움직이는 6장 반복
+      //   빛 = 그릇 높이 청록 + 바닥에 깔린 옅은 파랑(유령불 느낌)
+      ghostfire: {
+        frames: seq('assets/props/stage8/brazier/burn_', 6), fps: 10,
+        pivot: { x: 21, y: 78 }, solid: false, shadow: 14,
+        glow: [{ r: 66, y: 50, color: '#4ae0ff', alpha: 0.3 }, { r: 48, y: 6, color: '#3a7aff', alpha: 0.2 }]
       }
     },
     // ---------- 부서지는 소품 공통 (상자·통) ----------
@@ -2122,11 +2298,13 @@
         mul(a, ['z', 'jumpZ'], S); mul(a.hover, ['speed', 'catchR'], S);
         // 5단계: 서리 거인 얼음 가시 줄(첫 가시 거리·가시 사이 거리, maxRange 는 위에서)
         mul(a, ['first', 'step'], S);
+        // 8단계: 흡혈 백작 순간이동(등 뒤 거리·덤비는 거리), 화난 뒤 박쥐 떼 줄 차이
+        mul(a, ['behind', 'lunge'], S); if (a.enraged && a.enraged.lanes) arr(a.enraged.lanes);
       });
       // 6단계 총잡이 거리 두기
       if (T.ranged) { arr(T.ranged.keep); mul(T.ranged, ['tooClose'], S); }
       // 나는 적 흔들림, 방패 막기 밀림, 보스 핵 빛 위치
-      mul(T.flying, ['bob'], S); mul(T.guard, ['push'], S);
+      mul(T.flying, ['bob'], S); mul(T.guard, ['push'], S); mul(T.glide, ['bob'], S);   // glide = 8단계 유령 기사 둥실
       if (T.stagger) { mul(T.stagger.core, ['x', 'y', 'r'], S); box(T.stagger.hurtbox); }   // 휘청 중 몸 판정(전갈 뒤집힘)
     });
     // 소품·음식: 맞는 상자·막는 상자·그림자·빛·줍는 거리·튀어 오름 (그림은 assets.js 가 actorScale 로 그림)
