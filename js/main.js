@@ -25,9 +25,9 @@
     clearedMem = Math.max(clearedMem, n);
     try { if (n > (parseInt(localStorage.getItem(SAVE_KEY), 10) || 0)) localStorage.setItem(SAVE_KEY, String(n)); } catch (e) {}
   }
-  function unlockedMax() { return urlStage ? STAGES.length : Math.min(STAGES.length, loadCleared() + 1); }
-  // 처음 판: ?stage=N, 아니면 열린 판 중 마지막(고르기 화면 뒤에 미리 보임)
-  var startNo = urlStage || unlockedMax();
+  function unlockedMax() { return urlStage || CFG.stagesAllOpen ? STAGES.length : Math.min(STAGES.length, loadCleared() + 1); }
+  // 처음 판: ?stage=N, 아니면 열린 판 중 마지막(고르기 화면 뒤에 미리 보임). 다 열어 둔 시험 기간엔 아직 안 깬 첫 판
+  var startNo = urlStage || (CFG.stagesAllOpen ? Math.min(STAGES.length, loadCleared() + 1) : unlockedMax());
   CFG.stage = STAGES[startNo - 1]; CFG.bg = CFG.stage.bg;
 
   var canvas = document.getElementById('screen');

@@ -958,6 +958,8 @@
     //   bg = 배경 3장(위 BG_FOREST 설명). 판을 시작할 때 그 판 배경만 불러온다(main.js useStage → Assets.ensureBg)
     // 새 판 넣기: 아래 목록 끝에 { id: 4, … } 하나 추가하면 끝(스테이지 고르기 화면·다음 스테이지는 자동)
     // 지금 하고 있는 판은 main.js 가 CFG.stage(+ CFG.bg = 그 판 bg)에 넣어 둔다 → 다른 코드는 예전처럼 CFG.stage 를 읽음
+    // 시험 기간(2026-11-04 형님): 스테이지 고르기에서 모든 판을 처음부터 열어 둠. 정식으로 낼 때 false
+    stagesAllOpen: true,
     stages: [
       {
         id: 1,
