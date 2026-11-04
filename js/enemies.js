@@ -1,5 +1,6 @@
 // 적: 고블린 · 늑대 · 오크 족장(보스) + 2단계 박쥐(나는 적) · 해골 병사(방패 막기) · 돌 골렘(보스, 바위 던지기)
 //   + 3단계 도마뱀 전사(찌르기·달려들기) · 거대 두꺼비(보스, 배치기·혀·독 뱉기) + 4단계 미라(잡기) · 전갈 왕(보스, 땅속 숨기)
+//   + 5단계 설인(느리고 단단, 두 주먹 내려찍기) · 서리 거인(보스, 몽둥이 내려찍기·휘두르기·얼음 가시 줄)
 //   + 6단계 해적 총잡이(멀리서 쏨, 거리 두기) · 해적 선장(보스, 칼 두 번·권총·대포 일제 사격)
 //   + 7단계 불 도깨비(치고 빠지기·불덩이) · 용암 골렘(정예, 골렘 색 바꿈) · 붉은 와이번(보스, 물기·불 뿜기·날아올라 내리꽂기). 수치는 전부 config.js 의 enemies.
 // 그림은 전부 「왼쪽을 봄」 → 그릴 때 ctx.scale(-dir, 1)  (dir = 1 이면 오른쪽을 봄)
@@ -330,6 +331,9 @@
     if (wantAttack) { tx = p.x + this.side * T.engage; ty = p.y; }
     else { tx = p.x + this.side * this.hoverD; ty = p.y + this.yOff; }
     if (this.retreatT > 0) { tx = p.x + this.side * (T.engage + 90 * AS()); ty = p.y + this.yOff; }
+    // 아직 화면 밖(들어오기 전): 목표를 화면 안으로(2026-11-04 막힘 고침). 플레이어가 화면 끝에 붙어 있으면 「플레이어 옆」 목표가 화면 밖이라
+    //   거기 멈춰 서서 영영 안 들어오고(entered 가 안 되면 공격도 안 함) 웨이브가 안 끝났음
+    if (!this.entered) tx = Math.max(ctx.view.x0 + 20 * AS(), Math.min(ctx.view.x1 - 20 * AS(), tx));
     ty = Math.max(ctx.world.laneTop, Math.min(ctx.world.laneBottom, ty));
     if (ctx.steer && !T.flying) { var sv = ctx.steer(this, tx, ty); tx = sv.x; ty = sv.y; }   // 나는 적(박쥐)은 소품 위로 지나감   // 막는 소품(상자·통): 목표가 그 안이면 옆으로, 앞에 있으면 위나 아래로 돌아감 (props.js)
     var mx = tx - this.x, my = ty - this.y;
@@ -365,7 +369,7 @@
     var tx = p.x + this.side * want;
     // 뒤가 화면 끝이라 더 물러날 수 없으면 그 자리(붙으면 bash)
     var x0 = ctx.view.x0 + 16 * AS(), x1 = ctx.view.x1 - 16 * AS();
-    if (this.entered) tx = Math.max(x0, Math.min(x1, tx));
+    tx = Math.max(x0, Math.min(x1, tx));   // 들어오기 전에도 화면 안을 목표로(안 그러면 화면 밖에서 거리만 두고 영영 안 들어올 수 있음)
     var ready = this.cool <= (R.alignMs || 0);
     var ty = ready ? p.y : p.y + this.yOff * 1.4;
     ty = Math.max(ctx.world.laneTop, Math.min(ctx.world.laneBottom, ty));
@@ -418,7 +422,7 @@
     var opts = [], sum = 0, self = this;
     Object.keys(T.attacks).forEach(function (k) {
       var a = T.attacks[k];
-      var yOk = a.type === 'charge' ? ady <= 40 * AS() : (a.type === 'throw' || a.type === 'burrow' || a.type === 'barrage' || a.type === 'dive') ? true : ady <= T.alignY;   // 바위 던지기·땅속 숨기·대포 사격·날아올라 내리꽂기는 줄 상관없음
+      var yOk = a.type === 'charge' ? ady <= 40 * AS() : (a.type === 'throw' || a.type === 'burrow' || a.type === 'barrage' || a.type === 'dive' || a.type === 'spikes') ? true : ady <= T.alignY;   // 바위 던지기·땅속 숨기·대포 사격·날아올라 내리꽂기·얼음 가시 줄은 줄 상관없음
       if (a.type === 'burrow' && self.clock - self.lastBurrowAt < (a.gapMs || 0)) return;   // 한 번 숨은 뒤 gapMs 동안은 안 숨음
       // 그 밖의 gapMs(선장 대포 사격): 한 번 쓰면 이 시간 동안 안 씀. firstMs = 나타난 뒤 처음 쓸 수 있을 때까지
       if (a.type !== 'burrow' && a.gapMs) {
@@ -475,6 +479,16 @@
       if (!a.fired && fr.no >= spec.spawnFrame) { a.fired = true; if (ctx.fireShot) ctx.fireShot(this, spec); }
       return;
     }
+    // 얼음 가시 줄(5단계 서리 거인): aimMs 동안 플레이어 쪽을 겨눔(줄이 따라감) → 그다음 고정 → spawnFrame 그림(손바닥으로 땅 침)에서
+    //   가시 자리들을 main.js ctx.spikeLine 에 넘김(가시마다 delayMs 씩 늦게 솟음)
+    if (spec.type === 'spikes') {
+      if (a.t <= spec.aimMs || !a.pts) { a.pts = this.spikePoints(spec, ctx); if (a.t <= spec.aimMs && Math.abs(ctx.player.x - this.x) > 4) this.dir = ctx.player.x > this.x ? 1 : -1; }
+      if (!a.fired && fr.no >= spec.spawnFrame) {
+        a.fired = true; ctx.shake(spec.shake || 1);
+        if (ctx.spikeLine) ctx.spikeLine(this, spec, a.pts);
+      }
+      return;
+    }
     // 바위 던지기: 던지기 전까지 플레이어 자리를 겨눔(앞쪽, maxRange 까지) → spawnFrame 그림에서 그 자리로 던짐(main.js ctx.throwRock)
     if (spec.type === 'throw') {
       if (!a.thrown) {
@@ -500,8 +514,25 @@
     // 땅을 찍는 순간 화면 흔들림 (보스)
     if (spec.shake && !a.shook && fr.no === spec.active[spec.active.length - 1]) {
       a.shook = true; ctx.shake(spec.shake);
-      if (spec.burst && ctx.burst) ctx.burst(this, this.x + this.dir * spec.burst.x, this.y, spec.burst.scale);   // 골렘 내려찍기: 주먹 자리에 바위 터짐
+      if (spec.burst && ctx.burst) ctx.burst(this, this.x + this.dir * spec.burst.x, this.y, spec.burst.scale, spec.burst);   // 골렘 내려찍기: 주먹 자리에 바위 터짐(서리 거인: 얼음 가시)
     }
+  };
+
+  // 얼음 가시 자리: 거인 발(기준점)에서 플레이어 쪽(가로·위아래 = 걷는 길 위) 방향으로 first + i x step 도트마다, maxRange 까지.
+  //   플레이어가 바로 앞(가로 30 안)이면 바라보는 쪽 앞으로 곧게. 위아래는 걷는 길 안, 가로는 화면 안에서 멈춤
+  Enemy.prototype.spikePoints = function (s, ctx) {
+    var p = ctx.player, w = ctx.world, dx = p.x - this.x, dy = p.y - this.y, out = [];
+    if (dx * this.dir < 30 * AS()) { dx = this.dir * Math.max(30 * AS(), Math.abs(dx)); }
+    var d = Math.hypot(dx, dy) || 1, ux = dx / d, uy = dy / d;
+    var x0 = ctx.view.x0 + 8 * AS(), x1 = ctx.view.x1 - 8 * AS();
+    for (var i = 0; i < s.count; i++) {
+      var r = s.first + i * s.step;
+      if (r > s.maxRange) break;
+      var x = this.x + ux * r, y = this.y + uy * r;
+      if (x < x0 || x > x1) break;
+      out.push({ x: x, y: Math.max(w.laneTop, Math.min(w.laneBottom, y)) });
+    }
+    return out;
   };
 
   // 미라 잡기: 붙잡은 동안(holdT) 그림 멈춤. 플레이어가 버튼을 누를 때마다(ctx.grabMash) mashMs 만큼 빨리 풀림(그래도 minMs 는 잡혀 있음)
@@ -795,6 +826,13 @@
     }
     if (s.type === 'shot') { this.drawAim(g, camX); return; }   // 총: 겨누는 동안 빨간 겨눔 선
     if (s.type === 'barrage') return;                            // 대포 사격: 떨어질 자리는 main.js 가 그림(그림자 + 빨간 원)
+    if (s.type === 'spikes') {   // 얼음 가시 줄: 땅을 치기 전까지 가시 나올 자리마다 빨간 원(겨누는 동안 옅게 따라감 → 고정되면 진하게)
+      if (a.fired || !a.pts) return;
+      var SA = this.T.anims[s.anim], hitMs = SA.playback.indexOf(s.spawnFrame) * 1000 / SA.fps, aiming = a.t <= s.aimMs;
+      var rx = (s.reach.x1 - s.reach.x0) / 2;
+      a.pts.forEach(function (q, i) { drawRing(g, camX, q.x, q.y, rx, s.depth, aiming ? 0 : (a.t - s.aimMs) / Math.max(1, hitMs - s.aimMs) - i * 0.08, aiming); });
+      return;
+    }
     if (s.type === 'dive') {     // 와이번 내리꽂기: 날아 있는 동안 몸 밑(떨어질 자리)에 빨간 원. 맴도는 동안 옅게 따라가다가 경고·떨어짐에서 진하게
       var ry = Math.max(s.depth, s.radius * 0.3);
       if (a.phase === 'hover' || (a.phase === 'takeoff' && a.z > 0)) drawRing(g, camX, this.x, this.y, s.radius, ry, 0, true);
@@ -903,7 +941,7 @@
       var hb = this.hurtbox();
       g.strokeStyle = '#3cf'; g.strokeRect(Math.round(hb.x0 - camX) + 0.5, Math.round(hb.y0) + 0.5, Math.round(hb.x1 - hb.x0), Math.round(hb.y1 - hb.y0));
       if (this.state === 'attack') {
-        var s2 = this.atk.spec, rr = s2.type === 'charge' ? (this.atk.phase === 'impact' ? s2.reach : s2.bodyReach) : s2.reach;
+        var s2 = this.atk.spec, rr = s2.type === 'charge' ? (this.atk.phase === 'impact' ? s2.reach : s2.bodyReach) : s2.type === 'spikes' ? null : s2.reach;   // 얼음 가시 판정은 가시 자리(main.js)
         if (rr) {   // 판정 상자가 없는 공격(바위 던지기·총·대포)은 안 그림
           var ab = this.attackBox(rr, s2.depth);
           g.strokeStyle = 'rgba(255,60,60,0.8)'; g.strokeRect(Math.round(ab.x0 - camX) + 0.5, Math.round(ab.y0) + 0.5, Math.round(ab.x1 - ab.x0), Math.round(ab.y1 - ab.y0));

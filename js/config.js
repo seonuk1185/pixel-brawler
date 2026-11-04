@@ -512,6 +512,14 @@
     ground: { img: 'assets/bg/stage4/ground.png', w: 715,  tile: true,  parallax: 1.0 },
     height: 240, floorY: 144, laneTop: 158, laneBottom: 230
   };
+  // ---------- 5단계 배경 = 눈 덮인 산 (art\stage5-bg 에서 복사, 2026-11-04) ----------
+  // 소나무 숲 가장자리 → 산길 감시탑·돌다리·얼어붙은 폭포 → 예티 동굴. 크기·바닥·걷는 길은 1~4단계와 같음(mid 3장 = 2단계와 같은 길이)
+  var BG_SNOW = {
+    far:    { img: 'assets/bg/stage5/far.png',    w: 512,  tile: true,  parallax: 0.15 },
+    mid:    { img: 'assets/bg/stage5/mid.png',    w: 1247, tile: false, parallax: 0.5 },
+    ground: { img: 'assets/bg/stage5/ground.png', w: 708,  tile: true,  parallax: 1.0 },
+    height: 240, floorY: 144, laneTop: 158, laneBottom: 230
+  };
   // ---------- 6단계 배경 = 해적 항구 (art\stage6-bg 에서 복사, 2026-11-04) ----------
   // 항구 마을 → 정박한 해적선 → 요새 부두 + 등대(해질녘). 크기·바닥·걷는 길은 1~4단계와 같음(mid 가 조금 짧음 → 판 끝에 맞춰 자동으로 느리게 흐름)
   var BG_HARBOR = {
@@ -1226,6 +1234,84 @@
         }
       },
 
+      // ===== 5단계 적 (art\stage5-enemies 에서 복사, 2026-11-04). 수치 = 그 폴더 anchors_*.json 의 suggest =====
+      // 설인: 느리고 단단한 고블린(같은 생각 방식). 그림 칸이 고블린보다 큼(두 주먹을 머리 위로 166도트까지 치켜들고, 넘어질 때 120도트 날아감)
+      //   smash = 두 주먹 내려찍기(무거움 = 맞으면 넘어짐): 1 몸을 젖힘 · 2 두 주먹을 머리 위로 깍지 끼고 포효(예고 약 450ms, 고블린보다 길게) ·
+      //     3 내려침(맞음) · 4 땅에 쾅(맞음, reachF[4] = 땅까지 낮게) · 5 복귀. showTelegraph = 잡몹이어도 바닥 예고 띠
+      //   걷기: 그림 속 디딘 발이 한 장에 약 7도트 뒤로 감(재어 봄, 성큼성큼 큰 걸음) → 34도트/초에 5fps(발이 안 미끄러짐). 속도를 바꾸면 walk fps 도 같은 비율로
+      yeti: {
+        label: '설인', frameW: 208, frameH: 176, pivot: { x: 104, y: 170 },
+        anims: enemyAnims('yeti', {
+          idle: [4, 5, true], walk: [8, 5, true],
+          attack: [5, 9, false, [1, 2, 2, 2, 2, 3, 4, 4, 4, 5]],   // 1 젖힘 · 2 두 주먹 치켜듦(예고) · 3 내려침 · 4 땅에 쾅 · 5 복귀
+          hit: [3, 10, false, [1, 2, 2, 3]],
+          hit2: [3, 10, false, [1, 1, 2, 2, 3]],
+          knockdown: [5, 10, false, [1, 2, 2, 3, 4, 5, 4, 5]],     // 맞음 → 날아감 → 쿵 → 등으로 누움(5 = 4 와 같은 그림)
+          getup: [3, 8, false, [1, 1, 2, 2, 3]],                   // 주먹 짚고 앉음 → 한 무릎 → 섬
+          death: [5, 8, false, [1, 2, 3, 4, 5]]                    // 포효 → 뒤로 넘어짐 → 누움 → 털 위에 서리
+        }),
+        walkAnim: 'walk',
+        down: { slide: 50, lyingFrames: [3, 4, 5] },
+        hp: 140, speedX: 34, speedY: 22, radius: 22, height: 104,
+        hurtbox: { x0: -32, x1: 40, yTop: -102, yBot: 0 },
+        engage: 46, hover: [100, 150], range: [24, 70], alignY: 8, cooldown: [1500, 2600], firstCooldown: [700, 1700],
+        knockResist: 0.6, deathKnock: 140,
+        attacks: {
+          smash: { anim: 'attack', active: [3, 4], telegraph: [2], showTelegraph: true, heavy: true, depth: 14,
+                   reach: { x0: 20, x1: 64, yTop: -104, yBot: -20 }, reachF: { 4: { x0: 20, x1: 72, yTop: -92, yBot: 0 } },
+                   dmg: [10, 13], knock: 22, flinchMs: 420, shake: 1.4 }
+        }
+      },
+      // 서리 거인(5단계 보스): 오크·골렘과 같은 보스 규칙(공격 중 안 끊김, 체력 66%·33% 휘청, 절반에서 화남 + 설인·얼음 늑대 부름)
+      //   그림 칸 352x248(오크·골렘보다 앞으로 32, 위로 16 큼 = 얼음 몽둥이를 멀리 휘두름). 휘청 3장 = 한 무릎 꿇고 고개 숙여 헐떡임 = 때릴 기회(1000ms, 몸이 넓게 → stagger.hurtbox)
+      //   공격: smash = 몽둥이 내려찍기(무거움): 2장 머리 위로 치켜듦(예고 500ms) → 4장 땅에 박힘 + 몽둥이 끝에 작은 얼음 가시(burst.fx = 효과 그림 이름, cols = 튀는 조각 색)
+      //         sweep = 가로 휘두르기: 1장 뒤로 젖힘(예고) → 3장 쭉 뻗음(지금까지 적 중 가장 멀리 닿음, 188) → 4장 몸 앞(reachF[4])
+      //         spikes = 얼음 가시 줄(type 'spikes'): 1·2장 손을 치켜듦(예고, 바닥에 가시 나올 자리 빨간 표시) → 3장 손바닥으로 땅을 침 → 가시 count 개가
+      //           거인에서 플레이어 쪽으로 first + i x step 도트마다(maxRange 까지) delayMs 간격으로 차례로 솟음. 가시 하나 = icespike 그림 1~5장(14fps 한 번):
+      //           1장 땅 갈라짐(예고) · spikeActive(2~4장) 동안 그 자리 상자(reach, 위아래 depth)에 닿으면 한 번 맞음 · 5장 부서짐
+      //           겨누기 = 공격을 시작하고 aimMs 동안은 플레이어를 따라가다가 그다음 줄이 고정됨(빨간 표시가 진해짐) → 줄을 바꾸면(위아래로 비키면) 피함.
+      //           높이 dodgeZ 넘게 뛰어도 피함. gapMs = 한 번 쓰면 이 시간 동안 안 씀, firstMs = 나타나서 처음 쓰기까지
+      giant: {
+        label: '서리 거인', boss: true, frameW: 352, frameH: 248, pivot: { x: 200, y: 242 },
+        anims: enemyAnims('giant', {
+          idle: [4, 5, true], walk: [6, 8, true],
+          attack1: [5, 8, false, [1, 2, 2, 2, 2, 3, 4, 4, 4, 5]],   // 내려찍기: 1 듦 · 2 머리 위로(예고 500ms) · 3 내려침 · 4 땅에 박힘 · 5 어깨에 멤
+          attack2: [5, 9, false, [1, 1, 1, 2, 3, 4, 4, 5]],         // 휘두르기: 1 뒤로 젖힘(예고) · 2 휘두름 · 3 쭉 뻗음 · 4 몸 앞 · 5 복귀
+          special: [5, 8, false, [1, 2, 2, 2, 2, 3, 4, 4, 4, 5]],   // 얼음 가시: 1 손 듦 · 2 손 높이 + 서리 빛(예고) · 3 땅 침 = 가시 · 4 짚은 채 · 5 복귀
+          hit: [3, 8, false, [1, 2, 2, 3]],
+          hit2: [3, 8, false, [1, 1, 2, 2, 3]],
+          stagger: [4, 7, false, null],                              // 휘청: 장마다 시간은 아래 stagger.d (3장 = 무릎 꿇고 헐떡임)
+          death: [5, 6, false, [1, 1, 2, 2, 3, 4, 5]]                // 포효 → 무릎 → 넘어짐 → 얼음 조각상 → 산산조각
+        }),
+        fxArt: {
+          icespike: { frames: seq(EN + 'icespike/icespike_', 5), pivot: { x: 48, y: 84 }, fps: 14 }   // 얼음 가시 덩어리(바닥 가운데 기준, 한 번)
+        },
+        walkAnim: 'walk',
+        // 체력·데미지: 자동 조종(?bot=1, 피하지 않음) 시험에서 4단계 전갈 왕과 6단계 선장 사이가 되게 맞춤(그림 자료 제안 hp 1100 · 내려찍기 19~23 · 휘두르기 14~17 보다 낮춤)
+        hp: 1000, speedX: 28, speedY: 22, radius: 44, height: 158,
+        hurtbox: { x0: -40, x1: 48, yTop: -158, yBot: 0 },
+        engage: 76, hover: [80, 110], range: [40, 300], alignY: 10, cooldown: [1000, 1800], firstCooldown: [1200, 1500],
+        knockResist: 0.2, deathKnock: 40,
+        staggerCdMs: 2200,
+        superArmor: true,
+        stagger: { at: [0.66, 0.33], onWall: false, d: [280, 140, 1000, 300], hurtbox: { x0: -78, x1: 60, yTop: -127, yBot: 0 } },
+        enrageAt: 0.5,
+        enrage: { speedMul: 1.25, cooldownMul: 0.7, summon: ['yeti', ['wolf', { variant: 'ice' }], ['wolf', { variant: 'ice' }]] },   // [이름, { variant }] = 색 바꾼 졸개
+        attacks: {
+          smash:  { anim: 'attack1', active: [3, 4], telegraph: [2], heavy: true, depth: 16,
+                    reach: { x0: 40, x1: 104, yTop: -100, yBot: 0 },
+                    dmg: [16, 20], knock: 36, flinchMs: 450, shake: 2.8, when: [30, 105], weight: 3,
+                    burst: { x: 88, scale: 0.7, fx: 'icespike', cols: ['#e8f6ff', '#a8d8f8', '#6aa8d8', '#ffffff'] } },
+          sweep:  { anim: 'attack2', active: [3, 4], telegraph: [1], depth: 14,
+                    reach: { x0: 30, x1: 188, yTop: -135, yBot: -88 }, reachF: { 4: { x0: 20, x1: 80, yTop: -120, yBot: -20 } },
+                    dmg: [12, 15], knock: 30, flinchMs: 400, shake: 1.6, when: [60, 190], weight: 3 },
+          spikes: { type: 'spikes', anim: 'special', telegraph: [1, 2], spawnFrame: 3, fx: 'icespike', aimMs: 300,
+                    count: 5, first: 70, step: 50, delayMs: 90, maxRange: 300,
+                    spikeActive: [2, 3, 4], reach: { x0: -24, x1: 24, yTop: -72, yBot: 0 }, depth: 14, dodgeZ: 30,
+                    dmg: [14, 18], knock: 16, flinchMs: 420, shake: 1.0, when: [110, 330], weight: 2, gapMs: 6000, firstMs: 3000 }
+        }
+      },
+
       // ===== 7단계 적 (art\stage7-enemies 에서 복사, 2026-11-04). 수치 = 그 폴더 anchors_*.json 의 suggest =====
       // 불 도깨비: 늑대처럼 치고 빠지기(retreatMs) + 불덩이 던지기. 고블린 크기(그림 칸·기준점 같음), 몸은 웅크린 70도트
       //   claw = 불 발톱 할퀴기: 2장 발톱 치켜듦(예고) → 3장 달려들며 내리긋기(맞음, move 로 26 앞으로) → 4장 끝까지(reachF[4] 가까이)
@@ -1376,8 +1462,8 @@
     //   bg = 배경 3장(위 BG_FOREST 설명). 판을 시작할 때 그 판 배경만 불러온다(main.js useStage → Assets.ensureBg)
     // 새 판 넣기: 아래 목록에 { id, … } 하나 추가하면 끝(스테이지 고르기 화면·다음 스테이지는 자동)
     //   id = 판 번호(고르기 화면 숫자 · 주소 ?stage=N 이 이 번호). 목록 순서 = 노는 순서(다음 스테이지 · 잠금 풀림은 목록 순서대로)
-    //   → 번호를 건너뛰어도 됨(2026-11-04: 5단계 설산은 그림이 아직이라 목록 = 1 2 3 4 6 7, 나중에 6 앞에 { id: 5 } 끼움)
-    //   깬 판은 id 로 저장(main.js) → 5단계를 끼워도 예전 저장이 어긋나지 않음
+    //   → 번호를 건너뛰어도 됨(2026-11-04: 한동안 5단계 설산 그림이 없어서 목록 = 1 2 3 4 6 7 → 같은 날 6 앞에 { id: 5 } 끼움 = 1 2 3 4 5 6 7)
+    //   깬 판은 id 로 저장(main.js) → 5단계를 끼워도 예전 저장이 어긋나지 않음(4·6을 깨고 5는 안 깼으면: 6은 그대로 클리어, 5가 열림)
     // 지금 하고 있는 판은 main.js 가 CFG.stage(+ CFG.bg = 그 판 bg)에 넣어 둔다 → 다른 코드는 예전처럼 CFG.stage 를 읽음
     // 시험 기간(2026-11-04 형님): 스테이지 고르기에서 모든 판을 처음부터 열어 둠. 정식으로 낼 때 false
     stagesAllOpen: true,
@@ -1533,7 +1619,46 @@
           { type: 'amphora',   x: 2250, y: 0.78, drop: 'meat' }    // 6번 웨이브 화면 = 보스방 바로 앞
         ]
       },
-      // 5스테이지(설산)는 그림 완성 후 이 앞에 끼움
+      // ===== 5단계: 눈 덮인 산 (2026-11-04 새 그림: 배경·소품·설인·서리 거인, 얼음 늑대 = 1단계 늑대 색 바꿈) =====
+      // 4단계와 6단계 사이(체력·공격 x1.25): 새 적 설인(느리고 단단, 두 주먹 내려찍기) + 얼음 늑대 + 해골·도마뱀·고블린·총잡이(조금) 섞음,
+      //   눈밭 모닥불 둘레에 미리 서 있는 무리 3곳 + 옆에서 지원, 보스 = 서리 거인(몽둥이 내려찍기·휘두르기·얼음 가시 줄)
+      {
+        id: 5,
+        name: 'STAGE 5  눈 덮인 산',
+        width: 2880,
+        healOnClear: 13,
+        bgTop: '#aecaf1',           // 화면이 배경보다 높을 때 위쪽 하늘 색 (실제로는 배경 맨 윗줄 = 옅은 찬 하늘색을 늘려 씀)
+        bg: BG_SNOW,
+        hpMul: 1.25, dmgMul: 1.25,
+        waves: [
+          // 1: 소나무 숲 가장자리 — 설인 첫 등장
+          { at: 120,  spawn: [['yeti', 'R', 0], ['goblin', 'R', 900], ['wolf', 'L', 2200, { variant: 'ice' }]] },
+          // 2: 모닥불(500 + 326) 옆에 설인 + 얼음 늑대(camp1, 하나 깨면 둘 다 깸) + 옆에서 지원
+          { at: 500,  placed: [['yeti', 288, 0.36, { group: 'camp1', dir: 1 }], ['wolf', 364, 0.58, { group: 'camp1', variant: 'ice' }]],
+                      spawn: [['goblin', 'L', 700], ['wolf', 'R', 2200, { variant: 'ice' }]] },
+          { at: 880,  spawn: [['skeleton', 'R', 0], ['yeti', 'L', 500], ['wolf', 'R', 1300, { variant: 'ice' }], ['lizard', 'L', 3200], ['goblin', 'R', 3800]] },
+          // 4: 감시탑 아래 모닥불(1260 + 330) 둘레에 설인 + 해골 + 얼음 늑대(camp2) + 옆에서 지원(총잡이 하나)
+          { at: 1260, placed: [['yeti', 292, 0.34, { group: 'camp2', dir: 1 }], ['skeleton', 372, 0.42, { group: 'camp2' }], ['wolf', 340, 0.8, { group: 'camp2', variant: 'ice' }]],
+                      spawn: [['gunner', 'R', 1200], ['yeti', 'L', 3400], ['wolf', 'R', 4200, { variant: 'ice' }]] },
+          { at: 1650, spawn: [['yeti', 'R', 0], ['lizard', 'L', 400], ['wolf', 'R', 1000, { variant: 'ice' }], ['skeleton', 'L', 2800], ['yeti', 'R', 3400]] },
+          // 6: 설인 동굴 앞 모닥불(2040 + 332)을 지키는 설인 둘(cave) + 옆에서 지원
+          { at: 2040, placed: [['yeti', 296, 0.3, { group: 'cave', dir: 1 }], ['yeti', 368, 0.66, { group: 'cave' }]],
+                      spawn: [['wolf', 'R', 600, { variant: 'ice' }], ['goblin', 'L', 1000], ['gunner', 'R', 2800], ['lizard', 'L', 3400], ['wolf', 'R', 4000, { variant: 'ice' }]] },
+          { at: 'end', boss: true, spawn: [['giant', 'R', 0]] }
+        ],
+        // 소품: 얼음 속 술통·눈 덮인 보급 상자(부서짐) + 가죽 천막 모닥불 3개(장식, 무리 자리). 보스 앞 술통은 고기가 꼭 나옴
+        props: [
+          { type: 'icebarrel', x: 430,  y: 0.72 },
+          { type: 'snowcrate', x: 700,  y: 0.22 },
+          { type: 'snowcamp',  x: 500 + 326, y: 0.47 },
+          { type: 'icebarrel', x: 1150, y: 0.7 },
+          { type: 'snowcrate', x: 1480, y: 0.26 },
+          { type: 'snowcamp',  x: 1260 + 330, y: 0.56 },
+          { type: 'snowcrate', x: 1860, y: 0.32, drop: 'bread' },
+          { type: 'snowcamp',  x: 2040 + 332, y: 0.48 },
+          { type: 'icebarrel', x: 2250, y: 0.78, drop: 'meat' }    // 6번 웨이브 화면 = 보스방 바로 앞
+        ]
+      },
       // ===== 6단계: 해적 항구 (2026-11-04 새 그림: 배경·소품·해적 총잡이·해적 선장) =====
       // 4단계보다 한 단계 어렵게(체력·공격 x1.3): 새 적 해적 총잡이(멀리서 쏨, 거리 두기) + 해골·도마뱀·고블린(일부 「해적」 색) 섞음,
       //   화덕 둘레에 미리 서 있는 무리 3곳 + 옆에서 지원, 보스 = 해적 선장(칼 두 번·권총·대포 일제 사격)
@@ -1785,6 +1910,30 @@
         frames: seq('assets/props/stage7/vent/bubble_', 6), fps: 8, scale: 0.75,
         pivot: { x: 26, y: 47 }, solid: false,
         glow: [{ r: 56, y: 8, color: '#ff6a1a', alpha: 0.34 }, { r: 26, y: 14, color: '#ffc040', alpha: 0.22 }]
+      },
+      // ----- 5단계 소품 (art\stage5-props 에서 복사 → assets/props/stage5/…, 크기·기준점은 그 폴더 props.json) -----
+      // 이름이 1단계 상자(crate)·모닥불(campfire)과 겹쳐서 종류 이름만 따로(그림 폴더 이름은 그대로)
+      // 눈 덮인 보급 상자(밧줄로 묶음, 뚜껑에 고드름): 주인공 허리 높이(4단계 상자쯤). 판자·밧줄·눈덩이 조각
+      snowcrate: {
+        frames: ['intact', 'cracked', 'damaged'].map(function (s) { return 'assets/props/stage5/crate/' + s + '_01.png'; }), fps: 0,
+        breakFrames: seq('assets/props/stage5/crate/break_', 4),
+        pivot: { x: 46, y: 73 }, solid: true, footprint: { w: 66, depth: 18 },
+        hits: 3, hurtbox: { x: -35, y: -59, w: 70, h: 58 }, shadow: 34,
+        chips: ['#c8894a', '#9a5f30', '#6e4022', '#eef6ff', '#b8cce0']
+      },
+      // 얼음 속 술통(파란 얼음 덩어리에 갇힌 나무 통): 고블린 가슴 높이. 얼음 조각·통 판자·쇠테
+      icebarrel: {
+        frames: ['intact', 'cracked', 'damaged'].map(function (s) { return 'assets/props/stage5/icebarrel/' + s + '_01.png'; }), fps: 0,
+        breakFrames: seq('assets/props/stage5/icebarrel/break_', 4),
+        pivot: { x: 44, y: 77 }, solid: true, footprint: { w: 52, depth: 16 },
+        hits: 3, hurtbox: { x: -28, y: -67, w: 56, h: 66 }, shadow: 26,
+        chips: ['#e8f6ff', '#a8d8f8', '#6aa8d8', '#8a5a32', '#4a4a56']
+      },
+      // 가죽 천막 모닥불(눈 덮인 돌 고리 + 장작 + 털가죽 덮은 삼발이 + 쇠솥): 장식(지나갈 수 있음, 안 부서짐). 불꽃만 움직이는 6장 반복. 빛은 낮은 불 자리
+      snowcamp: {
+        frames: seq('assets/props/stage5/campfire/burn_', 6), fps: 10,
+        pivot: { x: 28, y: 77 }, solid: false, shadow: 20,
+        glow: { r: 70, y: 18, color: '#ff9a3a', alpha: 0.32 }
       }
     },
     // ---------- 부서지는 소품 공통 (상자·통) ----------
@@ -1971,6 +2120,8 @@
         // 7단계: 와이번 불길 그림 붙는 자리·한 토막 길이, 내리꽂기 나는 높이·맴돌 때 속도·멈추는 거리·점프 공격 높이
         if (a.fx && a.fx.attach) { mul(a.fx.attach, ['x', 'y'], S); mul(a.fx, ['segW'], S); }
         mul(a, ['z', 'jumpZ'], S); mul(a.hover, ['speed', 'catchR'], S);
+        // 5단계: 서리 거인 얼음 가시 줄(첫 가시 거리·가시 사이 거리, maxRange 는 위에서)
+        mul(a, ['first', 'step'], S);
       });
       // 6단계 총잡이 거리 두기
       if (T.ranged) { arr(T.ranged.keep); mul(T.ranged, ['tooClose'], S); }

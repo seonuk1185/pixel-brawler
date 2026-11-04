@@ -1,7 +1,7 @@
 // 게임 본체: 화면 크기, 배경, 매 장면 갱신, 타격 처리
 // 기본 = 스테이지 판(웨이브 + 보스, 여러 판). 주소 뒤 ?mode=practice = 예전 허수아비 연습장
 // 주소 뒤 ?stage=N = 판 번호(config stages 의 id) N 인 판으로 바로 시작(시험용, 잠금 무시). ?bot=1 이면 고르기 화면 없이 바로 시작
-//   (2026-11-04: 5단계가 아직 없어서 목록 = 1 2 3 4 6 7. ?stage=6 = 해적 항구, ?stage=7 = 화산. 없는 번호면 무시)
+//   (2026-11-04: 목록 = 1 2 3 4 5 6 7. ?stage=5 = 눈 덮인 산, ?stage=6 = 해적 항구, ?stage=7 = 화산. 없는 번호면 무시)
 (function () {
   var CFG = window.CFG, J = CFG.juice;
   var AS = CFG.actorScale || 1;   // 캐릭터 크기: 코드에 바로 적힌 거리·높이와 손맛의 밀림 거리(juice.knockback)에 곱한다
@@ -45,8 +45,9 @@
       localStorage.setItem(SAVE_IDS, JSON.stringify(Object.keys(c).map(Number).sort(function (a, b) { return a - b; })));
     } catch (e) {}
   }
-  // 목록 n 번째(1부터) 판이 열렸나: 시험(?stage=N)·다 열어 둔 기간이면 다, 아니면 첫 판 + 바로 앞 판을 깬 판
-  function isOpen(n) { return !!urlStage || !!CFG.stagesAllOpen || n <= 1 || isCleared(STAGES[n - 2].id); }
+  // 목록 n 번째(1부터) 판이 열렸나: 시험(?stage=N)·다 열어 둔 기간이면 다, 아니면 첫 판 + 바로 앞 판을 깬 판 + 이미 깬 판
+  //   (이미 깬 판: 5단계를 6 앞에 끼우기 전에 6을 깬 저장 → 5를 아직 안 깼어도 6은 그대로 열려 있음)
+  function isOpen(n) { return !!urlStage || !!CFG.stagesAllOpen || n <= 1 || isCleared(STAGES[n - 2].id) || isCleared(STAGES[n - 1].id); }
   // 아직 안 깬 첫 판(목록 순서). 다 깼으면 마지막 판
   function firstUncleared() { var c = loadCleared(); for (var i = 0; i < STAGES.length; i++) if (!c[STAGES[i].id]) return i + 1; return STAGES.length; }
   // 처음 판: ?stage=N, 아니면 아직 안 깬 첫 판(앞 판을 다 깼으니 열려 있음, 고르기 화면 뒤에 미리 보임)
@@ -610,15 +611,19 @@
     }
     g.putImageData(d, 0, 0);
   }
-  // 판에 나오는 변종 그림을 판 시작할 때 미리 구움(게임 중 멈칫 없게)
+  // 판에 나오는 변종 그림을 판 시작할 때 미리 구움(게임 중 멈칫 없게). 보스가 화날 때 부르는 색 바꾼 졸개(5단계 얼음 늑대)도
   function bakeStageVariants() {
     CFG.stage.waves.forEach(function (w) {
       (w.spawn || []).concat(w.placed || []).forEach(function (s) {
         if (s[3] && s[3].variant) tintArt(s[0], s[3].variant);
         else if (CFG.enemies[s[0]] && CFG.enemies[s[0]].variant) tintArt(s[0], CFG.enemies[s[0]].variant);
+        var E = CFG.enemies[s[0]] && CFG.enemies[s[0]].enrage;
+        if (E && E.summon) E.summon.forEach(function (t) { var o = summonOf(t); if (o.opt && o.opt.variant) tintArt(o.type, o.opt.variant); });
       });
     });
   }
+  // 보스 졸개 목록의 한 칸: 'goblin' 또는 ['wolf', { variant: 'ice' }] (색 바꾼 졸개)
+  function summonOf(t) { return Array.isArray(t) ? { type: t[0], opt: t[1] || null } : { type: t, opt: null }; }
 
   // ---------- 판에 나오는 적 종류 (그 판 적 그림만 불러오기, 2026-11-04) ----------
   // 웨이브 spawn·placed + 보스가 화날 때 부르는 졸개까지
@@ -628,7 +633,7 @@
       if (!t || out.indexOf(t) >= 0 || !CFG.enemies[t]) return;
       out.push(t);
       var E = CFG.enemies[t].enrage;
-      if (E && E.summon) E.summon.forEach(add);
+      if (E && E.summon) E.summon.forEach(function (q) { add(summonOf(q).type); });
     }
     (st.waves || []).forEach(function (w) { (w.spawn || []).concat(w.placed || []).forEach(function (s) { add(s[0]); }); });
     return out;
@@ -648,10 +653,11 @@
     return { u: u, x: r.x0 + (r.tx - r.x0) * u, gy: r.y0 + (r.ty - r.y0) * u, z: r.h0 * (1 - u) + 4 * r.s.arcPeak * u * (1 - u) };
   }
   // 바위 터짐 그림(골렘 내려찍기 주먹 자리 / 바위 떨어진 자리) + 돌 조각
-  function rockBurst(e, x, y, scale) {
-    var F = G.assets.enemyFx && G.assets.enemyFx[e.type], B = F && F.rockburst;
+  //   bs = 공격의 burst 수치(있으면): bs.fx = 다른 효과 그림 이름(5단계 서리 거인 = 얼음 가시), bs.cols = 튀는 조각 색
+  function rockBurst(e, x, y, scale, bs) {
+    var F = G.assets.enemyFx && G.assets.enemyFx[e.type], B = F && F[(bs && bs.fx) || 'rockburst'];
     if (B && B.frames.length) FX.sprite(x, y, B.frames, B.fps, B.pivot, false, false, scale || 1);
-    if (Skills.debris) Skills.debris(x, y - 6 * AS, y, Math.round(8 * (scale || 1)), { cols: ['#6a6458', '#8a826e', '#4a463e', '#6f8a4a'], sp: 150, size: 2.2, ms: 600 });
+    if (Skills.debris) Skills.debris(x, y - 6 * AS, y, Math.round(8 * (scale || 1)), { cols: (bs && bs.cols) || ['#6a6458', '#8a826e', '#4a463e', '#6f8a4a'], sp: 150, size: 2.2, ms: 600 });
   }
   function rocksStep(dt) {
     var p = G.player, S = G.stage;
@@ -819,6 +825,51 @@
     });
   }
 
+  // ---------- 얼음 가시 (5단계 서리 거인 spikes): 가시 자리마다 하나씩, delayMs 씩 늦게 솟음 ----------
+  // { e, s: 공격 수치, x, y: 자리(바닥), t: 지난 시간(처음엔 음수 = 기다림), hit, burst }. 그림 = 거인 fxArt[s.fx] 1~5장 한 번(1장 = 땅 갈라짐 예고)
+  //   맞음 = s.spikeActive 장 동안 가시 상자(s.reach, 위아래 s.depth)에 플레이어 몸이 닿음 + 높이 s.dodgeZ 아래 → 가시마다 한 번. 보스가 쓰러지면 다 사라짐
+  var spikes = [];
+  function spikeLine(e, s, pts) {
+    (pts || []).forEach(function (q, i) { spikes.push({ e: e, s: s, x: q.x, y: q.y, t: -i * s.delayMs, hit: false, burst: false }); });
+  }
+  function spikeArt(k) { var F = G.assets.enemyFx && G.assets.enemyFx[k.e.type]; return F && F[k.s.fx]; }
+  function spikeFrame(k, A) { return Math.floor(k.t * ((A && A.fps) || 14) / 1000) + 1; }   // 1부터
+  function spikesStep(dt) {
+    var p = G.player, S = G.stage;
+    for (var i = spikes.length - 1; i >= 0; i--) {
+      var k = spikes[i], s = k.s, A = spikeArt(k), n = (A && A.frames.length) || 5;
+      k.t += dt;
+      if (S.bossDownT >= 0 || S.result) { spikes.splice(i, 1); continue; }
+      if (k.t < 0) continue;
+      var f = spikeFrame(k, A);
+      if (f > n) { spikes.splice(i, 1); continue; }
+      if (!k.burst && f >= s.spikeActive[0]) {   // 솟는 순간: 얼음 조각 + 작은 흔들림
+        k.burst = true;
+        if (Skills.debris) Skills.debris(k.x, k.y - 10 * AS, k.y, 6, { cols: ['#ffffff', '#e8f6ff', '#a8d8f8', '#6aa8d8'], sp: 130, size: 1.8, ms: 420 });
+        FX.shake(J.shakePx * 0.35, 80);
+      }
+      if (k.hit || s.spikeActive.indexOf(f) < 0 || p.state === 'dead' || (p.z || 0) > s.dodgeZ) continue;
+      var h = p.hurtbox(), r = s.reach;
+      if (k.x + r.x0 < h.x1 && k.x + r.x1 > h.x0 && k.y + r.yTop < h.y1 && k.y + r.yBot > h.y0 && Math.abs(k.y - h.z) <= s.depth) {
+        k.hit = true;
+        onPlayerHit({ x: k.x + (p.x >= k.x ? -6 : 6) * AS, dmgMul: k.e.dmgMul, T: k.e.T }, s);   // 가시 자리에서 바깥으로 밀림
+      }
+    }
+  }
+  // 가시 그림(깊이 순서에 같이 넣음: 앞뒤 캐릭터와 겹쳐 보이게)
+  function addSpikeDraw(ents, camX) {
+    spikes.forEach(function (k) {
+      if (k.t < 0) return;
+      var A = spikeArt(k);
+      ents.push({ y: k.y, d: function () {
+        var x = snap(k.x - camX), y = snap(k.y);
+        if (!A || !A.frames.length) { ctx.fillStyle = '#cfefff'; ctx.fillRect(x - 6, y - 24, 12, 24); return; }
+        var im = A.frames[Math.min(A.frames.length - 1, spikeFrame(k, A) - 1)];
+        ctx.save(); ctx.translate(x, y); Assets.blit(ctx, im, A.pivot.x, A.pivot.y); ctx.restore();
+      } });
+    });
+  }
+
   // ---------- 소품 (판의 props: 상자·통·모닥불 + 음식) = props.js. 그림이 없는 종류는 ?debug=1 에서만 자리 표시 ----------
   Props.init(CFG, {
     laneY: laneY,
@@ -826,12 +877,38 @@
     hitstop: function (ms) { G.hitstop = Math.max(G.hitstop, ms); }
   });
 
+  // ---------- 막힘 지킴이 (2026-11-04): 웨이브가 고정된 동안 적 하나가 안 와서 웨이브가 안 끝나는 일 막기 ----------
+  //   살아 있는 적이 STUCK.ms 넘게 ① 「화면 밖」이거나 ② 「플레이어에게서 가로 STUCK.far 넘게 떨어져서 제자리(STUCK.move 안)」이면
+  //   (공격·맞음·넘어짐·휘청·방패·자는 중은 안 셈. 느린 설인이 화면을 가로질러 걸어오는 중처럼 움직이고 있으면 ②는 안 셈)
+  //   플레이어 줄로, 그 적이 있던 쪽 화면 끝 바로 밖으로 옮김 → entered 를 풀어서 다시 화면 안으로 걸어 들어오게(enemies.js: 들어오기 전엔 목표가 화면 안)
+  //   (화면 밖에서 영영 멈춰 있거나, 소품 뒤·판 밖에 끼었을 때). G.stage.rescued = 옮긴 수, rescueLog = 그때 상태(시험용)
+  var STUCK = { ms: 8000, far: 300, move: 16 };
+  function rescueStuck(dt) {
+    var p = G.player, V = G.ectx.view, far = STUCK.far * AS, mv = STUCK.move * AS, S = G.stage;
+    G.enemies.forEach(function (e) {
+      var busy = e.state === 'attack' || e.state === 'hit' || e.state === 'down' || e.state === 'stagger' || e.state === 'guard';
+      if (!e.alive() || e.asleep || e.alertT > 0 || busy || p.state === 'dead' || p.state === 'held') { e.lostT = 0; e.lostX = null; return; }
+      var on = e.x >= V.x0 && e.x <= V.x1;
+      if (on && Math.abs(e.x - p.x) <= far) { e.lostT = 0; e.lostX = null; return; }
+      if (on && (e.lostX == null || Math.abs(e.x - e.lostX) > mv || Math.abs(e.y - e.lostY) > mv)) { e.lostX = e.x; e.lostY = e.y; e.lostT = 0; return; }   // 움직이는 중 = 다가오는 중
+      e.lostT = (e.lostT || 0) + dt;
+      if (e.lostT < STUCK.ms) return;
+      var side = e.x >= p.x ? 1 : -1;
+      (S.rescueLog || (S.rescueLog = [])).push(e.type + ':' + (on ? 'far' : 'off') + ':' + e.state + (e.entered ? ':in' : '') + '@' + Math.round(e.x - V.x0) + '/p' + Math.round(p.x - V.x0));   // 시험용 기록
+      e.lostT = 0; e.lostX = null; e.entered = false; e.vx = 0;
+      e.x = side > 0 ? V.x1 + e.T.radius + 4 : V.x0 - e.T.radius - 4;
+      e.y = clamp(p.y, world.laneTop, world.laneBottom);
+      S.rescued = (S.rescued || 0) + 1;
+    });
+  }
+
   function onBossDown(boss) {
     var S = G.stage;
     S.bossDownT = 0;
     S.queue = [];                      // 아직 안 나온 졸개는 취소
     puddles.forEach(function (q) { q.t = Math.max(q.t, q.P.ms - 600); });   // 독 웅덩이는 곧 사라짐
     shots.length = 0;                  // 날아가던 총알도 사라짐(대포알은 떨어지지만 안 아픔)
+    spikes.length = 0;                 // 얼음 가시도 사라짐
     G.hitstop = Math.max(G.hitstop, 260);
     G.slowT = 1400;                    // 보스 쓰러질 때 슬로모션
     FX.shake(J.shakePx * 3, 500);
@@ -868,13 +945,15 @@
       for (var i = S.queue.length - 1; i >= 0; i--) {
         if (S.queue[i].at <= S.waveT) { spawnEnemy(S.queue[i].type, S.queue[i].side, S.queue[i].opt); S.queue.splice(i, 1); }
       }
+      rescueStuck(dt);
       // 보스 화남: 체력 절반 아래 → 빨라지고 졸개를 부름
       var B = S.boss;
       if (B && B.alive() && !B.enraged && B.hp / B.maxHp < B.T.enrageAt) {
         B.enraged = true;
         banner(josa(B.label || '오크 족장', '이', '가') + ' 화났다!', 'boss');
         (B.T.enrage.summon || []).forEach(function (t, k) {
-          S.queue.push({ type: t, side: k % 2 ? 'L' : 'R', at: S.waveT + 400 + k * 700 });
+          var q = summonOf(t);
+          S.queue.push({ type: q.type, side: k % 2 ? 'L' : 'R', at: S.waveT + 400 + k * 700, opt: q.opt });
         });
       }
       // 다 잡으면 다음으로
@@ -907,11 +986,14 @@
     G.enemies.forEach(function (e) {
       if (!e.alive() || e.state === 'down' || e.hidden || e.airborne()) return;   // 넘어진 적은 밟고 지나갈 수 있음, 땅속(전갈 왕)·공중(두꺼비 배치기)도 지나감
       var charging = e.state === 'attack' && e.atk && e.atk.spec.type === 'charge';
-      list.push({ o: e, r: e.T.radius, m: charging ? 0 : (e.T.boss ? 0.08 : 1), boss: !!e.T.boss });
+      list.push({ o: e, r: e.T.radius, m: charging ? 0 : (e.T.boss ? 0.08 : 1), boss: !!e.T.boss, out: !e.entered });
     });
     for (var i = 0; i < list.length; i++) for (var j = i + 1; j < list.length; j++) {
       var a = list[i], b = list[j];
       if (Math.abs(a.o.y - b.o.y) >= AI.sepDepth) continue;
+      // 아직 화면에 안 들어온 적은 아무도 밀지도, 밀리지도 않음(2026-11-04): 주인공이나 다른 적(특히 잘 안 밀리는 보스)이 화면 끝(휴대폰은 버튼 옆)에
+      //   서 있으면 그 적이 계속 화면 밖으로 밀려나 영영 못 들어왔음 → 웨이브가 안 끝남. 들어온 뒤로는 보통처럼 밀어냄
+      if (a.out || b.out) continue;
       var dx = b.o.x - a.o.x, min = a.r + b.r;
       if (Math.abs(dx) >= min) continue;
       var s = dx > 0 ? 1 : dx < 0 ? -1 : (a.o.dir || 1);
@@ -948,7 +1030,7 @@
       Input.setOverride(ax); return;
     }
     var side = best.x > p.x ? 1 : -1;
-    var want = ({ goblin: 42, wolf: 58, orc: 72, bat: 46, skeleton: 44, golem: 76, mummy: 46, scorpion: 80, lizard: 46, toad: 74, gunner: 40, captain: 70, imp: 44, lavagolem: 76, wyvern: 80 }[best.type] || 50) * AS;
+    var want = ({ goblin: 42, wolf: 58, orc: 72, bat: 46, skeleton: 44, golem: 76, mummy: 46, scorpion: 80, lizard: 46, toad: 74, gunner: 40, captain: 70, imp: 44, lavagolem: 76, wyvern: 80, yeti: 50, giant: 82 }[best.type] || 50) * AS;
     var sv = Props.steer(p, R, best.x - side * want, best.y, world, best.x);   // 막는 소품: 목표가 그 안이면 옆으로, 앞에 있으면 돌아감
     var tx = sv.x, ty = best.y;
     var ex = tx - p.x, ey = ty - p.y, my = sv.y - p.y;   // 공격 조건은 원래 줄(ey), 움직임은 돌아가는 줄(my)
@@ -1073,6 +1155,7 @@
       puddlesStep(dt);       // 두꺼비 독 웅덩이
       shotsStep(dt);         // 총잡이·선장 총알
       cannonsStep(dt);       // 선장 대포알
+      spikesStep(dt);        // 서리 거인 얼음 가시
       poisonStep(dt);        // 전갈 왕 독 · 독 웅덩이
       stageStep(dt);
       Props.update(dt, p);   // 부서지는 그림·음식 줍기
@@ -1116,6 +1199,7 @@
     if (G.dummy) ents.push({ y: G.dummy.y, d: function () { G.dummy.draw(ctx, camX, DEBUG); } });
     G.enemies.forEach(function (e) { ents.push({ y: e.y + (e.alive() ? 0 : -0.5), d: function () { e.draw(ctx, camX, DEBUG); } }); });
     if (MODE === 'stage') Props.addDraw(ents, ctx, camX, LW, DEBUG);
+    if (spikes.length) addSpikeDraw(ents, camX);   // 얼음 가시(땅에서 솟음 = 캐릭터와 깊이 순서)
     ents.sort(function (a, b) { return a.y - b.y; });
     ents.forEach(function (e) { e.d(); });
     Projectiles.draw(ctx, camX);
@@ -1224,7 +1308,7 @@
     FX.list.length = 0;
     Projectiles.clear();
     Skills.clear();
-    rocks.length = 0; puddles.length = 0; shots.length = 0; cannons.length = 0;
+    rocks.length = 0; puddles.length = 0; shots.length = 0; cannons.length = 0; spikes.length = 0;
     G.enemies = [];
     G.stage = newStage();
     G.ectx = makeEnemyCtx();
@@ -1299,6 +1383,7 @@
       debris: function (x, y, n, cols) { if (Skills.debris) Skills.debris(x, y - 6 * AS, y, n, { cols: cols, sp: 150, size: 2.2, ms: 600 }); },   // 두꺼비 배치기 흙탕물
       grabPlayer: grabPlayer, grabMash: grabMash, releaseGrab: releaseGrab,   // 미라 잡기
       fireShot: fireShot, dropCannon: dropCannon,                              // 6단계 총알 · 대포알 (7단계 불덩이도 fireShot)
+      spikeLine: spikeLine,                                                    // 5단계 서리 거인 얼음 가시 줄
       burnPlayer: burnPlayer                                                   // 7단계 와이번 불 뿜기에 계속 서 있음
     };
     Object.defineProperty(E, 'player', { get: function () { return G.player; } });
@@ -1459,13 +1544,13 @@
       var S = G.stage, p = G.player;
       return { mode: MODE, stageNo: G.stageNo, paused: G.paused, LW: LW, LH: LH, scale: SCALE, rs: RS, hd: Assets.isHD(),
  controlPad: controlPad, char: G.player.char && G.player.char.def.anims.idle.frames[0], camX: Math.round(G.camX), wave: S ? S.next : null, locked: S ? S.locked : null,
-        waveIdx: S ? S.waveIdx : null, time: S ? Math.round(S.time) : null, result: S ? S.result : null,
+        waveIdx: S ? S.waveIdx : null, rescued: S ? S.rescued || 0 : 0, time: S ? Math.round(S.time) : null, result: S ? S.result : null,
         player: { hp: p.hp, state: p.state, x: Math.round(p.x), y: Math.round(p.y), z: Math.round(p.z * 10) / 10,
           frame: p.char ? p.currentFrame() : null, ratk: p.ratk ? p.ratk.phase : null, skill: p.sk ? p.sk.d.key + '@' + Math.round(p.sk.t) : null, cd: p.skillCd },
         enemies: G.enemies.map(function (e) { return e.type + (e.variant ? '(' + e.variant + ')' : '') + ':' + (e.asleep ? 'asleep' : e.alertT > 0 ? 'alert' : e.state) +
           (e.atk && (e.atk.spec.type === 'burrow' || e.atk.spec.type === 'dive') ? '/' + e.atk.phase : '') + (e.atk && e.atk.held ? '/hold' : '') + (e.atk ? '/' + e.atk.name : '') + (e.airborne() ? '/air' : '') + ':' + e.hp + '@' + Math.round(e.x) + ',' + Math.round(e.y); }),
         poison: p.poison ? Math.round(p.poison.t) : 0,
-        hits: G.hits, maxCombo: G.maxCombo, rocks: rocks.length, puddles: puddles.length, shots: shots.length, cannons: cannons.length, stageId: CFG.stage.id,
+        hits: G.hits, maxCombo: G.maxCombo, rocks: rocks.length, puddles: puddles.length, shots: shots.length, cannons: cannons.length, spikes: spikes.length, stageId: CFG.stage.id,
         props: Props.list.map(function (pr) { return pr.type + ':' + (pr.state === 'idle' ? pr.hitsLeft : pr.state) + '@' + Math.round(pr.x) + ',' + Math.round(pr.y); }),
         food: Props.food.map(function (f) { return f.kind + '@' + Math.round(f.x) + ',' + Math.round(f.y); }) };
     }
