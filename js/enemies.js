@@ -1,4 +1,4 @@
-// 적: 고블린 · 늑대 · 오크 족장(보스). 수치는 전부 config.js 의 enemies.
+// 적: 고블린 · 늑대 · 오크 족장(보스) + 2단계 박쥐(나는 적) · 해골 병사(방패 막기) · 돌 골렘(보스, 바위 던지기). 수치는 전부 config.js 의 enemies.
 // 그림은 전부 「왼쪽을 봄」 → 그릴 때 ctx.scale(-dir, 1)  (dir = 1 이면 오른쪽을 봄)
 (function () {
   var uid = 0;
@@ -43,6 +43,8 @@
     this.dmgMul = 1; this.variant = null; this.label = this.T.label || type;
     // 미리 서 있는 적(판 waves 의 placed): asleep = 아직 못 알아챔(제자리에 가만히), alertT = 깬 뒤 「!」 보이며 멈춰 있는 시간
     this.asleep = false; this.alertT = 0; this.pose = 'idle'; this.group = null;
+    // 방패 막기(해골 병사, T.guard): guardT = 방패 들고 있는 남은 시간, guardCd = 다시 막기까지, guardFlash = 막는 순간 그림(block 2), blocks = 이번에 막은 수
+    this.guardT = 0; this.guardCd = 0; this.guardFlash = 0; this.blocks = 0; this.guardBroken = false;
   }
 
   // 미리 세워 두기: pose = 쉬는 그림 이름(없으면 idle), group = 같이 깨는 무리 이름
@@ -57,6 +59,31 @@
   };
 
   function sum(d) { var s = 0; for (var i = 0; i < d.length; i++) s += d[i]; return s; }
+
+  // 방패 막기(해골 병사): 플레이어 타가 닿기 직전에 main.js onHit 가 묻는다. true = 막음(데미지 없음)
+  //   dir = 밀려나는 방향(앞에서 맞으면 = 바라보는 반대쪽), breaker = 방패 깨는 타(기술·달리며 공격·점프 공격·마무리 타)
+  //   방패를 들고 있으면 앞에서 오는 보통 타는 다 막음(maxBlocks 까지). 안 들고 있으면 서 있거나 걷는 중에만 chance 확률로 막기 시작
+  //   (확률에 안 걸리면 잠깐 다시 안 굴림 → 콤보 한 번에 한 번만 굴림). 공격 중·맞는 중·넘어짐·자는 중에는 안 막음
+  Enemy.prototype.tryGuard = function (dir, breaker) {
+    var G = this.T.guard;
+    if (!G || !this.alive() || this.asleep || this.alertT > 0 || !this.hasAnim(G.anim)) return false;
+    var front = dir === -this.dir;
+    if (this.state === 'guard') {
+      if (breaker || !front) {   // 방패 깨짐: 방패 내리고 그대로 맞음
+        this.state = 'idle'; this.guardT = 0; this.guardCd = G.cdMs; this.guardBroken = true;
+        return false;
+      }
+    } else {
+      if (breaker || !front || this.guardCd > 0 || (this.state !== 'idle' && this.state !== 'walk')) return false;
+      if (Math.random() >= G.chance) { this.guardCd = 700; return false; }
+      this.state = 'guard'; this.animT = 0; this.guardT = G.holdMs; this.blocks = 0; this.atk = null;
+    }
+    this.blocks++;
+    this.guardFlash = G.flashMs;
+    this.vx = dir * G.push * 10;   // 조금 뒤로 밀림(밀려남 속도는 1초에 10배로 줄어듦 → 거리 = push)
+    if (this.blocks >= G.maxBlocks) this.guardT = Math.min(this.guardT, 160);   // 많이 막았으면 곧 방패 내림
+    return true;
+  };
 
   // 지금 맞을 수 있나 (넘어짐~일어남 동안은 무적)
   Enemy.prototype.canBeHit = function () { return this.alive() && this.state !== 'down'; };
@@ -177,6 +204,7 @@
     if (this.flashT > 0) this.flashT -= dtMs;
     if (this.staggerCd > 0) this.staggerCd -= dtMs;
     if (this.retreatT > 0) this.retreatT -= dtMs;
+    if (this.guardCd > 0) this.guardCd -= dtMs;
 
     // 밀려남(감속)
     if (this.vx) {
@@ -196,6 +224,19 @@
     if (this.state === 'hit') {
       if (this.stunT > 0) this.stunT -= dtMs;   // 번개 기술: 맞은 그림 마지막 장에서 더 멈춰 있음
       if (this.frameAt(this.hitAnim, this.animT).done && !(this.stunT > 0)) { this.state = 'idle'; this.animT = 0; }
+      this.keepInView(ctx);
+      return;
+    }
+    // 방패 들고 있음: 제자리에서 플레이어 쪽을 봄 → 시간이 다 되면 방패 내리고 곧 반격(counterMs)
+    if (this.state === 'guard') {
+      var GD = T.guard;
+      this.guardT -= dtMs;
+      if (this.guardFlash > 0) this.guardFlash -= dtMs;
+      if (Math.abs(p.x - this.x) > 2) this.dir = p.x > this.x ? 1 : -1;
+      if (this.guardT <= 0) {
+        this.state = 'idle'; this.animT = 0; this.guardCd = GD.cdMs;
+        this.cool = Math.min(Math.max(0, this.cool), GD.counterMs);
+      }
       this.keepInView(ctx);
       return;
     }
@@ -250,7 +291,7 @@
     else { tx = p.x + this.side * this.hoverD; ty = p.y + this.yOff; }
     if (this.retreatT > 0) { tx = p.x + this.side * (T.engage + 90 * AS()); ty = p.y + this.yOff; }
     ty = Math.max(ctx.world.laneTop, Math.min(ctx.world.laneBottom, ty));
-    if (ctx.steer) { var sv = ctx.steer(this, tx, ty); tx = sv.x; ty = sv.y; }   // 막는 소품(상자·통): 목표가 그 안이면 옆으로, 앞에 있으면 위나 아래로 돌아감 (props.js)
+    if (ctx.steer && !T.flying) { var sv = ctx.steer(this, tx, ty); tx = sv.x; ty = sv.y; }   // 나는 적(박쥐)은 소품 위로 지나감   // 막는 소품(상자·통): 목표가 그 안이면 옆으로, 앞에 있으면 위나 아래로 돌아감 (props.js)
     var mx = tx - this.x, my = ty - this.y;
     var vx = Math.abs(mx) > 4 ? Math.sign(mx) * T.speedX * this.speedMul() : 0;
     var vy = Math.abs(my) > 3 ? Math.sign(my) * T.speedY * this.speedMul() : 0;
@@ -288,7 +329,7 @@
     var opts = [], sum = 0;
     Object.keys(T.attacks).forEach(function (k) {
       var a = T.attacks[k];
-      var yOk = a.type === 'charge' ? ady <= 40 * AS() : ady <= T.alignY;
+      var yOk = a.type === 'charge' ? ady <= 40 * AS() : a.type === 'throw' ? true : ady <= T.alignY;   // 바위 던지기는 줄 상관없음
       if (yOk && adx >= a.when[0] && adx <= a.when[1]) { opts.push(k); sum += a.weight; }
     });
     if (!opts.length) return null;
@@ -319,6 +360,17 @@
     if (spec.type === 'charge') return this.updateCharge(dtMs, ctx);
     var fr = this.frameAt(spec.anim, a.t);
     if (fr.done) { this.endAttack(); return; }
+    // 바위 던지기: 던지기 전까지 플레이어 자리를 겨눔(앞쪽, maxRange 까지) → spawnFrame 그림에서 그 자리로 던짐(main.js ctx.throwRock)
+    if (spec.type === 'throw') {
+      if (!a.thrown) {
+        var p = ctx.player, ax = p.x, minF = 40 * AS();
+        if ((ax - this.x) * this.dir < minF) ax = this.x + this.dir * minF;
+        ax = this.x + this.dir * Math.min(spec.maxRange, Math.abs(ax - this.x));
+        a.aimX = ax; a.aimY = p.y;
+        if (fr.no >= spec.spawnFrame) { a.thrown = true; ctx.throwRock(this, spec, a.aimX, a.aimY); }
+      }
+      return;
+    }
     // 공격 중 앞으로 이동(늑대 도약): 그 그림들이 보이는 시간 동안 dist 만큼 고르게
     if (spec.move && inList(spec.move.frames, fr.no)) {
       var pb = this.T.anims[spec.anim].playback, cnt = 0;
@@ -328,7 +380,10 @@
     }
     if (inList(spec.active, fr.no)) this.tryHitPlayer(spec, spec.reach, ctx);
     // 땅을 찍는 순간 화면 흔들림 (보스)
-    if (spec.shake && !a.shook && fr.no === spec.active[spec.active.length - 1]) { a.shook = true; ctx.shake(spec.shake); }
+    if (spec.shake && !a.shook && fr.no === spec.active[spec.active.length - 1]) {
+      a.shook = true; ctx.shake(spec.shake);
+      if (spec.burst && ctx.burst) ctx.burst(this, this.x + this.dir * spec.burst.x, this.y, spec.burst.scale);   // 골렘 내려찍기: 주먹 자리에 바위 터짐
+    }
   };
 
   // 오크 어깨 돌진: 웅크림(예고) → 돌진(미끄러짐 + 먼지) → 부딪힘 → 복귀
@@ -371,16 +426,13 @@
     var T = this.T;
     if (this.state === 'dead') return this.deadImg || this.frameAt('death', this.deadT).img;
     if (this.state === 'hit') return this.frameAt(this.hitAnim, this.animT).img;
+    if (this.state === 'guard') { var gi = this.art[T.guard.anim]; return gi[this.guardFlash > 0 && gi[1] ? 1 : 0]; }   // 방패 들기(1) / 막는 순간(2)
     if (this.state === 'down') {
       var DT = this.downTimes();
       if (this.downT < DT.kd + DT.lying) return this.frameAt('knockdown', this.downT).img;   // 마지막 장(누움)에서 멈춤
       return this.frameAt('getup', this.downT - DT.kd - DT.lying).img;
     }
-    if (this.state === 'stagger') {
-      var d = T.stagger.d, t = this.stagT, i = 0;
-      while (i < d.length - 1 && t >= d[i]) { t -= d[i]; i++; }
-      return this.art.stagger[i];
-    }
+    if (this.state === 'stagger') return this.art.stagger[this.staggerIdx()];
     if (this.state === 'attack') {
       var a = this.atk, s = a.spec, imgs = this.art[s.anim];
       if (s.type === 'charge') {
@@ -396,6 +448,13 @@
     return this.frameAt('idle', this.animT).img;
   };
 
+  // 휘청 그림 번호(0부터): stagger.d 의 장마다 시간으로
+  Enemy.prototype.staggerIdx = function () {
+    var d = this.T.stagger.d, t = this.stagT, i = 0;
+    while (i < d.length - 1 && t >= d[i]) { t -= d[i]; i++; }
+    return i;
+  };
+
   // 화면 밖으로 못 나감(들어온 뒤로)
   Enemy.prototype.keepInView = function (ctx) {
     var w = ctx.world;
@@ -405,10 +464,30 @@
     this.y = Math.max(w.laneTop, Math.min(w.laneBottom, this.y));
   };
 
+  // 바닥 빨간 원(바위 떨어질 자리): x, y = 바닥 가운데, rx = 가로 반지름, ry = 위아래 반지름, k = 0~1(다 와 갈수록 진하게), faint = 겨누는 중(옅게)
+  function drawRing(g, camX, x, y, rx, ry, k, faint) {
+    var blink = Math.floor(performance.now() / 90) % 2, cx = x - camX;
+    g.save();
+    g.fillStyle = 'rgba(255,40,30,' + ((faint ? 0.08 : 0.16 + 0.24 * Math.min(1, k)) + (blink && !faint ? 0.08 : 0)) + ')';
+    g.beginPath(); g.ellipse(cx, y, rx, ry, 0, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = faint ? 'rgba(255,90,60,0.45)' : 'rgba(255,90,60,0.9)'; g.lineWidth = 1;
+    g.beginPath(); g.ellipse(cx, y, rx, ry, 0, 0, Math.PI * 2); g.stroke();
+    if (!faint) {   // 가운데로 좁혀 드는 안쪽 원 = 곧 떨어짐
+      var u = Math.max(0.1, 1 - Math.min(1, k));
+      g.beginPath(); g.ellipse(cx, y, rx * u, ry * u, 0, 0, Math.PI * 2); g.stroke();
+    }
+    g.restore();
+  }
+  Enemy.drawRing = drawRing;
+
   // 바닥 예고 표시(빨간 띠): 보스 공격 예고 장면 동안
   Enemy.prototype.drawTelegraph = function (g, camX) {
     if (this.state !== 'attack') return;
     var a = this.atk, s = a.spec, r = null, k = 0;
+    if (s.type === 'throw') {   // 바위 던지기: 던지기 전까지 겨누는 자리(옅은 원, 플레이어를 따라감). 던진 뒤는 main.js 가 떨어질 자리를 그림
+      if (!a.thrown && a.aimX != null) drawRing(g, camX, a.aimX, a.aimY, s.radius, Math.max(s.depth, s.radius * 0.34), 0, true);
+      return;
+    }
     if (s.type === 'charge') {
       if (a.phase !== 'wind') return;
       r = { x0: 0, x1: s.dist + 90 * AS() }; k = a.t / s.windMs;
@@ -440,9 +519,12 @@
     }
     window.drawShadow(g, x, y, T.radius * 1.1);
     if (!img) return;
+    // 나는 적: 떠 있는 동안(서 있기·날기) 위아래로 살짝 흔들림(그림자는 그대로 땅에)
+    var by = 0;
+    if (T.flying && T.flying.bob && (this.state === 'idle' || this.state === 'walk')) by = snapPx(Math.sin(this.clock / T.flying.bobMs * Math.PI * 2) * T.flying.bob);
     g.save();
     g.globalAlpha = alpha;
-    g.translate(x, y);
+    g.translate(x, y + by);
     g.scale(-this.dir, 1);        // 그림이 왼쪽을 보므로 반대로
     Assets.blit(g, img, T.pivot.x, T.pivot.y);
     if (this.flashT > 0) {
@@ -452,6 +534,14 @@
     }
 
     g.restore();
+    // 보스 휘청: 가슴 핵 주황 빛(1·2·4 장, 3장 = 핵 꺼짐 = 때릴 기회). core.x = 앞 +
+    var CO = T.stagger && T.stagger.core;
+    if (CO && this.state === 'stagger' && this.staggerIdx() !== 2) {
+      var cx = x + this.dir * CO.x, cy = y + CO.y, cr = CO.r * (0.85 + 0.15 * Math.sin(this.clock / 60));
+      var gr = g.createRadialGradient(cx, cy, 0, cx, cy, cr);
+      gr.addColorStop(0, CO.color); gr.addColorStop(1, 'rgba(0,0,0,0)');
+      g.save(); g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.75; g.fillStyle = gr; g.fillRect(cx - cr, cy - cr, cr * 2, cr * 2); g.restore();
+    }
     // 알아챔: 머리 위 노란 「!」 (깨고 alertT 동안). 처음 조금은 위로 튀어 오름
     if (this.alertT > 0 && this.alive()) {
       var ay = y - Math.round(T.height) - 12 - (this.alertT > (this.cfg.ai.wake.alertMs || 300) - 80 ? 3 : 0);

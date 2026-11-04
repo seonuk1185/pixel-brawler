@@ -256,6 +256,34 @@
     })).then(function () { return out; });
     return bgJobs[key];
   }
+  // ---------- 적 그림 (2026-11-04 판마다): 그 판에 나오는 적만 불러옴. 같은 적은 한 번만 ----------
+  // OUT.enemies[k] = { 그림 이름: [그림...] }, OUT.enemyFx[k] = { 효과 이름: { frames, pivot, fps } } (적 config 의 fxArt: 골렘 바위 등)
+  //   기준점(T.pivot, fxArt pivot)은 불러온 뒤 그림 점 단위로 바뀐다(캐릭터와 같음)
+  var enemyJobs = {};
+  function ensureEnemy(k) {
+    if (enemyJobs[k]) return enemyJobs[k];
+    var T = CFGR && CFGR.enemies[k];
+    if (!T) return Promise.resolve(null);
+    var S = CFGR.actorScale || 1, A = T.anims, names = Object.keys(A), fxA = T.fxArt || {}, fxNames = Object.keys(fxA);
+    enemyJobs[k] = Promise.all([
+      Promise.all(names.map(function (n) { return loadList(A[n].frames); })),
+      Promise.all(fxNames.map(function (n) { return loadList(fxA[n].frames); }))
+    ]).then(function (r) {
+      var o = {}, p0 = { x: T.pivot.x, y: T.pivot.y }, pv = null, fx = {};
+      names.forEach(function (n, i) { o[n] = r[0][i]; pv = { x: p0.x, y: p0.y }; prepList(o[n], S, pv); });
+      if (pv) T.pivot = pv;
+      fxNames.forEach(function (n, i) {
+        var l = r[1][i].filter(Boolean), fp = { x: fxA[n].pivot.x, y: fxA[n].pivot.y };
+        if (l.length) prepList(l, S, fp);
+        fx[n] = { frames: l, pivot: fp, fps: fxA[n].fps || 12 };
+      });
+      OUT.enemies[k] = o; OUT.enemyFx[k] = fx;
+      return o;
+    });
+    return enemyJobs[k];
+  }
+  function ensureEnemies(list) { return Promise.all((list || []).map(ensureEnemy)); }
+
   // 그림 묶음 하나(장식 소품 등): frames = 경로 목록, base = 그리는 배율, pivot = 기준점(그림 점 단위로 바꿔 둠). 같은 목록은 한 번만
   var setJobs = {};
   function loadSet(frames, base, pivot) {
@@ -270,10 +298,12 @@
 
   window.Assets = {
     shrink: shrink, blit: blit, centerOf: centerOf, copyMeta: copyMeta, ensureChar: ensureChar, ensureBg: ensureBg, loadSet: loadSet,
+    ensureEnemies: ensureEnemies,
     progress: prog,
     isHD: function () { return !!hd; },
     // first = 처음에 꼭 있어야 하는 캐릭터 묶음 이름들(나머지는 Assets.loadRest 로 나중에)
-    loadAll: function (cfg, first) {
+    // enemies = 처음에 불러올 적 이름들(지금 판에 나오는 적. 없으면 전부, 연습장은 빈 목록)
+    loadAll: function (cfg, first, enemies) {
       var S = cfg.actorScale || 1;
       var R = (cfg.view && cfg.view.renderScale) || 1;
       var noHD = /[?&]hd=0/.test(location.search) || R < 1.5;
@@ -290,7 +320,7 @@
           b.files.forEach(function (f) { baked.files[f] = true; });
           if (b.weaponScale !== (cfg.weaponScale || S)) Object.keys(cfg.art.weapons).forEach(function (k) { delete baked.files[cfg.art.weapons[k].img]; });
         }
-        return loadAllNow(cfg, S, first);
+        return loadAllNow(cfg, S, first, enemies);
       });
     },
     // 나머지 캐릭터 묶음을 하나씩 뒤에서 불러옴(옷 바꿀 때 바로 보이게)
@@ -301,7 +331,7 @@
     }
   };
 
-  function loadAllNow(cfg, S, first) {
+  function loadAllNow(cfg, S, first, enemies) {
       var art = cfg.art, out = { characters: {}, weapons: {}, dummy: null, fx: null };
       CFGR = cfg; OUT = out;
       var jobs = [];
@@ -318,17 +348,9 @@
           prepList(out.dummy.idle, S, { x: pv.x, y: pv.y }); prepList(out.dummy.hit, S, art.dummy.pivot);
         }));
       }
-      // 적 그림: { goblin: { idle: [img...], walk: [...] }, ... }
-      out.enemies = {};
-      Object.keys(cfg.enemies || {}).forEach(function (k) {
-        var A = cfg.enemies[k].anims, names = Object.keys(A);
-        jobs.push(Promise.all(names.map(function (n) { return loadList(A[n].frames); })).then(function (lists) {
-          var o = {}, T = cfg.enemies[k], p0 = { x: T.pivot.x, y: T.pivot.y }, pv = null;
-          names.forEach(function (n, i) { o[n] = lists[i]; pv = { x: p0.x, y: p0.y }; prepList(o[n], S, pv); });
-          if (pv) T.pivot = pv;
-          out.enemies[k] = o;
-        }));
-      });
+      // 적 그림: { goblin: { idle: [img...], walk: [...] }, ... }. 처음엔 지금 판에 나오는 적만(enemies 목록), 다른 판 적은 판을 고를 때 Assets.ensureEnemies 로
+      out.enemies = {}; out.enemyFx = {};
+      (enemies || Object.keys(cfg.enemies || {})).forEach(function (k) { jobs.push(ensureEnemy(k)); });
       // 배경 3장(지금 판 = CFG.bg) + 먼지 효과. 다른 판 배경은 판을 고를 때 Assets.ensureBg 로
       out.bg = {};
       if (cfg.bg) jobs.push(ensureBg(cfg.bg).then(function (b) { out.bg = b; }));

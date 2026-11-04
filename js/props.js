@@ -88,7 +88,7 @@
     var hy = Math.max(hb.y0 + 4, Math.min(hb.y1 - 4, o.y != null ? o.y : (hb.y0 + hb.y1) / 2));
     var imp = H.fx() && H.fx().impact;
     FX.impact(hx, hy, o.dir || 1, '#ffe0a8', Math.round(J.sparkCount * 0.6), false, imp, 0.8);
-    if (Skills.debris) Skills.debris(hx, hy, pr.y, 5, { cols: C.woodColors || ['#9a5f30'], sp: 120, size: 2, ms: 500 });
+    if (Skills.debris) Skills.debris(hx, hy, pr.y, 5, { cols: pr.D.chips || C.woodColors || ['#9a5f30'], sp: 120, size: 2, ms: 500 });   // chips = 그 소품 조각 색(광석 수레)
     H.hitstop(J.hitstopMs * 0.6);
     FX.shake(J.shakePx * 0.6, J.shakeMs * 0.8);
     if (pr.hitsLeft <= 0) breakProp(pr, o.dir || 1);
@@ -99,7 +99,7 @@
     pr.state = 'break'; pr.breakT = 0; pr.hitsLeft = 0;
     FX.shake(J.shakePx * 1.1, J.shakeMs);
     if (Skills.debris) {
-      Skills.debris(pr.x, (hb.y0 + hb.y1) / 2, pr.y, 12, { cols: C.woodColors || ['#9a5f30'], sp: 170, size: 2.6, ms: 750, spread: 1.4 });
+      Skills.debris(pr.x, (hb.y0 + hb.y1) / 2, pr.y, 12, { cols: pr.D.chips || C.woodColors || ['#9a5f30'], sp: 170, size: 2.6, ms: 750, spread: 1.4 });
       Skills.debris(pr.x, hb.y0 + 4, pr.y, 6, { cols: ['#fff0c0', '#ffd27a'], glow: true, sp: 150, size: 1.4, ms: 320 });
     }
     dropFood(pr, dir);

@@ -238,6 +238,16 @@
         x: src ? src.x : p.x + p.dir * 30 * AS, y: src ? src.y : p.y - (p.z || 0) + (st.hitY != null ? st.hitY : -40 * AS) });
       return;
     }
+    // 방패 막기(해골 병사): 앞에서 오는 보통 타면 막음 → 데미지 없이 쨍 불똥 + 조금 밀림.
+    //   방패 깨는 타 = 기술(damageStyle) · 콤보 마무리 · 넘어뜨리는 타 · 달리며 공격 · 점프 공격 (뒤에서 맞으면 enemies.js tryGuard 가 안 막음)
+    var jumpHit = !src && p.state === 'jump';
+    if (target !== G.dummy && target.tryGuard) {
+      var breaker = !!(st.damageStyle || st.finisher || st.knockdown || p.state === 'runatk' || jumpHit);
+      if (target.tryGuard(dir, breaker)) { blockFx(target, dir); return; }
+    }
+    // 나는 적(박쥐) + 점프 공격: 데미지 더 세게 + 늘 땅으로 떨어짐(넘어짐)
+    var airHit = jumpHit && target.T && target.T.flying;
+    if (airHit) dmg = Math.round(dmg * (target.T.flying.jumpDmgMul || 1));
     G.hitstop = Math.max(G.hitstop, J.hitstopMs * W.hitstopMul * st.hitstop);
     FX.shake(J.shakePx * W.shakeMul * st.shake, J.shakeMs * (st.finisher ? 1.5 : 1));
     // 콤보 마무리 타: 짧은 화면 번쩍(2026-11-03 HD). 기술은 자기 flash 를 따로 씀
@@ -250,13 +260,17 @@
     } else {
       // 무거운 타(타 knock × 무기 knockMul 이 크면) = 잡몹 넘어짐 (config ai.react.heavyKnock)
       //   noKnockdown = 세게 밀어도 안 넘어짐(달리며 공격 어깨 돌진 마무리 = 멀리 날려 보내기), noJuggle = 연속 맞음으로 안 넘어짐(밀고 가는 작은 타)
-      var heavy = !st.noKnockdown && (!!st.knockdown || st.knock * W.knockMul >= CFG.ai.react.heavyKnock);
+      var heavy = airHit || (!st.noKnockdown && (!!st.knockdown || st.knock * W.knockMul >= CFG.ai.react.heavyKnock));
       var res = target.takeHit(dmg, dir, knock, !!st.finisher && !st.noKnockdown, { heavy: heavy, stunMs: st.stunMs, noJuggle: !!st.noJuggle, flashK: st.flashK });   // stunMs = 번개 기술
       var hb = target.hurtbox();
       // 불똥은 맞은 몸의 가장자리(플레이어 쪽)에서. 마법은 맞은 곳에서 가장 가까운 몸 위치
       if (src) hx = clamp(src.x, hb.x0 + 4, hb.x1 - 4);
       else hx = p.dir > 0 ? Math.max(hb.x0 + 4, Math.min(hb.x1 - 4, p.x + 30 * AS)) : Math.min(hb.x1 - 4, Math.max(hb.x0 + 4, p.x - 30 * AS));
       topY = target.y - target.T.height - 8;
+      if (target.guardBroken) {   // 방패 깨짐: 쨍 하고 방패가 튕겨 나가는 불똥(크게)
+        target.guardBroken = false;
+        FX.impact(target.x + target.dir * 14 * AS, target.y - 54 * AS, -dir, '#fff4c8', J.sparkCount, true, G.assets.fx && G.assets.fx.impact, 1.1);
+      }
       if (res === 'dead' && target.T.boss) onBossDown(target);
       else if (res === 'dead') G.hitstop = Math.max(G.hitstop, J.hitstopMs * 1.6);
     }
@@ -280,6 +294,15 @@
   }
 
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+  // 방패로 막음: 방패 자리에 하얀·노란 쨍 불똥 + 쇳조각 반짝임, 짧은 멈춤·작은 흔들림(데미지 숫자·콤보 수 없음)
+  function blockFx(e, dir) {
+    var x = e.x + e.dir * 30 * AS, y = e.y - 56 * AS;
+    G.hitstop = Math.max(G.hitstop, J.hitstopMs * 0.7);
+    FX.shake(J.shakePx * 0.5, J.shakeMs * 0.7);
+    FX.impact(x, y, -dir, '#e8f0ff', Math.round(J.sparkCount * 0.9), false, G.assets.fx && G.assets.fx.impact, 0.85);
+    if (Skills.debris) Skills.debris(x, y, e.y, 7, { cols: ['#ffffff', '#fff2a8', '#cfe0ff'], glow: true, sp: 150, size: 1.3, ms: 260 });
+    vibrate(Math.round(J.vibrateMs * 0.6));
+  }
   // 플레이어 공격에 맞을 수 있는 것: 판 = 적 + 부서지는 소품(새 배열), 연습장 = 허수아비
   function hitTargets() { return MODE === 'stage' ? G.enemies.concat(Props.targets()) : [G.dummy]; }
 
@@ -473,6 +496,70 @@
     });
   }
 
+  // ---------- 판에 나오는 적 종류 (그 판 적 그림만 불러오기, 2026-11-04) ----------
+  // 웨이브 spawn·placed + 보스가 화날 때 부르는 졸개까지
+  function stageEnemies(st) {
+    var out = [];
+    function add(t) {
+      if (!t || out.indexOf(t) >= 0 || !CFG.enemies[t]) return;
+      out.push(t);
+      var E = CFG.enemies[t].enrage;
+      if (E && E.summon) E.summon.forEach(add);
+    }
+    (st.waves || []).forEach(function (w) { (w.spawn || []).concat(w.placed || []).forEach(function (s) { add(s[0]); }); });
+    return out;
+  }
+
+  // ---------- 바위 던지기 (골렘 throw): 날아가는 바위 = 포물선 → 떨어진 자리 반경 안이면 맞음 ----------
+  // 플레이어 공격 탄(Projectiles)과 따로: 적이 던진 것. { e: 던진 적, s: 공격 수치, x0,y0: 출발(땅 줄), h0: 출발 높이, tx,ty: 떨어질 자리, t }
+  var rocks = [];
+  function throwRock(e, s, tx, ty) {
+    var F = G.assets.enemyFx && G.assets.enemyFx[e.type];
+    rocks.push({ e: e, s: s, x0: e.x + e.dir * s.spawn.x, y0: e.y, h0: -s.spawn.y, tx: tx, ty: ty, t: 0, dir: e.dir,
+                 art: F && F.boulder, burst: F && F.rockburst });
+  }
+  function rockPos(r) {
+    var u = Math.min(1, r.t / r.s.flightMs);
+    return { u: u, x: r.x0 + (r.tx - r.x0) * u, gy: r.y0 + (r.ty - r.y0) * u, z: r.h0 * (1 - u) + 4 * r.s.arcPeak * u * (1 - u) };
+  }
+  // 바위 터짐 그림(골렘 내려찍기 주먹 자리 / 바위 떨어진 자리) + 돌 조각
+  function rockBurst(e, x, y, scale) {
+    var F = G.assets.enemyFx && G.assets.enemyFx[e.type], B = F && F.rockburst;
+    if (B && B.frames.length) FX.sprite(x, y, B.frames, B.fps, B.pivot, false, false, scale || 1);
+    if (Skills.debris) Skills.debris(x, y - 6 * AS, y, Math.round(8 * (scale || 1)), { cols: ['#6a6458', '#8a826e', '#4a463e', '#6f8a4a'], sp: 150, size: 2.2, ms: 600 });
+  }
+  function rocksStep(dt) {
+    var p = G.player, S = G.stage;
+    for (var i = rocks.length - 1; i >= 0; i--) {
+      var r = rocks[i];
+      r.t += dt;
+      if (r.t < r.s.flightMs) continue;
+      rocks.splice(i, 1);
+      rockBurst(r.e, r.tx, r.ty, 1);
+      FX.shake(J.shakePx * r.s.shake, J.shakeMs * 1.6);
+      // 맞음: 가로 radius · 위아래 depth 안 + 높이 뛰어 있지 않음(dodgeZ). 보스가 쓰러진 뒤 떨어진 바위는 안 아픔
+      if (S.bossDownT < 0 && p.state !== 'dead' && Math.abs(p.x - r.tx) <= r.s.radius && Math.abs(p.y - r.ty) <= r.s.depth && (p.z || 0) <= r.s.dodgeZ)
+        onPlayerHit({ x: r.tx, dmgMul: r.e.dmgMul, T: r.e.T }, r.s);
+    }
+  }
+  // 바닥: 떨어질 자리 빨간 원 + 바위 그림자 / 공중: 돌며 날아가는 바위
+  function drawRocksUnder(camX) {
+    rocks.forEach(function (r) {
+      var q = rockPos(r);
+      Enemy.drawRing(ctx, camX, r.tx, r.ty, r.s.radius, Math.max(r.s.depth, r.s.radius * 0.34), q.u, false);
+      window.drawShadow(ctx, snap(q.x - camX), snap(q.gy), 12 * AS * (0.7 + 0.3 * q.u));
+    });
+  }
+  function drawRocks(camX) {
+    rocks.forEach(function (r) {
+      var q = rockPos(r), A = r.art, x = snap(q.x - camX), y = snap(q.gy - q.z);
+      if (!A || !A.frames.length) { ctx.fillStyle = '#6a6458'; ctx.fillRect(x - 8, y - 8, 16, 16); return; }
+      var im = A.frames[Math.floor(r.t * A.fps / 1000) % A.frames.length];
+      ctx.save(); ctx.translate(x, y); if (r.dir > 0) ctx.scale(-1, 1);   // 그림은 왼쪽으로 돌며 날아감 → 오른쪽으로 던지면 뒤집기
+      Assets.blit(ctx, im, A.pivot.x, A.pivot.y); ctx.restore();
+    });
+  }
+
   // ---------- 소품 (판의 props: 상자·통·모닥불 + 음식) = props.js. 그림이 없는 종류는 ?debug=1 에서만 자리 표시 ----------
   Props.init(CFG, {
     laneY: laneY,
@@ -574,7 +661,7 @@
   function propCollide() {
     var p = G.player, list = [];
     if (p.state !== 'dead') list.push({ o: p, r: CFG.hero.radius });
-    G.enemies.forEach(function (e) { if (e.alive()) list.push({ o: e, r: e.T.radius }); });
+    G.enemies.forEach(function (e) { if (e.alive() && !e.T.flying) list.push({ o: e, r: e.T.radius }); });   // 나는 적(박쥐)은 소품 위로 지나감
     Props.collide(list, world);
   }
 
@@ -593,7 +680,7 @@
       Input.setOverride(ax); return;
     }
     var side = best.x > p.x ? 1 : -1;
-    var want = ({ goblin: 42, wolf: 58, orc: 72 }[best.type] || 50) * AS;
+    var want = ({ goblin: 42, wolf: 58, orc: 72, bat: 46, skeleton: 44, golem: 76 }[best.type] || 50) * AS;
     var sv = Props.steer(p, R, best.x - side * want, best.y, world, best.x);   // 막는 소품: 목표가 그 안이면 옆으로, 앞에 있으면 돌아감
     var tx = sv.x, ty = best.y;
     var ex = tx - p.x, ey = ty - p.y, my = sv.y - p.y;   // 공격 조건은 원래 줄(ey), 움직임은 돌아가는 줄(my)
@@ -713,6 +800,7 @@
       G.enemies.forEach(function (e) { if (e.alive()) e.keepInView(E); });
       G.enemies = G.enemies.filter(function (e) { return !e.remove; });
       E.enemies = G.enemies;
+      rocksStep(dt);         // 골렘이 던진 바위
       stageStep(dt);
       Props.update(dt, p);   // 부서지는 그림·음식 줍기
     } else {
@@ -743,6 +831,7 @@
 
     // 바닥 위: 보스 공격 예고 띠, 먼지
     G.enemies.forEach(function (e) { e.drawTelegraph(ctx, camX); });
+    if (rocks.length) drawRocksUnder(camX);       // 바위 떨어질 자리 빨간 원 + 그림자
     FX.draw(ctx, camX, true);
     if (MODE === 'stage') Props.drawUnder(ctx, camX, LW);   // 소품 그림자·모닥불 빛
     Skills.drawUnder(ctx, camX, G.player);        // 번개 떨어질 자리 표시
@@ -754,6 +843,7 @@
     ents.sort(function (a, b) { return a.y - b.y; });
     ents.forEach(function (e) { e.d(); });
     Projectiles.draw(ctx, camX);
+    if (rocks.length) drawRocks(camX);            // 날아가는 바위(공중이라 캐릭터 위)
     Skills.drawOver(ctx, camX);                   // 번개 기둥·회전 원
     FX.draw(ctx, camX, false);
     Skills.drawFlash(ctx, LW, LH);                // 기술 맞는 순간 화면 번쩍
@@ -831,7 +921,7 @@
     nx.hidden = !(clear && !last);
     openMenu(resultEl, clear && !last ? nx : clear ? document.getElementById('btnSel') : document.getElementById('btnRetry'));
   }
-  // 판 바꾸기: 그 판 배경·소품 그림을 (필요하면) 불러온 뒤 처음부터. 플레이어 직업·성별·옷은 그대로, 체력은 가득
+  // 판 바꾸기: 그 판 배경·소품·적 그림을 (필요하면) 불러온 뒤 처음부터. 플레이어 직업·성별·옷은 그대로, 체력은 가득
   function useStage(n) {
     G.stageNo = n;
     CFG.stage = STAGES[n - 1]; CFG.bg = CFG.stage.bg;
@@ -844,7 +934,7 @@
     n = clamp(n, 1, STAGES.length);
     var st = STAGES[n - 1];
     loading(true);
-    return Promise.all([Assets.ensureBg(st.bg), Props.load(st)]).then(function (r) {
+    return Promise.all([Assets.ensureBg(st.bg), Props.load(st), Assets.ensureEnemies(stageEnemies(st))]).then(function (r) {
       loading(false);
       G.assets.bg = r[0];
       useStage(n);
@@ -856,6 +946,7 @@
     FX.list.length = 0;
     Projectiles.clear();
     Skills.clear();
+    rocks.length = 0;
     G.enemies = [];
     G.stage = newStage();
     G.ectx = makeEnemyCtx();
@@ -924,7 +1015,9 @@
       onPlayerHit: onPlayerHit,
       steer: function (e, tx, ty) { return Props.steer(e, e.T.radius, tx, ty, world, G.player.x); },   // 막는 소품 돌아가기
       dust: function (x, y, dir) { if (G.assets.dust && G.assets.dust.length) FX.sprite(x, y, G.assets.dust, CFG.dust.fps, CFG.dust.pivot, dir > 0, true); },
-      shake: function (m) { FX.shake(J.shakePx * m, J.shakeMs * 1.6); }
+      shake: function (m) { FX.shake(J.shakePx * m, J.shakeMs * 1.6); },
+      throwRock: throwRock,   // 골렘 바위 던지기
+      burst: rockBurst        // 골렘 내려찍기 땅 터짐
     };
     Object.defineProperty(E, 'player', { get: function () { return G.player; } });
     return E;
@@ -1088,7 +1181,7 @@
         player: { hp: p.hp, state: p.state, x: Math.round(p.x), y: Math.round(p.y), z: Math.round(p.z * 10) / 10,
           frame: p.char ? p.currentFrame() : null, ratk: p.ratk ? p.ratk.phase : null, skill: p.sk ? p.sk.d.key + '@' + Math.round(p.sk.t) : null, cd: p.skillCd },
         enemies: G.enemies.map(function (e) { return e.type + (e.variant ? '(' + e.variant + ')' : '') + ':' + (e.asleep ? 'asleep' : e.alertT > 0 ? 'alert' : e.state) + ':' + e.hp + '@' + Math.round(e.x) + ',' + Math.round(e.y); }),
-        hits: G.hits, maxCombo: G.maxCombo,
+        hits: G.hits, maxCombo: G.maxCombo, rocks: rocks.length,
         props: Props.list.map(function (pr) { return pr.type + ':' + (pr.state === 'idle' ? pr.hitsLeft : pr.state) + '@' + Math.round(pr.x) + ',' + Math.round(pr.y); }),
         food: Props.food.map(function (f) { return f.kind + '@' + Math.round(f.x) + ',' + Math.round(f.y); }) };
     }
@@ -1126,7 +1219,8 @@
     var lbar = loadEl.querySelector('i');
     Assets.progress.onChange = function (got, want) { if (lbar) lbar.style.width = Math.round(100 * got / Math.max(1, want)) + '%'; };
   }
-  Assets.loadAll(CFG, firstChars).then(function (assets) {
+  // 적 그림은 지금 판에 나오는 것만(다른 판 적은 그 판을 고를 때 goStage 가). 연습장은 적 없음
+  Assets.loadAll(CFG, firstChars, MODE === 'stage' ? stageEnemies(CFG.stage) : []).then(function (assets) {
     G.assets = assets;
     return MODE === 'stage' ? Props.load(CFG.stage).then(function () { return assets; }) : assets;
   }).then(function (assets) {

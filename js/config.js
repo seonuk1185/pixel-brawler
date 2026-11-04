@@ -488,6 +488,14 @@
     ground: { img: 'assets/bg/stage1/ground.png', w: 723,  tile: true,  parallax: 1.0 },
     height: 240, floorY: 144, laneTop: 158, laneBottom: 230
   };
+  // ---------- 2단계 배경 = 폐광 동굴 (art\stage2-bg 에서 복사, 2026-11-04) ----------
+  // 갱도 입구 → 채굴 캠프 → 무너진 깊은 갱도. 크기·바닥·걷는 길은 숲과 같음(mid 가 3장이라 더 짧음 → 판 끝에 맞춰 자동으로 느리게 흐름)
+  var BG_MINE = {
+    far:    { img: 'assets/bg/stage2/far.png',    w: 512,  tile: true,  parallax: 0.15 },
+    mid:    { img: 'assets/bg/stage2/mid.png',    w: 1247, tile: false, parallax: 0.5 },
+    ground: { img: 'assets/bg/stage2/ground.png', w: 719,  tile: true,  parallax: 1.0 },
+    height: 240, floorY: 144, laneTop: 158, laneBottom: 230
+  };
 
   window.CFG = {
     version: 'stage1-proto-2',
@@ -827,6 +835,109 @@
                     bodyReach: { x0: 10, x1: 84, yTop: -150, yBot: 0 }, reach: { x0: 40, x1: 128, yTop: -145, yBot: 0 }, depth: 16,
                     dmg: [20, 24], knock: 46, flinchMs: 550, shake: 3, dustMs: 110, when: [130, 400], weight: 2, heavy: true }
         }
+      },
+
+      // ===== 2단계 적 (art\stage2-enemies 에서 복사, 2026-11-04). 그림은 판을 시작할 때 그 판에 나오는 적만 불러온다(main.js goStage) =====
+      // 거대 박쥐: 늑대처럼 치고 빠지기. 그림 속 몸이 기준점(땅) 위 46도트에 떠 있음 → 기준점은 땅(그림자·위아래 줄은 보통 적과 같음)
+      //   flying = 나는 적: { bob = 떠 있을 때 위아래로 흔들리는 도트, bobMs = 한 번 흔들리는 시간, jumpDmgMul = 점프 공격 데미지 배율(점프 공격에 맞으면 늘 떨어짐) }
+      //   나는 적은 소품(수레·상자)에 안 막히고 위로 지나간다. 넘어짐 = 땅에 떨어짐, 일어남 = 날개 치며 다시 떠오름
+      bat: {
+        label: '거대 박쥐', frameW: 208, frameH: 160, pivot: { x: 104, y: 154 },
+        anims: enemyAnims('bat', {
+          idle: [4, 10, true], fly: [6, 10, true],
+          attack: [5, 12, false, [1, 1, 1, 2, 3, 3, 4, 5]],   // 1 날개 치켜듦·비명(예고) · 2 내리꽂기 · 3 물기 · 4 솟구침 · 5 떠 있음
+          hit: [3, 10, false, [1, 2, 2, 3]],
+          hit2: [3, 10, false, [1, 1, 2, 2, 3]],
+          knockdown: [4, 10, false, [1, 2, 2, 3, 4, 4, 4]],       // 뒤집힘 → 거꾸로 떨어짐 → 땅에 쾅 → 누움(4)
+          getup: [3, 8, false, [1, 1, 2, 2, 3]],                  // 엎드려 으르렁 → 날개 치며 뜸 → 떠 있음
+          death: [5, 8, false, [1, 2, 3, 4, 5]]
+        }),
+        walkAnim: 'fly',
+        flying: { bob: 2, bobMs: 900, jumpDmgMul: 1.5 },
+        down: { slide: 60, lyingFrames: [3, 4] },
+        hp: 40, speedX: 100, speedY: 66, radius: 22, height: 96,
+        hurtbox: { x0: -15, x1: 28, yTop: -92, yBot: -44 },     // 떠 있는 몸(땅에서 44~92 위)
+        engage: 70, hover: [140, 190], range: [40, 100], alignY: 9, cooldown: [1400, 2400], firstCooldown: [400, 1300],
+        retreatMs: 1000,          // 물고 나서 뒤로 빠지는 시간 (치고 빠지기)
+        knockResist: 1.3, deathKnock: 200,
+        attacks: {
+          swoop: { anim: 'attack', active: [2, 3], reach: { x0: 22, x1: 58, yTop: -68, yBot: -30 }, depth: 12,
+                   dmg: [5, 7], knock: 12, move: { frames: [2, 3], dist: 44 }, telegraph: [1] }
+        }
+      },
+      // 해골 병사: 고블린처럼 칼로 내려치기 + 방패 막기(guard)
+      //   guard = 앞에서 오는 보통 타를 가끔 방패로 막음: chance = 막을 확률, cdMs = 한 번 막은 뒤 다시 막기까지 시간,
+      //     holdMs = 방패를 들고 있는 시간(그동안 앞에서 오는 보통 타는 다 막음), maxBlocks = 그 사이 최대 몇 번 막나(넘으면 방패 내림),
+      //     push = 막을 때 해골이 뒤로 밀리는 거리, flashMs = 막는 순간 그림(block 2번) 보이는 시간, counterMs = 방패 내린 뒤 바로 반격까지 시간
+      //   뒤에서 / 기술 / 달리며 공격 / 점프 공격 / 콤보 마무리 타 = 방패 깨짐(그대로 맞음). 공격 중·맞는 중에는 안 막음
+      skeleton: {
+        label: '해골 병사', frameW: 176, frameH: 136, pivot: { x: 92, y: 130 },
+        anims: enemyAnims('skeleton', {
+          idle: [4, 6, true], walk: [8, 10, true],
+          attack: [5, 10, false, [1, 2, 2, 2, 3, 4, 4, 5]],   // 1 칼 뒤로 · 2 머리 위로 치켜듦(예고) · 3 찌르기 · 4 내려침 · 5 복귀
+          block: [2, 8, false, [1, 2, 2, 1]],                 // 1 방패 들기 · 2 막으며 젖혀짐
+          hit: [3, 10, false, [1, 2, 2, 3]],
+          hit2: [3, 10, false, [1, 1, 2, 2, 3]],
+          knockdown: [5, 10, false, [1, 2, 2, 3, 4, 5, 4, 5]],
+          getup: [3, 8, false, [1, 1, 2, 2, 3]],
+          death: [5, 8, false, [1, 2, 3, 4, 5]]                // 눈빛 꺼짐 → 무너짐 → 뼈 무더기(5)
+        }),
+        walkAnim: 'walk',
+        down: { slide: 80, lyingFrames: [3, 4, 5] },
+        hp: 80, speedX: 40, speedY: 28, radius: 15, height: 92,
+        hurtbox: { x0: -10, x1: 27, yTop: -90, yBot: 0 },
+        engage: 50, hover: [100, 150], range: [24, 74], alignY: 7, cooldown: [1200, 2200], firstCooldown: [600, 1600],
+        knockResist: 0.9, deathKnock: 200,
+        guard: { anim: 'block', chance: 0.4, cdMs: 2600, holdMs: 900, maxBlocks: 3, push: 18, flashMs: 120, counterMs: 250 },
+        attacks: {
+          chop: { anim: 'attack', active: [3, 4], reach: { x0: 18, x1: 86, yTop: -78, yBot: -36 }, depth: 12,
+                  dmg: [7, 10], knock: 14, telegraph: [2] }
+        }
+      },
+      // 돌 골렘(2단계 보스): 오크 족장과 같은 보스 규칙(공격 중 안 끊김, 체력 66%·33% 휘청, 절반에서 화남 + 졸개 부름)
+      //   공격: slam = 두 주먹 내려찍기(무거움, 땅에 바위 터짐) / sweep = 팔 휘두르기 / throw = 바위 던지기
+      //   throw: 땅에서 바위를 뽑아 들고(예고) spawnFrame 그림에서 던짐(spawn = 손 위치, 앞 = +) → 던질 때 플레이어 자리(maxRange 까지)로
+      //     flightMs 동안 포물선(arcPeak 높이)으로 날아감. 떨어질 자리에 빨간 원(예고) → 떨어지면 바위 터짐 효과 + 흔들림,
+      //     radius(가로)·depth(위아래) 안에 있으면 맞음(높이 뛰어 있으면 피함). burst = 내려찍기 땅 터짐 { x = 앞 거리, scale = 그림 크기 }
+      //   stagger.core = 휘청 1·2·4 장에서 가슴 핵 자리(x 앞 +, y)에 그리는 주황 빛(3장 = 핵이 꺼짐 = 때릴 기회)
+      //   fxArt = 이 적이 쓰는 효과 그림(바위·바위 터짐). 적 그림과 같이 불러온다
+      golem: {
+        label: '돌 골렘', boss: true, frameW: 320, frameH: 232, pivot: { x: 168, y: 226 },
+        anims: enemyAnims('golem', {
+          idle: [4, 5, true], walk: [6, 8, true],
+          attack1: [5, 8, false, [1, 2, 2, 2, 2, 3, 4, 4, 4, 5]],   // 내려찍기: 2 두 주먹 치켜듦(예고) → 4 땅에 박힘
+          attack2: [5, 9, false, [1, 1, 1, 2, 3, 4, 4, 5]],         // 팔 휘두르기: 1 뒤로 젖힘(예고) → 3 쭉 뻗음
+          special: [5, 8, false, [1, 1, 2, 3, 3, 3, 3, 4, 4, 5]],   // 바위 던지기: 1 뽑기 · 3 머리 위로(예고) · 4 던짐
+          hit: [3, 8, false, [1, 2, 2, 3]],
+          hit2: [3, 8, false, [1, 1, 2, 2, 3]],
+          stagger: [4, 7, false, null],                              // 휘청: 장마다 시간은 아래 stagger.d
+          death: [5, 6, false, [1, 1, 2, 2, 3, 4, 5]]                // 핵 갈라짐 → 무릎 → 무너짐 → 돌무더기
+        }),
+        fxArt: {
+          boulder:   { frames: seq(EN + 'boulder/boulder_', 4),     pivot: { x: 32, y: 32 }, fps: 12 },   // 날아가는 바위(가운데 기준, 돌며 날아감)
+          rockburst: { frames: seq(EN + 'rockburst/rockburst_', 5), pivot: { x: 64, y: 84 }, fps: 12 }    // 바위 터짐(바닥 가운데 기준)
+        },
+        walkAnim: 'walk',
+        // 체력·데미지: 자동 조종(?bot=1, 피하지 않음) 시험에서 오크(1단계)보다 한 단계 버겁게 맞춤(2026-11-04)
+        hp: 1050, speedX: 30, speedY: 24, radius: 42, height: 150,
+        hurtbox: { x0: -34, x1: 55, yTop: -150, yBot: 0 },
+        engage: 70, hover: [70, 90], range: [40, 160], alignY: 10, cooldown: [1100, 1900], firstCooldown: [1200, 1500],
+        knockResist: 0.2, deathKnock: 50,
+        staggerCdMs: 2200,
+        superArmor: true,
+        stagger: { at: [0.66, 0.33], onWall: false, d: [280, 140, 900, 300], core: { x: 8, y: -70, r: 12, color: '#ff8a2a' } },
+        enrageAt: 0.5,
+        enrage: { speedMul: 1.25, cooldownMul: 0.7, summon: ['skeleton', 'bat', 'bat'] },
+        attacks: {
+          slam:  { anim: 'attack1', active: [3, 4], reach: { x0: 30, x1: 100, yTop: -80, yBot: 0 }, depth: 16,
+                   dmg: [18, 21], knock: 34, flinchMs: 450, telegraph: [2], shake: 2.6, when: [30, 100], weight: 3, heavy: true,
+                   burst: { x: 85, scale: 0.6 } },
+          sweep: { anim: 'attack2', active: [3, 4], reach: { x0: 30, x1: 136, yTop: -125, yBot: -60 }, depth: 14,
+                   dmg: [13, 16], knock: 30, flinchMs: 400, telegraph: [1], shake: 1.6, when: [60, 150], weight: 3 },
+          throw: { type: 'throw', anim: 'special', telegraph: [1, 3], spawnFrame: 4, spawn: { x: 110, y: -112 },
+                   flightMs: 650, arcPeak: 60, maxRange: 300, radius: 42, depth: 18, dodgeZ: 24,
+                   dmg: [18, 22], knock: 30, flinchMs: 450, shake: 2.8, when: [110, 400], weight: 2, heavy: true }
+        }
       }
     },
 
@@ -881,27 +992,42 @@
           { type: 'barrel',   x: 2330, y: 0.56, drop: 'meat' }    // 6번 웨이브 화면 끝 = 보스방 바로 앞
         ]
       },
-      // ===== 임시 2단계: 새 그림이 오면 배경·적·웨이브를 통째로 바꾼다. 지금은 1단계 그림 그대로 + 늑대 많이 + 조금 강하게 =====
+      // ===== 2단계: 폐광 동굴 (2026-11-04 새 그림: 배경·소품·박쥐·해골 병사·돌 골렘) =====
+      // 1단계보다 한 단계 어렵게: 새 적(치고 빠지는 박쥐·방패 드는 해골) + 고블린·늑대 섞음, 미리 서 있는 무리 2곳 + 박쥐 둥지, 보스 = 돌 골렘
       {
         id: 2,
-        name: 'STAGE 2  깊은 숲 (임시)',
+        name: 'STAGE 2  폐광 동굴',
         width: 2880,
         healOnClear: 12,
-        bgTop: '#7fb2e5',
-        bg: BG_FOREST,               // 임시: 1단계 배경
-        hpMul: 1.15, dmgMul: 1.1,
+        bgTop: '#2a2c4a',           // 화면이 배경보다 높을 때 위쪽 색 (실제로는 동굴 천장 맨 윗줄 색)
+        bg: BG_MINE,
+        hpMul: 1.1, dmgMul: 1.1,
         waves: [
-          { at: 120,  spawn: [['wolf', 'R', 0], ['goblin', 'R', 500], ['goblin', 'L', 1600]] },
-          { at: 500,  spawn: [['wolf', 'R', 0], ['wolf', 'L', 300], ['goblin', 'R', 1400], ['wolf', 'R', 2400, { variant: 'ice' }]] },
-          { at: 880,  spawn: [['goblin', 'R', 0], ['goblin', 'L', 200], ['wolf', 'R', 800], ['goblin', 'R', 3000], ['wolf', 'L', 3500], ['goblin', 'R', 4200]] },
-          { at: 1260, spawn: [['wolf', 'R', 0, { variant: 'ice' }], ['wolf', 'L', 400, { variant: 'ice' }], ['goblin', 'R', 1000], ['wolf', 'R', 3000], ['goblin', 'L', 3400], ['goblin', 'R', 3800]] },
-          { at: 1650, spawn: [['goblin', 'R', 0], ['wolf', 'L', 200], ['wolf', 'R', 900], ['goblin', 'R', 3200], ['wolf', 'L', 3600, { variant: 'ice' }], ['goblin', 'R', 4400], ['wolf', 'R', 5000]] },
-          { at: 2040, spawn: [['wolf', 'R', 0], ['wolf', 'R', 300], ['wolf', 'L', 600, { variant: 'ice' }], ['goblin', 'R', 2600], ['goblin', 'L', 3000], ['wolf', 'R', 3800], ['goblin', 'L', 4400]] },
-          { at: 'end', boss: true, spawn: [['orc', 'R', 0]] }
+          // 1: 갱도 입구 — 해골 병사·박쥐 첫 등장
+          { at: 120,  spawn: [['skeleton', 'R', 0], ['bat', 'R', 700], ['goblin', 'L', 1800]] },
+          // 2: 박쥐 둥지(roost) — 천장 쪽(길 위쪽)에 박쥐 셋이 떠 있음, 하나 깨면 다 깸 + 옆에서 지원
+          { at: 500,  placed: [['bat', 300, 0.12, { group: 'roost' }], ['bat', 344, 0.3, { group: 'roost' }], ['bat', 380, 0.08, { group: 'roost' }]],
+                      spawn: [['goblin', 'L', 500], ['skeleton', 'R', 2400]] },
+          // 3: 화로(880 + 326) 양옆에 해골 병사 + 고블린(camp1) + 옆에서 지원
+          { at: 880,  placed: [['skeleton', 288, 0.36, { group: 'camp1', dir: 1 }], ['goblin', 364, 0.58, { group: 'camp1' }]],
+                      spawn: [['bat', 'R', 900], ['skeleton', 'L', 3400], ['wolf', 'R', 4200]] },
+          { at: 1260, spawn: [['wolf', 'R', 0], ['bat', 'L', 400], ['skeleton', 'R', 1200], ['bat', 'R', 3200], ['goblin', 'L', 3600]] },
+          // 5: 채굴 캠프 화로(1650 + 330) 둘레에 해골 둘 + 늑대(camp2) + 옆에서 지원
+          { at: 1650, placed: [['skeleton', 292, 0.34, { group: 'camp2', dir: 1 }], ['skeleton', 372, 0.4, { group: 'camp2' }], ['wolf', 340, 0.78, { group: 'camp2' }]],
+                      spawn: [['bat', 'R', 1200], ['goblin', 'L', 3400], ['skeleton', 'R', 4200], ['bat', 'L', 4800]] },
+          { at: 2040, spawn: [['skeleton', 'R', 0], ['bat', 'R', 300], ['wolf', 'L', 700], ['goblin', 'R', 2600], ['bat', 'L', 3000], ['skeleton', 'R', 3800]] },
+          { at: 'end', boss: true, spawn: [['golem', 'R', 0]] }
         ],
+        // 소품: 광석 수레·통 얹은 상자(부서짐) + 화로 2개(장식, 해골 무리 자리). 보스 앞 수레는 고기가 꼭 나옴
         props: [
-          { type: 'crate',  x: 700,  y: 0.32 },
-          { type: 'barrel', x: 1450, y: 0.66, drop: 'meat' }
+          { type: 'orecart', x: 430,  y: 0.74 },
+          { type: 'stack',   x: 790,  y: 0.26 },
+          { type: 'brazier', x: 880 + 326, y: 0.47 },
+          { type: 'orecart', x: 1470, y: 0.28 },
+          { type: 'stack',   x: 1530, y: 0.72 },
+          { type: 'brazier', x: 1650 + 330, y: 0.56 },
+          { type: 'stack',   x: 1860, y: 0.3, drop: 'bread' },
+          { type: 'orecart', x: 2330, y: 0.62, drop: 'meat' }    // 6번 웨이브 화면 끝 = 보스방 바로 앞
         ]
       },
       // ===== 임시 3단계: 1단계 그림 그대로 + 적 많이 + 더 강하게 + 보스 = 붉은 오크(색만 바꿈) =====
@@ -968,6 +1094,29 @@
         frames: seq('assets/props/stage1/campfire/burn_', 6), fps: 10,
         pivot: { x: 29, y: 73 }, solid: false, shadow: 20,
         glow: { r: 70, y: 22, color: '#ff9a3a', alpha: 0.32 }
+      },
+      // ----- 2단계 소품 (art\stage2-props 에서 복사 → assets/props/stage2/…, 크기·기준점은 그 폴더 props.json) -----
+      // chips = 부서질 때 튀는 조각 색(없으면 CFG.props.woodColors 나뭇조각)
+      // 광석 수레: 1단계 상자보다 조금 넓음(허리 높이). 나무·쇠·광석·파란 수정 조각
+      orecart: {
+        frames: ['intact', 'cracked', 'damaged'].map(function (s) { return 'assets/props/stage2/orecart/' + s + '_01.png'; }), fps: 0,
+        breakFrames: seq('assets/props/stage2/orecart/break_', 4),
+        pivot: { x: 51, y: 88 }, solid: true, footprint: { w: 67, depth: 18 },
+        hits: 3, hurtbox: { x: -36, y: -54, w: 71, h: 53 }, shadow: 34,
+        chips: ['#9a6a3a', '#6e4a2a', '#8a8a96', '#4a4a56', '#7fd8ff']
+      },
+      // 통 얹은 상자: 고블린 키쯤
+      stack: {
+        frames: ['intact', 'cracked', 'damaged'].map(function (s) { return 'assets/props/stage2/stack/' + s + '_01.png'; }), fps: 0,
+        breakFrames: seq('assets/props/stage2/stack/break_', 4),
+        pivot: { x: 42, y: 77 }, solid: true, footprint: { w: 38, depth: 18 },
+        hits: 3, hurtbox: { x: -20, y: -73, w: 40, h: 72 }, shadow: 20
+      },
+      // 화로: 장식(모닥불처럼 지나갈 수 있음, 안 부서짐). 받침·바구니는 그대로, 불꽃만 움직이는 6장 반복. 빛은 바구니 높이
+      brazier: {
+        frames: seq('assets/props/stage2/brazier/burn_', 6), fps: 10,
+        pivot: { x: 20, y: 80 }, solid: false, shadow: 12,
+        glow: { r: 66, y: 60, color: '#ff9a3a', alpha: 0.3 }
       }
     },
     // ---------- 부서지는 소품 공통 (상자·통) ----------
@@ -1130,7 +1279,12 @@
         mul(a, ['depth', 'knock', 'speed', 'dist'], S);   // 돌진 speed·dist 둘 다 줄임 → 돌진 시간은 원래와 같음
         if (a.move) mul(a.move, ['dist'], S);
         arr(a.when);
+        // 바위 던지기(골렘): 손 위치·포물선 높이·최대 거리·맞는 반경·피하는 점프 높이, 내려찍기 땅 터짐 위치
+        mul(a.spawn, ['x', 'y'], S); mul(a, ['arcPeak', 'maxRange', 'radius', 'dodgeZ'], S); mul(a.burst, ['x'], S);
       });
+      // 나는 적 흔들림, 방패 막기 밀림, 보스 핵 빛 위치
+      mul(T.flying, ['bob'], S); mul(T.guard, ['push'], S);
+      if (T.stagger) mul(T.stagger.core, ['x', 'y', 'r'], S);
     });
     // 소품·음식: 맞는 상자·막는 상자·그림자·빛·줍는 거리·튀어 오름 (그림은 assets.js 가 actorScale 로 그림)
     Object.keys(C.propTypes || {}).forEach(function (k) {
