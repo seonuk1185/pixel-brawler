@@ -544,6 +544,14 @@
     ground: { img: 'assets/bg/stage8/ground.png', w: 703,  tile: true,  parallax: 1.0 },
     height: 240, floorY: 144, laneTop: 158, laneBottom: 230
   };
+  // ---------- 9단계 배경 = 마왕군 요새 (art\stage9-bg 에서 복사, 2026-11-04) ----------
+  // 외성벽(가시 현무암 벽·뿔 탑·공성 투석기) → 군영(말뚝 울타리·병영·전쟁 북) → 내성문(검은 쇠창살 문), 초록·보라 번개 폭풍 하늘. 크기·바닥·걷는 길은 1~8단계와 같음
+  var BG_FORTRESS = {
+    far:    { img: 'assets/bg/stage9/far.png',    w: 512,  tile: true,  parallax: 0.15 },
+    mid:    { img: 'assets/bg/stage9/mid.png',    w: 1247, tile: false, parallax: 0.5 },
+    ground: { img: 'assets/bg/stage9/ground.png', w: 740,  tile: true,  parallax: 1.0 },
+    height: 240, floorY: 144, laneTop: 158, laneBottom: 230
+  };
 
   window.CFG = {
     version: 'stage1-proto-2',
@@ -1550,6 +1558,124 @@
                       drain: { everyMs: 200, dmg: 3, heal: 4 },
                       when: [0, 600], weight: 2, gapMs: 9000, firstMs: 6000 }
         }
+      },
+
+      // ===== 9단계 적 (art\stage9-enemies 에서 복사, 2026-11-04). 수치 = 그 폴더 anchors_*.json 의 suggest =====
+      // 마족 병사: 해골 병사처럼 방패 막기(guard, 같은 수치) + 미늘창 휘두르기. 그림 칸 = 도마뱀 전사 크기(208x148, 미늘창이 앞 94 까지)
+      //   sweep = 1 미늘창 뒤로 · 2 머리 위로 치켜듦·포효·날 번쩍(예고 400ms, 바닥 빨간 띠) · 3 앞으로 휘두름(맞음, 허리 높이) · 4 날이 앞 아래(reachF[4]) · 5 복귀
+      soldier: {
+        label: '마족 병사', frameW: 208, frameH: 148, pivot: { x: 124, y: 142 },
+        anims: enemyAnims('soldier', {
+          idle: [4, 6, true], walk: [8, 10, true],
+          attack: [5, 10, false, [1, 2, 2, 2, 2, 3, 4, 4, 5]],      // 미늘창: 1 뒤로 · 2 치켜듦(예고 400ms) · 3 휘두름 · 4 앞 아래 · 5 복귀
+          block: [2, 8, false, [1, 2, 2, 1]],                       // 1 가시 방패 들고 웅크림 · 2 막으며 불꽃·밀림
+          hit: [3, 10, false, [1, 2, 2, 3]],
+          hit2: [3, 10, false, [1, 1, 2, 2, 3]],
+          knockdown: [5, 10, false, [1, 2, 2, 3, 4, 5, 4, 5]],
+          getup: [3, 8, false, [1, 1, 2, 2, 3]],                    // 방패 짚고 앉음 → 미늘창 짚고 한 무릎 → 섬
+          death: [5, 8, false, [1, 2, 3, 4, 5]]                     // 금이 빛남 → 넘어짐 → 검은 재로 → 투구·방패·미늘창만
+        }),
+        walkAnim: 'walk',
+        down: { slide: 75, lyingFrames: [3, 4, 5] },
+        hp: 95, speedX: 42, speedY: 28, radius: 16, height: 92,
+        hurtbox: { x0: -18, x1: 30, yTop: -90, yBot: 0 },
+        engage: 70, hover: [105, 155], range: [24, 100], alignY: 7, cooldown: [1300, 2300], firstCooldown: [600, 1600],
+        knockResist: 0.9, deathKnock: 200,
+        guard: { anim: 'block', chance: 0.4, cdMs: 2600, holdMs: 900, maxBlocks: 3, push: 18, flashMs: 120, counterMs: 250 },
+        attacks: {
+          sweep: { anim: 'attack', active: [3, 4], telegraph: [2], showTelegraph: true, depth: 12,
+                   reach: { x0: 20, x1: 94, yTop: -84, yBot: -30 }, reachF: { 4: { x0: 20, x1: 61, yTop: -64, yBot: 0 } },
+                   dmg: [7, 10], knock: 18, when: [24, 96] }
+        }
+      },
+      // 흑마법사: 해적 총잡이처럼 거리 두고 쏨(ranged). 그림 칸 208x176(지팡이를 머리 위로 들면 161 높이)
+      //   orb = 암흑 구체(총알과 같은 type 'shot' = 쏜 사람 줄을 따라 똑바로): 1 지팡이 듦 · 2 머리 위로, 해골이 초록으로 타오름(예고 600ms, 빨간 겨눔 선)
+      //     → 3장 앞으로 휘두름 = 해골 앞(spawn)에서 구체가 날아감 · 4 반동 · 5 내림. 맞거나 끝까지 가면 그 높이에서 초록 터짐(impact 'orbhit', impactAir = 바닥 말고 구체 높이)
+      //   ranged.attack = 쏘는 공격 이름, maxShooters 1 = 마법사가 여럿이어도 한 번에 하나만 겨눔. 근접 공격 그림이 없어서 붙으면 뒤로 물러나기만 함
+      //   rim = 가장 어두운 몸(검은 두루마기)이 어두운 요새 바닥·소품에 묻히지 않게 옅은 잿빛 보라 테두리(와이번·백작과 같은 코드)
+      mage: {
+        label: '흑마법사', frameW: 208, frameH: 176, pivot: { x: 120, y: 170 },
+        anims: enemyAnims('mage', {
+          idle: [4, 6, true], walk: [6, 8, true],
+          cast: [5, 10, false, [1, 2, 2, 2, 2, 2, 3, 4, 4, 5]],     // 구체: 1 듦 · 2 머리 위로(예고 600ms) · 3 휘두름 = 구체 · 4 반동 · 5 내림
+          hit: [3, 10, false, [1, 2, 2, 3]],
+          hit2: [3, 10, false, [1, 1, 2, 2, 3]],
+          knockdown: [5, 10, false, [1, 2, 2, 3, 4, 5, 4, 5]],
+          getup: [3, 8, false, [1, 1, 2, 2, 3]],
+          death: [5, 8, false, [1, 2, 3, 4, 5]]                     // 눈에서 초록 빛 → 쓰러짐 → 검은 연기 기둥 → 빈 두루마기 + 금 간 해골 지팡이
+        }),
+        fxArt: {
+          orb:    { frames: seq(EN + 'orb/orb_', 4),       pivot: { x: 20, y: 21 }, fps: 14 },   // 암흑 구체(공 가운데 기준, 연기 꼬리가 오른쪽 = 왼쪽으로 날아감)
+          orbhit: { frames: seq(EN + 'orbhit/orbhit_', 4), pivot: { x: 48, y: 48 }, fps: 14 }    // 초록 터짐(가운데 기준, 한 번)
+        },
+        walkAnim: 'walk',
+        rim: { color: '#c4b4e0', px: 1, alpha: 0.42 },
+        down: { slide: 70, lyingFrames: [3, 4, 5] },
+        hp: 60, speedX: 40, speedY: 28, radius: 15, height: 108,
+        hurtbox: { x0: -14, x1: 26, yTop: -100, yBot: 0 },
+        engage: 50, hover: [160, 260], range: [0, 360], alignY: 8, cooldown: [2800, 3800], firstCooldown: [1400, 2400],
+        knockResist: 1.0, deathKnock: 210,
+        ranged: { attack: 'orb', keep: [160, 260], tooClose: 80, backOffMul: 0.8, maxShooters: 1, alignMs: 700 },
+        attacks: {
+          orb: { type: 'shot', anim: 'cast', telegraph: [2], spawnFrame: 3, spawn: { x: 80, y: -68 }, aimH: 68, dropPx: 0,
+                 proj: 'orb', impact: 'orbhit', impactAir: true, muzzle: null,
+                 hitCols: ['#0a140c', '#2a5a2a', '#5aff7a', '#c8ffc8'], impactCols: ['#0a140c', '#2a5a2a', '#5aff7a', '#c8ffc8'],
+                 speed: 230, range: 360, box: { w: 22, h: 18 }, depth: 12, dodgeZ: 22,
+                 dmg: [4, 6], knock: 14, flinchMs: 320, when: [120, 360] }
+        }
+      },
+      // 마왕군 장군(9단계 보스): 오크·골렘·선장·와이번·백작과 같은 보스 규칙(공격 중 안 끊김, 체력 66%·33% 휘청, 절반에서 화남 + 마족 병사 둘·흑마법사 부름)
+      //   그림 칸 352x248(서리 거인과 같음: 가로 베기가 앞 172 까지, 치켜든 칼이 240 높이), 휘청 3장 = 칼 짚고 한 무릎 꿇음, 칼 불꽃이 잦아듦 = 때릴 기회(1000ms, stagger.hurtbox)
+      //   공격: combo = 대검 두 번(1장 칼을 머리 뒤로, 불꽃 = 예고 500ms → 2장 대각선 내려베기 reachF[2] → 3 칼 당김 → 4장 가로 베기 reachF[4] 앞 172 까지, multiHit = 장마다 한 번씩)
+      //         dash = 돌진 찌르기(오크 어깨 돌진과 같은 type 'charge', 바닥 빨간 띠 = 돌진 길): windMs 웅크리고 칼을 허리에(예고) → speed 로 dist 만큼 화면을 가로지름
+      //           frames = 그림 번호 지도(오크는 1 / 3·4 / 5 = 코드 기본값): 1 웅크림 · 2·3 달리며 찌름(반복) · 4 미끄러지며 멈춤(impact) · 5 복귀
+      //           onWall = 헛치고 화면 끝(벽)에 박히면 휘청 = 때릴 기회
+      //         shockwave = 칼 꽂기 화염 충격파(type 'shockwave'): 1 칼끝을 아래로 듦 · 2 머리 위로 치켜듦, 불꽃(예고 625ms, 바닥 빨간 원 = 고리가 닿는 끝)
+      //           → 3장 칼을 발 앞(spawn)에 꽂음 = 불꽃 고리 rings.count 개를 gapMs 씩 늦게(화나면 enraged.count 개) → 4장 무릎 꿇고 칼 짚음(holdFrame: 고리가 퍼지는 동안 멈춤) → 5 칼 뽑음
+      //           고리 = 꽂은 자리를 가운데로 r0 → rMax 까지 speed(도트/초)로 퍼지는 납작한 타원(가로 r, 위아래 min(r, ringRx) / ringRx x ryMax)
+      //             맞음 = 플레이어 발이 그 타원 「테두리」 band 안(가는 띠, 꽉 찬 원이 아님) + 높이 dodgeZ 아래 → 고리마다 한 번
+      //             피하기 = 고리가 지나갈 때 맞춰 뛰어넘기 / 위아래 줄을 크게 바꾸기(타원 위아래 ±ryMax 밖) / rMax 밖에 있기
+      //           그림 = fxArt shockwave(고리 한 크기로 그린 5장): 가로 r / ringRx 배, 세로 min(1, r / ringRx) x flameScale 배(불꽃이 화면을 덮지 않게)
+      general: {
+        label: '마왕군 장군', boss: true, frameW: 352, frameH: 248, pivot: { x: 200, y: 242 },
+        anims: enemyAnims('general', {
+          idle: [4, 5, true], walk: [6, 7, true],
+          attack1: [5, 10, false, [1, 1, 1, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5]],   // 대검 두 번: 1 치켜듦·불꽃(예고 500ms) · 2 내려베기 · 3 당김 · 4 가로 베기 · 5 복귀
+          attack2: [5, 10, false, null],                                      // 돌진 찌르기: 코드에서 단계별로(아래 dash.frames)
+          special: [5, 8, false, [1, 2, 2, 2, 2, 3, 4, 4, 4, 5]],             // 칼 꽂기: 1 듦 · 2 치켜듦(예고) · 3 꽂음 = 고리 · 4 무릎 꿇고 짚음 · 5 뽑음
+          hit: [3, 8, false, [1, 2, 2, 3]],
+          hit2: [3, 8, false, [1, 1, 2, 2, 3]],
+          stagger: [4, 7, false, null],                                        // 휘청: 장마다 시간은 아래 stagger.d (3장 = 칼 짚고 한 무릎)
+          death: [5, 6, false, [1, 1, 2, 2, 3, 4, 5]]                          // 포효·갑옷에 주황 금 → 무릎 → 뒤로 넘어짐 → 누움 → 검은 재 + 투구·망토·칼
+        }),
+        fxArt: {
+          shockwave: { frames: seq(EN + 'shockwave/shockwave_', 5), pivot: { x: 120, y: 116 }, fps: 12 }   // 불꽃 고리(고리 가운데 기준, 한 크기로 그림 → 코드에서 늘림)
+        },
+        walkAnim: 'walk',
+        // 체력·데미지: 자동 조종(?bot=1, 피하지 않음) 시험에서 8단계 흡혈 백작보다 조금 버겁게 맞춤(그림 자료 제안 hp 1250 보다 낮춤, 판 배율 x1.6)
+        hp: 1150, speedX: 30, speedY: 22, radius: 42, height: 165,
+        hurtbox: { x0: -44, x1: 40, yTop: -162, yBot: 0 },
+        engage: 76, hover: [80, 110], range: [30, 440], alignY: 10, cooldown: [1000, 1800], firstCooldown: [1200, 1500],
+        knockResist: 0.2, deathKnock: 40,
+        staggerCdMs: 2200,
+        superArmor: true,
+        stagger: { at: [0.66, 0.33], onWall: true, d: [280, 140, 1000, 300], hurtbox: { x0: -60, x1: 38, yTop: -128, yBot: 0 } },
+        enrageAt: 0.5,
+        enrage: { speedMul: 1.25, cooldownMul: 0.7, summon: ['soldier', 'mage', 'soldier'] },
+        attacks: {
+          combo:     { anim: 'attack1', active: [2, 4], multiHit: true, telegraph: [1], depth: 16,
+                       reach: { x0: 20, x1: 172, yTop: -160, yBot: 0 },
+                       reachF: { 2: { x0: 20, x1: 90, yTop: -160, yBot: 0 }, 4: { x0: 30, x1: 172, yTop: -140, yBot: -95 } },
+                       dmg: [14, 17], knock: 26, flinchMs: 420, shake: 1.8, when: [30, 175], weight: 3 },
+          dash:      { type: 'charge', anim: 'attack2', frames: { wind: [1], run: [2, 3], impact: [4], recover: [5] },
+                       windMs: 650, stepMs: 90, speed: 560, dist: 560, impactMs: 220, recoverMs: 380,
+                       bodyReach: { x0: -10, x1: 108, yTop: -140, yBot: 0 }, reach: { x0: 50, x1: 108, yTop: -122, yBot: -80 }, depth: 16,
+                       dmg: [16, 19], knock: 44, flinchMs: 520, shake: 2.6, dustMs: 90, when: [140, 440], weight: 2, heavy: true, gapMs: 5000 },
+          shockwave: { type: 'shockwave', anim: 'special', telegraph: [1, 2], spawnFrame: 3, holdFrame: 4, fx: 'shockwave', spawn: { x: 10, y: 0 },
+                       rings: { count: 2, gapMs: 800, r0: 24, rMax: 280, speed: 260, band: 16, ryMax: 25, ringRx: 105, flameScale: 0.75, dodgeZ: 22 },
+                       enraged: { count: 3 },
+                       dmg: [13, 16], knock: 30, flinchMs: 450, heavy: true, shake: 2.2, when: [0, 320], weight: 2, gapMs: 6000, firstMs: 4000 }
+        }
       }
     },
 
@@ -1570,7 +1696,7 @@
     //   bg = 배경 3장(위 BG_FOREST 설명). 판을 시작할 때 그 판 배경만 불러온다(main.js useStage → Assets.ensureBg)
     // 새 판 넣기: 아래 목록에 { id, … } 하나 추가하면 끝(스테이지 고르기 화면·다음 스테이지는 자동)
     //   id = 판 번호(고르기 화면 숫자 · 주소 ?stage=N 이 이 번호). 목록 순서 = 노는 순서(다음 스테이지 · 잠금 풀림은 목록 순서대로)
-    //   → 번호를 건너뛰어도 됨(2026-11-04: 한동안 5단계 설산 그림이 없어서 목록 = 1 2 3 4 6 7 → 같은 날 6 앞에 { id: 5 } 끼움 = 1 2 3 4 5 6 7, 뒤에 8단계 유령 고성)
+    //   → 번호를 건너뛰어도 됨(2026-11-04: 한동안 5단계 설산 그림이 없어서 목록 = 1 2 3 4 6 7 → 같은 날 6 앞에 { id: 5 } 끼움 = 1 2 3 4 5 6 7, 뒤에 8단계 유령 고성 · 9단계 마왕군 요새)
     //   깬 판은 id 로 저장(main.js) → 5단계를 끼워도 예전 저장이 어긋나지 않음(4·6을 깨고 5는 안 깼으면: 6은 그대로 클리어, 5가 열림)
     // 지금 하고 있는 판은 main.js 가 CFG.stage(+ CFG.bg = 그 판 bg)에 넣어 둔다 → 다른 코드는 예전처럼 CFG.stage 를 읽음
     // 시험 기간(2026-11-04 형님): 스테이지 고르기에서 모든 판을 처음부터 열어 둠. 정식으로 낼 때 false
@@ -1888,6 +2014,48 @@
           { type: 'ghostfire', x: 2040 + 332, y: 0.48 },
           { type: 'coffin',    x: 2250, y: 0.78, drop: 'meat' }    // 6번 웨이브 화면 = 보스방 바로 앞
         ]
+      },
+      // ===== 9단계: 마왕군 요새 (2026-11-04 새 그림: 배경·소품·마족 병사·흑마법사·마왕군 장군) =====
+      // 8단계보다 조금 더 어렵게(체력·공격 x1.6): 새 적 마족 병사(방패 막기 + 미늘창) · 흑마법사(멀리서 암흑 구체) +
+      //   예전 적의 「마족」 색 정예(늑대·도마뱀 전사·설인, 체력·공격 조금 더),
+      //   초록 불꽃 전쟁 화로 둘레에 미리 서 있는 무리 3곳 + 옆에서 지원, 보스 = 마왕군 장군(대검 두 번·돌진 찌르기·칼 꽂기 화염 충격파)
+      {
+        id: 9,
+        name: 'STAGE 9  마왕군 요새',
+        width: 2880,
+        healOnClear: 18,            // 8단계와 같음
+        bgTop: '#28233c',           // 화면이 배경보다 높을 때 위쪽 하늘 색 (실제로는 배경 맨 윗줄 = 짙은 폭풍 보라 하늘을 늘려 씀)
+        bg: BG_FORTRESS,
+        hpMul: 1.6, dmgMul: 1.6,
+        waves: [
+          // 1: 외성벽 — 마족 병사 첫 등장, 뒤에서 마족 늑대
+          { at: 120,  spawn: [['soldier', 'R', 0], ['soldier', 'R', 900], ['wolf', 'L', 2400, { variant: 'demonic' }]] },
+          // 2: 전쟁 화로(500 + 326) 옆에 마족 병사 + 흑마법사(camp1, 하나 깨면 둘 다 깸) + 옆에서 지원
+          { at: 500,  placed: [['soldier', 288, 0.36, { group: 'camp1', dir: 1 }], ['mage', 364, 0.58, { group: 'camp1' }]],
+                      spawn: [['soldier', 'L', 900], ['wolf', 'R', 2600, { variant: 'demonic' }]] },
+          { at: 880,  spawn: [['mage', 'R', 0], ['soldier', 'L', 400], ['lizard', 'R', 1400, { variant: 'demonic' }], ['soldier', 'R', 3200], ['soldier', 'L', 3800]] },
+          // 4: 군영 전쟁 화로(1260 + 330) 둘레에 마족 병사 둘 + 흑마법사(camp2) + 옆에서 지원(마족 설인)
+          { at: 1260, placed: [['soldier', 292, 0.34, { group: 'camp2', dir: 1 }], ['mage', 372, 0.44, { group: 'camp2' }], ['soldier', 340, 0.8, { group: 'camp2' }]],
+                      spawn: [['wolf', 'R', 1200, { variant: 'demonic' }], ['yeti', 'L', 3400, { variant: 'demonic' }], ['soldier', 'R', 4200]] },
+          // 5: 군영 끝 — 병사 둘 + 마족 도마뱀 전사 + 마법사
+          { at: 1650, spawn: [['soldier', 'R', 0], ['soldier', 'L', 500], ['lizard', 'R', 2200, { variant: 'demonic' }], ['mage', 'L', 3600]] },
+          // 6: 내성문 전쟁 화로(2040 + 332)를 지키는 병사 둘 + 마법사(gate) + 옆에서 지원
+          { at: 2040, placed: [['soldier', 296, 0.3, { group: 'gate', dir: 1 }], ['mage', 372, 0.62, { group: 'gate' }], ['soldier', 352, 0.86, { group: 'gate' }]],
+                      spawn: [['lizard', 'R', 600, { variant: 'demonic' }], ['soldier', 'R', 2800], ['wolf', 'L', 3400, { variant: 'demonic' }]] },
+          { at: 'end', boss: true, spawn: [['general', 'R', 0]] }
+        ],
+        // 소품: 마왕군 보급 상자·흑철 화약통(부서짐) + 초록 불꽃 전쟁 화로 3개(장식, 무리 자리). 보스 앞 상자는 고기가 꼭 나옴
+        props: [
+          { type: 'siegecrate', x: 430,  y: 0.72 },
+          { type: 'powderkeg',  x: 700,  y: 0.22 },
+          { type: 'warbrazier', x: 500 + 326, y: 0.47 },
+          { type: 'siegecrate', x: 1150, y: 0.7 },
+          { type: 'powderkeg',  x: 1480, y: 0.26 },
+          { type: 'warbrazier', x: 1260 + 330, y: 0.56 },
+          { type: 'powderkeg',  x: 1860, y: 0.32, drop: 'bread' },
+          { type: 'warbrazier', x: 2040 + 332, y: 0.48 },
+          { type: 'siegecrate', x: 2250, y: 0.78, drop: 'meat' }    // 6번 웨이브 화면 = 보스방 바로 앞
+        ]
       }
     ],
 
@@ -1912,7 +2080,9 @@
       lava:  { label: '용암', hue: 0, sat: 0.15, bright: 0.5, color: '#3a1610', colorK: 0.35,
                glow: { hue: [48, 175], sat: 0.25, color: '#ff7a1e' }, keep: { hue: [8, 40], sat: 0.55, light: 150 } },
       // 8단계(2026-11-04): 흰 해골·보라 박쥐·붕대 미라 → 창백한 「유령」 빛(푸른 청록, 조금 밝게). 흰색이 많아 color 로 물들임
-      spectral: { label: '유령', hue: 0, sat: 0.55, bright: 1.08, color: '#8fe8f0', colorK: 0.38, hpMul: 1.1 }
+      spectral: { label: '유령', hue: 0, sat: 0.55, bright: 1.08, color: '#8fe8f0', colorK: 0.38, hpMul: 1.1 },
+      // 9단계(2026-11-04): 회색 늑대·초록 도마뱀·흰 설인 → 검붉은 「마족」 빛(어둡게 + 진홍 덧칠). 정예라 체력 조금 더
+      demonic: { label: '마족', hue: 0, sat: 0.9, bright: 0.82, color: '#a01828', colorK: 0.4, hpMul: 1.15 }
     },
 
     // ---------- 소품 그림 (2026-11-04, art\stage1-props 에서 복사 → assets/props/stage1/…, 크기·기준점은 props.json) ----------
@@ -2110,6 +2280,31 @@
         frames: seq('assets/props/stage8/brazier/burn_', 6), fps: 10,
         pivot: { x: 21, y: 78 }, solid: false, shadow: 14,
         glow: [{ r: 66, y: 50, color: '#4ae0ff', alpha: 0.3 }, { r: 48, y: 6, color: '#3a7aff', alpha: 0.2 }]
+      },
+      // ----- 9단계 소품 (art\stage9-props 에서 복사 → assets/props/stage9/…, 크기·기준점은 그 폴더 props.json) -----
+      // 이름이 1단계 상자(crate)·2단계 화로(brazier)와 겹쳐서 종류 이름만 따로(그림 폴더 이름은 그대로: crate / keg / brazier)
+      // 마왕군 보급 상자(쇠띠·가시 모서리·뿔 해골 문장, 위에 창 3자루): 창까지 주인공 가슴 높이. 나무·검은 쇠·뼈색 조각
+      siegecrate: {
+        frames: ['intact', 'cracked', 'damaged'].map(function (s) { return 'assets/props/stage9/crate/' + s + '_01.png'; }), fps: 0,
+        breakFrames: seq('assets/props/stage9/crate/break_', 4),
+        pivot: { x: 40, y: 82 }, solid: true, footprint: { w: 54, depth: 16 },
+        hits: 3, hurtbox: { x: -30, y: -75, w: 60, h: 74 }, shadow: 28,
+        chips: ['#8a5a34', '#5a3a22', '#2a2a30', '#e0d8c0', '#a02030']
+      },
+      // 흑철 테 화약통(심지·문장): 부서지면 검은 화약이 쏟아짐(터지는 데미지는 없음). 나무·쇠테·검은 화약 조각
+      powderkeg: {
+        frames: ['intact', 'cracked', 'damaged'].map(function (s) { return 'assets/props/stage9/keg/' + s + '_01.png'; }), fps: 0,
+        breakFrames: seq('assets/props/stage9/keg/break_', 4),
+        pivot: { x: 48, y: 84 }, solid: true, footprint: { w: 40, depth: 16 },
+        hits: 3, hurtbox: { x: -23, y: -73, w: 46, h: 72 }, shadow: 24,
+        chips: ['#6e4a2a', '#3a2a1e', '#2a2a2e', '#5a5a60', '#141416']
+      },
+      // 초록 불꽃 전쟁 화로(가시 쇠 그릇 + 뿔 해골 장식 + 세 다리): 장식(지나갈 수 있음, 안 부서짐). 받침·다리·그릇은 그대로, 불꽃만 움직이는 6장 반복
+      //   빛 = 그릇 높이 독초록 + 바닥에 깔린 옅은 초록
+      warbrazier: {
+        frames: seq('assets/props/stage9/brazier/burn_', 6), fps: 10,
+        pivot: { x: 21, y: 79 }, solid: false, shadow: 14,
+        glow: [{ r: 66, y: 50, color: '#6aff4a', alpha: 0.28 }, { r: 48, y: 6, color: '#3ad86a', alpha: 0.18 }]
       }
     },
     // ---------- 부서지는 소품 공통 (상자·통) ----------
@@ -2300,6 +2495,8 @@
         mul(a, ['first', 'step'], S);
         // 8단계: 흡혈 백작 순간이동(등 뒤 거리·덤비는 거리), 화난 뒤 박쥐 떼 줄 차이
         mul(a, ['behind', 'lunge'], S); if (a.enraged && a.enraged.lanes) arr(a.enraged.lanes);
+        // 9단계: 마왕군 장군 화염 충격파 고리(처음·끝 반지름, 퍼지는 속도, 맞는 띠 두께, 위아래 반지름, 그림 속 고리 반지름, 피하는 점프 높이)
+        mul(a.rings, ['r0', 'rMax', 'speed', 'band', 'ryMax', 'ringRx', 'dodgeZ'], S);
       });
       // 6단계 총잡이 거리 두기
       if (T.ranged) { arr(T.ranged.keep); mul(T.ranged, ['tooClose'], S); }

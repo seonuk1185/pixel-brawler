@@ -3,7 +3,8 @@
 //   + 5단계 설인(느리고 단단, 두 주먹 내려찍기) · 서리 거인(보스, 몽둥이 내려찍기·휘두르기·얼음 가시 줄)
 //   + 6단계 해적 총잡이(멀리서 쏨, 거리 두기) · 해적 선장(보스, 칼 두 번·권총·대포 일제 사격)
 //   + 7단계 불 도깨비(치고 빠지기·불덩이) · 용암 골렘(정예, 골렘 색 바꿈) · 붉은 와이번(보스, 물기·불 뿜기·날아올라 내리꽂기)
-//   + 8단계 유령 기사(내려베기·옅어져 돌진 찌르기) · 흡혈 백작(보스, 발톱·박쥐 떼·안개 순간이동 물어 빨기). 수치는 전부 config.js 의 enemies.
+//   + 8단계 유령 기사(내려베기·옅어져 돌진 찌르기) · 흡혈 백작(보스, 발톱·박쥐 떼·안개 순간이동 물어 빨기)
+//   + 9단계 마족 병사(방패 막기·미늘창) · 흑마법사(멀리서 암흑 구체) · 마왕군 장군(보스, 대검 두 번·돌진 찌르기·칼 꽂기 화염 충격파). 수치는 전부 config.js 의 enemies.
 // 그림은 전부 「왼쪽을 봄」 → 그릴 때 ctx.scale(-dir, 1)  (dir = 1 이면 오른쪽을 봄)
 (function () {
   var uid = 0;
@@ -375,9 +376,10 @@
   Enemy.prototype.thinkRanged = function (dt, ctx, dx, dy) {
     var T = this.T, R = T.ranged, p = ctx.player, adx = Math.abs(dx), ady = Math.abs(dy);
     if (this.cool <= 0 && this.entered && this.mayAttack(ctx)) {
-      if (adx < R.tooClose && ady <= T.alignY) { this.startAttack('bash', ctx); return; }
-      var sh = T.attacks.shot;
-      if (adx >= sh.when[0] && adx <= sh.when[1] && ady <= T.alignY && shooters(ctx) < (R.maxShooters || 2)) { this.startAttack('shot', ctx); return; }
+      // 9단계 흑마법사: 근접 공격(bash)이 없음 → 붙으면 쏘지도 때리지도 않고 뒤로 물러나기만. 쏘는 공격 이름 = R.attack(없으면 shot)
+      if (adx < R.tooClose && ady <= T.alignY && T.attacks.bash) { this.startAttack('bash', ctx); return; }
+      var shk = R.attack || 'shot', sh = T.attacks[shk];
+      if (adx >= sh.when[0] && adx <= sh.when[1] && ady <= T.alignY && shooters(ctx) < (R.maxShooters || 2)) { this.startAttack(shk, ctx); return; }
     }
     var want = Math.max(R.keep[0], Math.min(R.keep[1], adx));
     var tx = p.x + this.side * want;
@@ -438,6 +440,8 @@
       var a = T.attacks[k];
       var yOk = a.type === 'charge' ? ady <= 40 * AS() : (a.type === 'throw' || a.type === 'burrow' || a.type === 'barrage' || a.type === 'dive' || a.type === 'spikes' || a.type === 'teleport') ? true : ady <= T.alignY;   // 바위 던지기·땅속 숨기·대포 사격·날아올라 내리꽂기·얼음 가시 줄·순간이동은 줄 상관없음
       if (a.type === 'burrow' && self.clock - self.lastBurrowAt < (a.gapMs || 0)) return;   // 한 번 숨은 뒤 gapMs 동안은 안 숨음
+      // 화염 충격파(9단계 마왕군 장군): 고리는 위아래로 납작함 → 플레이어가 고리 위아래 폭(ryMax)의 1.5배 안 줄에 있을 때만 씀
+      if (a.type === 'shockwave') yOk = ady <= a.rings.ryMax * 1.5;
       // 안개 순간이동 물기(8단계 흡혈 백작): 플레이어가 공중·넘어짐·이미 잡힘이면 안 씀
       if (a.type === 'teleport') { var pp = ctx.player; if ((pp.z || 0) > 4 || pp.state === 'down' || pp.state === 'held' || pp.state === 'dead') return; }
       // 그 밖의 gapMs(선장 대포 사격): 한 번 쓰면 이 시간 동안 안 씀. firstMs = 나타난 뒤 처음 쓸 수 있을 때까지
@@ -512,6 +516,22 @@
       if (!a.fired && fr.no >= spec.spawnFrame) {
         a.fired = true; ctx.shake(spec.shake || 1);
         if (ctx.spikeLine) ctx.spikeLine(this, spec, a.pts);
+      }
+      return;
+    }
+    // 화염 충격파(9단계 마왕군 장군): spawnFrame(3장 칼을 발 앞에 꽂음)에서 꽂은 자리(spawn)를 가운데로 불꽃 고리 rings.count 개(화나면 enraged.count, gapMs 씩 늦게, main.js ctx.shockwave)
+    //   → holdFrame(4장 무릎 꿇고 칼 짚음)에서 고리가 거의 다 퍼질 때까지 멈춤(그동안 = 고리를 넘은 플레이어가 때릴 기회) → 5장 칼 뽑음
+    if (spec.type === 'shockwave') {
+      if (!a.fired && fr.no >= spec.spawnFrame) {
+        a.fired = true; ctx.shake(spec.shake || 1);
+        var RG = spec.rings, cnt = (this.enraged && spec.enraged && spec.enraged.count) || RG.count;
+        if (ctx.shockwave) ctx.shockwave(this, spec, this.x + this.dir * spec.spawn.x, this.y, cnt);
+        if (ctx.debris) ctx.debris(this.x + this.dir * spec.spawn.x, this.y, 10, ['#ffd060', '#ff8a2a', '#3a2a2a', '#5a4a44']);   // 돌 조각 + 불씨
+        a.holdLeft = (cnt - 1) * RG.gapMs + (RG.rMax - RG.r0) / RG.speed * 1000 * 0.5;   // 마지막 고리가 반쯤 퍼질 때까지
+      }
+      if (a.fired && fr.no === spec.holdFrame && a.holdLeft > 0) {   // 4장에 들어선 그 시각에 멈춰 둠(4장 그대로 보임)
+        if (a.holdAt == null) a.holdAt = a.t;
+        a.holdLeft -= dtMs; a.t = a.holdAt;
       }
       return;
     }
@@ -826,6 +846,14 @@
     if (this.state === 'attack') {
       var a = this.atk, s = a.spec, imgs = this.art[s.anim];
       if (s.type === 'charge') {
+        // 9단계 마왕군 장군: frames = 그림 번호 지도(1 웅크림 / 2·3 달리며 찌름 반복 / 4 미끄러지며 멈춤 / 5 복귀). 없으면 오크(1·2 / 3·4 / 5)
+        var CF = s.frames;
+        if (CF) {
+          if (a.phase === 'wind') return imgs[CF.wind[Math.min(CF.wind.length - 1, a.t < s.windMs ? 0 : 1)] - 1];
+          if (a.phase === 'run') return imgs[CF.run[Math.floor(a.t / s.stepMs) % CF.run.length] - 1];
+          if (a.phase === 'impact') return imgs[CF.impact[0] - 1];
+          return imgs[CF.recover[0] - 1];
+        }
         if (a.phase === 'wind') return imgs[a.t < s.windMs ? 0 : 1];
         if (a.phase === 'run') return imgs[2 + (Math.floor(a.t / s.stepMs) % 2)];
         if (a.phase === 'impact') return imgs[4];
@@ -911,6 +939,12 @@
     }
     if (s.type === 'shot') { this.drawAim(g, camX); return; }   // 총: 겨누는 동안 빨간 겨눔 선
     if (s.type === 'barrage') return;                            // 대포 사격: 떨어질 자리는 main.js 가 그림(그림자 + 빨간 원)
+    if (s.type === 'shockwave') {   // 화염 충격파: 칼을 꽂기 전까지 꽂을 자리 둘레에 고리가 닿는 끝(rMax)까지 빨간 원이 진해짐 → 그 밖 = 안전
+      if (a.fired) return;
+      var WA = this.T.anims[s.anim], plantMs = WA.playback.indexOf(s.spawnFrame) * 1000 / WA.fps;
+      drawRing(g, camX, this.x + this.dir * s.spawn.x, this.y, s.rings.rMax, s.rings.ryMax, a.t / plantMs, false);
+      return;
+    }
     if (s.type === 'spikes') {   // 얼음 가시 줄: 땅을 치기 전까지 가시 나올 자리마다 빨간 원(겨누는 동안 옅게 따라감 → 고정되면 진하게)
       if (a.fired || !a.pts) return;
       var SA = this.T.anims[s.anim], hitMs = SA.playback.indexOf(s.spawnFrame) * 1000 / SA.fps, aiming = a.t <= s.aimMs;

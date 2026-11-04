@@ -1,7 +1,7 @@
 // 게임 본체: 화면 크기, 배경, 매 장면 갱신, 타격 처리
 // 기본 = 스테이지 판(웨이브 + 보스, 여러 판). 주소 뒤 ?mode=practice = 예전 허수아비 연습장
 // 주소 뒤 ?stage=N = 판 번호(config stages 의 id) N 인 판으로 바로 시작(시험용, 잠금 무시). ?bot=1 이면 고르기 화면 없이 바로 시작
-//   (2026-11-04: 목록 = 1 2 3 4 5 6 7 8. ?stage=5 = 눈 덮인 산, ?stage=6 = 해적 항구, ?stage=7 = 화산, ?stage=8 = 유령 고성. 없는 번호면 무시)
+//   (2026-11-04: 목록 = 1 2 3 4 5 6 7 8 9. ?stage=5 = 눈 덮인 산, ?stage=6 = 해적 항구, ?stage=7 = 화산, ?stage=8 = 유령 고성, ?stage=9 = 마왕군 요새. 없는 번호면 무시)
 (function () {
   var CFG = window.CFG, J = CFG.juice;
   var AS = CFG.actorScale || 1;   // 캐릭터 크기: 코드에 바로 적힌 거리·높이와 손맛의 밀림 거리(juice.knockback)에 곱한다
@@ -757,6 +757,7 @@
   //     s.impact = 맞거나 끝까지 가면 그 자리(바닥)에서 터지는 그림(fxArt 이름, 없으면 안 터짐)
   //   8단계 흡혈 백작 박쥐 떼도 같은 길(proj = 'bats'). o = { dz: 줄을 위아래로 옮김, wait: 이만큼 늦게 출발(그동안 안 보임), scale: 그림 크기 } (화난 뒤 세 무리)
   //     s.hitCols = 맞을 때 튀는 조각 색(없으면 불꽃색)
+  //   9단계 흑마법사 암흑 구체도 같은 길(proj 'orb', impact 'orbhit'): s.impactAir = 터지는 그림을 바닥 말고 구체 높이에, s.impactCols = 터질 때 튀는 조각 색
   var shots = [];
   function fireShot(e, s, o) {
     var F = G.assets.enemyFx && G.assets.enemyFx[e.type];
@@ -771,9 +772,9 @@
   }
   // 불덩이 터짐(s.impact 그림, 바닥 기준) + 불씨
   function shotImpact(b) {
-    var I = b.imp;
-    if (I && I.frames.length) FX.sprite(b.x, b.z, I.frames, I.fps, I.pivot, b.dir > 0, false);
-    if (Skills.debris) Skills.debris(b.x, b.z - b.h, b.z, 6, { cols: ['#fff2a0', '#ffb040', '#ff6a1a', '#5a4a44'], glow: true, sp: 120, size: 1.4, ms: 320 });
+    var I = b.imp, s = b.s;
+    if (I && I.frames.length) FX.sprite(b.x, s.impactAir ? b.z - b.h : b.z, I.frames, I.fps, I.pivot, b.dir > 0, false);
+    if (Skills.debris) Skills.debris(b.x, b.z - b.h, b.z, 6, { cols: s.impactCols || ['#fff2a0', '#ffb040', '#ff6a1a', '#5a4a44'], glow: true, sp: 120, size: 1.4, ms: 320 });
   }
   function shotsStep(dt) {
     var p = G.player, S = G.stage, hb = null;
@@ -898,6 +899,54 @@
     });
   }
 
+  // ---------- 화염 충격파 고리 (9단계 마왕군 장군 shockwave): 칼을 꽂은 자리를 가운데로 납작한 불꽃 고리가 퍼짐 ----------
+  // { e, s: 공격 수치, x, y: 가운데(바닥), t: 지난 시간(처음엔 음수 = 다음 고리 기다림), hit }. 반지름 r = r0 + speed x 시간(rMax 까지)
+  //   맞음 = 플레이어 발이 타원(가로 r, 위아래 ry = min(r, ringRx) / ringRx x ryMax) 「테두리」 band 안: | sqrt((dx / r)² + (dy / ry)²) - 1 | x r <= band
+  //     + 높이 dodgeZ 아래(뛰어넘으면 피함) → 고리마다 한 번(깜빡임 무적으로 안 맞았으면 계속 확인). 다 퍼져 가는 마지막(90% 뒤, 꺼지는 불씨)은 안 아픔
+  //   그림 = 장군 fxArt[s.fx] 를 가로 r / ringRx, 세로 min(1, r / ringRx) x flameScale 배로(1장 = 처음 80ms, 2·3장 반복, 4장 = 70%, 5장 = 90% 뒤). 보스가 쓰러지면 사라짐
+  var rings = [];
+  function shockwave(e, s, cx, cy, n) {
+    for (var i = 0; i < n; i++) rings.push({ e: e, s: s, x: cx, y: clamp(cy, world.laneTop, world.laneBottom), t: -i * s.rings.gapMs, hit: false });
+  }
+  function ringR(q) { var R = q.s.rings; return Math.min(R.rMax, R.r0 + R.speed * Math.max(0, q.t) / 1000); }
+  function ringLife(q) { var R = q.s.rings; return (R.rMax - R.r0) / R.speed * 1000; }
+  function ringsStep(dt) {
+    var p = G.player, S = G.stage;
+    for (var i = rings.length - 1; i >= 0; i--) {
+      var q = rings[i], R = q.s.rings, life = ringLife(q);
+      if (S.bossDownT >= 0 || S.result) { rings.splice(i, 1); continue; }
+      var t0 = q.t; q.t += dt;
+      if (q.t < 0) continue;
+      if (t0 < 0 || !q.born) {   // 퍼지기 시작: 불씨 + 작은 흔들림
+        q.born = true;
+        if (Skills.debris) Skills.debris(q.x, q.y - 6 * AS, q.y, 6, { cols: ['#fff2a0', '#ffb040', '#ff6a1a', '#3a2a2a'], glow: true, sp: 120, size: 1.5, ms: 360 });
+        FX.shake(J.shakePx * 0.5, 100);
+      }
+      if (q.t >= life) { rings.splice(i, 1); continue; }
+      if (q.hit || q.t >= life * 0.9 || p.state === 'dead' || (p.z || 0) > R.dodgeZ) continue;
+      var r = ringR(q), ry = Math.max(1, Math.min(r, R.ringRx) / R.ringRx * R.ryMax), dx = p.x - q.x, dy = p.y - q.y;
+      if (Math.abs(Math.sqrt((dx / r) * (dx / r) + (dy / ry) * (dy / ry)) - 1) * r <= R.band)
+        q.hit = onPlayerHit({ x: q.x, dmgMul: q.e.dmgMul, T: q.e.T }, q.s);   // 가운데에서 바깥으로 밀림
+    }
+  }
+  // 고리 그림: 가운데 줄(y) 깊이로 캐릭터와 같이 줄 세움(그 줄보다 앞에 선 캐릭터가 고리 위에 보임)
+  function addRingDraw(ents, camX) {
+    rings.forEach(function (q) {
+      if (q.t < 0) return;
+      ents.push({ y: q.y, d: function () {
+        var R = q.s.rings, r = ringR(q), u = q.t / ringLife(q), x = snap(q.x - camX), y = snap(q.y);
+        var F = G.assets.enemyFx && G.assets.enemyFx[q.e.type], A = F && F[q.s.fx];
+        if (!A || !A.frames.length) {   // 그림이 없으면 주황 타원
+          ctx.save(); ctx.strokeStyle = '#ff8a2a'; ctx.lineWidth = 3; ctx.beginPath();
+          ctx.ellipse(x, y, r, Math.max(1, Math.min(r, R.ringRx) / R.ringRx * R.ryMax), 0, 0, Math.PI * 2); ctx.stroke(); ctx.restore(); return;
+        }
+        var n = A.frames.length, k = q.t < 80 ? 0 : u >= 0.9 ? 4 : u >= 0.7 ? 3 : 1 + Math.floor(q.t * A.fps / 1000) % 2;
+        ctx.save(); ctx.translate(x, y); ctx.scale(r / R.ringRx, Math.min(1, r / R.ringRx) * R.flameScale);
+        Assets.blit(ctx, A.frames[Math.min(n - 1, k)], A.pivot.x, A.pivot.y); ctx.restore();
+      } });
+    });
+  }
+
   // ---------- 소품 (판의 props: 상자·통·모닥불 + 음식) = props.js. 그림이 없는 종류는 ?debug=1 에서만 자리 표시 ----------
   Props.init(CFG, {
     laneY: laneY,
@@ -938,6 +987,7 @@
     puddles.forEach(function (q) { q.t = Math.max(q.t, q.P.ms - 600); });   // 독 웅덩이는 곧 사라짐
     shots.length = 0;                  // 날아가던 총알도 사라짐(대포알은 떨어지지만 안 아픔)
     spikes.length = 0;                 // 얼음 가시도 사라짐
+    rings.length = 0;                  // 화염 충격파 고리도 사라짐
     G.hitstop = Math.max(G.hitstop, 260);
     G.slowT = 1400;                    // 보스 쓰러질 때 슬로모션
     FX.shake(J.shakePx * 3, 500);
@@ -1059,7 +1109,7 @@
       Input.setOverride(ax); return;
     }
     var side = best.x > p.x ? 1 : -1;
-    var want = ({ goblin: 42, wolf: 58, orc: 72, bat: 46, skeleton: 44, golem: 76, mummy: 46, scorpion: 80, lizard: 46, toad: 74, gunner: 40, captain: 70, imp: 44, lavagolem: 76, wyvern: 80, yeti: 50, giant: 82, ghost: 46, vampire: 66 }[best.type] || 50) * AS;
+    var want = ({ goblin: 42, wolf: 58, orc: 72, bat: 46, skeleton: 44, golem: 76, mummy: 46, scorpion: 80, lizard: 46, toad: 74, gunner: 40, captain: 70, imp: 44, lavagolem: 76, wyvern: 80, yeti: 50, giant: 82, ghost: 46, vampire: 66, soldier: 52, mage: 40, general: 84 }[best.type] || 50) * AS;
     var sv = Props.steer(p, R, best.x - side * want, best.y, world, best.x);   // 막는 소품: 목표가 그 안이면 옆으로, 앞에 있으면 돌아감
     var tx = sv.x, ty = best.y;
     var ex = tx - p.x, ey = ty - p.y, my = sv.y - p.y;   // 공격 조건은 원래 줄(ey), 움직임은 돌아가는 줄(my)
@@ -1185,6 +1235,7 @@
       shotsStep(dt);         // 총잡이·선장 총알
       cannonsStep(dt);       // 선장 대포알
       spikesStep(dt);        // 서리 거인 얼음 가시
+      ringsStep(dt);         // 마왕군 장군 화염 충격파 고리
       poisonStep(dt);        // 전갈 왕 독 · 독 웅덩이
       stageStep(dt);
       Props.update(dt, p);   // 부서지는 그림·음식 줍기
@@ -1229,6 +1280,7 @@
     G.enemies.forEach(function (e) { ents.push({ y: e.y + (e.alive() ? 0 : -0.5), d: function () { e.draw(ctx, camX, DEBUG); } }); });
     if (MODE === 'stage') Props.addDraw(ents, ctx, camX, LW, DEBUG);
     if (spikes.length) addSpikeDraw(ents, camX);   // 얼음 가시(땅에서 솟음 = 캐릭터와 깊이 순서)
+    if (rings.length) addRingDraw(ents, camX);     // 화염 충격파 고리(바닥을 따라 퍼짐 = 캐릭터와 깊이 순서)
     ents.sort(function (a, b) { return a.y - b.y; });
     ents.forEach(function (e) { e.d(); });
     Projectiles.draw(ctx, camX);
@@ -1337,7 +1389,7 @@
     FX.list.length = 0;
     Projectiles.clear();
     Skills.clear();
-    rocks.length = 0; puddles.length = 0; shots.length = 0; cannons.length = 0; spikes.length = 0;
+    rocks.length = 0; puddles.length = 0; shots.length = 0; cannons.length = 0; spikes.length = 0; rings.length = 0;
     G.enemies = [];
     G.stage = newStage();
     G.ectx = makeEnemyCtx();
@@ -1414,7 +1466,8 @@
       fireShot: fireShot, dropCannon: dropCannon,                              // 6단계 총알 · 대포알 (7단계 불덩이도 fireShot)
       spikeLine: spikeLine,                                                    // 5단계 서리 거인 얼음 가시 줄
       burnPlayer: burnPlayer,                                                  // 7단계 와이번 불 뿜기에 계속 서 있음
-      drainPlayer: drainPlayer, mist: mistPuff                                 // 8단계 흡혈 백작 피 빨기 · 안개
+      drainPlayer: drainPlayer, mist: mistPuff,                                // 8단계 흡혈 백작 피 빨기 · 안개
+      shockwave: shockwave                                                     // 9단계 마왕군 장군 화염 충격파 고리
     };
     Object.defineProperty(E, 'player', { get: function () { return G.player; } });
     return E;
@@ -1580,7 +1633,7 @@
         enemies: G.enemies.map(function (e) { return e.type + (e.variant ? '(' + e.variant + ')' : '') + ':' + (e.asleep ? 'asleep' : e.alertT > 0 ? 'alert' : e.state) +
           (e.atk && (e.atk.spec.type === 'burrow' || e.atk.spec.type === 'dive' || e.atk.spec.type === 'teleport') ? '/' + e.atk.phase : '') + (e.faded() ? '/faded' : '') + (e.hidden ? '/hidden' : '') + (e.atk && e.atk.held ? '/hold' : '') + (e.atk ? '/' + e.atk.name : '') + (e.airborne() ? '/air' : '') + ':' + e.hp + '@' + Math.round(e.x) + ',' + Math.round(e.y); }),
         poison: p.poison ? Math.round(p.poison.t) : 0,
-        hits: G.hits, maxCombo: G.maxCombo, rocks: rocks.length, puddles: puddles.length, shots: shots.length, cannons: cannons.length, spikes: spikes.length, stageId: CFG.stage.id,
+        hits: G.hits, maxCombo: G.maxCombo, rocks: rocks.length, puddles: puddles.length, shots: shots.length, cannons: cannons.length, spikes: spikes.length, rings: rings.length, stageId: CFG.stage.id,
         props: Props.list.map(function (pr) { return pr.type + ':' + (pr.state === 'idle' ? pr.hitsLeft : pr.state) + '@' + Math.round(pr.x) + ',' + Math.round(pr.y); }),
         food: Props.food.map(function (f) { return f.kind + '@' + Math.round(f.x) + ',' + Math.round(f.y); }) };
     }
