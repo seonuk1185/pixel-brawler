@@ -354,6 +354,66 @@
     FX.damage(p.x, p.y - (p.z || 0) - 112 * AS, dmg, false, J, '#ff5a4a', null, 'player');
     vibrate(Math.round(J.vibrateMs * 2.5));
     G.comboT = 0; comboEl.hidden = true;
+    // 독(전갈 왕 독침): 맞으면 잠깐 독 → poisonStep 이 everyMs 마다 체력을 조금씩 깎음(독으로는 안 쓰러짐)
+    if (spec.poison) p.poison = { t: spec.poison.ms, tick: spec.poison.everyMs, every: spec.poison.everyMs, dmg: spec.poison.dmg };
+  }
+  function poisonStep(dt) {
+    var p = G.player, P = p.poison;
+    if (!P) return;
+    if (p.state === 'dead') { p.poison = null; return; }
+    P.t -= dt; P.tick -= dt;
+    if (P.tick <= 0) {
+      P.tick += P.every;
+      var n = p.god ? 0 : Math.min(P.dmg, p.hp - 1);
+      if (n > 0) { p.hp -= n; FX.damage(p.x, p.y - (p.z || 0) - 112 * AS, n, false, J, '#9cff5a', null, 'player'); }
+      if (Skills.debris) Skills.debris(p.x, p.y - 50 * AS, p.y, 4, { cols: ['#b6ff6a', '#6ad83a', '#e8ffb0'], glow: true, sp: 50, size: 1.3, ms: 420, g: -30, spread: 0.8 });
+    }
+    if (P.t <= 0) p.poison = null;
+  }
+
+  // ---------- 미라 잡기 (2026-11-04): 닿으면 붙잡힘 → 버튼 연타로 빨리 풀림 → 놓으면서 데미지 + 내던짐 ----------
+  // 잡을 수 있나: 쓰러짐·넘어짐·이미 잡힘·무적(깜빡임·기술 무적)·공중이면 못 잡음(헛손질)
+  function grabPlayer(e, spec) {
+    var p = G.player;
+    if (p.state === 'dead' || p.state === 'down' || p.state === 'held' || p.invulnT > 0 || (p.z || 0) > 4) return false;
+    if (p.state === 'skill' && Skills.invulnerable(p)) return false;
+    p.state = 'held'; p.heldBy = e; p.animT = 0; p.vx = 0;
+    p.atk = null; p.sk = null; p.jp = null; p.ratk = null; p.comboStep = 0;
+    p.dir = -e.dir;
+    G.hitstop = Math.max(G.hitstop, J.hitstopMs * 0.8);
+    FX.shake(J.shakePx * (spec.shake || 1) * 0.6, J.shakeMs);
+    FX.impact(p.x - p.dir * 2, p.y - 62 * AS, p.dir, '#ffe0a0', Math.round(J.sparkCount * 0.5), false, null, 0.7);
+    vibrate(Math.round(J.vibrateMs * 2));
+    G.comboT = 0; comboEl.hidden = true;
+    grabMash();   // 잡히기 전에 눌러 둔 버튼은 안 셈
+    return true;
+  }
+  // 붙잡힌 동안 누른 버튼 수(공격·점프·기술 A/B, 한 번 누름 = 한 번)
+  function grabMash() {
+    var n = 0, ms = 400;
+    if (Input.takeAttack(ms)) n++;
+    if (Input.takeJump(ms)) n++;
+    if (Input.takeSkill('A', ms)) n++;
+    if (Input.takeSkill('B', ms)) n++;
+    if (n && G.player.state === 'held') FX.shake(J.shakePx * 0.25, 60);   // 버둥: 화면이 살짝 떨림
+    return n;
+  }
+  // 놓음: 상태를 풀고 그 공격으로 때림(heavy = 넘어짐 = 내던져짐)
+  function releaseGrab(e, spec) {
+    var p = G.player;
+    if (p.state !== 'held') return;
+    p.state = 'idle'; p.heldBy = null;
+    onPlayerHit(e, spec);
+  }
+  // 매 장면: 붙잡힌 플레이어를 잡은 적 앞에 붙여 둠. 잡은 적이 맞거나 쓰러져 잡기가 끊기면 그냥 풀림(데미지 없음, 잠깐 무적)
+  function heldStep() {
+    var p = G.player, e = p.heldBy;
+    if (p.state !== 'held') { p.heldBy = null; return; }
+    if (!e || !e.alive() || e.state !== 'attack' || !e.atk || !e.atk.held) {
+      p.state = 'idle'; p.heldBy = null; p.animT = 0; p.invulnT = Math.max(p.invulnT, 500);
+      return;
+    }
+    p.x = e.x + e.dir * e.atk.spec.grab.dist; p.y = e.y; p.dir = -e.dir;
   }
 
   // ---------- 화면 위 글자 ----------
@@ -638,7 +698,7 @@
     var pushing = p.state === 'runatk' && p.ratk && p.ratk.phase !== 'recover';
     if (p.state !== 'dead' && !(p.state === 'skill' && Skills.passThrough(p)) && !((p.z || 0) > overZ)) list.push({ o: p, r: CFG.hero.radius, m: 1, hero: true });
     G.enemies.forEach(function (e) {
-      if (!e.alive() || e.state === 'down') return;   // 넘어진 적은 밟고 지나갈 수 있음
+      if (!e.alive() || e.state === 'down' || e.hidden) return;   // 넘어진 적은 밟고 지나갈 수 있음, 땅속(전갈 왕)도 지나감
       var charging = e.state === 'attack' && e.atk && e.atk.spec.type === 'charge';
       list.push({ o: e, r: e.T.radius, m: charging ? 0 : (e.T.boss ? 0.08 : 1), boss: !!e.T.boss });
     });
@@ -661,7 +721,7 @@
   function propCollide() {
     var p = G.player, list = [];
     if (p.state !== 'dead') list.push({ o: p, r: CFG.hero.radius });
-    G.enemies.forEach(function (e) { if (e.alive() && !e.T.flying) list.push({ o: e, r: e.T.radius }); });   // 나는 적(박쥐)은 소품 위로 지나감
+    G.enemies.forEach(function (e) { if (e.alive() && !e.T.flying && !e.hidden) list.push({ o: e, r: e.T.radius }); });   // 나는 적(박쥐)은 소품 위로, 땅속(전갈 왕)은 밑으로 지나감
     Props.collide(list, world);
   }
 
@@ -680,7 +740,7 @@
       Input.setOverride(ax); return;
     }
     var side = best.x > p.x ? 1 : -1;
-    var want = ({ goblin: 42, wolf: 58, orc: 72, bat: 46, skeleton: 44, golem: 76 }[best.type] || 50) * AS;
+    var want = ({ goblin: 42, wolf: 58, orc: 72, bat: 46, skeleton: 44, golem: 76, mummy: 46, scorpion: 80 }[best.type] || 50) * AS;
     var sv = Props.steer(p, R, best.x - side * want, best.y, world, best.x);   // 막는 소품: 목표가 그 안이면 옆으로, 앞에 있으면 돌아감
     var tx = sv.x, ty = best.y;
     var ex = tx - p.x, ey = ty - p.y, my = sv.y - p.y;   // 공격 조건은 원래 줄(ey), 움직임은 돌아가는 줄(my)
@@ -796,11 +856,13 @@
       G.enemies.forEach(function (e) { e.update(dt, E); });
       separate();
       propCollide();
+      heldStep();            // 미라에게 붙잡힘: 잡은 적 앞에 붙여 둠
       p.clamp(world);
       G.enemies.forEach(function (e) { if (e.alive()) e.keepInView(E); });
       G.enemies = G.enemies.filter(function (e) { return !e.remove; });
       E.enemies = G.enemies;
       rocksStep(dt);         // 골렘이 던진 바위
+      poisonStep(dt);        // 전갈 왕 독
       stageStep(dt);
       Props.update(dt, p);   // 부서지는 그림·음식 줍기
     } else {
@@ -1017,7 +1079,8 @@
       dust: function (x, y, dir) { if (G.assets.dust && G.assets.dust.length) FX.sprite(x, y, G.assets.dust, CFG.dust.fps, CFG.dust.pivot, dir > 0, true); },
       shake: function (m) { FX.shake(J.shakePx * m, J.shakeMs * 1.6); },
       throwRock: throwRock,   // 골렘 바위 던지기
-      burst: rockBurst        // 골렘 내려찍기 땅 터짐
+      burst: rockBurst,       // 골렘 내려찍기 땅 터짐
+      grabPlayer: grabPlayer, grabMash: grabMash, releaseGrab: releaseGrab   // 미라 잡기
     };
     Object.defineProperty(E, 'player', { get: function () { return G.player; } });
     return E;
@@ -1180,7 +1243,9 @@
         waveIdx: S ? S.waveIdx : null, time: S ? Math.round(S.time) : null, result: S ? S.result : null,
         player: { hp: p.hp, state: p.state, x: Math.round(p.x), y: Math.round(p.y), z: Math.round(p.z * 10) / 10,
           frame: p.char ? p.currentFrame() : null, ratk: p.ratk ? p.ratk.phase : null, skill: p.sk ? p.sk.d.key + '@' + Math.round(p.sk.t) : null, cd: p.skillCd },
-        enemies: G.enemies.map(function (e) { return e.type + (e.variant ? '(' + e.variant + ')' : '') + ':' + (e.asleep ? 'asleep' : e.alertT > 0 ? 'alert' : e.state) + ':' + e.hp + '@' + Math.round(e.x) + ',' + Math.round(e.y); }),
+        enemies: G.enemies.map(function (e) { return e.type + (e.variant ? '(' + e.variant + ')' : '') + ':' + (e.asleep ? 'asleep' : e.alertT > 0 ? 'alert' : e.state) +
+          (e.atk && e.atk.spec.type === 'burrow' ? '/' + e.atk.phase : '') + (e.atk && e.atk.held ? '/hold' : '') + ':' + e.hp + '@' + Math.round(e.x) + ',' + Math.round(e.y); }),
+        poison: p.poison ? Math.round(p.poison.t) : 0,
         hits: G.hits, maxCombo: G.maxCombo, rocks: rocks.length,
         props: Props.list.map(function (pr) { return pr.type + ':' + (pr.state === 'idle' ? pr.hitsLeft : pr.state) + '@' + Math.round(pr.x) + ',' + Math.round(pr.y); }),
         food: Props.food.map(function (f) { return f.kind + '@' + Math.round(f.x) + ',' + Math.round(f.y); }) };

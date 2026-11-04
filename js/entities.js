@@ -33,6 +33,9 @@
     //   runDist = 달린 거리(그림을 거리로 넘김), jp = 점프 진행, ratk = 달리며 공격 진행
     this.z = 0; this.vz = 0; this.gz = 600;
     this.runDist = 0; this.jp = null; this.ratk = null;
+    // 붙잡힘(4단계 미라 잡기, 2026-11-04): state 'held' 동안 조작 안 됨. heldBy = 잡은 적(main.js grabPlayer / releaseGrab 이 넣고 뺌)
+    //   poison = 독(전갈 왕 독침) { t = 남은 시간, tick = 다음에 깎기까지, every, dmg } (main.js 가 깎음)
+    this.heldBy = null; this.poison = null;
   }
 
   // ---------- 달리기·점프 도구 ----------
@@ -216,6 +219,7 @@
   // 적에게 맞음. dir = 밀려나는 방향(1 = 오른쪽). heavy = 무거운 공격(넘어짐). 맞았으면 true
   Player.prototype.takeHit = function (dmg, dir, knock, flinchMs, heavy) {
     if (this.state === 'dead' || this.state === 'down' || this.invulnT > 0) return false;
+    if (this.state === 'held') return false;   // 붙잡혀 있는 동안은 다른 적에게 안 맞음(놓을 때 main.js 가 상태를 풀고 때림)
     if (this.state === 'skill' && window.Skills && Skills.invulnerable(this)) return false;   // 기술 무적 구간
     this.sk = null;                          // 기술 도중(무적 구간 밖)에 맞으면 기술은 끊김
     this.jp = null; this.ratk = null;        // 점프·달리며 공격도 끊김(공중이면 그대로 떨어짐: fall)
@@ -332,6 +336,10 @@
       var H2 = def.anims.hurt2, k = sum(H2.d) / Math.max(1, this.hurtDur);
       return { anim: 'hurt2', idx: Math.min(H2.frames.length - 1, seqAt(H2.d, (this.hurtDur - this.hurtT) * k).idx) };
     }
+    if (this.state === 'held') {   // 붙잡힘: 움찔 그림 1·2장을 번갈아(버둥거림)
+      var HH = def.anims.hurt;
+      return { anim: 'hurt', idx: Math.min(HH.frames.length - 1, Math.floor(this.animT * 7) % 2) };
+    }
     if (this.state === 'hurt' || this.state === 'dead' || this.state === 'down') {
       var HA = def.anims.hurt, hn = HA.frames.length;
       return { anim: 'hurt', idx: Math.min(hn - 1, Math.floor(this.animT * HA.fps)) };
@@ -386,6 +394,8 @@
       return ev;
     }
 
+    // 붙잡힘(미라): 조작 안 됨. 자리는 main.js 가 잡은 적 앞에 붙여 둠
+    if (this.state === 'held') { this.vx = 0; this.clamp(world); return ev; }
     // 기술 쓰는 중: 조작 안 됨(이동·판정·효과는 skills.js)
     if (this.state === 'skill') {
       if (!this.sk || Skills.advance(this, dtMs)) {

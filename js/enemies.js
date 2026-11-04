@@ -1,4 +1,5 @@
-// 적: 고블린 · 늑대 · 오크 족장(보스) + 2단계 박쥐(나는 적) · 해골 병사(방패 막기) · 돌 골렘(보스, 바위 던지기). 수치는 전부 config.js 의 enemies.
+// 적: 고블린 · 늑대 · 오크 족장(보스) + 2단계 박쥐(나는 적) · 해골 병사(방패 막기) · 돌 골렘(보스, 바위 던지기)
+//   + 4단계 미라(잡기) · 전갈 왕(보스, 땅속 숨기). 수치는 전부 config.js 의 enemies.
 // 그림은 전부 「왼쪽을 봄」 → 그릴 때 ctx.scale(-dir, 1)  (dir = 1 이면 오른쪽을 봄)
 (function () {
   var uid = 0;
@@ -45,6 +46,8 @@
     this.asleep = false; this.alertT = 0; this.pose = 'idle'; this.group = null;
     // 방패 막기(해골 병사, T.guard): guardT = 방패 들고 있는 남은 시간, guardCd = 다시 막기까지, guardFlash = 막는 순간 그림(block 2), blocks = 이번에 막은 수
     this.guardT = 0; this.guardCd = 0; this.guardFlash = 0; this.blocks = 0; this.guardBroken = false;
+    // 땅속 숨기(전갈 왕 burrow): hidden = 땅속(안 보이고 안 맞음, 모래 둔덕만 그림), lastBurrowAt = 마지막으로 숨은 시각(this.clock)
+    this.hidden = false; this.lastBurrowAt = 0;   // 0 = 나타나자마자 숨지는 않음(gapMs 뒤부터)
   }
 
   // 미리 세워 두기: pose = 쉬는 그림 이름(없으면 idle), group = 같이 깨는 무리 이름
@@ -86,7 +89,15 @@
   };
 
   // 지금 맞을 수 있나 (넘어짐~일어남 동안은 무적)
-  Enemy.prototype.canBeHit = function () { return this.alive() && this.state !== 'down'; };
+  Enemy.prototype.canBeHit = function () { return this.alive() && this.state !== 'down' && !this.hidden && !this.burrowInvuln(); };
+  // 땅속 숨기 무적 장: 파고드는 그림 invuln(3·4장) / 솟구치는 그림 eruptInvuln(1장) / 땅속(둔덕·떨림)
+  Enemy.prototype.burrowInvuln = function () {
+    var a = this.atk;
+    if (this.state !== 'attack' || !a || a.spec.type !== 'burrow') return false;
+    if (a.phase === 'dig') return inList(a.spec.invuln, this.frameAt(a.spec.anim, a.t).no);
+    if (a.phase === 'erupt') return inList(a.spec.eruptInvuln, this.frameAt(a.spec.eruptAnim, a.t).no);
+    return a.phase === 'mound' || a.phase === 'warn';
+  };
   Enemy.prototype.hasAnim = function (name) { return !!(this.T.anims[name] && this.art[name] && this.art[name][0]); };
 
   // 넘어짐 그림 길이 / 그중 밀려나는 시간(첫 누운 그림 전까지)
@@ -100,7 +111,7 @@
   };
 
   Enemy.prototype.startStagger = function () {
-    this.state = 'stagger'; this.stagT = 0; this.animT = 0; this.atk = null; this.vx = 0;
+    this.state = 'stagger'; this.stagT = 0; this.animT = 0; this.atk = null; this.vx = 0; this.hidden = false;
   };
 
   // 그림 한 장 고르기: playback(1부터 번호) + fps
@@ -119,7 +130,8 @@
 
   // 몸 판정 (앞 = 바라보는 쪽 +)
   Enemy.prototype.hurtbox = function () {
-    var h = this.T.hurtbox;
+    var h = this.T.hurtbox, SG = this.T.stagger;
+    if (this.state === 'stagger' && SG && SG.hurtbox && this.staggerIdx() === 2) h = SG.hurtbox;   // 휘청 3장(전갈 뒤집힘) = 몸이 더 넓게 누움
     var xa = this.x + h.x0 * this.dir, xb = this.x + h.x1 * this.dir;
     return { x0: Math.min(xa, xb), x1: Math.max(xa, xb), y0: this.y + h.yTop, y1: this.y + h.yBot, z: this.y };
   };
@@ -136,6 +148,7 @@
     opts = opts || {};
     if (!this.alive()) return null;
     if (this.state === 'down' && !opts.force) return null;
+    if (this.hidden && !opts.force) return null;   // 땅속(전갈 왕)
     this.asleep = false; this.alertT = 0;   // 자다가 맞으면 바로 깸(「!」 없이)
     var T = this.T, AI = this.cfg.ai, R = AI.react;
     var before = this.hp / this.maxHp;
@@ -326,10 +339,11 @@
       return null;
     }
     // 보스: 거리에 맞는 공격 중 무게(weight)로 고르기
-    var opts = [], sum = 0;
+    var opts = [], sum = 0, self = this;
     Object.keys(T.attacks).forEach(function (k) {
       var a = T.attacks[k];
-      var yOk = a.type === 'charge' ? ady <= 40 * AS() : a.type === 'throw' ? true : ady <= T.alignY;   // 바위 던지기는 줄 상관없음
+      var yOk = a.type === 'charge' ? ady <= 40 * AS() : (a.type === 'throw' || a.type === 'burrow') ? true : ady <= T.alignY;   // 바위 던지기·땅속 숨기는 줄 상관없음
+      if (a.type === 'burrow' && self.clock - self.lastBurrowAt < (a.gapMs || 0)) return;   // 한 번 숨은 뒤 gapMs 동안은 안 숨음
       if (yOk && adx >= a.when[0] && adx <= a.when[1]) { opts.push(k); sum += a.weight; }
     });
     if (!opts.length) return null;
@@ -340,7 +354,7 @@
 
   Enemy.prototype.endAttack = function () {
     var T = this.T;
-    this.state = 'idle'; this.animT = 0; this.atk = null;
+    this.state = 'idle'; this.animT = 0; this.atk = null; this.hidden = false;
     this.cool = randi(T.cooldown);
     if (T.retreatMs) this.retreatT = T.retreatMs;
   };
@@ -350,14 +364,18 @@
     var p = ctx.player, b = this.attackBox(reach, spec.depth), h = p.hurtbox();
     if (b.x0 < h.x1 && b.x1 > h.x0 && b.y0 < h.y1 && b.y1 > h.y0 && Math.abs(b.z - h.z) <= b.depth) {
       this.atk.hit = true;
+      // 미라 잡기: 닿으면 데미지 대신 붙잡음(main.js grabPlayer). 못 잡으면(무적·공중) 헛손질
+      if (spec.grab) { if (ctx.grabPlayer && ctx.grabPlayer(this, spec)) { this.atk.held = true; this.atk.holdT = spec.grab.ms; this.atk.heldT = 0; } return; }
       ctx.onPlayerHit(this, spec);
     }
   };
 
   Enemy.prototype.updateAttack = function (dtMs, ctx) {
     var a = this.atk, spec = a.spec, dt = dtMs / 1000;
+    if (a.held) return this.updateHold(dtMs, ctx);   // 미라: 붙잡고 있는 동안은 그림을 멈춤(4장)
     a.t += dtMs;
     if (spec.type === 'charge') return this.updateCharge(dtMs, ctx);
+    if (spec.type === 'burrow') return this.updateBurrow(dtMs, ctx);
     var fr = this.frameAt(spec.anim, a.t);
     if (fr.done) { this.endAttack(); return; }
     // 바위 던지기: 던지기 전까지 플레이어 자리를 겨눔(앞쪽, maxRange 까지) → spawnFrame 그림에서 그 자리로 던짐(main.js ctx.throwRock)
@@ -376,14 +394,72 @@
       var pb = this.T.anims[spec.anim].playback, cnt = 0;
       pb.forEach(function (n) { if (inList(spec.move.frames, n)) cnt++; });
       var sp = spec.move.dist / (cnt * fr.step / 1000);
-      this.x += this.dir * sp * dt;
+      this.x += this.dir * sp * dt; a.moved += sp * dt;
     }
-    if (inList(spec.active, fr.no)) this.tryHitPlayer(spec, spec.reach, ctx);
+    // reachF = 장마다 다른 판정 상자(전갈 집게: 3장 멀리 → 4장 가까이 조임)
+    if (inList(spec.active, fr.no)) this.tryHitPlayer(spec, (spec.reachF && spec.reachF[fr.no]) || spec.reach, ctx);
     // 땅을 찍는 순간 화면 흔들림 (보스)
     if (spec.shake && !a.shook && fr.no === spec.active[spec.active.length - 1]) {
       a.shook = true; ctx.shake(spec.shake);
       if (spec.burst && ctx.burst) ctx.burst(this, this.x + this.dir * spec.burst.x, this.y, spec.burst.scale);   // 골렘 내려찍기: 주먹 자리에 바위 터짐
     }
+  };
+
+  // 미라 잡기: 붙잡은 동안(holdT) 그림 멈춤. 플레이어가 버튼을 누를 때마다(ctx.grabMash) mashMs 만큼 빨리 풀림(그래도 minMs 는 잡혀 있음)
+  //   다 되면 놓으면서 데미지 + 내던짐(ctx.releaseGrab) → 남은 그림(5장 복귀)부터 이어서
+  Enemy.prototype.updateHold = function (dtMs, ctx) {
+    var a = this.atk, G = a.spec.grab, p = ctx.player;
+    a.heldT += dtMs; a.holdT -= dtMs;
+    var n = ctx.grabMash ? ctx.grabMash() : 0;
+    if (n) a.holdT -= n * G.mashMs;
+    if (p.state !== 'held' || p.heldBy !== this) { a.held = false; this.endAttack(); return; }   // 어쩌다 풀려 버림
+    if (a.holdT <= 0 && a.heldT >= G.minMs) {
+      a.held = false;
+      if (ctx.releaseGrab) ctx.releaseGrab(this, a.spec);
+      var A = this.T.anims[a.spec.anim], k = A.playback.indexOf(G.holdFrame + 1);
+      a.t = (k < 0 ? A.playback.length : k) * 1000 / A.fps;   // 다음 장(5 복귀)부터
+    }
+  };
+
+  // 전갈 왕 땅속 숨기: dig(burrow 그림, 3장부터 무적) → mound(안 보임, 모래 둔덕이 플레이어를 쫓아감) → warn(둔덕 떨림 + 빨간 원)
+  //   → erupt(그 자리에서 솟구침, 1~2장 판정) → 끝. 둔덕 = 이 적의 x, y 그대로(땅속에서 움직임)
+  Enemy.prototype.updateBurrow = function (dtMs, ctx) {
+    var a = this.atk, s = a.spec, dt = dtMs / 1000, p = ctx.player, fr;
+    if (a.phase === 'wind') { a.phase = 'dig'; a.t = dtMs; if (Math.abs(p.x - this.x) > 4) this.dir = p.x > this.x ? 1 : -1; }
+    if (a.phase === 'dig') {
+      fr = this.frameAt(s.anim, a.t);
+      if (fr.done) {
+        a.phase = 'mound'; a.t = 0; this.hidden = true; this.lastBurrowAt = this.clock;
+        ctx.dust(this.x, this.y, this.dir);
+      }
+      return;
+    }
+    if (a.phase === 'mound') {
+      var dx = p.x - this.x, dy = p.y - this.y, d = Math.hypot(dx, dy), sp = s.speed * this.speedMul() * dt;
+      if (d > 0.5) { this.x += dx / d * Math.min(d, sp); this.y += dy / d * Math.min(d, sp); }
+      if (Math.abs(dx) > 2) this.dir = dx > 0 ? 1 : -1;
+      a.dustT -= dtMs;
+      if (a.dustT <= 0) { a.dustT = 260; ctx.dust(this.x - this.dir * 20 * AS(), this.y, this.dir); }
+      if ((Math.abs(dx) <= s.catchR && Math.abs(dy) <= s.catchR) || a.t >= s.maxMs || p.state === 'dead') {
+        a.phase = 'warn'; a.t = 0; a.tx = p.x; a.ty = p.y; a.fx = this.x; a.fy = this.y;   // 플레이어가 있던 자리에서 솟구침
+      }
+      return;
+    }
+    if (a.phase === 'warn') {
+      var u = Math.min(1, a.t / 150);   // 둔덕이 그 자리로 마저 미끄러져 감
+      this.x = a.fx + (a.tx - a.fx) * u; this.y = a.fy + (a.ty - a.fy) * u;
+      if (a.t >= s.warnMs) {
+        a.phase = 'erupt'; a.t = 0; this.hidden = false; this.x = a.tx; this.y = a.ty;
+        if (Math.abs(p.x - this.x) > 4) this.dir = p.x > this.x ? 1 : -1;
+        ctx.shake(s.shake * 0.5); ctx.dust(this.x, this.y, this.dir); ctx.dust(this.x, this.y, -this.dir);
+      }
+      return;
+    }
+    // erupt: 1~2장 판정(앞뒤 다 맞음), 2장에서 크게 흔들림
+    fr = this.frameAt(s.eruptAnim, a.t);
+    if (fr.done) { this.endAttack(); return; }
+    if (inList(s.active, fr.no)) this.tryHitPlayer(s, s.reach, ctx);
+    if (!a.shook && fr.no === s.active[s.active.length - 1]) { a.shook = true; ctx.shake(s.shake); }
   };
 
   // 오크 어깨 돌진: 웅크림(예고) → 돌진(미끄러짐 + 먼지) → 부딪힘 → 복귀
@@ -441,6 +517,12 @@
         if (a.phase === 'impact') return imgs[4];
         return imgs[0];
       }
+      if (a.held) return imgs[s.grab.holdFrame - 1] || imgs[imgs.length - 1];   // 미라: 붙잡고 있는 동안(움켜쥔 손)
+      if (s.type === 'burrow') {
+        if (a.phase === 'erupt') return this.frameAt(s.eruptAnim, a.t).img;
+        if (a.phase === 'dig' || a.phase === 'wind') return this.frameAt(s.anim, a.t).img;
+        return null;   // 땅속: 몸 대신 모래 둔덕(drawMound)
+      }
       return this.frameAt(s.anim, a.t).img;
     }
     if (this.state === 'walk') return this.frameAt(T.walkAnim, this.animT).img;
@@ -488,14 +570,20 @@
       if (!a.thrown && a.aimX != null) drawRing(g, camX, a.aimX, a.aimY, s.radius, Math.max(s.depth, s.radius * 0.34), 0, true);
       return;
     }
+    if (s.type === 'burrow') {   // 땅속 숨기: 둔덕이 멈춘 뒤 솟구칠 자리(플레이어가 있던 곳)
+      if (a.phase === 'warn') drawRing(g, camX, a.tx, a.ty, s.radius, s.depth, a.t / s.warnMs, false);
+      return;
+    }
+    if (a.held) return;
     if (s.type === 'charge') {
       if (a.phase !== 'wind') return;
       r = { x0: 0, x1: s.dist + 90 * AS() }; k = a.t / s.windMs;
-    } else if (s.telegraph && this.T.boss) {
-      // 공격 시작 ~ 첫 판정 그림 직전까지
+    } else if (s.telegraph && (this.T.boss || s.showTelegraph)) {
+      // 공격 시작 ~ 첫 판정 그림 직전까지 (showTelegraph = 잡몹이어도 그림: 미라 잡기)
       var A = this.T.anims[s.anim], firstMs = A.playback.indexOf(s.active[0]) * 1000 / A.fps;
       if (a.t >= firstMs) return;
       r = s.reach; k = a.t / firstMs;
+      if (s.move) r = { x0: r.x0, x1: r.x1 + s.move.dist - (a.moved || 0) };   // 앞으로 내딛는 공격(전갈 독침): 내딛는 만큼 길게
     }
     if (!r) return;
     var xa = this.x + r.x0 * this.dir, xb = this.x + r.x1 * this.dir;
@@ -512,6 +600,7 @@
     var T = this.T, img = this.currentImg();
     var x = snapPx(this.x - camX), y = snapPx(this.y);
     var AI = this.cfg.ai;
+    if (this.hidden) { this.drawMound(g, x, y); return; }   // 땅속(전갈 왕): 모래 둔덕만
     var alpha = 1;
     if (this.state === 'dead') {
       var len = this.frameAt('death', 0).len, t = this.deadT - len - AI.deathHoldMs;
@@ -563,6 +652,20 @@
       }
       g.fillStyle = '#0f0'; g.fillRect(x - 1, y - 1, 3, 3);
     }
+  };
+
+  // 땅속으로 다가오는 모래 둔덕(fxArt.mound, 오른쪽으로 가면 뒤집기). 처음 100ms 는 파고든 둔덕(burrow 4장)보다 좁아서 조금 크게,
+  //   warn(곧 솟구침) 동안 좌우로 떨림. 그림이 없으면 모래색 반원
+  Enemy.prototype.drawMound = function (g, x, y) {
+    var a = this.atk, F = window.GAME && GAME.assets && GAME.assets.enemyFx && GAME.assets.enemyFx[this.type], M = F && F.mound;
+    var sc = a && a.phase === 'mound' && a.t < 100 ? 1.15 : 1;
+    if (a && a.phase === 'warn') x += (Math.floor(a.t / 40) % 2 ? 1 : -1) * (0.6 + a.t / a.spec.warnMs);
+    window.drawShadow(g, x, y, this.T.radius * 0.9);
+    if (!M || !M.frames.length) { g.fillStyle = '#c8a46a'; g.beginPath(); g.ellipse(x, y, 30 * AS(), 12 * AS(), 0, Math.PI, 0); g.fill(); return; }
+    var im = M.frames[Math.floor(this.clock * M.fps / 1000) % M.frames.length];
+    g.save(); g.translate(x, y); g.scale(-this.dir * sc, sc);
+    Assets.blit(g, im, M.pivot.x, M.pivot.y);
+    g.restore();
   };
 
   window.Enemy = Enemy;

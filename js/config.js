@@ -496,6 +496,14 @@
     ground: { img: 'assets/bg/stage2/ground.png', w: 719,  tile: true,  parallax: 1.0 },
     height: 240, floorY: 144, laneTop: 158, laneBottom: 230
   };
+  // ---------- 4단계 배경 = 사막 유적 (art\stage4-bg 에서 복사, 2026-11-04) ----------
+  // 신전 정문 → 석상 광장 → 안쪽 성소. 크기·바닥·걷는 길은 1·2단계와 같음(mid 3장 = 2단계와 같은 길이)
+  var BG_DESERT = {
+    far:    { img: 'assets/bg/stage4/far.png',    w: 512,  tile: true,  parallax: 0.15 },
+    mid:    { img: 'assets/bg/stage4/mid.png',    w: 1247, tile: false, parallax: 0.5 },
+    ground: { img: 'assets/bg/stage4/ground.png', w: 715,  tile: true,  parallax: 1.0 },
+    height: 240, floorY: 144, laneTop: 158, laneBottom: 230
+  };
 
   window.CFG = {
     version: 'stage1-proto-2',
@@ -938,6 +946,84 @@
                    flightMs: 650, arcPeak: 60, maxRange: 300, radius: 42, depth: 18, dodgeZ: 24,
                    dmg: [18, 22], knock: 30, flinchMs: 450, shake: 2.8, when: [110, 400], weight: 2, heavy: true }
         }
+      },
+
+      // ===== 4단계 적 (art\stage4-enemies 에서 복사, 2026-11-04). 수치 = 그 폴더 anchors_*.json 의 suggest =====
+      // 미라: 느리고 단단한 고블린. 두 팔 잡기(grab): 팔 치켜듦(긴 예고, 바닥 빨간 띠) → 3장 두 손 뻗기에 닿으면 붙잡음
+      //   grab = 잡기 { ms = 붙잡고 있는 시간(플레이어 조작 불가), mashMs = 버튼(공격·점프·기술) 한 번 누를 때마다 줄어드는 시간,
+      //     minMs = 아무리 눌러도 이만큼은 잡혀 있음, holdFrame = 붙잡는 동안 보이는 그림(4 = 손 움켜쥠), dist = 붙잡힌 플레이어가 서는 거리(앞 +) }
+      //   다 되면 놓으면서 dmg 데미지 + 내던짐(heavy = 넘어짐, knock 만큼 밀림). 붙잡는 동안 다른 적의 공격은 안 맞음(한꺼번에 몰매 없게)
+      //   showTelegraph = 잡몹이어도 바닥 예고 띠를 그림(보통 잡몹은 보스만 그림)
+      //   걷기: 그림 속 보폭이 작은 「질질 끄는 걸음」이라 느리게. 그림 자료는 30도트/초에 7fps(한 장에 약 4.3도트) →
+      //   판이 너무 늘어지지 않게 36도트/초로 올리고 그림도 같은 비율로 8.4fps(발이 안 미끄러짐). 속도를 바꾸면 walk fps 도 같은 비율로
+      mummy: {
+        label: '미라', frameW: 176, frameH: 136, pivot: { x: 92, y: 130 },
+        anims: enemyAnims('mummy', {
+          idle: [4, 5, true], walk: [8, 8.4, true],
+          attack: [5, 9, false, [1, 1, 1, 2, 2, 3, 4, 4, 4, 5]],   // 1 두 팔 치켜듦(예고) · 2 앞으로 쏠림 · 3 두 손 뻗기(맞음) · 4 움켜쥠 · 5 복귀
+          hit: [3, 10, false, [1, 2, 2, 3]],
+          hit2: [3, 10, false, [1, 1, 2, 2, 3]],
+          knockdown: [5, 10, false, [1, 2, 2, 3, 4, 5, 4, 5]],
+          getup: [3, 6, false, [1, 1, 1, 2, 2, 2, 3]],             // 관에서 일어나듯 뻣뻣하게 천천히
+          death: [5, 8, false, [1, 2, 3, 4, 5]]                    // 눈빛 꺼짐 → 붕대 풀림 → 붕대 더미 + 모래 먼지
+        }),
+        walkAnim: 'walk',
+        down: { slide: 70, lyingFrames: [3, 4, 5] },
+        hp: 100, speedX: 36, speedY: 25, radius: 16, height: 88,
+        hurtbox: { x0: -16, x1: 26, yTop: -88, yBot: 0 },
+        engage: 50, hover: [90, 140], range: [30, 72], alignY: 7, cooldown: [1600, 2600], firstCooldown: [700, 1800],
+        knockResist: 0.8, deathKnock: 160,
+        attacks: {
+          grab: { anim: 'attack', active: [3], reach: { x0: 30, x1: 76, yTop: -80, yBot: -30 }, depth: 12, telegraph: [1, 2], showTelegraph: true,
+                  dmg: [10, 13], knock: 30, flinchMs: 400, heavy: true, shake: 1.6,
+                  grab: { ms: 650, mashMs: 110, minMs: 220, holdFrame: 4, dist: 40 } }
+        }
+      },
+      // 전갈 왕(4단계 보스): 오크·골렘과 같은 보스 규칙(공격 중 안 끊김, 체력 66%·33% 휘청, 절반에서 화남 + 졸개 부름)
+      //   몸이 「옆으로 넓고 낮음」: 몸 판정 앞 108 · 뒤 72, 높이 120(꼬리 끝 침은 뺌). 휘청 3장(뒤집혀 다리 버둥 = 때릴 기회)은 stagger.hurtbox
+      //   공격: crush = 두 집게 조이기(3장 앞 160까지, 4장은 reachF 로 가까이) / sting = 꼬리 독침(무거움, 2~3장에 move 로 30 앞으로, 맞으면 잠깐 독)
+      //     burrow = 땅속 숨기(특수): 몸을 일으킴(예고) → 파고듦(3장부터 무적) → 모래 둔덕(mound 그림)이 speed 로 플레이어를 쫓아감(최대 maxMs, 안 맞음)
+      //       → 다 따라오면 warnMs 동안 둔덕이 떨리며 그 자리에 빨간 원(예고) → erupt 그림으로 솟구침(1~2장 판정, 앞뒤 다 맞음, 넘어짐) → 다시 맞을 수 있음
+      //       catchR = 둔덕이 플레이어에 이만큼 가까워지면 멈춤, radius = 빨간 원·판정 가로 반지름,
+      //       gapMs = 보스가 나타난 때 / 한 번 숨은 때부터 (다시) 숨기까지 최소 시간
+      //   poison = 독 { ms = 독 시간, everyMs = 몇 ms 마다, dmg = 한 번에 깎는 체력(독으로는 체력 1 아래로 안 내려감) }
+      scorpion: {
+        label: '전갈 왕', boss: true, frameW: 320, frameH: 232, pivot: { x: 168, y: 226 },
+        anims: enemyAnims('scorpion', {
+          idle: [4, 5, true], walk: [6, 12, true],                 // 빠르게 종종걸음
+          attack1: [5, 9, false, [1, 1, 1, 1, 2, 3, 4, 4, 5]],      // 집게 조이기: 1 두 집게 벌림(예고) → 3 앞으로 쭉 뻗어 조임 → 4 바짝 조임
+          attack2: [5, 8, false, [1, 1, 2, 2, 2, 3, 4, 4, 5]],      // 꼬리 독침: 1~2 꼬리 높이 치켜듦(예고) → 3 머리 위로 내리꽂기
+          burrow: [4, 8, false, [1, 1, 1, 2, 3, 4]],                // 땅속 숨기: 1 몸 일으킴(예고) · 2 파고듦 · 3 꼬리만 · 4 둔덕만
+          erupt: [4, 9, false, [1, 1, 2, 2, 3, 4]],                 // 솟구침: 1 모래 분수 · 2 거의 서서 솟아오름(맞음) · 3 내리꽂힘 · 4 자세
+          hit: [3, 8, false, [1, 2, 2, 3]],
+          hit2: [3, 8, false, [1, 1, 2, 2, 3]],
+          stagger: [4, 7, false, null],                              // 휘청: 장마다 시간은 아래 stagger.d (3장 = 뒤집힘)
+          death: [5, 6, false, [1, 1, 2, 2, 3, 4, 5]]
+        }),
+        fxArt: {
+          mound: { frames: seq(EN + 'mound/mound_', 4), pivot: { x: 80, y: 68 }, fps: 10 }   // 땅속으로 다가오는 모래 둔덕(바닥 가운데 기준)
+        },
+        walkAnim: 'walk',
+        hp: 1100, speedX: 44, speedY: 30, radius: 56, height: 120,
+        hurtbox: { x0: -72, x1: 108, yTop: -120, yBot: 0 },
+        engage: 80, hover: [80, 100], range: [40, 170], alignY: 10, cooldown: [1000, 1800], firstCooldown: [1200, 1500],
+        knockResist: 0.2, deathKnock: 50,
+        staggerCdMs: 2200,
+        superArmor: true,
+        stagger: { at: [0.66, 0.33], onWall: false, d: [260, 160, 1000, 320], hurtbox: { x0: -112, x1: 113, yTop: -114, yBot: 0 } },
+        enrageAt: 0.5,
+        enrage: { speedMul: 1.25, cooldownMul: 0.7, summon: ['mummy', 'skeleton', 'mummy'] },
+        attacks: {
+          crush: { anim: 'attack1', active: [3, 4], reach: { x0: 60, x1: 160, yTop: -85, yBot: -25 }, reachF: { 4: { x0: 55, x1: 82, yTop: -78, yBot: -25 } }, depth: 16,
+                   dmg: [14, 17], knock: 30, flinchMs: 400, telegraph: [1], shake: 1.6, when: [40, 170], weight: 3 },
+          sting: { anim: 'attack2', active: [3], reach: { x0: 60, x1: 124, yTop: -110, yBot: 0 }, depth: 14, move: { frames: [2, 3], dist: 30 },
+                   dmg: [16, 19], knock: 36, flinchMs: 450, telegraph: [1, 2], shake: 2.4, when: [70, 190], weight: 2, heavy: true,
+                   poison: { ms: 2000, everyMs: 500, dmg: 2 } },
+          burrow: { type: 'burrow', anim: 'burrow', eruptAnim: 'erupt', telegraph: [1], invuln: [3, 4], eruptInvuln: [1], active: [1, 2],
+                    speed: 120, maxMs: 2200, warnMs: 450, catchR: 10, radius: 95, gapMs: 10000,
+                    reach: { x0: -90, x1: 100, yTop: -200, yBot: 0 }, depth: 26,   // depth = 빨간 원 위아래 반지름과 같게
+                    dmg: [17, 21], knock: 38, flinchMs: 500, shake: 3, when: [0, 500], weight: 2, heavy: true }
+        }
       }
     },
 
@@ -956,7 +1042,7 @@
     //   healOnClear = 웨이브를 깰 때마다 체력 회복
     //   hpMul / dmgMul = 이 판 적 전부의 체력·공격력 배율(없으면 1) → 예전 몬스터를 「강한 버전」으로 다시 씀
     //   bg = 배경 3장(위 BG_FOREST 설명). 판을 시작할 때 그 판 배경만 불러온다(main.js useStage → Assets.ensureBg)
-    // 새 판 넣기: 아래 목록 끝에 { id: 4, … } 하나 추가하면 끝(스테이지 고르기 화면·다음 스테이지는 자동)
+    // 새 판 넣기: 아래 목록 끝에 { id: 5, … } 하나 추가하면 끝(스테이지 고르기 화면·다음 스테이지는 자동)
     // 지금 하고 있는 판은 main.js 가 CFG.stage(+ CFG.bg = 그 판 bg)에 넣어 둔다 → 다른 코드는 예전처럼 CFG.stage 를 읽음
     // 시험 기간(2026-11-04 형님): 스테이지 고르기에서 모든 판을 처음부터 열어 둠. 정식으로 낼 때 false
     stagesAllOpen: true,
@@ -1056,6 +1142,46 @@
           { type: 'crate',  x: 1700, y: 0.3 },
           { type: 'barrel', x: 2640, y: 0.7, drop: 'meat' }
         ]
+      },
+      // ===== 4단계: 사막 유적 (2026-11-04 새 그림: 배경·소품·미라·전갈 왕) =====
+      // 2단계보다 한 단계 어렵게(체력·공격 x1.2): 새 적 미라(느리고 단단, 잡기) + 고블린·해골·모래 늑대(색만 바꿈) 섞음,
+      //   화로 둘레에 미리 서 있는 무리 3곳 + 옆에서 지원, 보스 = 전갈 왕(땅속 숨기)
+      {
+        id: 4,
+        name: 'STAGE 4  사막 유적',
+        width: 2880,
+        healOnClear: 12,
+        bgTop: '#99cad5',           // 화면이 배경보다 높을 때 위쪽 하늘 색 (실제로는 배경 맨 윗줄을 늘려 씀)
+        bg: BG_DESERT,
+        hpMul: 1.2, dmgMul: 1.2,
+        waves: [
+          // 1: 신전 정문 — 미라 첫 등장
+          { at: 120,  spawn: [['mummy', 'R', 0], ['goblin', 'R', 900], ['mummy', 'L', 2400]] },
+          // 2: 화로(500 + 326) 옆에 미라 + 고블린(camp1, 하나 깨면 둘 다 깸) + 옆에서 지원
+          { at: 500,  placed: [['mummy', 288, 0.36, { group: 'camp1', dir: 1 }], ['goblin', 364, 0.58, { group: 'camp1' }]],
+                      spawn: [['goblin', 'L', 700], ['wolf', 'R', 2200, { variant: 'sand' }]] },
+          { at: 880,  spawn: [['wolf', 'R', 0, { variant: 'sand' }], ['mummy', 'L', 500], ['skeleton', 'R', 1400], ['goblin', 'L', 3200], ['mummy', 'R', 3800]] },
+          // 4: 석상 광장 화로(1260 + 330) 둘레에 미라 + 모래 해골 + 모래 늑대(camp2) + 옆에서 지원
+          { at: 1260, placed: [['mummy', 292, 0.34, { group: 'camp2', dir: 1 }], ['skeleton', 372, 0.42, { group: 'camp2', variant: 'sand' }], ['wolf', 340, 0.8, { group: 'camp2', variant: 'sand' }]],
+                      spawn: [['goblin', 'R', 1200], ['mummy', 'L', 3400], ['wolf', 'R', 4200, { variant: 'sand' }]] },
+          { at: 1650, spawn: [['mummy', 'R', 0], ['skeleton', 'L', 400, { variant: 'sand' }], ['goblin', 'R', 1000], ['wolf', 'R', 2800, { variant: 'sand' }], ['mummy', 'L', 3400]] },
+          // 6: 성소 입구 화로(2040 + 330) 앞을 지키는 미라 둘(tomb) + 옆에서 지원
+          { at: 2040, placed: [['mummy', 296, 0.3, { group: 'tomb', dir: 1 }], ['mummy', 368, 0.66, { group: 'tomb' }]],
+                      spawn: [['goblin', 'R', 600], ['wolf', 'L', 1000, { variant: 'sand' }], ['skeleton', 'R', 2800], ['mummy', 'L', 3400], ['goblin', 'R', 4000]] },
+          { at: 'end', boss: true, spawn: [['scorpion', 'R', 0]] }
+        ],
+        // 소품: 토기 항아리·밧줄 보급 상자(부서짐) + 받침돌 화로 3개(장식, 무리 자리). 보스 앞 항아리는 고기가 꼭 나옴
+        props: [
+          { type: 'amphora',   x: 430,  y: 0.72 },
+          { type: 'ropecrate', x: 700,  y: 0.22 },
+          { type: 'firebowl',  x: 500 + 326, y: 0.47 },
+          { type: 'amphora',   x: 1150, y: 0.7 },
+          { type: 'ropecrate', x: 1480, y: 0.26 },
+          { type: 'firebowl',  x: 1260 + 330, y: 0.56 },
+          { type: 'amphora',   x: 1860, y: 0.32, drop: 'bread' },
+          { type: 'firebowl',  x: 2040 + 332, y: 0.48 },
+          { type: 'amphora',   x: 2250, y: 0.78, drop: 'meat' }    // 6번 웨이브 화면 = 보스방 바로 앞
+        ]
       }
     ],
 
@@ -1067,7 +1193,9 @@
     //   판을 시작할 때 그 판에 나오는 변종 그림만 한 번 구워 두고 계속 다시 씀(main.js tintArt) → 게임 중 느려지지 않음
     variants: {
       ice:   { label: '얼음', hue: 180, sat: 0.8, bright: 1.15, color: '#8fd8ff', colorK: 0.35, hpMul: 1.1 },   // 회색 늑대 → 푸른 늑대(회색은 색상환을 돌려도 그대로라 color 로 물들임)
-      ember: { label: '붉은', hue: 270, sat: 1.2, bright: 0.95, dmgMul: 1.1 }   // 연두 오크 → 붉은 오크
+      ember: { label: '붉은', hue: 270, sat: 1.2, bright: 0.95, dmgMul: 1.1 },  // 연두 오크 → 붉은 오크
+      // 4단계(2026-11-04): 회색 늑대·흰 해골 → 모래 빛(누런 갈색). 회색·흰색이라 색상환 대신 color 로 물들임
+      sand:  { label: '모래', hue: 0, sat: 0.9, bright: 1.0, color: '#d8a860', colorK: 0.38, hpMul: 1.1 }
     },
 
     // ---------- 소품 그림 (2026-11-04, art\stage1-props 에서 복사 → assets/props/stage1/…, 크기·기준점은 props.json) ----------
@@ -1119,6 +1247,30 @@
         frames: seq('assets/props/stage2/brazier/burn_', 6), fps: 10,
         pivot: { x: 20, y: 80 }, solid: false, shadow: 12,
         glow: { r: 66, y: 60, color: '#ff9a3a', alpha: 0.3 }
+      },
+      // ----- 4단계 소품 (art\stage4-props 에서 복사 → assets/props/stage4/…, 크기·기준점은 그 폴더 props.json) -----
+      // 이름이 1·2단계 상자(crate)·화로(brazier)와 겹쳐서 종류 이름만 따로(그림 폴더 이름은 그대로)
+      // 토기 항아리: 고블린 가슴 높이. 붉은 흙 조각 + 모래
+      amphora: {
+        frames: ['intact', 'cracked', 'damaged'].map(function (s) { return 'assets/props/stage4/amphora/' + s + '_01.png'; }), fps: 0,
+        breakFrames: seq('assets/props/stage4/amphora/break_', 4),
+        pivot: { x: 42, y: 75 }, solid: true, footprint: { w: 41, depth: 16 },
+        hits: 3, hurtbox: { x: -23, y: -65, w: 47, h: 64 }, shadow: 22,
+        chips: ['#c0683a', '#9a4a2a', '#e09a64', '#d8c08a']
+      },
+      // 밧줄 보급 상자(줄무늬 천 두루마리 얹음): 주인공 허리 높이, 2단계 광석 수레쯤
+      ropecrate: {
+        frames: ['intact', 'cracked', 'damaged'].map(function (s) { return 'assets/props/stage4/crate/' + s + '_01.png'; }), fps: 0,
+        breakFrames: seq('assets/props/stage4/crate/break_', 4),
+        pivot: { x: 47, y: 81 }, solid: true, footprint: { w: 67, depth: 18 },
+        hits: 3, hurtbox: { x: -35, y: -58, w: 71, h: 57 }, shadow: 34,
+        chips: ['#c8894a', '#9a5f30', '#6e4022', '#c84a3a', '#e8d8a8']
+      },
+      // 받침돌 화로: 장식(지나갈 수 있음, 안 부서짐). 받침돌·청동 그릇은 그대로, 불꽃만 움직이는 6장 반복. 빛은 그릇 높이
+      firebowl: {
+        frames: seq('assets/props/stage4/brazier/burn_', 6), fps: 10,
+        pivot: { x: 26, y: 88 }, solid: false, shadow: 16,
+        glow: { r: 66, y: 58, color: '#ff9a3a', alpha: 0.28 }
       }
     },
     // ---------- 부서지는 소품 공통 (상자·통) ----------
@@ -1283,10 +1435,13 @@
         arr(a.when);
         // 바위 던지기(골렘): 손 위치·포물선 높이·최대 거리·맞는 반경·피하는 점프 높이, 내려찍기 땅 터짐 위치
         mul(a.spawn, ['x', 'y'], S); mul(a, ['arcPeak', 'maxRange', 'radius', 'dodgeZ'], S); mul(a.burst, ['x'], S);
+        // 4단계: 장마다 다른 판정 상자(전갈 집게 4장), 잡힌 플레이어 서는 거리(미라), 둔덕 멈추는 거리(전갈 땅속 숨기)
+        if (a.reachF) Object.keys(a.reachF).forEach(function (f) { box(a.reachF[f]); });
+        mul(a.grab, ['dist'], S); mul(a, ['catchR'], S);
       });
       // 나는 적 흔들림, 방패 막기 밀림, 보스 핵 빛 위치
       mul(T.flying, ['bob'], S); mul(T.guard, ['push'], S);
-      if (T.stagger) mul(T.stagger.core, ['x', 'y', 'r'], S);
+      if (T.stagger) { mul(T.stagger.core, ['x', 'y', 'r'], S); box(T.stagger.hurtbox); }   // 휘청 중 몸 판정(전갈 뒤집힘)
     });
     // 소품·음식: 맞는 상자·막는 상자·그림자·빛·줍는 거리·튀어 오름 (그림은 assets.js 가 actorScale 로 그림)
     Object.keys(C.propTypes || {}).forEach(function (k) {
