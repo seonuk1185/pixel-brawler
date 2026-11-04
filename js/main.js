@@ -572,11 +572,12 @@
 
   // ---------- 바위 던지기 (골렘 throw): 날아가는 바위 = 포물선 → 떨어진 자리 반경 안이면 맞음 ----------
   // 플레이어 공격 탄(Projectiles)과 따로: 적이 던진 것. { e: 던진 적, s: 공격 수치, x0,y0: 출발(땅 줄), h0: 출발 높이, tx,ty: 떨어질 자리, t }
+  //   3단계 두꺼비 독 뱉기도 같은 길: s.proj / s.burstArt = 날아가는 그림 / 터지는 그림 이름(fxArt, 없으면 골렘 바위), s.puddle = 떨어진 자리에 독 웅덩이
   var rocks = [];
   function throwRock(e, s, tx, ty) {
     var F = G.assets.enemyFx && G.assets.enemyFx[e.type];
     rocks.push({ e: e, s: s, x0: e.x + e.dir * s.spawn.x, y0: e.y, h0: -s.spawn.y, tx: tx, ty: ty, t: 0, dir: e.dir,
-                 art: F && F.boulder, burst: F && F.rockburst });
+                 art: F && F[s.proj || 'boulder'], burst: F && (s.burstArt !== undefined ? F[s.burstArt] : F.rockburst) });
   }
   function rockPos(r) {
     var u = Math.min(1, r.t / r.s.flightMs);
@@ -595,13 +596,49 @@
       r.t += dt;
       if (r.t < r.s.flightMs) continue;
       rocks.splice(i, 1);
-      rockBurst(r.e, r.tx, r.ty, 1);
+      if (r.s.puddle) splat(r); else rockBurst(r.e, r.tx, r.ty, 1);
       FX.shake(J.shakePx * r.s.shake, J.shakeMs * 1.6);
       // 맞음: 가로 radius · 위아래 depth 안 + 높이 뛰어 있지 않음(dodgeZ). 보스가 쓰러진 뒤 떨어진 바위는 안 아픔
       if (S.bossDownT < 0 && p.state !== 'dead' && Math.abs(p.x - r.tx) <= r.s.radius && Math.abs(p.y - r.ty) <= r.s.depth && (p.z || 0) <= r.s.dodgeZ)
         onPlayerHit({ x: r.tx, dmgMul: r.e.dmgMul, T: r.e.T }, r.s);
     }
   }
+  // ---------- 독 웅덩이 (3단계 두꺼비 spit): 독 덩어리가 떨어진 자리에 ms 동안 남음 → 그 안에 서 있으면 독(poisonStep 이 깎음) ----------
+  // { e, s: 공격 수치, P: s.puddle, x, y, t, art: puddle 그림 }. 그림 1~2장 = 철퍽(한 번), 3~6장 = 부글부글(반복), 마지막 0.6초는 흐려짐
+  var puddles = [];
+  function splat(r) {
+    var F = G.assets.enemyFx && G.assets.enemyFx[r.e.type];
+    puddles.push({ e: r.e, s: r.s, P: r.s.puddle, x: r.tx, y: r.ty, t: 0, art: F && F.puddle });
+    if (Skills.debris) Skills.debris(r.tx, r.ty - 6 * AS, r.ty, 9, { cols: r.s.burstCols || ['#c8e83a', '#8ab82a'], glow: true, sp: 130, size: 1.8, ms: 520 });
+  }
+  function puddlesStep(dt) {
+    var p = G.player, S = G.stage;
+    for (var i = puddles.length - 1; i >= 0; i--) {
+      var q = puddles[i], P = q.P;
+      q.t += dt;
+      if (q.t >= P.ms) { puddles.splice(i, 1); continue; }
+      // 서 있음(높이 뛰면 안 닿음): 독을 걸거나(처음 깎기까지 firstMs) 이미 걸려 있으면 나와도 stayMs 동안 남게 늘림
+      if (S.bossDownT >= 0 || p.state === 'dead' || (p.z || 0) > 4) continue;
+      if (Math.abs(p.x - q.x) > P.radius || Math.abs(p.y - q.y) > P.depth) continue;
+      if (!p.poison) p.poison = { t: P.stayMs, tick: P.firstMs, every: P.everyMs, dmg: P.dmg };
+      else p.poison.t = Math.max(p.poison.t, P.stayMs);
+    }
+  }
+  function drawPuddles(camX) {
+    puddles.forEach(function (q) {
+      var A = q.art, x = snap(q.x - camX), y = snap(q.y), left = q.P.ms - q.t;
+      var a = Math.min(1, left / 600);
+      if (!A || !A.frames.length) {   // 그림이 없으면 초록 타원
+        ctx.save(); ctx.globalAlpha = 0.6 * a; ctx.fillStyle = '#8ab82a';
+        ctx.beginPath(); ctx.ellipse(x, y, q.P.radius, q.P.depth, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore(); return;
+      }
+      var k = Math.floor(q.t * A.fps / 1000), n = A.frames.length;
+      var idx = k < 2 || n < 3 ? Math.min(k, n - 1) : 2 + (k - 2) % (n - 2);
+      ctx.save(); ctx.globalAlpha = a; ctx.translate(x, y);
+      Assets.blit(ctx, A.frames[idx], A.pivot.x, A.pivot.y); ctx.restore();
+    });
+  }
+
   // 바닥: 떨어질 자리 빨간 원 + 바위 그림자 / 공중: 돌며 날아가는 바위
   function drawRocksUnder(camX) {
     rocks.forEach(function (r) {
@@ -631,11 +668,18 @@
     var S = G.stage;
     S.bossDownT = 0;
     S.queue = [];                      // 아직 안 나온 졸개는 취소
+    puddles.forEach(function (q) { q.t = Math.max(q.t, q.P.ms - 600); });   // 독 웅덩이는 곧 사라짐
     G.hitstop = Math.max(G.hitstop, 260);
     G.slowT = 1400;                    // 보스 쓰러질 때 슬로모션
     FX.shake(J.shakePx * 3, 500);
     // 남은 졸개들도 같이 쓰러짐
     G.enemies.forEach(function (e) { if (e !== boss && e.alive()) e.takeHit(9999, e.x > boss.x ? 1 : -1, 10, true, { force: true }); });
+  }
+
+  // 이름 뒤 「이/가」: 마지막 글자에 받침이 있으면 a, 없으면 b (거대 두꺼비가 / 전갈 왕이)
+  function josa(name, a, b) {
+    var c = name.charCodeAt(name.length - 1);
+    return name + (c >= 0xac00 && c <= 0xd7a3 && (c - 0xac00) % 28 === 0 ? b : a);
   }
 
   function stageStep(dt) {
@@ -665,7 +709,7 @@
       var B = S.boss;
       if (B && B.alive() && !B.enraged && B.hp / B.maxHp < B.T.enrageAt) {
         B.enraged = true;
-        banner((B.label || '오크 족장') + '이 화났다!', 'boss');
+        banner(josa(B.label || '오크 족장', '이', '가') + ' 화났다!', 'boss');
         (B.T.enrage.summon || []).forEach(function (t, k) {
           S.queue.push({ type: t, side: k % 2 ? 'L' : 'R', at: S.waveT + 400 + k * 700 });
         });
@@ -698,7 +742,7 @@
     var pushing = p.state === 'runatk' && p.ratk && p.ratk.phase !== 'recover';
     if (p.state !== 'dead' && !(p.state === 'skill' && Skills.passThrough(p)) && !((p.z || 0) > overZ)) list.push({ o: p, r: CFG.hero.radius, m: 1, hero: true });
     G.enemies.forEach(function (e) {
-      if (!e.alive() || e.state === 'down' || e.hidden) return;   // 넘어진 적은 밟고 지나갈 수 있음, 땅속(전갈 왕)도 지나감
+      if (!e.alive() || e.state === 'down' || e.hidden || e.airborne()) return;   // 넘어진 적은 밟고 지나갈 수 있음, 땅속(전갈 왕)·공중(두꺼비 배치기)도 지나감
       var charging = e.state === 'attack' && e.atk && e.atk.spec.type === 'charge';
       list.push({ o: e, r: e.T.radius, m: charging ? 0 : (e.T.boss ? 0.08 : 1), boss: !!e.T.boss });
     });
@@ -721,7 +765,7 @@
   function propCollide() {
     var p = G.player, list = [];
     if (p.state !== 'dead') list.push({ o: p, r: CFG.hero.radius });
-    G.enemies.forEach(function (e) { if (e.alive() && !e.T.flying && !e.hidden) list.push({ o: e, r: e.T.radius }); });   // 나는 적(박쥐)은 소품 위로, 땅속(전갈 왕)은 밑으로 지나감
+    G.enemies.forEach(function (e) { if (e.alive() && !e.T.flying && !e.hidden && !e.airborne()) list.push({ o: e, r: e.T.radius }); });   // 나는 적(박쥐)·뛰어오른 두꺼비는 소품 위로, 땅속(전갈 왕)은 밑으로 지나감
     Props.collide(list, world);
   }
 
@@ -740,7 +784,7 @@
       Input.setOverride(ax); return;
     }
     var side = best.x > p.x ? 1 : -1;
-    var want = ({ goblin: 42, wolf: 58, orc: 72, bat: 46, skeleton: 44, golem: 76, mummy: 46, scorpion: 80 }[best.type] || 50) * AS;
+    var want = ({ goblin: 42, wolf: 58, orc: 72, bat: 46, skeleton: 44, golem: 76, mummy: 46, scorpion: 80, lizard: 46, toad: 74 }[best.type] || 50) * AS;
     var sv = Props.steer(p, R, best.x - side * want, best.y, world, best.x);   // 막는 소품: 목표가 그 안이면 옆으로, 앞에 있으면 돌아감
     var tx = sv.x, ty = best.y;
     var ex = tx - p.x, ey = ty - p.y, my = sv.y - p.y;   // 공격 조건은 원래 줄(ey), 움직임은 돌아가는 줄(my)
@@ -861,8 +905,9 @@
       G.enemies.forEach(function (e) { if (e.alive()) e.keepInView(E); });
       G.enemies = G.enemies.filter(function (e) { return !e.remove; });
       E.enemies = G.enemies;
-      rocksStep(dt);         // 골렘이 던진 바위
-      poisonStep(dt);        // 전갈 왕 독
+      rocksStep(dt);         // 골렘이 던진 바위 · 두꺼비가 뱉은 독 덩어리
+      puddlesStep(dt);       // 두꺼비 독 웅덩이
+      poisonStep(dt);        // 전갈 왕 독 · 독 웅덩이
       stageStep(dt);
       Props.update(dt, p);   // 부서지는 그림·음식 줍기
     } else {
@@ -893,6 +938,7 @@
 
     // 바닥 위: 보스 공격 예고 띠, 먼지
     G.enemies.forEach(function (e) { e.drawTelegraph(ctx, camX); });
+    if (puddles.length) drawPuddles(camX);        // 두꺼비 독 웅덩이(바닥)
     if (rocks.length) drawRocksUnder(camX);       // 바위 떨어질 자리 빨간 원 + 그림자
     FX.draw(ctx, camX, true);
     if (MODE === 'stage') Props.drawUnder(ctx, camX, LW);   // 소품 그림자·모닥불 빛
@@ -1008,7 +1054,7 @@
     FX.list.length = 0;
     Projectiles.clear();
     Skills.clear();
-    rocks.length = 0;
+    rocks.length = 0; puddles.length = 0;
     G.enemies = [];
     G.stage = newStage();
     G.ectx = makeEnemyCtx();
@@ -1080,6 +1126,7 @@
       shake: function (m) { FX.shake(J.shakePx * m, J.shakeMs * 1.6); },
       throwRock: throwRock,   // 골렘 바위 던지기
       burst: rockBurst,       // 골렘 내려찍기 땅 터짐
+      debris: function (x, y, n, cols) { if (Skills.debris) Skills.debris(x, y - 6 * AS, y, n, { cols: cols, sp: 150, size: 2.2, ms: 600 }); },   // 두꺼비 배치기 흙탕물
       grabPlayer: grabPlayer, grabMash: grabMash, releaseGrab: releaseGrab   // 미라 잡기
     };
     Object.defineProperty(E, 'player', { get: function () { return G.player; } });
@@ -1244,9 +1291,9 @@
         player: { hp: p.hp, state: p.state, x: Math.round(p.x), y: Math.round(p.y), z: Math.round(p.z * 10) / 10,
           frame: p.char ? p.currentFrame() : null, ratk: p.ratk ? p.ratk.phase : null, skill: p.sk ? p.sk.d.key + '@' + Math.round(p.sk.t) : null, cd: p.skillCd },
         enemies: G.enemies.map(function (e) { return e.type + (e.variant ? '(' + e.variant + ')' : '') + ':' + (e.asleep ? 'asleep' : e.alertT > 0 ? 'alert' : e.state) +
-          (e.atk && e.atk.spec.type === 'burrow' ? '/' + e.atk.phase : '') + (e.atk && e.atk.held ? '/hold' : '') + ':' + e.hp + '@' + Math.round(e.x) + ',' + Math.round(e.y); }),
+          (e.atk && e.atk.spec.type === 'burrow' ? '/' + e.atk.phase : '') + (e.atk && e.atk.held ? '/hold' : '') + (e.atk ? '/' + e.atk.name : '') + (e.airborne() ? '/air' : '') + ':' + e.hp + '@' + Math.round(e.x) + ',' + Math.round(e.y); }),
         poison: p.poison ? Math.round(p.poison.t) : 0,
-        hits: G.hits, maxCombo: G.maxCombo, rocks: rocks.length,
+        hits: G.hits, maxCombo: G.maxCombo, rocks: rocks.length, puddles: puddles.length,
         props: Props.list.map(function (pr) { return pr.type + ':' + (pr.state === 'idle' ? pr.hitsLeft : pr.state) + '@' + Math.round(pr.x) + ',' + Math.round(pr.y); }),
         food: Props.food.map(function (f) { return f.kind + '@' + Math.round(f.x) + ',' + Math.round(f.y); }) };
     }

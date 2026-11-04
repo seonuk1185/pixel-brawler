@@ -496,6 +496,14 @@
     ground: { img: 'assets/bg/stage2/ground.png', w: 719,  tile: true,  parallax: 1.0 },
     height: 240, floorY: 144, laneTop: 158, laneBottom: 230
   };
+  // ---------- 3단계 배경 = 늪지대 (art\stage3-bg 에서 복사, 2026-11-04) ----------
+  // 늪 가장자리 → 도마뱀족 수상 마을 → 깊은 늪 제단. 크기·바닥·걷는 길은 1·2단계와 같음(mid 3장 = 2단계와 같은 길이)
+  var BG_SWAMP = {
+    far:    { img: 'assets/bg/stage3/far.png',    w: 512,  tile: true,  parallax: 0.15 },
+    mid:    { img: 'assets/bg/stage3/mid.png',    w: 1247, tile: false, parallax: 0.5 },
+    ground: { img: 'assets/bg/stage3/ground.png', w: 692,  tile: true,  parallax: 1.0 },
+    height: 240, floorY: 144, laneTop: 158, laneBottom: 230
+  };
   // ---------- 4단계 배경 = 사막 유적 (art\stage4-bg 에서 복사, 2026-11-04) ----------
   // 신전 정문 → 석상 광장 → 안쪽 성소. 크기·바닥·걷는 길은 1·2단계와 같음(mid 3장 = 2단계와 같은 길이)
   var BG_DESERT = {
@@ -1024,6 +1032,87 @@
                     reach: { x0: -90, x1: 100, yTop: -200, yBot: 0 }, depth: 26,   // depth = 빨간 원 위아래 반지름과 같게
                     dmg: [17, 21], knock: 38, flinchMs: 500, shake: 3, when: [0, 500], weight: 2, heavy: true }
         }
+      },
+
+      // ===== 3단계 적 (art\stage3-enemies 에서 복사, 2026-11-04). 수치 = 그 폴더 anchors_*.json 의 suggest =====
+      // 도마뱀 전사: 고블린처럼 싸우는데 창이라 더 멀리서 찌름. 그림이 고블린보다 크다(208x148, 창끝이 앞 116 까지)
+      //   공격이 둘: thrust = 창 찌르기(2장 창을 뒤로 당김 = 예고, 바닥 빨간 띠) / lunge = 달려들며 찌르기(웅크렸다가 2~3장에 40 앞으로 뛰어듦)
+      //   잡몹도 공격이 여럿이면 when(이 거리 안일 때) 맞는 것 중 weight(무게)로 고름. 가까우면 찌르기, 조금 멀면 둘 다
+      //   gapMs = 한 번 쓰면 이 시간 동안 그 공격은 안 씀(달려들기는 가끔만: 자동 조종 시험에서 다가올 때마다 달려들어 너무 아팠음)
+      //   그림이 1·2단계 적보다 밝은 초록(팔레트 그대로, 나중에 그림 쪽에서 낮출 수 있음)
+      lizard: {
+        label: '도마뱀 전사', frameW: 208, frameH: 148, pivot: { x: 124, y: 142 },
+        anims: enemyAnims('lizard', {
+          idle: [4, 6, true], walk: [8, 10, true],
+          attack: [5, 10, false, [1, 2, 2, 2, 3, 4, 4, 5]],    // 창 찌르기: 1 당김 · 2 창을 멀리 뒤로(예고 300ms) · 3 쭉 찌름(맞음) · 4 끝까지 · 5 복귀
+          attack2: [4, 12, false, [1, 1, 2, 3, 3, 4]],          // 달려들기: 1 웅크림(짧은 예고) · 2 뛰어들며 찌름(맞음) · 3 착지 · 4 복귀
+          hit: [3, 10, false, [1, 2, 2, 3]],
+          hit2: [3, 10, false, [1, 1, 2, 2, 3]],
+          knockdown: [5, 10, false, [1, 2, 2, 3, 4, 5, 4, 5]],
+          getup: [3, 8, false, [1, 1, 2, 2, 3]],                // 앉음 → 창 짚고 한 무릎 → 섬
+          death: [5, 8, false, [1, 2, 3, 4, 5]]
+        }),
+        walkAnim: 'walk',
+        down: { slide: 80, lyingFrames: [3, 4, 5] },
+        hp: 75, speedX: 48, speedY: 30, radius: 15, height: 96,
+        hurtbox: { x0: -14, x1: 26, yTop: -94, yBot: 0 },
+        engage: 80, hover: [110, 160], range: [30, 140], alignY: 7, cooldown: [1300, 2300], firstCooldown: [600, 1600],
+        knockResist: 1.0, deathKnock: 210,
+        attacks: {
+          thrust: { anim: 'attack', active: [3, 4], reach: { x0: 20, x1: 118, yTop: -80, yBot: -46 }, reachF: { 4: { x0: 20, x1: 107, yTop: -68, yBot: -40 } }, depth: 12,
+                    dmg: [6, 9], knock: 16, telegraph: [2], showTelegraph: true, when: [30, 112], weight: 3 },
+          lunge:  { anim: 'attack2', active: [2, 3], reach: { x0: 20, x1: 102, yTop: -66, yBot: -30 }, depth: 12, move: { frames: [2, 3], dist: 40 },
+                    dmg: [4, 6], knock: 14, telegraph: [1], when: [70, 140], weight: 1, gapMs: 6000 }
+        }
+      },
+      // 거대 두꺼비(3단계 보스): 오크·골렘·전갈과 같은 보스 규칙(공격 중 안 끊김, 체력 66%·33% 휘청, 절반에서 화남 + 졸개 부름)
+      //   휘청 3장 = 배를 깔고 납작 엎드려 혀를 늘어뜨림 = 때릴 기회(1000ms). 그때 몸이 낮고 길어서 stagger.hurtbox
+      //   공격: slam = 배치기(type 'leap'): 1장 납작 웅크리고 울음(예고) 동안 플레이어 자리를 겨눔(바닥 빨간 원)
+      //           → 2~3장 공중으로 뛰어 그 자리로 날아감(공중 = 안 맞음, 몸끼리 안 밀림) → 4장 배로 쿵(판정·크게 흔들림·흙탕물, 넘어짐)
+      //           leap = { frames = 공중 그림, max = 최대로 뛰는 거리, aimAt = 떨어질 때 플레이어가 서 있게 할 앞 거리(빨간 원 가운데) }
+      //         tongue = 혀 채찍: 1장 몸을 젖힘(예고, 바닥 빨간 띠) → 3장 혀가 앞 198 까지 쭉(가늘고 긴 판정)
+      //         spit = 독침 뱉기(골렘 바위 던지기와 같은 type 'throw'): 볼이 부풀고(예고) 3장에 입에서 독 덩어리를 플레이어 자리로 포물선
+      //           → 떨어진 자리에 독 웅덩이(puddle) { ms = 남는 시간, radius·depth = 웅덩이 크기, everyMs·dmg = 서 있으면 몇 ms 마다 얼마(독으로는 체력 1 아래로 안 내려감),
+      //             firstMs = 들어가서 처음 깎기까지, stayMs = 나와도 독이 남는 시간 }. proj / burstArt = 날아가는 그림 / 터지는 그림(fxArt 이름), burstCols = 튀는 방울 색
+      toad: {
+        label: '거대 두꺼비', boss: true, frameW: 400, frameH: 256, pivot: { x: 248, y: 250 },
+        anims: enemyAnims('toad', {
+          idle: [4, 5, true], walk: [6, 9, true],                    // 걷기 = 무겁게 깡충
+          attack1: [5, 8, false, [1, 1, 1, 1, 2, 3, 3, 4, 4, 4, 5]],  // 배치기: 1 웅크림(예고 500ms) · 2 도약 · 3 공중 · 4 배로 쿵(맞음) · 5 복귀
+          attack2: [5, 10, false, [1, 1, 1, 1, 2, 3, 3, 3, 4, 5]],    // 혀 채찍: 1 젖힘(예고) · 2 입 벌림 · 3 혀 쭉(맞음) · 4 감아 들임 · 5 복귀
+          special: [5, 8, false, [1, 1, 2, 2, 2, 3, 4, 4, 5]],        // 독 뱉기: 1 볼 부풂 · 2 목 가득 부풂(예고) · 3 뱉음 · 4 입가 방울 · 5 복귀
+          hit: [3, 8, false, [1, 2, 2, 3]],
+          hit2: [3, 8, false, [1, 1, 2, 2, 3]],
+          stagger: [4, 7, false, null],                                // 휘청: 장마다 시간은 아래 stagger.d (3장 = 납작 엎드림)
+          death: [5, 6, false, [1, 1, 2, 2, 3, 4, 5]]                  // 마지막 울음 → 뒤로 넘어감 → 배를 뒤집고 뻗음
+        }),
+        fxArt: {
+          poison: { frames: seq(EN + 'poison/poison_', 4), pivot: { x: 44, y: 24 }, fps: 12 },   // 날아가는 독 덩어리(덩어리 가운데 기준, 방울 꼬리가 오른쪽)
+          puddle: { frames: seq(EN + 'puddle/puddle_', 6), pivot: { x: 48, y: 52 }, fps: 8 }     // 독 웅덩이(바닥 가운데): 1~2 철퍽 한 번 → 3~6 부글부글 반복
+        },
+        walkAnim: 'walk',
+        // 체력·데미지: 자동 조종(?bot=1, 피하지 않음) 시험에서 골렘(2단계)과 전갈 왕(4단계) 사이로 맞춤(2026-11-04)
+        hp: 1300, speedX: 34, speedY: 26, radius: 56, height: 125,
+        hurtbox: { x0: -66, x1: 78, yTop: -120, yBot: 0 },
+        engage: 80, hover: [80, 100], range: [40, 200], alignY: 10, cooldown: [1000, 1800], firstCooldown: [1200, 1500],
+        knockResist: 0.2, deathKnock: 50,
+        staggerCdMs: 2200,
+        superArmor: true,
+        stagger: { at: [0.66, 0.33], onWall: false, d: [280, 160, 1000, 300], hurtbox: { x0: -56, x1: 128, yTop: -84, yBot: 0 } },
+        enrageAt: 0.5,
+        enrage: { speedMul: 1.25, cooldownMul: 0.7, summon: ['lizard', 'bat', 'lizard'] },
+        attacks: {
+          slam:   { type: 'leap', anim: 'attack1', active: [4], reach: { x0: -60, x1: 160, yTop: -80, yBot: 0 }, depth: 18, telegraph: [1],
+                    leap: { frames: [2, 3], max: 200, aimAt: 50 },
+                    dmg: [17, 21], knock: 36, flinchMs: 450, shake: 3, when: [40, 260], weight: 2, heavy: true },
+          tongue: { anim: 'attack2', active: [3], reach: { x0: 60, x1: 198, yTop: -94, yBot: -62 }, depth: 10, telegraph: [1],
+                    dmg: [13, 16], knock: 26, flinchMs: 400, shake: 1.2, when: [70, 200], weight: 3 },
+          spit:   { type: 'throw', anim: 'special', telegraph: [1, 2], spawnFrame: 3, spawn: { x: 72, y: -112 },
+                    flightMs: 700, arcPeak: 70, maxRange: 320, radius: 36, depth: 10, dodgeZ: 24,
+                    proj: 'poison', burstArt: null, burstCols: ['#c8e83a', '#8ab82a', '#e8ff8a', '#5a7a2a'],
+                    puddle: { ms: 4500, radius: 36, depth: 10, everyMs: 500, firstMs: 250, stayMs: 700, dmg: 2 },
+                    dmg: [7, 9], knock: 12, flinchMs: 300, shake: 1.2, when: [110, 420], weight: 2 }
+        }
       }
     },
 
@@ -1118,29 +1207,44 @@
           { type: 'orecart', x: 2330, y: 0.62, drop: 'meat' }    // 6번 웨이브 화면 끝 = 보스방 바로 앞
         ]
       },
-      // ===== 임시 3단계: 1단계 그림 그대로 + 적 많이 + 더 강하게 + 보스 = 붉은 오크(색만 바꿈) =====
+      // ===== 3단계: 늪지대 (2026-11-04 새 그림: 배경·소품·도마뱀 전사·거대 두꺼비) =====
+      // 2단계와 4단계 사이(체력·공격 x1.15): 새 적 도마뱀 전사(긴 창·달려들기) + 박쥐·고블린·늪 해골(색만 바꿈) 섞음,
+      //   가마솥 둘레에 미리 서 있는 무리 3곳 + 옆에서 지원, 보스 = 거대 두꺼비(배치기·혀 채찍·독 웅덩이)
       {
         id: 3,
-        name: 'STAGE 3  폐허 (임시)',
-        width: 3200,
-        healOnClear: 10,
-        bgTop: '#7fb2e5',
-        bg: BG_FOREST,               // 임시: 1단계 배경
-        hpMul: 1.3, dmgMul: 1.2,
+        name: 'STAGE 3  늪지대',
+        width: 2880,
+        healOnClear: 12,
+        bgTop: '#5d6c65',           // 화면이 배경보다 높을 때 위쪽 색 (실제로는 배경 맨 윗줄 = 회녹색 안개를 늘려 씀)
+        bg: BG_SWAMP,
+        hpMul: 1.15, dmgMul: 1.15,
         waves: [
-          { at: 120,  spawn: [['goblin', 'R', 0], ['goblin', 'L', 300], ['wolf', 'R', 900], ['goblin', 'R', 1800]] },
-          { at: 520,  spawn: [['wolf', 'R', 0, { variant: 'ice' }], ['wolf', 'L', 300, { variant: 'ice' }], ['goblin', 'R', 1200], ['goblin', 'L', 1600], ['wolf', 'R', 3000]] },
-          { at: 920,  spawn: [['goblin', 'R', 0], ['goblin', 'R', 250], ['goblin', 'L', 500], ['wolf', 'R', 2400], ['goblin', 'L', 3000], ['goblin', 'R', 3400], ['wolf', 'L', 4000]] },
-          { at: 1320, spawn: [['wolf', 'R', 0], ['wolf', 'L', 300], ['wolf', 'R', 700, { variant: 'ice' }], ['goblin', 'R', 2200], ['goblin', 'L', 2600], ['wolf', 'R', 3600]] },
-          { at: 1740, spawn: [['goblin', 'R', 0], ['goblin', 'L', 200], ['wolf', 'R', 700], ['wolf', 'L', 1100], ['goblin', 'R', 3200], ['goblin', 'L', 3500], ['wolf', 'R', 4300, { variant: 'ice' }], ['goblin', 'R', 5000]] },
-          { at: 2160, spawn: [['wolf', 'R', 0], ['wolf', 'R', 250], ['goblin', 'L', 500], ['goblin', 'L', 800], ['wolf', 'R', 2600, { variant: 'ice' }], ['goblin', 'R', 3000], ['goblin', 'L', 3400], ['wolf', 'R', 4200]] },
-          { at: 2560, spawn: [['goblin', 'R', 0], ['goblin', 'L', 0], ['wolf', 'R', 600], ['wolf', 'L', 900], ['goblin', 'R', 3000], ['wolf', 'L', 3400, { variant: 'ice' }]] },
-          { at: 'end', boss: true, spawn: [['orc', 'R', 0, { variant: 'ember' }]] }
+          // 1: 늪 가장자리 — 도마뱀 전사 첫 등장
+          { at: 120,  spawn: [['lizard', 'R', 0], ['goblin', 'R', 900], ['bat', 'L', 2200]] },
+          // 2: 가마솥(500 + 326) 옆에 도마뱀 + 고블린(camp1, 하나 깨면 둘 다 깸) + 옆에서 지원
+          { at: 500,  placed: [['lizard', 288, 0.36, { group: 'camp1', dir: 1 }], ['goblin', 364, 0.58, { group: 'camp1' }]],
+                      spawn: [['bat', 'R', 700], ['lizard', 'L', 2400]] },
+          { at: 880,  spawn: [['skeleton', 'R', 0, { variant: 'bog' }], ['lizard', 'L', 500], ['bat', 'R', 1300], ['goblin', 'L', 3200], ['lizard', 'R', 3800]] },
+          // 4: 수상 마을 가마솥(1260 + 330) 둘레에 도마뱀 둘 + 늪 해골(camp2) + 옆에서 지원
+          { at: 1260, placed: [['lizard', 292, 0.34, { group: 'camp2', dir: 1 }], ['skeleton', 372, 0.44, { group: 'camp2', variant: 'bog' }], ['lizard', 340, 0.8, { group: 'camp2' }]],
+                      spawn: [['bat', 'R', 1200, { variant: 'bog' }], ['goblin', 'L', 3400], ['lizard', 'R', 4200]] },
+          { at: 1650, spawn: [['lizard', 'R', 0], ['bat', 'L', 400], ['goblin', 'R', 1000], ['skeleton', 'L', 2800, { variant: 'bog' }], ['lizard', 'R', 3400]] },
+          // 6: 제단 앞 가마솥(2040 + 332)을 지키는 도마뱀 둘(shrine) + 옆에서 지원
+          { at: 2040, placed: [['lizard', 296, 0.3, { group: 'shrine', dir: 1 }], ['lizard', 368, 0.66, { group: 'shrine' }]],
+                      spawn: [['bat', 'R', 600, { variant: 'bog' }], ['goblin', 'L', 1000], ['skeleton', 'R', 2800], ['lizard', 'L', 3400], ['bat', 'R', 4000]] },
+          { at: 'end', boss: true, spawn: [['toad', 'R', 0]] }
         ],
+        // 소품: 이끼 그루터기·갈대 뚜껑 항아리(부서짐) + 늪 가마솥 3개(장식, 무리 자리). 보스 앞 그루터기는 고기가 꼭 나옴
         props: [
-          { type: 'barrel', x: 900,  y: 0.5 },
-          { type: 'crate',  x: 1700, y: 0.3 },
-          { type: 'barrel', x: 2640, y: 0.7, drop: 'meat' }
+          { type: 'stump',    x: 430,  y: 0.72 },
+          { type: 'pot',      x: 700,  y: 0.22 },
+          { type: 'cauldron', x: 500 + 326, y: 0.47 },
+          { type: 'stump',    x: 1150, y: 0.7 },
+          { type: 'pot',      x: 1480, y: 0.26, drop: 'bread' },
+          { type: 'cauldron', x: 1260 + 330, y: 0.56 },
+          { type: 'pot',      x: 1860, y: 0.32 },
+          { type: 'cauldron', x: 2040 + 332, y: 0.48 },
+          { type: 'stump',    x: 2250, y: 0.78, drop: 'meat' }    // 6번 웨이브 화면 = 보스방 바로 앞
         ]
       },
       // ===== 4단계: 사막 유적 (2026-11-04 새 그림: 배경·소품·미라·전갈 왕) =====
@@ -1193,7 +1297,9 @@
     //   판을 시작할 때 그 판에 나오는 변종 그림만 한 번 구워 두고 계속 다시 씀(main.js tintArt) → 게임 중 느려지지 않음
     variants: {
       ice:   { label: '얼음', hue: 180, sat: 0.8, bright: 1.15, color: '#8fd8ff', colorK: 0.35, hpMul: 1.1 },   // 회색 늑대 → 푸른 늑대(회색은 색상환을 돌려도 그대로라 color 로 물들임)
-      ember: { label: '붉은', hue: 270, sat: 1.2, bright: 0.95, dmgMul: 1.1 },  // 연두 오크 → 붉은 오크
+      ember: { label: '붉은', hue: 270, sat: 1.2, bright: 0.95, dmgMul: 1.1 },  // 연두 오크 → 붉은 오크 (예전 임시 3단계 보스, 지금은 안 씀)
+      // 3단계(2026-11-04): 흰 해골·보라 박쥐 → 이끼 낀 늪 빛(칙칙한 초록). 흰색·회색이 많아 color 로 물들임
+      bog:   { label: '늪', hue: 0, sat: 0.85, bright: 0.95, color: '#7a9a4a', colorK: 0.36, hpMul: 1.1 },
       // 4단계(2026-11-04): 회색 늑대·흰 해골 → 모래 빛(누런 갈색). 회색·흰색이라 색상환 대신 color 로 물들임
       sand:  { label: '모래', hue: 0, sat: 0.9, bright: 1.0, color: '#d8a860', colorK: 0.38, hpMul: 1.1 }
     },
@@ -1205,7 +1311,7 @@
     //   아래 거리 값은 전부 원래 그림 크기(1배) 기준 → 맨 아래 scaleActors 가 actorScale 로 줄인다
     //   solid = 못 지나감: footprint = 바닥에서 막는 상자 { w = 가로(기준점 가운데), depth = 위아래(걷는 길) 두께 }
     //   hits = 몇 번 맞으면 부서지나(CFG.props), hurtbox = 맞는 상자(기준점에서 x, y = 왼쪽 위, w, h), breakFrames = 부서지는 그림(14fps 한 번)
-    //   shadow = 발밑 그림자 반폭(없으면 안 그림), glow = 바닥 빛 { r, y(기준점 위로), color, alpha } (모닥불)
+    //   shadow = 발밑 그림자 반폭(없으면 안 그림), glow = 바닥 빛 { r, y(기준점 위로), color, alpha } (모닥불). 여러 개면 [ {…}, {…} ]
     propTypes: {
       crate: {
         frames: ['intact', 'cracked', 'damaged'].map(function (s) { return 'assets/props/stage1/crate/' + s + '_01.png'; }), fps: 0,
@@ -1271,6 +1377,30 @@
         frames: seq('assets/props/stage4/brazier/burn_', 6), fps: 10,
         pivot: { x: 26, y: 88 }, solid: false, shadow: 16,
         glow: { r: 66, y: 58, color: '#ff9a3a', alpha: 0.28 }
+      },
+      // ----- 3단계 소품 (art\stage3-props 에서 복사 → assets/props/stage3/…, 크기·기준점은 그 폴더 props.json) -----
+      // 이끼 낀 썩은 그루터기: 주인공 허리 높이(2단계 광석 수레쯤). 나무·껍질·이끼·버섯 조각
+      stump: {
+        frames: ['intact', 'cracked', 'damaged'].map(function (s) { return 'assets/props/stage3/stump/' + s + '_01.png'; }), fps: 0,
+        breakFrames: seq('assets/props/stage3/stump/break_', 4),
+        pivot: { x: 39, y: 73 }, solid: true, footprint: { w: 60, depth: 18 },
+        hits: 3, hurtbox: { x: -33, y: -53, w: 66, h: 52 }, shadow: 32,
+        chips: ['#7a5a3a', '#5a3e26', '#9a7a4a', '#6a8a3a', '#c8b070']
+      },
+      // 갈대 뚜껑 항아리: 고블린보다 조금 낮음. 흙 조각 + 갈대 + 늪물
+      pot: {
+        frames: ['intact', 'cracked', 'damaged'].map(function (s) { return 'assets/props/stage3/pot/' + s + '_01.png'; }), fps: 0,
+        breakFrames: seq('assets/props/stage3/pot/break_', 4),
+        pivot: { x: 39, y: 76 }, solid: true, footprint: { w: 46, depth: 18 },
+        hits: 3, hurtbox: { x: -25, y: -66, w: 50, h: 65 }, shadow: 24,
+        chips: ['#b8653a', '#8a4a2a', '#d8b070', '#5a7a4a']
+      },
+      // 늪 가마솥(나뭇가지 삼발이 위 쇠솥, 초록 국물): 장식(지나갈 수 있음, 안 부서짐). 솥·삼발이는 그대로, 불·국물·김만 움직이는 6장 반복 8fps
+      //   glow 를 여러 개 = 아래 장작불(주황) + 솥 위 국물(초록)
+      cauldron: {
+        frames: seq('assets/props/stage3/cauldron/cook_', 6), fps: 8,
+        pivot: { x: 27, y: 81 }, solid: false, shadow: 18,
+        glow: [{ r: 60, y: 10, color: '#ff9a3a', alpha: 0.26 }, { r: 44, y: 46, color: '#9aff5a', alpha: 0.2 }]
       }
     },
     // ---------- 부서지는 소품 공통 (상자·통) ----------
@@ -1438,6 +1568,8 @@
         // 4단계: 장마다 다른 판정 상자(전갈 집게 4장), 잡힌 플레이어 서는 거리(미라), 둔덕 멈추는 거리(전갈 땅속 숨기)
         if (a.reachF) Object.keys(a.reachF).forEach(function (f) { box(a.reachF[f]); });
         mul(a.grab, ['dist'], S); mul(a, ['catchR'], S);
+        // 3단계: 두꺼비 배치기 뛰는 거리·겨누는 거리, 독 웅덩이 크기
+        mul(a.leap, ['max', 'aimAt'], S); mul(a.puddle, ['radius', 'depth'], S);
       });
       // 나는 적 흔들림, 방패 막기 밀림, 보스 핵 빛 위치
       mul(T.flying, ['bob'], S); mul(T.guard, ['push'], S);
@@ -1446,7 +1578,8 @@
     // 소품·음식: 맞는 상자·막는 상자·그림자·빛·줍는 거리·튀어 오름 (그림은 assets.js 가 actorScale 로 그림)
     Object.keys(C.propTypes || {}).forEach(function (k) {
       var D = C.propTypes[k];
-      mul(D.hurtbox, ['x', 'y', 'w', 'h'], S); mul(D.footprint, ['w', 'depth'], S); mul(D, ['shadow'], S); mul(D.glow, ['r', 'y'], S);
+      mul(D.hurtbox, ['x', 'y', 'w', 'h'], S); mul(D.footprint, ['w', 'depth'], S); mul(D, ['shadow'], S);
+      [].concat(D.glow || []).forEach(function (g) { mul(g, ['r', 'y'], S); });   // 빛이 여러 개일 수 있음(3단계 가마솥)
     });
     mul(C.props, ['hitAbove'], S);
     if (C.food) { mul(C.food.pickup, ['r', 'depth'], S); mul(C.food, ['hop', 'shadow'], S); }

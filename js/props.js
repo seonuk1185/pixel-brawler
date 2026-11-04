@@ -228,13 +228,14 @@
       if (pr.x < camX - 120 || pr.x > camX + LW + 120) return;
       var D = pr.D, x = snapPx(pr.x - camX), y = snapPx(pr.y);
       if (D.shadow && pr.state === 'idle') window.drawShadow(ctx, x, y, D.shadow);
-      if (D.glow) {
-        var G = D.glow, fl = 0.85 + 0.15 * Math.sin(pr.t / 90) * Math.sin(pr.t / 37 + 1), r = G.r * fl, gy = pr.y - G.y;
+      // 빛: 하나 또는 여러 개(3단계 가마솥 = 장작불 + 초록 국물)
+      if (D.glow) [].concat(D.glow).forEach(function (G, gi) {
+        var fl = 0.85 + 0.15 * Math.sin(pr.t / 90 + gi * 2) * Math.sin(pr.t / 37 + 1 + gi), r = G.r * fl, gy = pr.y - G.y;
         var gr = ctx.createRadialGradient(x, gy, 0, x, gy, r);
         gr.addColorStop(0, G.color); gr.addColorStop(1, 'rgba(0,0,0,0)');
         ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = G.alpha * fl;
         ctx.fillStyle = gr; ctx.fillRect(x - r, gy - r, r * 2, r * 2); ctx.restore();
-      }
+      });
     });
     var F = CFG.food;
     if (F) food.forEach(function (f) { if (!blinkOff(f)) window.drawShadow(ctx, snapPx(f.x - camX), snapPx(f.y), F.shadow * (1 - Math.min(0.5, f.z / 30))); });

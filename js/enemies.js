@@ -1,5 +1,5 @@
 // 적: 고블린 · 늑대 · 오크 족장(보스) + 2단계 박쥐(나는 적) · 해골 병사(방패 막기) · 돌 골렘(보스, 바위 던지기)
-//   + 4단계 미라(잡기) · 전갈 왕(보스, 땅속 숨기). 수치는 전부 config.js 의 enemies.
+//   + 3단계 도마뱀 전사(찌르기·달려들기) · 거대 두꺼비(보스, 배치기·혀·독 뱉기) + 4단계 미라(잡기) · 전갈 왕(보스, 땅속 숨기). 수치는 전부 config.js 의 enemies.
 // 그림은 전부 「왼쪽을 봄」 → 그릴 때 ctx.scale(-dir, 1)  (dir = 1 이면 오른쪽을 봄)
 (function () {
   var uid = 0;
@@ -48,6 +48,7 @@
     this.guardT = 0; this.guardCd = 0; this.guardFlash = 0; this.blocks = 0; this.guardBroken = false;
     // 땅속 숨기(전갈 왕 burrow): hidden = 땅속(안 보이고 안 맞음, 모래 둔덕만 그림), lastBurrowAt = 마지막으로 숨은 시각(this.clock)
     this.hidden = false; this.lastBurrowAt = 0;   // 0 = 나타나자마자 숨지는 않음(gapMs 뒤부터)
+    this.usedAt = {};                             // 잡몹 공격마다 마지막으로 쓴 시각(this.clock, 공격 gapMs 용)
   }
 
   // 미리 세워 두기: pose = 쉬는 그림 이름(없으면 idle), group = 같이 깨는 무리 이름
@@ -89,7 +90,13 @@
   };
 
   // 지금 맞을 수 있나 (넘어짐~일어남 동안은 무적)
-  Enemy.prototype.canBeHit = function () { return this.alive() && this.state !== 'down' && !this.hidden && !this.burrowInvuln(); };
+  Enemy.prototype.canBeHit = function () { return this.alive() && this.state !== 'down' && !this.hidden && !this.burrowInvuln() && !this.airborne(); };
+  // 공중(두꺼비 배치기 leap 의 뛰는 그림 2·3장): 안 맞고, 몸끼리 안 밀림(main.js separate)
+  Enemy.prototype.airborne = function () {
+    var a = this.atk;
+    if (this.state !== 'attack' || !a || a.spec.type !== 'leap') return false;
+    return inList(a.spec.leap.frames, this.frameAt(a.spec.anim, a.t).no);
+  };
   // 땅속 숨기 무적 장: 파고드는 그림 invuln(3·4장) / 솟구치는 그림 eruptInvuln(1장) / 땅속(둔덕·떨림)
   Enemy.prototype.burrowInvuln = function () {
     var a = this.atk;
@@ -206,6 +213,7 @@
     var spec = this.T.attacks[name];
     this.state = 'attack'; this.animT = 0;
     this.atk = { name: name, spec: spec, t: 0, hit: false, phase: 'wind', ran: 0, dustT: 0, moved: 0 };
+    this.usedAt[name] = this.clock;
     if (!this.T.boss) ctx.lastAttackAt = ctx.now;
   };
 
@@ -335,8 +343,19 @@
     var T = this.T;
     if (!T.boss) {
       if (!this.mayAttack(ctx)) return null;
-      if (adx >= T.range[0] && adx <= T.range[1] && ady <= T.alignY) return Object.keys(T.attacks)[0];
-      return null;
+      if (!(adx >= T.range[0] && adx <= T.range[1] && ady <= T.alignY)) return null;
+      var keys = Object.keys(T.attacks);
+      if (keys.length === 1) return keys[0];
+      // 공격이 여럿(3단계 도마뱀 찌르기·달려들기): 거리가 when 안인 것 중 무게(weight)로
+      //   gapMs = 그 공격을 한 번 쓰면 이 시간 동안은 안 씀(달려들기가 다가올 때마다 나오지 않게)
+      var self = this, ok = keys.filter(function (k) { var A = T.attacks[k], w = A.when;
+        if (A.gapMs && self.clock - (self.usedAt[k] != null ? self.usedAt[k] : -1e9) < A.gapMs) return false;
+        return !w || (adx >= w[0] && adx <= w[1]); }), tot = 0;
+      if (!ok.length) return null;
+      ok.forEach(function (k) { tot += T.attacks[k].weight || 1; });
+      var q = Math.random() * tot;
+      for (var j = 0; j < ok.length; j++) { q -= T.attacks[ok[j]].weight || 1; if (q <= 0) return ok[j]; }
+      return ok[ok.length - 1];
     }
     // 보스: 거리에 맞는 공격 중 무게(weight)로 고르기
     var opts = [], sum = 0, self = this;
@@ -376,6 +395,7 @@
     a.t += dtMs;
     if (spec.type === 'charge') return this.updateCharge(dtMs, ctx);
     if (spec.type === 'burrow') return this.updateBurrow(dtMs, ctx);
+    if (spec.type === 'leap') return this.updateLeap(dtMs, ctx);
     var fr = this.frameAt(spec.anim, a.t);
     if (fr.done) { this.endAttack(); return; }
     // 바위 던지기: 던지기 전까지 플레이어 자리를 겨눔(앞쪽, maxRange 까지) → spawnFrame 그림에서 그 자리로 던짐(main.js ctx.throwRock)
@@ -460,6 +480,38 @@
     if (fr.done) { this.endAttack(); return; }
     if (inList(s.active, fr.no)) this.tryHitPlayer(s, s.reach, ctx);
     if (!a.shook && fr.no === s.active[s.active.length - 1]) { a.shook = true; ctx.shake(s.shake); }
+  };
+
+  // 두꺼비 배치기(leap): 예고 그림(1장) 동안 플레이어 자리를 겨눔(그 자리 = 빨간 원 가운데, 플레이어가 몸 앞 aimAt 에 오게 떨어질 곳을 정함, 최대 max)
+  //   → 공중 그림(2·3장)이 보이는 동안 그 자리로 날아감(안 맞음) → 4장 배로 쿵: 판정 + 크게 흔들림 + 양쪽 먼지 + 흙탕물 → 5장 복귀
+  Enemy.prototype.updateLeap = function (dtMs, ctx) {
+    var a = this.atk, s = a.spec, L = s.leap, p = ctx.player;
+    var A = this.T.anims[s.anim], step = 1000 / A.fps, pb = A.playback;
+    var fr = this.frameAt(s.anim, a.t);
+    if (fr.done) { this.endAttack(); return; }
+    var i0 = pb.indexOf(L.frames[0]), n = 0;
+    pb.forEach(function (k) { if (inList(L.frames, k)) n++; });
+    var upAt = i0 * step, airMs = n * step;
+    if (a.t < upAt) {   // 겨누기: 플레이어 쪽을 보고, 떨어질 자리를 계속 맞춤
+      if (Math.abs(p.x - this.x) > 4) this.dir = p.x > this.x ? 1 : -1;
+      var d = Math.max(0, Math.min(L.max, (p.x - this.x) * this.dir - L.aimAt));
+      a.lx = this.x + this.dir * d; a.ly = Math.max(ctx.world.laneTop, Math.min(ctx.world.laneBottom, p.y));
+      a.rx = a.lx + this.dir * (s.reach.x0 + s.reach.x1) / 2;   // 빨간 원 가운데 = 판정 상자 가운데
+      return;
+    }
+    if (!a.jumped) { a.jumped = true; a.sx = this.x; a.sy = this.y; ctx.dust(this.x, this.y, -this.dir); }
+    if (a.t < upAt + airMs) {   // 공중: 고르게 날아감(끝으로 갈수록 살짝 빨리 = 내리꽂힘)
+      var u = (a.t - upAt) / airMs; u = u * u * 0.4 + u * 0.6;
+      this.x = a.sx + (a.lx - a.sx) * u; this.y = a.sy + (a.ly - a.sy) * u;
+      return;
+    }
+    if (!a.landed) {
+      a.landed = true; this.x = a.lx; this.y = a.ly;
+      ctx.shake(s.shake); ctx.dust(this.x - this.dir * 30 * AS(), this.y, -this.dir); ctx.dust(this.x + this.dir * 60 * AS(), this.y, this.dir);
+      if (ctx.debris) ctx.debris(a.rx, this.y, 12, ['#5a4a2e', '#7a6a3e', '#4a5a2e', '#9aa86a']);   // 흙탕물 튐
+    }
+    // 판정은 쿵 한 순간(hitMs)만: 엎드려 있는 동안 걸어 들어온 플레이어까지 맞히지 않게
+    if (inList(s.active, fr.no) && a.t - upAt - airMs <= (s.hitMs || 160)) this.tryHitPlayer(s, s.reach, ctx);
   };
 
   // 오크 어깨 돌진: 웅크림(예고) → 돌진(미끄러짐 + 먼지) → 부딪힘 → 복귀
@@ -572,6 +624,11 @@
     }
     if (s.type === 'burrow') {   // 땅속 숨기: 둔덕이 멈춘 뒤 솟구칠 자리(플레이어가 있던 곳)
       if (a.phase === 'warn') drawRing(g, camX, a.tx, a.ty, s.radius, s.depth, a.t / s.warnMs, false);
+      return;
+    }
+    if (s.type === 'leap') {     // 배치기: 떨어질 자리(겨누는 동안 플레이어를 따라감 → 뛴 뒤엔 고정) ~ 쿵 할 때까지
+      var LA = this.T.anims[s.anim], landMs = LA.playback.indexOf(s.active[0]) * 1000 / LA.fps;
+      if (a.rx != null && a.t < landMs) drawRing(g, camX, a.rx, a.ly, (s.reach.x1 - s.reach.x0) / 2, s.depth, a.t / landMs, false);
       return;
     }
     if (a.held) return;
