@@ -287,7 +287,11 @@
       // 무거운 타(타 knock × 무기 knockMul 이 크면) = 잡몹 넘어짐 (config ai.react.heavyKnock)
       //   noKnockdown = 세게 밀어도 안 넘어짐(달리며 공격 어깨 돌진 마무리 = 멀리 날려 보내기), noJuggle = 연속 맞음으로 안 넘어짐(밀고 가는 작은 타)
       var heavy = airHit || (!st.noKnockdown && (!!st.knockdown || st.knock * W.knockMul >= CFG.ai.react.heavyKnock));
-      var res = target.takeHit(dmg, dir, knock, !!st.finisher && !st.noKnockdown, { heavy: heavy, stunMs: st.stunMs, noJuggle: !!st.noJuggle, flashK: st.flashK });   // stunMs = 번개 기술
+      // 누운 적 때리기(OTG, config ai.otg): 땅까지 닿는 공격(hitsDown)만 여기까지 옴 → 데미지 배율, 다시 날아가지 않음
+      var otg = target.state === 'down' && !!st.hitsDown;
+      if (otg) dmg = Math.max(1, Math.round(dmg * (CFG.ai.otg.dmgMul != null ? CFG.ai.otg.dmgMul : 1)));
+      var res = target.takeHit(dmg, dir, knock, !!st.finisher && !st.noKnockdown, { heavy: heavy, stunMs: st.stunMs, noJuggle: !!st.noJuggle, flashK: st.flashK, otg: otg });   // stunMs = 번개 기술
+      if (otg && !res) return;   // 누운 채 맞을 수 있는 때가 아님(일어나는 중 등)
       var hb = target.hurtbox();
       // 불똥은 맞은 몸의 가장자리(플레이어 쪽)에서. 마법은 맞은 곳에서 가장 가까운 몸 위치
       if (src) hx = clamp(src.x, hb.x0 + 4, hb.x1 - 4);
@@ -304,10 +308,12 @@
     var hy = p.y - (p.z || 0) + (st.hitY != null ? st.hitY : -52 * AS), sc = st.spark || 1;   // 공중이면 그만큼 위
     if (src) { var tb = target.hurtbox(); hy = clamp(src.y, tb.y0 + 6, tb.y1 - 6); }
     else if (st.atTarget) { var tb2 = target.hurtbox(); hy = clamp(hy, tb2.y0 + 6, tb2.y1 - 6); }   // 공중 공격: 맞은 몸 안쪽
+    // 누운 적: 불똥은 바닥에 누운 몸 높이에 작게, 숫자는 누운 몸 바로 위
+    if (otg) { hy = target.y - 14 * AS; sc = Math.min(sc, 0.8); topY = target.y - target.T.height * 0.45 - 8; }
     // impactFx = 불똥 대신 쓸 그림(법사 = magic_spark)
     var impSpr = G.assets.fx && ((st.impactFx && G.assets.fx[st.impactFx]) || G.assets.fx.impact);
     // big = 기술의 큰 불똥(마무리 타처럼 많이·멀리). damageStyle = 기술 숫자 모양(config damageText)
-    var big = !!(st.finisher || st.big);
+    var big = !otg && !!(st.finisher || st.big);
     FX.impact(hx, hy, dir, W.sparkColor, Math.round(J.sparkCount * (big ? 1.6 : 1) * (sc < 1 ? 0.7 : 1) * (st.damageStyle ? 1.3 : 1)), big, impSpr, sc);
     // 숫자: crit = 마무리 모양(「22!」), numStyle = 숫자 모양만 따로(달리며 공격 작은 타 = push). 마지막 = 대상(같은 대상 숫자는 위로 쌓임)
     FX.damage(target.x, topY, dmg, !!(st.finisher || st.crit || (st.damageStyle && st.knockdown)), J, null, st.numStyle || st.damageStyle, target.id || 'dummy', !!st.mergeNum);
@@ -331,6 +337,8 @@
   }
   // 플레이어 공격에 맞을 수 있는 것: 판 = 적 + 부서지는 소품(새 배열), 연습장 = 허수아비
   function hitTargets() { return MODE === 'stage' ? G.enemies.concat(Props.targets()) : [G.dummy]; }
+  // 이 공격(st)에 맞을 수 있나: 적은 canBeHitBy(누운 적 = 크게 휘두르는 타(hitsDown)만, config ai.otg), 소품·허수아비는 canBeHit
+  function canHit(t, st) { return !t.canBeHit || (t.canBeHitBy ? t.canBeHitBy(st) : t.canBeHit()); }
 
   // ---------- 법사 마법 (config MAGE 의 cast, CFG.magic 그림) ----------
   // 그림 효과 한 번 재생: kind = 'spark'(지팡이 끝 반짝임) / 'burst'(터짐)
@@ -355,7 +363,7 @@
     FX.shake(J.shakePx * ((CFG.magic.burst && CFG.magic.burst.shake) || 0.8), J.shakeMs);
     var targets = hitTargets();
     targets.forEach(function (t) {
-      if (!t || (t.canBeHit && !t.canBeHit())) return;
+      if (!t || !canHit(t, st)) return;
       var hb = t.hurtbox();
       if (t !== direct) {
         if (Math.abs(hb.z - z) > B.depth) return;
@@ -1267,7 +1275,7 @@
       var targets = hitTargets();
       targets.forEach(function (t) {
         var id = t.id || 'dummy';
-        if (done[id] || (t.canBeHit && !t.canBeHit())) return;   // 죽었거나 넘어져 있으면(무적) 안 맞음
+        if (done[id] || !canHit(t, hc.step)) return;   // 죽었거나 넘어져 있으면(무적) 안 맞음. 크게 휘두르는 타(hitsDown)는 누운 적도
         // 달리며 공격 마무리: 밀고 온 적은 상자 밖으로 조금 벗어나 있어도 맞음
         var carried = hc.finish && RA && RA.ids[id] && Math.abs(t.x - p.x) < 100 * AS && Math.abs(t.y - p.y) < 16 * AS;
         if (overlap(hb, t.hurtbox()) || carried) {   // 판정 구간마다 대상별 한 번
@@ -1784,6 +1792,7 @@
     Skills.init(CFG, {
       onHit: onHit,
       targets: hitTargets,   // 적 + 부서지는 소품(번개 겨누기에서는 소품을 뺌)
+      canHit: canHit,        // 이 판정에 맞을 수 있나(누운 적 = hitsDown 만)
       dust: function (x, y, dir) { if (G.assets.dust && G.assets.dust.length) FX.sprite(x, y, G.assets.dust, CFG.dust.fps, CFG.dust.pivot, dir > 0, true); },
       fx: function () { return G.assets.fx; },
       hitstop: function (ms) { G.hitstop = Math.max(G.hitstop, ms); },

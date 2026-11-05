@@ -51,7 +51,7 @@
           fx: { type: 'slash', x: 42, y: -66, flipY: true, rot: -15 }, arc: { from: 60, to: -80, r: 50, w: 8 } },
         { anim: 'attack3', f: [0, 1, 2, 3, 4, 5], d: [50, 90, 70, 40, 150, 120], active: [4, 4], cancel: 99, lunge: 4, endAdvance: 22,
           reach: { x0: 10, x1: 104, yTop: -110, yBot: -4 },
-          dmg: 1.8, hitstop: 1.9, knock: 2.6, shake: 2.4, finisher: true,
+          dmg: 1.8, hitstop: 1.9, knock: 2.6, shake: 2.4, finisher: true, hitsDown: true,   // 크게 내리찍는 마무리 = 누운 적도 맞음(ai.otg)
           fx: { type: 'slash', x: 52, y: -52, sx: 1.35, sy: 1.35 }, arc: { from: -130, to: 70, r: 58, w: 12 } }
       ]
     },
@@ -75,7 +75,7 @@
           hits: [
             { active: [1, 1], lunge: 4, dmg: 0.7, hitstop: 0.9, knock: 0.5, shake: 0.9,
               fx: { type: 'slash', x: 42, y: -62, rot: -70, sx: 0.95, sy: 1.05 }, arc: { from: -120, to: 30, r: 50, w: 9 } },
-            { active: [3, 3], lunge: 3, dmg: 1.6, hitstop: 1.9, knock: 2.4, shake: 2.3, finisher: true,
+            { active: [3, 3], lunge: 3, dmg: 1.6, hitstop: 1.9, knock: 2.4, shake: 2.3, finisher: true, hitsDown: true,   // 큰 마무리 = 누운 적도 맞음
               reach: { x0: 10, x1: 100, yTop: -112, yBot: -10 },
               fx: { type: 'slash', x: 46, y: -66, rot: 20, sx: 1.25, sy: 1.25 }, arc: { from: 60, to: -100, r: 56, w: 11 } }
           ] }
@@ -92,7 +92,7 @@
                { active: [1, 1], lunge: 2, dmg: 0.7, hitstop: 0.9, knock: 0.5, shake: 0.9,
                  reach: { x0: 8, x1: 76, yTop: -106, yBot: -14 },
                  fx: { type: 'slash', x: 44, y: -62, rot: -45, sx: 1.0, sy: 1.1, linger: 300, top: true }, arc: { from: -135, to: 50, r: 52, w: 10 } },
-               { active: [3, 3], lunge: 2, dmg: 1.6, hitstop: 1.9, knock: 2.4, shake: 2.3, finisher: true,
+               { active: [3, 3], lunge: 2, dmg: 1.6, hitstop: 1.9, knock: 2.4, shake: 2.3, finisher: true, hitsDown: true,   // 큰 마무리 = 누운 적도 맞음
                  reach: { x0: 6, x1: 80, yTop: -112, yBot: -12 },
                  fx: { type: 'slash', x: 46, y: -64, rot: 120, sx: 1.2, sy: 1.15, flipY: true, linger: 300, top: true }, arc: { from: 150, to: -60, r: 56, w: 12 } }
              ] }
@@ -125,7 +125,7 @@
           { active: [1, 2], lunge: 0, reach: { x0: 4, x1: 42, yTop: -84, yBot: -40 },
             dmg: 0.6, hitstop: 0.8, knock: 0.3, shake: 0.7, hitY: -62, spark: 0.6, fx: { type: 'none' } },
           { active: [3, 4], lunge: 2,
-            dmg: 1.8, hitstop: 1.9, knock: 2.6, shake: 2.3, finisher: true, hitY: -80, spark: 1.0 }
+            dmg: 1.8, hitstop: 1.9, knock: 2.6, shake: 2.3, finisher: true, hitY: -80, spark: 1.0, hitsDown: true }   // 큰 돌려차기 마무리 = 누운 적도 맞음(무릎은 안 맞음)
         ] }
     ],
     // 여자: 빠르고 우아한 무술. 1타 손바닥 치기 → 2타 돌려차기 → 3타 내려찍기(axe kick, 마무리), 땅에서만
@@ -142,7 +142,7 @@
       //   → 장 3 뒤꿈치 내려찍기(판정, 마무리) → 장 4 찬 발을 앞에 내려 디딤. 그림 속에서 한 걸음(37도트) 나가므로 endAdvance 37
       { anim: 'fist3', f: [0, 1, 2, 3, 4], d: [40, 40, 70, 130, 100], active: [3, 3], cancel: 99, lunge: 0, endAdvance: 37,
         reach: { x0: 10, x1: 66, yTop: -100, yBot: -12 },
-        dmg: 1.7, hitstop: 2.0, knock: 2.5, shake: 2.3, finisher: true, hitY: -50, spark: 1.0,
+        dmg: 1.7, hitstop: 2.0, knock: 2.5, shake: 2.3, finisher: true, hitY: -50, spark: 1.0, hitsDown: true,   // 뒤꿈치 내려찍기 = 누운 적도 맞음
         fx: { type: 'whoosh', x: 52, y: -62, rot: 90, sx: 0.7, sy: 0.5, alpha: 0.4 }, arc: { from: -90, to: 30, r: 40, w: 5 } }
     ]
   };
@@ -168,11 +168,11 @@
           fx: { type: 'spark', x: 108, y: -69, scale: 1.0 } },
         { anim: 'attack2', f: [0, 1, 2, 3, 4], d: [70, 90, 60, 130, 110], active: [3, 3], cancel: 4, lunge: 4,
           reach: { x0: 30, x1: 78, yTop: -120, yBot: -5 },
-          dmg: 1.1, hitstop: 1.1, knock: 1.3, shake: 1.1, hitY: -34, spark: 0.9, impactFx: 'magic_spark',
+          dmg: 1.1, hitstop: 1.1, knock: 1.3, shake: 1.1, hitY: -34, spark: 0.9, impactFx: 'magic_spark', hitsDown: true,   // 지팡이로 땅까지 내려침 = 누운 적도 맞음
           fx: [{ type: 'whoosh', x: 46, y: -62, rot: 0, sx: 0.8, sy: 0.95, alpha: 0.45 }, { type: 'spark', x: 69, y: -11, scale: 1.1 }],
           arc: { from: -100, to: 60, r: 46, w: 6 } },
         { anim: 'attack3', f: [0, 1, 2, 3, 4, 5], d: [80, 100, 60, 150, 120, 140], active: [3, 3], cancel: 99, lunge: 0,
-          dmg: 1.9, hitstop: 1.6, knock: 2.4, shake: 2.0, finisher: true, spark: 1.0, impactFx: 'magic_spark',
+          dmg: 1.9, hitstop: 1.6, knock: 2.4, shake: 2.0, finisher: true, spark: 1.0, impactFx: 'magic_spark', hitsDown: true,   // 마무리 마법 터짐 = 누운 적도 맞음(날아가는 탄은 누운 적 위로 지나감)
           fx: { type: 'spark', x: 105, y: -68, scale: 1.3 },
           cast: { kind: 'bolt', x: 105, y: -68, speed: 300, range: 220, box: { w: 18, h: 16 }, depth: 14, burstAtEnd: true, backReach: 85,
                   burst: { r: 30, depth: 16, scale: 0.75 } } }
@@ -197,7 +197,7 @@
               fx: { type: 'spark', x: 47, y: -75, scale: 0.9 } }
           ] },
         { anim: 'attack3', f: [0, 1, 2, 3, 4], d: [60, 70, 140, 110, 110], active: [2, 2], cancel: 99, lunge: 0,
-          dmg: 1.8, hitstop: 1.7, knock: 2.4, shake: 2.2, finisher: true, spark: 0.9, impactFx: 'magic_spark',
+          dmg: 1.8, hitstop: 1.7, knock: 2.4, shake: 2.2, finisher: true, spark: 0.9, impactFx: 'magic_spark', hitsDown: true,   // 두 손 폭발 마무리 = 누운 적도 맞음
           fx: { type: 'none' },
           cast: { kind: 'burst', x: 76, y: -71, burst: { r: 40, depth: 18, scale: 1.0 } } }
       ]
@@ -266,23 +266,24 @@
   // 2026-11-03 HD: 기술 효과 그림이 2배로 커져서 판정도 보이는 크기만큼 조금 넓힘(돌진 x1 100 → 116, 회전 ±84/±92 → ±100/±110,
   //   화염구 탄 40x34 → 56x46, 터짐 r 64 → 92·depth 40 → 50, 번개 r 26 → 34·depth 28 → 32). 데미지·쿨타임은 그대로
   var KNIGHT_DASH_HIT = { reach: { x0: -20, x1: 116, yTop: -112, yBot: -4, depth: 20 },
-                          dmg: 1.9, hitstop: 0.55, knock: 1.4, shake: 1.3, knockdown: true, spark: 1.3, big: true, hitY: -62 };
+                          dmg: 1.9, hitstop: 0.55, knock: 1.4, shake: 1.3, knockdown: true, spark: 1.3, big: true, hitY: -62, hitsDown: true };
   var KNIGHT_DASH_FINALE = { ifHit: true, hitstopMs: 120, shake: 2.8, slowMs: 260, flash: { color: '#d8ecff', alpha: 0.4, ms: 140 } };
   var SPIN_REACH = { x0: -100, x1: 100, yTop: -108, yBot: -6, depth: 20 };
-  var SPIN_HIT = { reach: SPIN_REACH, away: true, dmg: 0.8, hitstop: 0.7, knock: 0.7, shake: 1.2, spark: 1.1, hitY: -60 };
-  var SPIN_LAST = { reach: { x0: -110, x1: 110, yTop: -112, yBot: -4, depth: 22 }, away: true,
+  var SPIN_HIT = { reach: SPIN_REACH, away: true, dmg: 0.8, hitstop: 0.7, knock: 0.7, shake: 1.2, spark: 1.1, hitY: -60, hitsDown: true };
+  var SPIN_LAST = { reach: { x0: -110, x1: 110, yTop: -112, yBot: -4, depth: 22 }, away: true, hitsDown: true,
                     dmg: 1.6, hitstop: 2.2, knock: 2.6, shake: 3.0, knockdown: true, spark: 1.5, big: true, hitY: -60,
                     flash: { color: '#e6f2ff', alpha: 0.45, ms: 150 }, slowMs: 280 };
   // 불·번개 기술은 법사 보라 반짝임(impactFx) 대신 기본 불똥(노랑·흰색)이 효과 색과 어울림
-  var FIRE_HIT = { dmg: 2.8, hitstop: 2.0, knock: 2.4, shake: 3.0, knockdown: true, spark: 1.4, big: true,
+  // hitsDown = 크게 휘두르는 타·땅까지 닿는 기술(누운 적도 맞음, ai.otg). 돌진베기·회전베기·화염구 터짐·번개 전부
+  var FIRE_HIT = { dmg: 2.8, hitstop: 2.0, knock: 2.4, shake: 3.0, knockdown: true, spark: 1.4, big: true, hitsDown: true,
                    flash: { color: '#ffb060', alpha: 0.4, ms: 160 }, slowMs: 240 };
   // 터짐 판정 = 보이는 폭발 크기(fire_explosion 가장 큰 장 반지름 약 57~64 → r 64), 위아래(안쪽) 폭 40
   //   (위아래로 살짝 어긋나 서 있는 바로 뒤 적도 맞게, 2026-11-03 예전 r 56 / depth 24 는 뒤 적이 자주 빠짐)
   var FIRE_BURST = { r: 92, depth: 50, art: 'fire_explosion', fromFrame: 1, scale: 1.7, tint: '#ff6a10', tintK: 0.6 };
-  var BOLT_HIT = { dmg: 1.05, hitstop: 1.2, knock: 0.4, shake: 1.8, stunMs: 450, spark: 1.2, big: true,
+  var BOLT_HIT = { dmg: 1.05, hitstop: 1.2, knock: 0.4, shake: 1.8, stunMs: 450, spark: 1.2, big: true, hitsDown: true,
                    flash: { color: '#e8ffff', alpha: 0.3, ms: 90 } };
   var BOLT_HITS = [ BOLT_HIT, merge(BOLT_HIT, {}),
-    { dmg: 1.7, hitstop: 2.2, knock: 2.2, shake: 3.2, knockdown: true, spark: 1.5, big: true,
+    { dmg: 1.7, hitstop: 2.2, knock: 2.2, shake: 3.2, knockdown: true, spark: 1.5, big: true, hitsDown: true,
       flash: { color: '#ffffff', alpha: 0.5, ms: 150 }, slowMs: 260 } ];
   // 번개 3줄기: 첫 번개 = 3장(내리꽂기) 시작, 그 뒤 gapMs 마다.
   //   aim = 앞쪽 가까운 적을 겨눔: range = 법사 앞 최대 거리, depth = 위아래(안쪽) 몇 도트까지 찾나.
@@ -661,10 +662,11 @@
         bossPush: 0.25,     // 보스는 이만큼만 같이 밀림
         tick:   { dmg: 0.3, hitstop: 0.25, knock: 0.15, shake: 0.35, spark: 0.55, hitY: -50, noJuggle: true, numStyle: 'push', mergeNum: true, flashK: 0.35 },
         charge: { dmg: 1.3, hitstop: 1.6, knock: 6.0, shake: 1.9, spark: 1.1, hitY: -56, noKnockdown: true, crit: true, big: true },
-        slide:  { dmg: 1.2, hitstop: 1.5, knock: 1.6, shake: 1.7, spark: 1.0, hitY: -30, knockdown: true, crit: true, big: true }
+        slide:  { dmg: 1.2, hitstop: 1.5, knock: 1.6, shake: 1.7, spark: 1.0, hitY: -30, knockdown: true, crit: true, big: true, hitsDown: true }   // 슬라이딩 = 바닥을 쓸어서 누운 적도 맞음
       },
       // 공중 공격: 1·2장이 판정. reachDown = 판정 상자를 아래로 더 늘림(원래 크기 도트, 내려치기가 땅 위 적에게 닿게)
-      jumpAttack: { dmg: 1.2, hitstop: 1.1, knock: 1.3, shake: 1.2, spark: 0.9, knockdown: true, reachDown: 34, depth: 10 }
+      //   hitsDown = 떨어지며 내려치기라 누운 적도 맞음(ai.otg)
+      jumpAttack: { dmg: 1.2, hitstop: 1.1, knock: 1.3, shake: 1.2, spark: 0.9, knockdown: true, reachDown: 34, depth: 10, hitsDown: true }
     },
 
     // ---------- 직업 (위쪽 버튼) ----------
@@ -708,7 +710,7 @@
         // f = 사용할 공격 그림 번호(0부터), d = 각 장의 시간(ms), active = 판정 나는 장, cancel = 다음 타로 넘어갈 수 있는 장
         { f: [0, 1, 2, 3, 4], d: [40, 70, 35, 90, 90],        active: [2, 3], cancel: 3, lunge: 4,  dmg: 1.0, hitstop: 1.0, knock: 1.0, shake: 1.0, arc: { from: -100, to: 40,  r: 46, w: 9 } },
         { f: [1, 2, 3, 4],    d: [45, 30, 90, 90],            active: [1, 2], cancel: 2, lunge: 7,  dmg: 1.1, hitstop: 1.0, knock: 1.2, shake: 1.1, arc: { from: -40, to: 60,   r: 50, w: 8, flipY: true } },
-        { f: [0, 1, 1, 2, 3, 3, 4], d: [40, 60, 70, 30, 70, 90, 110], active: [3, 4], cancel: 99, lunge: 16, dmg: 1.7, hitstop: 1.7, knock: 2.4, shake: 2.0, arc: { from: -130, to: 70, r: 58, w: 12 }, finisher: true }
+        { f: [0, 1, 1, 2, 3, 3, 4], d: [40, 60, 70, 30, 70, 90, 110], active: [3, 4], cancel: 99, lunge: 16, dmg: 1.7, hitstop: 1.7, knock: 2.4, shake: 2.0, arc: { from: -130, to: 70, r: 58, w: 12 }, finisher: true, hitsDown: true }
       ]
     },
 
@@ -834,6 +836,17 @@
         lyingMs: 500,         // 넘어짐 그림이 끝난 뒤 더 누워 있는 시간
         getupCoolMs: 600      // 일어난 뒤 바로 공격하지 않는 시간
       },
+      // 누운 적 때리기(OTG, 2026-11-05): 넘어져 누운 적은 짧고 빠른 타(잽·콤보 1·2타)에는 안 맞고(숨 돌릴 틈),
+      //   크게 휘두르는 타·땅까지 닿는 기술(판정 값에 hitsDown: true)에만 맞는다 → 데미지·숫자·작은 불똥·콤보 수. 다시 날아가거나 일어나지 않음.
+      //   hitsDown 붙은 공격: 콤보 마무리 3타 전부(견습 돌려차기·뒤꿈치 내려찍기 / 기사 내려찍기·X자 2번째 / 법사 마법탄 터짐·두 손 폭발)
+      //                      · 법사 남 2타 머리 위 내려치기 · 공중 공격 · 슬라이딩 마무리 · 돌진베기 · 회전베기 · 화염구 터짐 · 번개 3줄기
+      //   안 붙임: 콤보 1·2타(위 내려치기 빼고) · X자 1번째·무릎 같은 가벼운 첫 판정 · 달리며 공격 작은 타·어깨 돌진(몸 높이 밀치기)
+      //   (날아가는 마법탄·화염구 자체는 누운 적 위로 지나감 → 서 있는 적이나 끝에서 터질 때 그 터짐에 맞음)
+      //   맞는 때 = 쓰러지며 밀려나는 그림이 끝나 바닥에 닿은 뒤 ~ 일어나는 그림 전(일어나는 동안은 안 맞음)
+      //   extendMs = 한 번 맞을 때마다 누워 있는 시간 더함, maxExtendK = 더한 시간 합 최대(넘어짐 전체 시간 x 0.4 = 최대 +40%)
+      //   maxHits = 한 번 넘어질 때 누운 채로 맞는 최대 횟수(넘으면 안 맞음 = 무한 콤보 방지), dmgMul = 누운 적 데미지 배율
+      //   보스는 넘어지지 않고 휘청(무릎 꿇음)이라 원래 늘 맞음 → 해당 없음. 순간이동·각성·땅속 무적은 그대로
+      otg: { extendMs: 120, maxExtendK: 0.4, maxHits: 8, dmgMul: 1.0 },
       // 미리 서 있는 적(판 waves 의 placed)이 깨는 조건: 플레이어가 dist 도트 안으로 오면(크기 배율 안 곱함, 화면 도트 그대로)
       //   깨면 머리 위 「!」를 alertMs 동안 보이며 멈춰 있다가 싸움. 같은 무리(group)는 groupDelayMs 안에서 조금씩 늦게 깸
       wake: { dist: 90, alertMs: 300, groupDelayMs: 150 }

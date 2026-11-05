@@ -4,7 +4,7 @@
 // 기술 = 동작(motion, 몸 그림 묶음) + 효과(fx 그림). 판정·효과 시각은 config 에 「장 번호」로 적고 여기서 동작의 ms 로 바꾼다.
 // 동작·효과 그림이 없으면 기존 그림(공격 그림·베기·마법 효과)을 시간만 바꾸거나 색을 물들여서 쓴다(placeholder).
 (function () {
-  var CFG = null, H = null;      // H = main.js 가 넘겨주는 도구 { onHit, targets, dust, fx, hitstop, slow }
+  var CFG = null, H = null;      // H = main.js 가 넘겨주는 도구 { onHit, targets, canHit(누운 적은 hitsDown 만), dust, fx, hitstop, slow }
   var cache = {};
   var bolts = [], rings = [], ghosts = [], arts = [];   // arts = 효과 그림(따라다니기·돌리기·날아가기·캐릭터 뒤)
   // 2026-11-03 HD 화려하게: waves = 퍼지는 충격파 고리(땅 = 납작한 타원 / 공중 = 원), parts = 튀는 파편·불티(중력), glows = 번쩍 빛(더하기)
@@ -194,7 +194,7 @@
     var A = K.aim; if (!A) return null;
     var list = [];
     H.targets().forEach(function (t) {
-      if (!t || t.isProp || (t.canBeHit && !t.canBeHit()) || (t.alive && !t.alive())) return;
+      if (!t || t.isProp || !H.canHit(t, K.hits[0]) || (t.alive && !t.alive())) return;
       var dx = (t.x - p.x) * p.dir;
       if (dx < -6 * AS() || dx > A.range || Math.abs(t.y - p.y) > A.depth) return;
       list.push({ t: t, d: Math.abs(dx) + Math.abs(t.y - p.y) * 0.5 });
@@ -289,7 +289,7 @@
     H.targets().forEach(function (t) {
       if (!t) return;
       var id = t.id || 'dummy';
-      if (done[id] || (t.canBeHit && !t.canBeHit())) return;
+      if (done[id] || !H.canHit(t, h)) return;
       if (!overlap(box, t.hurtbox())) return;
       done[id] = true;
       var dir = p.dir;
@@ -390,7 +390,7 @@
     debris(pr.x, pr.y + 6 * AS(), pr.z, 9, { cols: ['#5a3a26', '#7a5236', '#3e2a1e'], sp: 170, size: 2.6, ms: 800 });
     var st = stOf(c.hit, S.d), any = false;
     H.targets().forEach(function (t) {
-      if (!t || (t.canBeHit && !t.canBeHit())) return;
+      if (!t || !H.canHit(t, c.hit)) return;
       var hb = t.hurtbox();
       if (t !== direct) {
         if (Math.abs(hb.z - pr.z) > b.depth) return;
@@ -420,7 +420,7 @@
     if (h.flash) doFlash(h.flash);
     var st = stOf(h, d), any = false;
     H.targets().forEach(function (t) {
-      if (!t || (t.canBeHit && !t.canBeHit())) return;
+      if (!t || !H.canHit(t, h)) return;
       var hb = t.hurtbox();
       if (Math.abs(hb.z - z) > K.depth) return;
       if (x < hb.x0 - K.r || x > hb.x1 + K.r) return;

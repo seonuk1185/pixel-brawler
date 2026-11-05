@@ -104,6 +104,18 @@
     if (this.diveAir()) return !!(this.lastP && (this.lastP.z || 0) > this.atk.spec.jumpZ);
     return !this.airborne();
   };
+  // 누운 적 때리기(OTG, config ai.otg): 땅까지 닿는 공격(hitsDown)이면 누워 있는 동안도 맞음
+  //   맞는 때 = 쓰러지며 밀려나는 그림이 끝난 뒤(바닥에 닿음) ~ 일어나는 그림 전. 한 번 넘어질 때 maxHits 번까지
+  Enemy.prototype.canBeHitDown = function () {
+    if (this.state !== 'down' || this.hidden) return false;
+    var O = this.cfg.ai.otg; if (!O) return false;
+    var DT = this.downTimes();
+    return this.downT >= DT.slide && this.downT < DT.kd + DT.lying && (this.otgHits || 0) < O.maxHits;
+  };
+  // 이 공격(st)에 맞을 수 있나: 보통은 canBeHit, 땅까지 닿는 공격은 누운 적도
+  Enemy.prototype.canBeHitBy = function (st) {
+    return this.canBeHit() || !!(st && st.hitsDown && this.canBeHitDown());
+  };
   // 공중(두꺼비 배치기 leap 의 뛰는 그림 2·3장 / 와이번 날아오름~떨어짐): 안 맞고, 몸끼리 안 밀림(main.js separate)
   Enemy.prototype.airborne = function () {
     var a = this.atk;
@@ -149,7 +161,8 @@
     var lie = (this.T.down && this.T.down.lyingFrames) ? this.T.down.lyingFrames[0] : 3;
     var k = pb ? pb.indexOf(lie) : lie - 1;
     var G = this.T.anims.getup, gl = ((G.playback ? G.playback.length : this.art.getup.length) * 1000 / G.fps);
-    return { kd: kd, slide: Math.max(step, (k < 0 ? 3 : k) * step), lying: this.cfg.ai.react.lyingMs, getup: gl };
+    // lying 에 누운 채 맞아서 늘어난 시간(downExtra, 최대 넘어짐 전체 x ai.otg.maxExtendK)을 더함
+    return { kd: kd, slide: Math.max(step, (k < 0 ? 3 : k) * step), lying: this.cfg.ai.react.lyingMs + (this.downExtra || 0), getup: gl };
   };
 
   Enemy.prototype.startStagger = function () {
@@ -206,7 +219,21 @@
   Enemy.prototype.takeHit = function (dmg, dir, knockPx, finisher, opts) {
     opts = opts || {};
     if (!this.alive()) return null;
-    if (this.state === 'down' && !opts.force) return null;
+    if (this.state === 'down' && !opts.force) {
+      // 누운 적 때리기(opts.otg = 땅까지 닿는 공격, config ai.otg): 데미지만, 다시 날아가거나 일어나지 않음. 누워 있는 시간은 조금만 늘림
+      if (!opts.otg || !this.canBeHitDown()) return null;
+      var O = this.cfg.ai.otg, D0 = this.downTimes(), base = D0.kd + D0.lying - (this.downExtra || 0) + D0.getup;
+      this.otgHits = (this.otgHits || 0) + 1;
+      this.hp = Math.max(0, this.hp - dmg);
+      this.flashT = this.cfg.juice.flashMs * 0.6;
+      this.downExtra = Math.min(base * O.maxExtendK, (this.downExtra || 0) + O.extendMs);
+      if (this.hp <= 0) {   // 누운 채로 죽음(아래 죽음 길과 같음: 일어나지 않고 그 자리에 누운 채로)
+        this.deadImg = this.currentImg();
+        this.state = 'dead'; this.deadT = 0; this.atk = null; this.vx = 0;
+        return 'dead';
+      }
+      return 'otg';
+    }
     if (this.hidden && !opts.force) return null;   // 땅속(전갈 왕)
     if (this.state === 'awaken' && !opts.force) return null;   // 각성 중(10단계 마왕)
     this.asleep = false; this.alertT = 0;   // 자다가 맞으면 바로 깸(「!」 없이)
@@ -244,6 +271,7 @@
       if (!opts.noJuggle) this.recentHits.push(now);
       if (this.hasAnim('knockdown') && (finisher || opts.heavy || (!opts.noJuggle && this.recentHits.length >= R.juggleHits))) {
         this.state = 'down'; this.downT = 0; this.animT = 0; this.atk = null; this.vx = 0;
+        this.downExtra = 0; this.otgHits = 0;   // 누운 채 맞은 횟수·늘어난 시간은 넘어질 때마다 새로
         this.dir = -dir; this.recentHits = [];
         return 'down';
       }
