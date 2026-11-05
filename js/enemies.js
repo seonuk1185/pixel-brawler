@@ -618,8 +618,11 @@
     // 화염 충격파(9단계 마왕군 장군): spawnFrame(3장 칼을 발 앞에 꽂음)에서 꽂은 자리(spawn)를 가운데로 불꽃 고리 rings.count 개(화나면 enraged.count, gapMs 씩 늦게, main.js ctx.shockwave)
     //   → holdFrame(4장 무릎 꿇고 칼 짚음)에서 고리가 거의 다 퍼질 때까지 멈춤(그동안 = 고리를 넘은 플레이어가 때릴 기회) → 5장 칼 뽑음
     if (spec.type === 'shockwave') {
+      // 2026-11-06 기 모으기(디아블로처럼): 꽂기 전까지 가볍게 땅이 울림(점점 세게). 그림은 draw 의 drawCharge
+      if (!a.fired) { a.rumT = (a.rumT || 0) - dtMs; if (a.rumT <= 0) { a.rumT = 120; ctx.shake(0.15 + 0.35 * Math.max(0, this.chargeK())); } }
       if (!a.fired && fr.no >= spec.spawnFrame) {
         a.fired = true; ctx.shake(spec.shake || 1);
+        this.releaseFx(this.x + this.dir * spec.spawn.x, this.y);   // 꽂는 순간 번쩍 + 빛기둥(우리 그림 demon_release)
         var RG = spec.rings, cnt = (this.enraged && spec.enraged && spec.enraged.count) || RG.count;
         if (ctx.shockwave) ctx.shockwave(this, spec, this.x + this.dir * spec.spawn.x, this.y, cnt);
         if (ctx.debris) ctx.debris(this.x + this.dir * spec.spawn.x, this.y, 10, ['#ffd060', '#ff8a2a', '#3a2a2a', '#5a4a44']);   // 돌 조각 + 불씨
@@ -1152,6 +1155,8 @@
     if (faded) alpha *= 0.6;
     var auk = this.auraK();       // 10단계 마왕 각성 오라: 몸 뒤에(먼저) 그림
     if (auk > 0) this.drawAura(g, x, y, auk);
+    var chk = this.chargeK();     // 9단계 장군 기 모으기(0~1, 아니면 -1): 몸 뒤 땅 금·불꽃
+    if (chk >= 0) this.drawCharge(g, x, y, chk, 'ground');
     g.save();
     g.globalAlpha = alpha;
     g.translate(x, y + by - snapPx(fz));
@@ -1168,8 +1173,13 @@
       Assets.blit(g, img, T.pivot.x, T.pivot.y, s);
     }
     if (this.state === 'attack' && this.atk.spec.type === 'breath') this.drawBreath(g);   // 불 뿜기: 입 앞 불길(몸과 같은 좌표 = 왼쪽을 보는 그림 기준)
+    if (chk > 0) {   // 기 모으기: 몸이 점점 붉게 물듦(실루엣을 붉게 칠해 겹침)
+      g.globalAlpha = alpha * 0.5 * chk * (0.85 + 0.15 * Math.sin(this.clock / 50));
+      Assets.blit(g, img, T.pivot.x, T.pivot.y, redSilhouette(img));
+    }
 
     g.restore();
+    if (chk >= 0) this.drawCharge(g, x, y, chk, 'body');
     // 보스 휘청: 가슴 핵 주황 빛(1·2·4 장, 3장 = 핵 꺼짐 = 때릴 기회). core.x = 앞 +
     var CO = T.stagger && T.stagger.core;
     if (CO && this.state === 'stagger' && this.staggerIdx() !== 2) {
@@ -1202,6 +1212,44 @@
       g.fillStyle = '#0f0'; g.fillRect(x - 1, y - 1, 3, 3);
     }
   };
+
+  // ---------- 9단계 장군 기 모으기·터뜨림 (2026-11-06, 우리가 그린 그림 skillFx demon_charge_* / demon_release) ----------
+  // 기 모으기 정도: 화염 충격파 공격에서 칼을 꽂기 전(spawnFrame 전)이면 0~1, 아니면 -1
+  Enemy.prototype.chargeK = function () {
+    var a = this.atk;
+    if (this.state !== 'attack' || !a || a.spec.type !== 'shockwave' || a.fired) return -1;
+    var WA = this.T.anims[a.spec.anim], plantMs = WA.playback.indexOf(a.spec.spawnFrame) * 1000 / WA.fps;
+    return Math.max(0, Math.min(1, a.t / Math.max(1, plantMs)));
+  };
+  function ourFx(name) {
+    var F = window.GAME && GAME.assets && GAME.assets.fx, fr = F && F['skill_' + name], M = window.CFG && CFG.magic['skill_' + name];
+    return fr && fr.length && M ? { fr: fr, pivot: M.pivot, fps: M.fps } : null;
+  }
+  // layer 'ground' = 땅 금 + 몸 뒤 솟는 불꽃(몸보다 먼저), 'body' = 발 앞 낮은 불꽃 + 모여드는 불씨(몸 다음). 기준점 = 발
+  //   그림은 장군 그림처럼 왼쪽을 보는 기준 → 오른쪽을 보면(dir +1) 뒤집음
+  Enemy.prototype.drawCharge = function (g, x, y, k, layer) {
+    var A = ourFx('demon_charge_' + layer);
+    if (!A) return;
+    var im = A.fr[Math.min(A.fr.length - 1, Math.floor(k * A.fr.length))];
+    g.save(); g.translate(x, y); g.scale(this.dir > 0 ? -1 : 1, 1);
+    Assets.blit(g, im, A.pivot.x, A.pivot.y); g.restore();
+  };
+  // 칼 꽂는 순간: 꽂은 자리(px = 바닥)에 번쩍 + 빛기둥. 그림 속 빛기둥은 기준점 오른쪽 6 → 그만큼 옮겨서 꽂은 자리에 맞춤
+  Enemy.prototype.releaseFx = function (px, py) {
+    var A = ourFx('demon_release');
+    if (!A || !window.FX) return;
+    var flip = this.dir > 0;
+    FX.sprite(px - (flip ? -6 : 6), py, A.fr, A.fps, A.pivot, flip, false, 1);
+  };
+  // 그림 한 장의 붉은 실루엣(기 모으기 물듦, 그림마다 한 번만 만듦)
+  function redSilhouette(img) {
+    if (img._red) return img._red;
+    var c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+    var cg = c.getContext('2d'); cg.drawImage(img, 0, 0);
+    cg.globalCompositeOperation = 'source-in'; cg.fillStyle = '#ff2a10'; cg.fillRect(0, 0, c.width, c.height);
+    img._red = c;
+    return c;
+  }
 
   // 불 뿜기 불길(fxArt[fx.art], 7단계 와이번): 불길 장(active) 동안 입 앞 attach(앞 +)에 그림 기준점(오른쪽 잘린 면)을 붙이고
   //   앞으로 segW 마다 segments 개 이어 그림. 처음 growMs 동안 입에서 앞으로 뻗어 나감(가로로 늘어남). 지금 좌표 = 왼쪽을 보는 그림 기준(앞 = -x)

@@ -952,7 +952,7 @@
   //   그림 = 장군 fxArt[s.fx] 를 가로 r / ringRx, 세로 min(1, r / ringRx) x flameScale 배로(1장 = 처음 80ms, 2·3장 반복, 4장 = 70%, 5장 = 90% 뒤). 보스가 쓰러지면 사라짐
   var rings = [];
   function shockwave(e, s, cx, cy, n) {
-    for (var i = 0; i < n; i++) rings.push({ e: e, s: s, x: cx, y: clamp(cy, world.laneTop, world.laneBottom), t: -i * s.rings.gapMs, hit: false });
+    for (var i = 0; i < n; i++) rings.push({ e: e, s: s, x: cx, y: clamp(cy, world.laneTop, world.laneBottom), t: -i * s.rings.gapMs, hit: false, seed: 33 + i * 17 + Math.floor(Math.random() * 1000) });
   }
   function ringR(q) { var R = q.s.rings; return Math.min(R.rMax, R.r0 + R.speed * Math.max(0, q.t) / 1000); }
   function ringLife(q) { var R = q.s.rings; return (R.rMax - R.r0) / R.speed * 1000; }
@@ -979,6 +979,14 @@
   function addRingDraw(ents, camX) {
     rings.forEach(function (q) {
       if (q.t < 0) return;
+      // 2026-11-06: 우리가 코드로 그린 지옥불 고리(js/fxdraw.js) — 매 장면 지금 반지름으로 새로 그림(늘이지 않음). 밝은 테두리 = 맞는 띠.
+      //   먼 쪽 반(가운데 줄 위) = 고리 뒤쪽 끝 깊이, 가까운 쪽 반 = 앞쪽 끝 깊이로 따로 줄 세움 → 고리 안에 선 캐릭터는 뒤쪽 불꽃 앞·앞쪽 불꽃 뒤
+      if (window.FXDraw) {
+        var R0 = q.s.rings, ry0 = Math.max(1, Math.min(ringR(q), R0.ringRx) / R0.ringRx * R0.ryMax);
+        ents.push({ y: q.y - ry0, d: function () { FXDraw.nova(ctx, q, R0, q.x - camX, q.y, q.t, q.seed, 'back'); } });
+        ents.push({ y: q.y + ry0, d: function () { FXDraw.nova(ctx, q, R0, q.x - camX, q.y, q.t, q.seed, 'front'); } });
+        return;
+      }
       ents.push({ y: q.y, d: function () {
         var R = q.s.rings, r = ringR(q), u = q.t / ringLife(q), x = snap(q.x - camX), y = snap(q.y);
         var F = G.assets.enemyFx && G.assets.enemyFx[q.e.type], A = F && F[q.s.fx];
