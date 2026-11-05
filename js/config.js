@@ -682,6 +682,14 @@
       // , axe: { label: '도끼', weapon: 'axe', moves: 'sword' }
     },
     defaultClass: 'novice',
+    // 전직 화면 카드(2026-11-06): 고를 수 있는 직업(위 classes 이름) + 「준비 중」 회색 카드. desc = 카드 밑 짧은 설명
+    classChange: [
+      { key: 'knight', name: '기사', weapon: '검', desc: '튼튼한 갑옷과 검. 앞으로 파고들어 베는 근접 싸움꾼' },
+      { key: 'mage',   name: '법사', weapon: '지팡이', desc: '마법탄과 폭발로 여러 적을 한꺼번에. 몸은 약하지만 멀리서 강함' },
+      { name: '맨손파이터', soon: true, desc: '주먹과 발차기의 달인' },
+      { name: '도적', soon: true, desc: '빠른 단검과 함정' },
+      { name: '소환사', soon: true, desc: '동료를 불러 함께 싸움' }
+    ],
 
     // ---------- 무기별 손맛 (맨손 = 가볍게 툭, 검 = 스윽 빠르게, 도끼 = 쾅 무겁게) ----------
     weapons: {
@@ -815,6 +823,10 @@
       xp: { mob: 10, tough: 15, elite: 40, boss: 150, king: 300 },
       toughHp: 75, eliteHp: 200,
       kind: { mage: 'tough' },
+      // 전직(2026-11-06, 설계안 3번): 이 id 의 판 보스를 처음 깨면 전직 화면(main.js) → 기사/법사 중 하나, 한 번 고르면 이 저장칸에선 못 바꿈.
+      //   이미 이 판을 깬 저장인데 직업이 없으면 다음 스테이지 고르기·시작 때 뜸. 고른 직업 = 저장칸(growth.js)의 class
+      //   위쪽 견습/기사/법사 버튼은 시험 도구: stagesAllOpen 이 true 일 때만 보이고, 눌러도 저장된 직업은 안 바뀜(이번 창에서만 덮어씀)
+      classChangeStage: 2,
       // 레벨업 연출: 머리 위 「LEVEL UP!」 글자(damageText.levelup) + 짧은 화면 번쩍(flash) + 반짝 불똥(sparkCol)
       levelUp: { flash: { color: '#fff3b0', alpha: 0.28, ms: 260 }, sparkCol: '#ffe066' }
     },

@@ -33,6 +33,7 @@ body.smooth #screen { image-rendering: auto; }
   font: inherit; font-size: 13px; font-weight: 700; color: #bbb; background: transparent;
   border: 0; padding: 6px 11px; cursor: pointer;
 }
+.seg[hidden] { display: none; }
 .seg button.on { background: #f2c14e; color: #2a1a12; }
 /* 좁은 화면(폰 세로 등): 직업 버튼의 괄호 설명을 숨기고 버튼을 조금 작게 → 한 줄에 다 들어가게 */
 @media (max-width: 560px) {
@@ -142,6 +143,47 @@ body.smooth #screen { image-rendering: auto; }
   .stagesel h2 { font-size: 20px; margin-bottom: 8px; }
   .sbtn { width: 84px; min-height: 64px; }
   .shint { margin-top: 8px; }
+}
+
+/* 전직 화면 (2026-11-06): 결과 화면·위 고르기 버튼보다 위. 기사·법사 큰 카드(움직이는 모습) + 준비 중 회색 카드 3장 */
+.classsel { position: fixed; inset: 0; z-index: 32; display: flex; align-items: center; justify-content: center; background: #0a0812d8; padding: 10px; }
+.classsel[hidden] { display: none; }
+.classsel .box { text-align: center; padding: 14px 18px; background: #1c1628f2; border: 3px solid #c8962a; border-radius: 10px; max-width: 96vw; max-height: 100%; overflow: auto; }
+.classsel h2 { margin: 0 0 4px; font-size: 28px; letter-spacing: 4px; color: #ffd23f; text-shadow: 3px 3px 0 #2a1020; }
+.chint { margin: 0 0 10px; font-size: 13px; color: #ddd; }
+.chint b { color: #ffb0a0; }
+.clist { display: flex; gap: 10px; justify-content: center; align-items: stretch; margin-bottom: 12px; }
+.ccard {
+  font: inherit; width: 168px; padding: 8px 8px 10px; border-radius: 10px; border: 3px solid #0008; cursor: pointer;
+  background: #2e2744; color: #eee; display: flex; flex-direction: column; align-items: center; gap: 3px;
+}
+.ccard canvas { width: 120px; height: 120px; background: radial-gradient(#4a4068, #2a2440 70%); border-radius: 8px; }
+.ccard b { font-size: 20px; font-weight: 900; color: #ffd23f; }
+.ccard .wp { font-size: 12px; font-weight: 800; color: #bfe0ff; }
+.ccard .d { font-size: 11px; line-height: 1.35; color: #ccc; }
+.ccard.on { border-color: #ffd23f; background: #463a22; box-shadow: 0 0 0 3px #ffd23f55; }
+.ccard:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+.ccard.soon { width: 100px; cursor: default; background: #262230; color: #8a82a6; }
+.ccard.soon .ph { width: 64px; height: 64px; margin: 8px 0 6px; border-radius: 8px; background: #1a1724; display: flex; align-items: center; justify-content: center; font-size: 30px; font-weight: 900; color: #4a4460; }
+.ccard.soon b { font-size: 14px; color: #8a82a6; }
+.ccard.soon .tag { font-size: 11px; font-weight: 800; background: #3a3350; color: #bbb; padding: 1px 6px; border-radius: 6px; }
+.ccard.soon .d { color: #777; }
+#btnClassOk { min-width: 220px; min-height: 44px; }
+#btnClassOk:disabled { background: #3a3350; color: #8a82a6; cursor: default; }
+@media (max-height: 420px) {
+  .classsel h2 { font-size: 20px; }
+  .chint { margin-bottom: 6px; font-size: 12px; }
+  .clist { margin-bottom: 8px; }
+  .ccard { width: 150px; padding: 6px 6px 8px; }
+  .ccard canvas { width: 96px; height: 96px; }
+  .ccard.soon { width: 92px; }
+  .ccard.soon .ph { width: 48px; height: 48px; margin: 4px 0; font-size: 24px; }
+}
+/* 폰 세로처럼 좁으면: 준비 중 카드는 작게 아래 줄로 */
+@media (max-width: 600px) {
+  .clist { flex-wrap: wrap; }
+  .ccard { width: 44%; }
+  .ccard.soon { width: 30%; }
 }
 
 .combo {

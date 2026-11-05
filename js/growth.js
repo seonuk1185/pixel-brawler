@@ -1,6 +1,7 @@
 // 성장: 레벨·경험치 계산 + 저장 (2026-11-05, 기획\성장시스템-설계안.md 1·2단계). 수치는 config.js 의 growth
 //   main.js 가 쓰는 것: Growth.lv / xp / need() / maxHp() / atkMul() / enemyXp(적, 판 순서) / gain(경험치) / isMax()
-//   저장 = 이 브라우저 localStorage 'pixelBrawler.save' = { v: 1, slot: 1, slots: { 1: { lv, xp } } }
+//   저장 = 이 브라우저 localStorage 'pixelBrawler.save' = { v: 1, slot: 1, slots: { 1: { lv, xp, class } } }
+//     class = 전직한 직업('knight' / 'mage', 2026-11-06). 없으면 견습(맨손). 한 번 정하면 setClass 가 안 바꿈(새 저장칸에서 다른 직업)
 //     지금은 1번 칸만 씀(저장칸 고르기 화면은 나중). 깬 판 목록(pixelBrawler.clearedIds)은 예전 그대로 따로 둠 → 예전 저장 안 깨짐
 //     저장이 막혀 있어도(사생활 보호 창 등) 게임은 됨: 이번에 연 동안만 기억
 //   시험: 주소 뒤 ?lv=N = 이번 창에서만 LvN(경험치 0)으로 시작, 저장 안 함(저장된 레벨은 그대로)
@@ -25,6 +26,7 @@
   var cur = data.slots[data.slot] || {};
   var G = {
     lv: clampLv(cur.lv || 1),
+    cls: CFG.classes[cur['class']] && cur['class'] !== 'novice' ? cur['class'] : null,   // 전직한 직업(없으면 null = 견습)
     xp: 0,
     noSave: false,      // ?lv=N 시험 중이면 true(저장 안 함)
     need: function (lv) { return need(lv == null ? G.lv : lv); },
@@ -53,9 +55,15 @@
       G.save();
       return up;
     },
+    // 전직: 이 저장칸에 직업을 한 번만 정함(이미 있으면 안 바꿈 → false)
+    setClass: function (k) {
+      if (G.cls || !CFG.classes[k] || k === 'novice') return false;
+      G.cls = k; G.save();
+      return true;
+    },
     save: function () {
       if (G.noSave) return;
-      data.slots[data.slot] = { lv: G.lv, xp: G.xp };
+      data.slots[data.slot] = { lv: G.lv, xp: G.xp, 'class': G.cls };
       try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch (e) {}
     },
     // 시험용: 지금 저장 내용 그대로

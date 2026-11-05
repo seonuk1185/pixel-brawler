@@ -27,7 +27,8 @@
       <button type="button" data-char="male" class="on">남</button>
       <button type="button" data-char="female">여</button>
     </div>
-    <div class="seg" aria-label="직업">
+    <!-- 직업 버튼은 시험 도구(2026-11-06): CFG.stagesAllOpen 이 true 일 때만 보임. 눌러도 저장된 직업(전직)은 안 바뀜 -->
+    <div class="seg" id="classSeg" aria-label="직업">
       <button type="button" data-class="novice" class="on">견습<span class="sub">(맨손)</span></button>
       <button type="button" data-class="knight">기사<span class="sub">(검)</span></button>
       <button type="button" data-class="mage">법사<span class="sub">(지팡이)</span></button>
@@ -62,6 +63,16 @@
       <h2>스테이지 선택</h2>
       <div class="slist" id="stageList"></div>
       <p class="shint">←→ 고르기 · Enter / J 시작</p>
+    </div>
+  </div>
+  <!-- 전직 화면 (2026-11-06): 2단계 보스를 처음 깨면 한 번. 카드는 main.js 가 CFG.classChange 로 만듦(기사·법사 = 그 옷 입고 움직이는 모습, 나머지 = 준비 중).
+       카드를 고르고 → 아래 「전직하기」(바꿀 수 없어요) → 저장칸에 직업 저장 -->
+  <div class="classsel" id="classSel" hidden>
+    <div class="box">
+      <h2>전직</h2>
+      <p class="chint">견습 시절은 끝! 앞으로 함께할 직업을 고르세요. <b>한 번 고르면 바꿀 수 없어요.</b></p>
+      <div class="clist" id="classList"></div>
+      <div class="rbtns"><button type="button" id="btnClassOk" disabled>직업을 골라 주세요</button></div>
     </div>
   </div>
   <div class="combo" id="combo" hidden></div>

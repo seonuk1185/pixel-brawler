@@ -1463,7 +1463,10 @@
       '<br>얻은 경험치 <b>' + (G.xpGot || 0) + '</b> · <b>Lv ' + Growth.lv + '</b>';
     var nx = document.getElementById('btnNext');
     nx.hidden = !(clear && !last && !end);
-    openMenu(resultEl, clear && !last && !end ? nx : clear ? document.getElementById('btnSel') : document.getElementById('btnRetry'));
+    var focus = clear && !last && !end ? nx : clear ? document.getElementById('btnSel') : document.getElementById('btnRetry');
+    // 전직(2026-11-06): 2단계 보스를 처음 깸 + 아직 직업 없음 → 전직 화면 먼저, 고르고 나면 결과 화면
+    if (needClassChange()) { resultEl.hidden = true; openClassChange(function () { openMenu(resultEl, focus); }); }
+    else openMenu(resultEl, focus);
   }
   // 판 바꾸기: 그 판 배경·소품·적 그림을 (필요하면) 불러온 뒤 처음부터. 플레이어 직업·성별·옷은 그대로, 체력은 가득
   function useStage(n) {
@@ -1542,6 +1545,7 @@
   // 스테이지 고르기 화면: 열린 판만 누를 수 있음(잠긴 판 = 회색). 고르는 동안 게임은 멈춤
   var selEl = document.getElementById('stageSel');
   function openStageSelect() {
+    if (needClassChange()) { G.paused = true; closeMenu(resultEl); openClassChange(openStageSelect); return; }   // 2단계를 깼는데 직업이 없음 → 전직 먼저
     var list = document.getElementById('stageList'), cleared = loadCleared(), focus = null;
     list.innerHTML = '';
     STAGES.forEach(function (st, i) {
@@ -1581,7 +1585,11 @@
   }
 
   // ---------- 고르기 버튼 ----------
+  // 직업 버튼(견습/기사/법사)은 시험 도구(2026-11-06): 모든 판을 열어 둔 시험 기간(stagesAllOpen)에만 보임.
+  //   눌러도 이번 창의 옷·무기만 바뀌고 저장된 직업(Growth.cls)은 그대로
   function bindToggles() {
+    var seg = document.getElementById('classSeg');
+    if (seg) seg.hidden = !CFG.stagesAllOpen;
     document.querySelectorAll('[data-char]').forEach(function (b) {
       b.addEventListener('click', function () { setChar(b.dataset.char); b.blur(); });
     });
@@ -1643,6 +1651,81 @@
     document.querySelectorAll('[data-class]').forEach(function (b) { b.classList.toggle('on', b.dataset.class === k); });
     return pr;
   }
+  // ---------- 전직 (2026-11-06, 설계안 3번 · config growth.classChangeStage / classChange) ----------
+  // 뜨는 때: 판 모드 + 아직 직업 없음(Growth.cls) + 전직 판(2단계)을 깬 저장. 시험 자동 조종(?bot=1)은 안 띄움(멈추지 않게)
+  //   → 2단계 보스를 처음 깬 결과 화면 직전 · 이미 깬 저장이면 다음 스테이지 고르기·바로 시작(?stage=N) 때. 고르면 Growth.cls 가 생겨 다시는 안 뜸
+  function needClassChange() { return MODE === 'stage' && !G.bot && !Growth.cls && isCleared(CFG.growth.classChangeStage); }
+  var classEl = document.getElementById('classSel'), classAnim = 0;
+  // 카드 속 움직이는 모습: 그 직업 옷(지금 성별) + 직업 무기를 든 작은 플레이어를 숨 쉬는(idle) 그림으로 계속 그림
+  function classPreview(cv, k) {
+    var c = CFG.classes[k], key = c.outfit + '_' + G.charKey, g = cv.getContext('2d');
+    cv.width = 240; cv.height = 240;   // 75 x 75 도트를 3.2배 점으로(작은 카드에서도 크게, HD 그림이라 또렷함)
+    return Assets.ensureChar(CFG.art.characters[key] ? key : G.charKey).then(function (a) {
+      if (!a) return null;
+      bakeFilter(a);
+      var p = new Player(CFG);
+      p.setCharacter(a); p.weaponKey = classWeapon(c); p.moveSet = c.moves;
+      p.x = 33; p.y = 71; p.dir = 1;
+      return function (dt) {
+        p.animT += dt / 1000;
+        g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, cv.width, cv.height);
+        g.setTransform(3.2, 0, 0, 3.2, 0, 0); g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+        p.draw(g, 0, G.assets.weapons, false);
+      };
+    });
+  }
+  // 이름 뒤 「로/으로」: 받침이 있으면(ㄹ 받침 빼고) 으로 (기사로 / 법사로 / 소환사로)
+  function josaRo(name) {
+    var c = name.charCodeAt(name.length - 1), j = c >= 0xac00 && c <= 0xd7a3 ? (c - 0xac00) % 28 : 0;
+    return name + (j && j !== 8 ? '으로' : '로');
+  }
+  // 전직 화면 열기. after = 고른 뒤 할 일(결과 화면 / 스테이지 고르기 / 게임 계속). 고르는 동안 게임은 멈춤
+  function openClassChange(after) {
+    var list = document.getElementById('classList'), ok = document.getElementById('btnClassOk'), pick = null, draws = [];
+    var wasPaused = G.paused;
+    G.paused = true; Input.setOverride(null);
+    list.innerHTML = '';
+    ok.disabled = true; ok.textContent = '직업을 골라 주세요';
+    (CFG.classChange || []).forEach(function (q) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      if (q.soon) {   // 준비 중: 회색, 누를 수 없음
+        b.className = 'ccard soon'; b.disabled = true;
+        b.innerHTML = '<div class="ph">?</div><b>' + q.name + '</b><span class="tag">준비 중</span><span class="d">' + q.desc + '</span>';
+      } else {
+        b.className = 'ccard'; b.dataset.k = q.key;
+        b.innerHTML = '<canvas></canvas><b>' + q.name + '</b><span class="wp">(' + q.weapon + ')</span><span class="d">' + q.desc + '</span>';
+        classPreview(b.querySelector('canvas'), q.key).then(function (d) { if (d) draws.push(d); });
+        b.addEventListener('click', function () {
+          pick = q;
+          list.querySelectorAll('.ccard').forEach(function (x) { x.classList.toggle('on', x === b); });
+          ok.disabled = false; ok.textContent = josaRo(q.name) + ' 전직하기 · 바꿀 수 없어요';
+        });
+      }
+      list.appendChild(b);
+    });
+    ok.onclick = function () {
+      if (!pick) return;
+      Growth.setClass(pick.key);   // 저장칸에 직업 저장(한 번만)
+      setClass(pick.key);          // 옷·무기·콤보 바꿈
+      cancelAnimationFrame(classAnim); classAnim = 0;
+      closeMenu(classEl);
+      G.paused = wasPaused;
+      banner(josaRo(pick.name) + ' 전직했다!', 'small');
+      Skills.flash({ color: '#fff3b0', alpha: 0.45, ms: 420 });
+      ok.blur();
+      if (after) after();
+    };
+    var lastT = 0;
+    (function anim(now) {
+      var dt = lastT ? Math.min(100, now - lastT) : 0; lastT = now;
+      draws.forEach(function (d) { d(dt); });
+      classAnim = requestAnimationFrame(anim);
+    })(performance.now());
+    openMenu(classEl, list.querySelector('.ccard:not([disabled])'));
+  }
+  G.openClassChange = function () { openClassChange(null); };
+
   // 무기만 바꾸기(디버그·나중용): 콤보 묶음은 그대로
   function setWeapon(k) { if (CFG.weapons[k]) G.weaponKey = k; }
   G.setChar = function (k) { return setChar(k); };
@@ -1777,7 +1860,8 @@
   }
 
   // 처음 불러올 것: 지금 고른 옷 하나(나머지 옷은 시작한 뒤 뒤에서 하나씩). 예전 견습 그림(?art=novice)은 둘 다
-  G.classKey = CFG.defaultClass || 'novice';
+  // 처음 직업 = 저장칸에 전직한 직업(없으면 견습)
+  G.classKey = Growth.cls || CFG.defaultClass || 'novice';
   var firstChars = CFG.artSet === 'novice' ? Object.keys(CFG.art.characters) : [outfitKey()];
   if (loadEl) {
     var lbar = loadEl.querySelector('i');
@@ -1807,7 +1891,7 @@
     G.player.y = Math.round((world.laneTop + world.laneBottom) / 2);
     if (G.dummy) G.dummy.y = G.player.y;
     G.camX = Math.max(0, G.player.x - LW * 0.42);
-    setChar('male'); setClass(CFG.defaultClass || 'novice');
+    setChar('male'); setClass(Growth.cls || CFG.defaultClass || 'novice');
     if (MODE === 'stage') {
       hudEl.hidden = false;
       // 처음: 고르기 화면(뒤에 그 판이 멈춰 보임). ?stage=N 이나 ?bot=1 이면 바로 시작
@@ -1818,6 +1902,7 @@
       document.getElementById('btnSel').addEventListener('click', function () { openStageSelect(); this.blur(); });
       if (params.get('god') === '1') G.player.god = true;
       if (pick) openStageSelect();
+      else if (needClassChange()) openClassChange(null);   // ?stage=N 으로 바로 시작했는데 전직 안 한 저장(2단계 깸)
     }
     modeLink();
     bindToggles();
