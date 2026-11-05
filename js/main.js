@@ -586,10 +586,12 @@
       ctx.fillStyle = I.king ? '#8a2aff' : '#d81828';
       var sh = (I.t / 18) % 16;
       for (var x = -32 + sh * dir; x < LW + 32; x += 16) { ctx.beginPath(); ctx.moveTo(x, y + h); ctx.lineTo(x + 6, y + h); ctx.lineTo(x + 6 + h * 0.6, y); ctx.lineTo(x + h * 0.6, y); ctx.closePath(); ctx.globalAlpha = 0.55; ctx.fill(); }
-      ctx.globalAlpha = 1; ctx.fillRect(-4, y, LW + 8, 1); ctx.fillRect(-4, y + h - 1, LW + 8, 1);
+      // 위아래 금테(UI A: 금 2줄 + 검은 테)
+      ctx.globalAlpha = 1; ctx.fillStyle = '#140a04'; ctx.fillRect(-4, y - 1, LW + 8, 1); ctx.fillRect(-4, y + h, LW + 8, 1);
+      ctx.fillStyle = I.king ? '#d8b0ff' : '#f2c14e'; ctx.fillRect(-4, y, LW + 8, 1); ctx.fillRect(-4, y + h - 1, LW + 8, 1);
       if (Math.floor(I.t / 160) % 2 === 0 || u > 0.3) {
-        ctx.font = 'bold ' + Math.round(h * 0.72) + 'px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.lineWidth = 3; ctx.strokeStyle = '#1a0006'; ctx.fillStyle = '#ffffff';
+        ctx.font = '700 ' + Math.round(h * 0.72) + 'px Galmuri, system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.lineWidth = 3; ctx.strokeStyle = '#1a0006'; ctx.fillStyle = I.king ? '#f0e0ff' : '#ffe9a8';
         var txt = I.king ? '⚠ WARNING · FINAL BOSS ⚠' : '⚠ WARNING ⚠';
         ctx.strokeText(txt, LW / 2, y + h / 2 + 1); ctx.fillText(txt, LW / 2, y + h / 2 + 1);
       }
@@ -629,10 +631,10 @@
     var big = Math.round(LH * (I.king ? 0.13 : 0.11)), small = Math.round(LH * 0.055);
     ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'; ctx.lineJoin = 'round';
     if (I.title) {
-      ctx.font = 'bold ' + small + 'px system-ui, sans-serif'; ctx.lineWidth = 4; ctx.strokeStyle = '#140208'; ctx.fillStyle = I.king ? '#d8b0ff' : '#ffd27a';
+      ctx.font = '700 ' + small + 'px Galmuri, system-ui, sans-serif'; ctx.lineWidth = 4; ctx.strokeStyle = '#140208'; ctx.fillStyle = I.king ? '#d8b0ff' : '#f2c14e';
       ctx.strokeText(I.title, nx, ny - big * 0.95); ctx.fillText(I.title, nx, ny - big * 0.95);
     }
-    ctx.font = '900 ' + big + 'px system-ui, sans-serif'; ctx.lineWidth = 6; ctx.strokeStyle = '#140208';
+    ctx.font = '700 ' + big + 'px Galmuri, system-ui, sans-serif'; ctx.lineWidth = 6; ctx.strokeStyle = '#140208';
     ctx.strokeText(e.label, nx, ny); ctx.fillStyle = '#ffffff'; ctx.fillText(e.label, nx, ny);
     ctx.fillStyle = I.color; ctx.fillRect(nx, ny + 6, Math.min(LW * 0.4, big * e.label.length * 0.95) * introEase((I.t - 380) / 300), 3);
     ctx.restore();
@@ -1464,10 +1466,10 @@
     // 글자: 각성 이름(작게, 직업 색) + 「각성!」(크게, 흰 글자 + 진한 테두리) — 꽝 하고 커졌다 돌아옴
     var nx = LW * 0.5, big = Math.round(bh * 0.46), pop = 1 + 0.45 * Math.max(0, 1 - (T - 80) / 160);
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
-    ctx.font = 'bold ' + Math.round(bh * 0.17) + 'px system-ui, sans-serif'; ctx.lineWidth = 4; ctx.strokeStyle = '#100410'; ctx.fillStyle = A.glow;
+    ctx.font = '700 ' + Math.round(bh * 0.17) + 'px Galmuri, system-ui, sans-serif'; ctx.lineWidth = 4; ctx.strokeStyle = '#100410'; ctx.fillStyle = A.glow;
     ctx.strokeText(A.name, nx + 2, by + bh * 0.2); ctx.fillText(A.name, nx + 2, by + bh * 0.2);
     ctx.save(); ctx.translate(nx, by + bh * 0.62); ctx.scale(pop, pop);   // 글자 왼쪽 가운데 기준으로 커졌다 돌아옴
-    ctx.font = '900 ' + big + 'px system-ui, sans-serif'; ctx.lineWidth = 6; ctx.strokeStyle = '#100410';
+    ctx.font = '700 ' + big + 'px Galmuri, system-ui, sans-serif'; ctx.lineWidth = 6; ctx.strokeStyle = '#100410';
     ctx.strokeText('각성!', 0, 0); ctx.fillStyle = '#ffffff'; ctx.fillText('각성!', 0, 0);
     ctx.restore();
     ctx.restore();
@@ -2040,6 +2042,7 @@
       lastHud.plvSeen = v;
     });
     setIf('pxp', Growth.isMax() ? 1 : Growth.xp / Growth.need(), function (v) { hud.pXp.style.width = (v * 100) + '%'; });
+    setIf('face', p.char && p.char.anims.idle && p.char.anims.idle[0], drawFace);   // 얼굴 액자: 옷·성별이 바뀔 때만 다시 그림
     setIf('pts', Growth.pts, statBadges);   // 안 쓴 능력치 점수 표시
     var bk = Growth.book(G.classKey);
     setIf('skpts', G.classKey + ':' + (bk ? bk.pts() : -1), skillBadges);   // 안 쓴 기술 점수 표시(견습 = 기술 버튼 숨김)
@@ -2052,6 +2055,19 @@
     setIf('go', go, function (v) { hud.goPrompt.hidden = !v; });
     var wi = Math.min(waves.length, S.locked ? S.waveIdx + 1 : S.next + (S.next < waves.length ? 0 : 0));
     setIf('info', wi + '/' + waves.length, function () { hud.stageInfo.textContent = CFG.stage.name + '  ·  ' + Math.max(1, wi) + ' / ' + waves.length; });
+  }
+  // 얼굴 액자(2026-11-06 UI A): 지금 옷 서 있는 그림 1장의 머리~가슴을 HUD 왼쪽 위 작은 캔버스(pFace)에 도트 그대로 크게
+  var faceEl = document.getElementById('pFace');
+  function drawFace(im) {
+    if (!faceEl || !im || !G.player.char) return;
+    var g = faceEl.getContext('2d'), W = faceEl.width, H = faceEl.height, pv = G.player.char.def.pivot, k = im._k || 1;
+    var top = figTop(im, pv), hf = (pv.y - top) * k;        // 몸 높이(도트)
+    var sc = H / Math.max(8, hf * 0.42);                      // 몸 위쪽 42%(머리·어깨)가 액자에 꽉
+    g.clearRect(0, 0, W, H);
+    g.save(); g.imageSmoothingEnabled = false;
+    g.translate(Math.round(W * 0.47), Math.round(H * 0.08 + hf * sc)); g.scale(sc, sc);
+    Assets.blit(g, im, pv.x, pv.y);
+    g.restore();
   }
   var bannerTimer = 0;
   function banner(text, cls) {
@@ -2212,9 +2228,10 @@
   // ---------- 고르기 버튼 ----------
   // 직업 버튼(견습/기사/법사)은 시험 도구(2026-11-06): 모든 판을 열어 둔 시험 기간(stagesAllOpen)에만 보임.
   //   눌러도 이번 창의 옷·무기만 바뀌고 저장된 직업(Growth.cls)은 그대로
+  //   2026-11-06 UI A: 남/여 · 직업 · 연습장 = 시험 도구 묶음(#testTools, 오른쪽 위 「시험」 탭) 통째로 시험 기간에만. 연습장 안에서는 돌아갈 길이라 늘 보임
   function bindToggles() {
-    var seg = document.getElementById('classSeg');
-    if (seg) seg.hidden = !CFG.stagesAllOpen;
+    var tools = document.getElementById('testTools');
+    if (tools) tools.hidden = !CFG.stagesAllOpen && MODE !== 'practice';
     document.querySelectorAll('[data-char]').forEach(function (b) {
       b.addEventListener('click', function () { setChar(b.dataset.char); b.blur(); });
     });

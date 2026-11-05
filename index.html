@@ -13,6 +13,9 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="stylesheet" href="css/style.css">
 <link rel="preload" href="fonts/dmg.woff2" as="font" type="font/woff2" crossorigin>
+<!-- UI 글꼴(갈무리, OFL — fonts/OFL-Galmuri.txt): 게임에 나오는 글자만 남긴 작은 파일 -->
+<link rel="preload" href="fonts/Galmuri11.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/Galmuri11-Bold.woff2" as="font" type="font/woff2" crossorigin>
 
 </head>
 <body>
@@ -21,8 +24,11 @@
   <!-- 그림 불러오는 막대 (main.js: 처음 + 옷 바꿀 때 작은 표시) -->
   <div class="loading" id="loading"><div class="lbar"><i></i></div><span>그림 불러오는 중…</span></div>
 
-  <!-- 위: 캐릭터·직업 고르기 (견습 = 전직 전 맨손, 기사 = 검, 법사 = 지팡이). 좁은 폰 화면에서는 괄호 부분(.sub)을 숨김 -->
-  <div class="topbar">
+  <!-- 시험 도구: 캐릭터·직업 고르기 (견습 = 전직 전 맨손, 기사 = 검, 법사 = 지팡이) + 연습장.
+       CFG.stagesAllOpen 이 true 일 때만 보임(main.js bindToggles). 평소엔 오른쪽 위 작은 「시험」 탭, 누르면 펼쳐짐(2026-11-06 UI A) -->
+  <details class="topbar" id="testTools">
+    <summary aria-label="시험 도구 열기"><span>시험</span></summary>
+    <div class="tpanel">
     <div class="seg" aria-label="캐릭터">
       <button type="button" data-char="male" class="on">남</button>
       <button type="button" data-char="female">여</button>
@@ -37,21 +43,28 @@
     </div>
     <!-- 연습장(허수아비) ↔ 스테이지 판 -->
     <a class="modebtn" id="modeBtn" href="?mode=practice">연습장</a>
-  </div>
+    </div>
+  </details>
 
   <!-- 스테이지 판 화면 위 글자: 체력 막대, 보스 막대, GO, 알림 (게임 화면 크기에 맞춰 main.js 가 위치를 잡음) -->
   <div class="hud" id="hud" hidden>
-    <div class="php"><span class="lbl">HP</span><div class="bar"><em id="pHpLag"></em><i id="pHp"></i></div><span class="num" id="pHpNum">150</span>
-      <!-- 포만감(2026-11-06 밤): 막대 없이 글자만(체력 숫자 오른쪽). 빵·고기로 참, 있는 동안 체력이 천천히 참(main.js fullStep) -->
-      <span class="full" id="pFull">포만감 50%</span></div>
-    <!-- 마나(MP, 2026-11-06): 체력 밑 파란 막대. 기술을 쓰면 줄어듦(성장 4단계) -->
-    <div class="pmp"><span class="lbl">MP</span><div class="bar"><i id="pMp"></i></div><span class="num" id="pMpNum">40</span></div>
-    <!-- 분노(2026-11-06 밤): 마나 밑 주황 막대. 100% = 빛남 → 각성. 각성 중 = 남은 시간(직업 색) + 각성 이름 (main.js updateHud) -->
-    <div class="prg"><span class="lbl">분노</span><div class="bar"><i id="pRage"></i></div><span class="num" id="pRageNum">0%</span></div>
-    <!-- 레벨 + 얇은 경험치 막대 (성장 2026-11-05, main.js updateHud) -->
-    <div class="plv"><span class="lv" id="pLv">Lv 1</span><div class="xbar"><i id="pXp"></i></div>
+    <!-- 플레이어 판(2026-11-06 UI A): 왼쪽 위 얼굴 액자(pFace = main.js 가 지금 옷 서 있는 그림의 얼굴을 그림) + Lv 리본 · 경험치 띠,
+         오른쪽 나무판에 체력(빨강)·마나(파랑)·분노(주황) 막대, 그 오른쪽 능력치·기술 버튼. 폰 세로 = 게임 화면 밑 빈 곳 -->
+    <div class="pstat">
+      <!-- 레벨 + 얇은 경험치 띠 (성장 2026-11-05, main.js updateHud: pLv 의 부모(.plv)에 max/up 표시) -->
+      <div class="plv"><div class="pface"><canvas id="pFace" width="80" height="80"></canvas></div><span class="lv" id="pLv">Lv 1</span><div class="xbar"><i id="pXp"></i></div></div>
+      <div class="pbars">
+        <div class="php"><i class="bi"></i><span class="lbl">HP</span><div class="bar"><em id="pHpLag"></em><i id="pHp"></i></div><span class="num" id="pHpNum">150</span>
+          <!-- 포만감(2026-11-06 밤): 막대 없이 글자만(체력 숫자 오른쪽). 빵·고기로 참, 있는 동안 체력이 천천히 참(main.js fullStep) -->
+          <span class="full" id="pFull">포만감 50%</span></div>
+        <!-- 마나(MP, 2026-11-06): 체력 밑 파란 막대. 기술을 쓰면 줄어듦(성장 4단계) -->
+        <div class="pmp"><i class="bi"></i><span class="lbl">MP</span><div class="bar"><i id="pMp"></i></div><span class="num" id="pMpNum">40</span></div>
+        <!-- 분노(2026-11-06 밤): 마나 밑 주황 막대. 100% = 빛남 → 각성. 각성 중 = 남은 시간(직업 색) + 각성 이름 (main.js updateHud: pRage 의 할아버지 = .prg) -->
+        <div class="prg"><i class="bi"></i><span class="lbl">분노</span><div class="bar"><i id="pRage"></i></div><span class="num" id="pRageNum">0%</span></div>
+      </div>
       <!-- 능력치 창 · 기술 창 열기 (2026-11-06): 안 쓴 점수가 있으면 빨간 숫자 표시(.badge). 기술 버튼은 전직한 직업만 -->
-      <span class="hbtns"><button type="button" class="statbtn" id="btnStat" aria-label="능력치">능력치<b class="badge" hidden></b></button><button type="button" class="statbtn skbtn" id="btnSkill" aria-label="기술" hidden>기술<b class="badge" hidden></b></button></span></div>
+      <span class="hbtns"><button type="button" class="statbtn" id="btnStat" aria-label="능력치">능력치<b class="badge" hidden></b></button><button type="button" class="statbtn skbtn" id="btnSkill" aria-label="기술" hidden>기술<b class="badge" hidden></b></button></span>
+    </div>
     <div class="stageinfo" id="stageInfo"></div>
     <div class="bossbar" id="bossBar" hidden><span id="bossName">오크 족장</span><div class="bar"><em id="bHpLag"></em><i id="bHp"></i></div></div>
     <div class="go" id="goPrompt" hidden>GO →</div>
