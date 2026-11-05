@@ -1039,6 +1039,10 @@
       //   maxHits = 한 번 넘어질 때 누운 채로 맞는 최대 횟수(넘으면 안 맞음 = 무한 콤보 방지), dmgMul = 누운 적 데미지 배율
       //   보스는 넘어지지 않고 휘청(무릎 꿇음)이라 원래 늘 맞음 → 해당 없음. 순간이동·각성·땅속 무적은 그대로
       otg: { extendMs: 120, maxExtendK: 0.4, maxHits: 8, dmgMul: 1.0 },
+      // 보스 분노 연출(2026-11-06 밤, enrageAt 아래로 처음 떨어질 때. 10단계 마왕은 자기 각성 그대로): 화난 순간 hitstopMs 멈춤 + slowMs 느려짐 +
+      //   flash(불꽃색 화면 번쩍 세기) + shake(흔들림 배율) + push(플레이어를 밀어내는 도트, 원래 크기) + 발밑 불꽃 고리 burstMs.
+      //   화난 동안 = 몸 둘레 일렁이는 불꽃 테두리(fadeInMs 동안 차오름) + 몸이 조금 붉게(tint). 색 = 보스 rageColor(없으면 color)
+      rage: { hitstopMs: 140, slowMs: 380, flash: 0.4, shake: 3, push: 60, burstMs: 650, fadeInMs: 400, tint: 0.16, color: '#ff6a1a' },
       // 미리 서 있는 적(판 waves 의 placed)이 깨는 조건: 플레이어가 dist 도트 안으로 오면(크기 배율 안 곱함, 화면 도트 그대로)
       //   깨면 머리 위 「!」를 alertMs 동안 보이며 멈춰 있다가 싸움. 같은 무리(group)는 groupDelayMs 안에서 조금씩 늦게 깸
       wake: { dist: 90, alertMs: 300, groupDelayMs: 150 }
@@ -1229,6 +1233,7 @@
         superArmor: true,
         stagger: { at: [0.66, 0.33], onWall: false, d: [280, 140, 900, 300], core: { x: 8, y: -70, r: 12, color: '#ff8a2a' } },
         enrageAt: 0.5,
+        rageColor: '#ffb040',   // 분노 불꽃 색(2026-11-06 밤, config ai.rage)
         enrage: { speedMul: 1.25, cooldownMul: 0.7, summon: ['skeleton', 'bat', 'bat'] },
         attacks: {
           slam:  { anim: 'attack1', active: [3, 4], reach: { x0: 30, x1: 100, yTop: -80, yBot: 0 }, depth: 16,
@@ -1307,6 +1312,7 @@
         superArmor: true,
         stagger: { at: [0.66, 0.33], onWall: false, d: [260, 160, 1000, 320], hurtbox: { x0: -112, x1: 113, yTop: -114, yBot: 0 } },
         enrageAt: 0.5,
+        rageColor: '#ffcc40',   // 분노 불꽃 색(2026-11-06 밤, config ai.rage)
         enrage: { speedMul: 1.25, cooldownMul: 0.7, summon: ['mummy', 'skeleton', 'mummy'] },
         attacks: {
           crush: { anim: 'attack1', active: [3, 4], reach: { x0: 60, x1: 160, yTop: -85, yBot: -25 }, reachF: { 4: { x0: 55, x1: 82, yTop: -78, yBot: -25 } }, depth: 16,
@@ -1387,6 +1393,7 @@
         superArmor: true,
         stagger: { at: [0.66, 0.33], onWall: false, d: [280, 160, 1000, 300], hurtbox: { x0: -56, x1: 128, yTop: -84, yBot: 0 } },
         enrageAt: 0.5,
+        rageColor: '#a8ff4a',   // 분노 불꽃 색(2026-11-06 밤, config ai.rage)
         enrage: { speedMul: 1.25, cooldownMul: 0.7, summon: ['lizard', 'bat', 'lizard'] },
         attacks: {
           slam:   { type: 'leap', anim: 'attack1', active: [4], reach: { x0: -60, x1: 160, yTop: -80, yBot: 0 }, depth: 18, telegraph: [1],
@@ -1483,6 +1490,7 @@
         superArmor: true,
         stagger: { at: [0.66, 0.33], onWall: false, d: [260, 160, 1000, 320] },
         enrageAt: 0.5,
+        rageColor: '#ff7a2a',   // 분노 불꽃 색(2026-11-06 밤, config ai.rage)
         enrage: { speedMul: 1.25, cooldownMul: 0.7, summon: ['gunner', 'skeleton', 'gunner'] },
         attacks: {
           combo:   { anim: 'attack1', active: [2, 3], multiHit: true, telegraph: [1], depth: 16,
@@ -1561,6 +1569,7 @@
         superArmor: true,
         stagger: { at: [0.66, 0.33], onWall: false, d: [280, 140, 1000, 300], hurtbox: { x0: -78, x1: 60, yTop: -127, yBot: 0 } },
         enrageAt: 0.5,
+        rageColor: '#7fd8ff',   // 분노 불꽃 색(2026-11-06 밤, config ai.rage)
         enrage: { speedMul: 1.25, cooldownMul: 0.7, summon: ['yeti', ['wolf', { variant: 'ice' }], ['wolf', { variant: 'ice' }]] },   // [이름, { variant }] = 색 바꾼 졸개
         attacks: {
           smash:  { anim: 'attack1', active: [3, 4], telegraph: [2], heavy: true, depth: 16,
@@ -1693,6 +1702,7 @@
         superArmor: true,
         stagger: { at: [0.66, 0.33], onWall: false, d: [260, 160, 1000, 320], hurtbox: { x0: -112, x1: 113, yTop: -85, yBot: 0 } },
         enrageAt: 0.5,
+        rageColor: '#ff4a1a',   // 분노 불꽃 색(2026-11-06 밤, config ai.rage)
         enrage: { speedMul: 1.25, cooldownMul: 0.7, summon: ['imp', 'imp', 'imp'] },
         attacks: {
           combo:  { anim: 'attack1', active: [2, 4], multiHit: true, telegraph: [1], depth: 14,
@@ -1790,6 +1800,7 @@
         superArmor: true,
         stagger: { at: [0.66, 0.33], onWall: false, d: [260, 160, 1000, 320], hurtbox: { x0: -70, x1: 49, yTop: -101, yBot: 0 } },
         enrageAt: 0.5,
+        rageColor: '#ff2a6a',   // 분노 불꽃 색(2026-11-06 밤, config ai.rage)
         enrage: { speedMul: 1.25, cooldownMul: 0.7, summon: ['ghost', 'bat', 'ghost'] },
         attacks: {
           claws:    { anim: 'attack1', active: [2, 3], multiHit: true, telegraph: [1], depth: 14,
@@ -1913,6 +1924,7 @@
         superArmor: true,
         stagger: { at: [0.66, 0.33], onWall: true, d: [280, 140, 1000, 300], hurtbox: { x0: -60, x1: 38, yTop: -128, yBot: 0 } },
         enrageAt: 0.5,
+        rageColor: '#ff3a10',   // 분노 불꽃 색(2026-11-06 밤, config ai.rage)
         enrage: { speedMul: 1.25, cooldownMul: 0.7, summon: ['soldier', 'mage', 'soldier'] },
         attacks: {
           combo:     { anim: 'attack1', active: [2, 4], multiHit: true, telegraph: [1], depth: 16,

@@ -309,6 +309,7 @@
     this.lastP = p;                    // 날아 있을 때 점프 공격만 맞게(canBeHit)
     this.animT += dtMs;
     this.clock += dtMs;
+    if (this.rageT != null) this.rageT += dtMs;   // 분노 연출 시계(2026-11-06 밤, main.js 가 화날 때 0)
     if (T.walkStride) this.stepWalk(dtMs);
     if (this.flashT > 0) this.flashT -= dtMs;
     if (this.staggerCd > 0) this.staggerCd -= dtMs;
@@ -1168,6 +1169,8 @@
     // 걷기 그림 장마다 높이 맞춤(T.walkDy = 그림 점, + 아래로): 발이 땅에서 뜬 장을 바닥에 붙임(마왕 1장·전갈 2~6장)
     if (T.walkDy && T.walkStride && this.state === 'walk') { var wdy = T.walkDy[this.walkIdx()] || 0; if (wdy) g.translate(0, snapPx(wdy * AS() * ds)); }
     g.scale(-this.dir * ds, ds);  // 그림이 왼쪽을 보므로 반대로
+    var rage = this.rageK();      // 보스 분노(마왕 각성 빼고): 몸 뒤 일렁이는 불꽃 테두리
+    if (rage > 0) drawRageAura(g, img, T.pivot, rage, this.clock, this.rageColor());
     var rim = (auk > 0 && T.awaken.rim) || T.rim;   // 마왕은 각성 뒤 붉은 보랏빛 테두리
     if (rim) drawRim(g, img, T.pivot, rim);   // 7단계 와이번: 붉은 하늘에 안 묻히게 어두운 테두리
     Assets.blit(g, img, T.pivot.x, T.pivot.y);
@@ -1175,6 +1178,11 @@
       var s = FX.whiteSilhouette(img, 0, 0, img.width, img.height, 1);
       g.globalAlpha = alpha * Math.min(1, this.flashT / (this.cfg.juice.flashMs * 0.5));
       Assets.blit(g, img, T.pivot.x, T.pivot.y, s);
+    }
+    if (rage > 0) {   // 분노: 몸이 조금 붉게(깜빡임 없이 은은하게)
+      g.globalAlpha = alpha * this.cfg.ai.rage.tint * rage;
+      Assets.blit(g, img, T.pivot.x, T.pivot.y, redSilhouette(img));
+      g.globalAlpha = alpha;
     }
     if (this.state === 'attack' && this.atk.spec.type === 'breath') this.drawBreath(g);   // 불 뿜기: 입 앞 불길(몸과 같은 좌표 = 왼쪽을 보는 그림 기준)
     if (chk > 0) {   // 기 모으기: 몸이 점점 붉게 물듦(실루엣을 붉게 칠해 겹침)
@@ -1198,11 +1206,8 @@
       g.fillStyle = '#2a1020'; g.fillRect(x - 3, ay - 1, 6, 10); g.fillRect(x - 3, ay + 10, 6, 5);
       g.fillStyle = '#ffd23f'; g.fillRect(x - 2, ay, 4, 8); g.fillRect(x - 2, ay + 11, 4, 3);
     }
-    // 보스 화남: 머리 위 빨간 김
-    if (this.enraged && !T.awaken && this.alive() && Math.floor(performance.now() / 160) % 2) {   // 마왕은 김 대신 오라
-      var hx = Math.round(this.dir * 14 * AS());
-      g.fillStyle = '#ff4a3a'; g.fillRect(x - 2 + hx, y - Math.round(T.height) - 6, 3, 3); g.fillRect(x + 4 + hx, y - Math.round(T.height) - 10, 2, 2);
-    }
+    // 보스 분노 터짐(2026-11-06 밤, 예전 머리 위 빨간 점 2개 대신): 화난 순간 발밑에서 퍼지는 불꽃 고리 + 몸 둘레 큰 빛
+    if (this.rageT != null && this.rageT < this.cfg.ai.rage.burstMs && !T.awaken) this.drawRageBurst(g, x, y);
     if (debug) {
       var hb = this.hurtbox();
       g.strokeStyle = '#3cf'; g.strokeRect(Math.round(hb.x0 - camX) + 0.5, Math.round(hb.y0) + 0.5, Math.round(hb.x1 - hb.x0), Math.round(hb.y1 - hb.y0));
@@ -1284,6 +1289,58 @@
     [[-d, 0], [d, 0], [0, -d], [0, d]].forEach(function (o) { g.drawImage(img._rim, ox - pv.x + o[0], oy - pv.y + o[1]); });
     g.restore();
   }
+
+  // ---------- 보스 분노(2026-11-06 밤, 형님: 「화났다」 빨간 점 2개 → 보스 각성 연출). 마왕(각성 그림 있음)은 자기 각성 그대로 ----------
+  //   수치 = config ai.rage. 색 = 보스마다 T.rageColor(없으면 ai.rage.color)
+  Enemy.prototype.rageColor = function () { return this.T.rageColor || this.cfg.ai.rage.color; };
+  // 분노 세기 0~1: 화난 뒤 fadeInMs 동안 차오름. 마왕·죽음 = 0
+  Enemy.prototype.rageK = function () {
+    if (!this.enraged || this.T.awaken || !this.T.boss || this.state === 'dead' || this.rageT == null) return 0;
+    return Math.min(1, this.rageT / this.cfg.ai.rage.fadeInMs);
+  };
+  // 몸 실루엣을 불꽃 색으로 칠해(그림마다 한 번) 위로 1~3점씩 밀어 겹침 → 몸 테두리에서 불꽃이 위로 일렁이는 모양. 'lighter'(더하기)
+  function drawRageAura(g, img, pv, k, clock, color) {
+    if (!img) return;
+    var key = '_rage' + color;
+    if (!img[key]) {
+      var c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+      var cg = c.getContext('2d'); cg.drawImage(img, 0, 0);
+      cg.globalCompositeOperation = 'source-in'; cg.fillStyle = color; cg.fillRect(0, 0, c.width, c.height);
+      img[key] = c;
+    }
+    var s = img._k || 1, ox = img._ox || 0, oy = img._oy || 0, RS = (window.CFG && CFG.view.renderScale) || 1, u = 1 / RS / s;   // u = 캔버스 1점 → 그림 점
+    var t = clock / 1000, sm = g.imageSmoothingEnabled;
+    g.save(); g.scale(s, s); g.imageSmoothingEnabled = false; g.globalCompositeOperation = 'lighter';
+    // 위로 올라갈수록 옅게(불꽃 끝), 장마다 조금씩 흔들림(일렁임)
+    [[0, 2, 0.6], [1, 5, 0.45], [-1, 9, 0.3], [0, 14, 0.18]].forEach(function (o, i) {
+      var fl = 0.75 + 0.25 * Math.sin(t * 13 + i * 1.9), sx = o[0] * Math.round(Math.sin(t * 9 + i) * 1.5);
+      g.globalAlpha = k * o[2] * fl;
+      g.drawImage(img[key], ox - pv.x + sx * u * 2, oy - pv.y - o[1] * u * 2);
+    });
+    [[-2, 0], [2, 0]].forEach(function (o) { g.globalAlpha = k * 0.35; g.drawImage(img[key], ox - pv.x + o[0] * u * 2, oy - pv.y); });   // 옆 테두리
+    g.imageSmoothingEnabled = sm; g.restore();
+  }
+  // 화난 순간(burstMs): 발밑 불꽃 고리 2개가 퍼지고(땅 = 납작한 타원) 몸 둘레 큰 빛이 번쩍였다 사라짐 + 위로 솟는 불티
+  Enemy.prototype.drawRageBurst = function (g, x, y) {
+    var RG = this.cfg.ai.rage, u = this.rageT / RG.burstMs, col = this.rageColor(), T = this.T, H = T.height, R = T.radius * 3.2;
+    g.save(); g.globalCompositeOperation = 'lighter';
+    var gr = g.createRadialGradient(x, y - H * 0.5, 0, x, y - H * 0.5, H * (0.7 + 0.5 * u));
+    gr.addColorStop(0, 'rgba(255,240,200,' + (0.55 * (1 - u)).toFixed(3) + ')'); gr.addColorStop(0.4, col); gr.addColorStop(1, 'rgba(0,0,0,0)');
+    g.globalAlpha = 0.6 * (1 - u); g.fillStyle = gr; g.fillRect(x - H * 1.3, y - H * 1.3, H * 2.6, H * 2);
+    [0, 0.25].forEach(function (d) {
+      var v = Math.max(0, Math.min(1, (u - d) / 0.75)); if (v <= 0 || v >= 1) return;
+      var r = R * (0.3 + 1.7 * (1 - (1 - v) * (1 - v)));
+      g.globalAlpha = (1 - v) * 0.9; g.strokeStyle = col; g.lineWidth = 4 * (1 - v) + 1;
+      g.beginPath(); g.ellipse(x, y, r, r * 0.28, 0, 0, Math.PI * 2); g.stroke();
+      g.globalAlpha = (1 - v); g.strokeStyle = '#fff2c0'; g.lineWidth = 1.5;
+      g.beginPath(); g.ellipse(x, y, r, r * 0.28, 0, 0, Math.PI * 2); g.stroke();
+    });
+    for (var i = 0; i < 14; i++) {   // 솟는 불티
+      var a = i * 2.39, px = x + Math.cos(a) * R * (0.3 + 0.5 * ((i * 37) % 10) / 10), py = y - (H * 1.1) * u * (0.5 + ((i * 53) % 10) / 20);
+      g.globalAlpha = 1 - u; g.fillStyle = i % 3 ? col : '#fff2c0'; g.fillRect(Math.round(px), Math.round(py), 2, 2);
+    }
+    g.restore();
+  };
 
   // 10단계 마왕 각성 오라(fxArt[awaken.aura.art]): 발(기준점)에 오라 기준점을 맞춰 scale 배로, 'lighter'(더하기)로 → 붉은 배경에서도 보랏빛으로 빛남.
   //   k = 진하기(auraK). 먼저 옅게 보통으로 한 번 깔아서 어두운 불꽃 테두리도 보이게

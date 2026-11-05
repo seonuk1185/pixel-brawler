@@ -1150,7 +1150,15 @@
       }
       if (B && B.alive() && !B.T.awaken && !B.enraged && B.hp / B.maxHp < B.T.enrageAt) {
         B.enraged = true;
-        banner(josa(B.label || '오크 족장', '이', '가') + ' 화났다!', 'boss');
+        // 보스 분노 연출(2026-11-06 밤, config ai.rage): 짧은 멈춤·느려짐 + 불꽃색 번쩍 + 크게 흔들림 + 플레이어를 살짝 밀어냄 + 불티.
+        //   몸 둘레 불꽃 테두리·발밑 고리는 enemies.js(rageT). 수치(빨라짐·졸개)는 그대로
+        var RG = CFG.ai.rage; B.rageT = 0;
+        banner(josa(B.label || '오크 족장', '이', '가') + ' 분노했다!', 'boss');
+        G.hitstop = Math.max(G.hitstop, RG.hitstopMs); G.slowT = Math.max(G.slowT, RG.slowMs);
+        Skills.flash({ color: B.rageColor(), alpha: RG.flash, ms: 420 });
+        FX.shake(J.shakePx * RG.shake, 700);
+        pushPlayer(B, RG.push * AS);
+        if (Skills.debris) Skills.debris(B.x, B.y - B.T.height * 0.5, B.y, 22, { cols: ['#fff2c0', B.rageColor(), '#ff3a10', '#ffd27a'], glow: true, sp: 240, size: 2, ms: 700 });
         (B.T.enrage.summon || []).forEach(function (t, k) {
           var q = summonOf(t);
           S.queue.push({ type: q.type, side: k % 2 ? 'L' : 'R', at: S.waveT + 400 + k * 700, opt: q.opt });
