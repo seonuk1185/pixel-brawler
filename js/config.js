@@ -908,6 +908,7 @@
           death: [5, 6, false, [1, 1, 2, 2, 3, 4, 5]]
         }),
         walkAnim: 'walk',
+        walkStride: 34,   // 보폭 걷기(enemies.js stepWalk): 걷기 6장 한 바퀴에 가는 그림 점. 걷기 그림 속 발이 거의 제자리(새 그림 필요) → 8fps 쯤으로 차분하게
         hp: 1000, speedX: 34, speedY: 26, radius: 40, height: 152,
         hurtbox: { x0: -27, x1: 50, yTop: -152, yBot: 0 },
         engage: 70, hover: [70, 90], range: [40, 160], alignY: 10, cooldown: [900, 1700], firstCooldown: [1200, 1500],
@@ -1013,6 +1014,7 @@
           rockburst: { frames: seq(EN + 'rockburst/rockburst_', 5), pivot: { x: 64, y: 84 }, fps: 12 }    // 바위 터짐(바닥 가운데 기준)
         },
         walkAnim: 'walk',
+        walkStride: 32,   // 보폭 걷기(enemies.js stepWalk): 걷기 6장 한 바퀴에 가는 그림 점. 7.5fps 쯤
         // 체력·데미지: 자동 조종(?bot=1, 피하지 않음) 시험에서 오크(1단계)보다 한 단계 버겁게 맞춤(2026-11-04)
         hp: 1050, speedX: 30, speedY: 24, radius: 42, height: 150,
         hurtbox: { x0: -34, x1: 55, yTop: -150, yBot: 0 },
@@ -1091,6 +1093,7 @@
           mound: { frames: seq(EN + 'mound/mound_', 4), pivot: { x: 80, y: 68 }, fps: 10 }   // 땅속으로 다가오는 모래 둔덕(바닥 가운데 기준)
         },
         walkAnim: 'walk',
+        walkStride: 38, walkDy: [0, 4, 1, 1, 4, 2],   // 보폭 걷기(enemies.js stepWalk): 걷기 6장 한 바퀴에 가는 그림 점. 종종걸음 9.4fps 쯤(예전 16fps 는 너무 바빴음), walkDy = 다리가 다 뜬 장(2·5장 4점)을 바닥에
         hp: 1100, speedX: 44, speedY: 30, radius: 56, height: 120,
         hurtbox: { x0: -72, x1: 108, yTop: -120, yBot: 0 },
         engage: 80, hover: [80, 100], range: [40, 170], alignY: 10, cooldown: [1000, 1800], firstCooldown: [1200, 1500],
@@ -1266,6 +1269,7 @@
           blast:      { frames: seq(EN + 'blast/blast_', 6),           pivot: { x: 80, y: 124 }, fps: 12 }    // 쾅(바닥 가운데 기준)
         },
         walkAnim: 'walk',
+        walkStride: 33,   // 보폭 걷기(enemies.js stepWalk): 걷기 6장 한 바퀴에 가는 그림 점. drawScale 1.1 까지 곱해져 8fps 쯤
         hp: 1100, speedX: 36, speedY: 26, radius: 36, height: 150,
         hurtbox: { x0: -42, x1: 40, yTop: -148, yBot: 0 },
         engage: 70, hover: [70, 90], range: [40, 160], alignY: 10, cooldown: [1000, 1800], firstCooldown: [1200, 1500],
@@ -1342,6 +1346,7 @@
           icespike: { frames: seq(EN + 'icespike/icespike_', 5), pivot: { x: 48, y: 84 }, fps: 14 }   // 얼음 가시 덩어리(바닥 가운데 기준, 한 번)
         },
         walkAnim: 'walk',
+        walkStride: 32,   // 보폭 걷기(enemies.js stepWalk): 걷기 6장 한 바퀴에 가는 그림 점. 7fps 쯤
         // 체력·데미지: 자동 조종(?bot=1, 피하지 않음) 시험에서 4단계 전갈 왕과 6단계 선장 사이가 되게 맞춤(그림 자료 제안 hp 1100 · 내려찍기 19~23 · 휘두르기 14~17 보다 낮춤)
         hp: 1000, speedX: 28, speedY: 22, radius: 44, height: 158,
         hurtbox: { x0: -40, x1: 48, yTop: -158, yBot: 0 },
@@ -1473,6 +1478,7 @@
           breath: { frames: seq(EN + 'breath/breath_', 4), pivot: { x: 125, y: 32 }, fps: 14 }   // 불길 한 토막(기준 = 오른쪽 잘린 면 가운데, 불 머리가 왼쪽)
         },
         walkAnim: 'walk',
+        walkStride: 38,   // 보폭 걷기(enemies.js stepWalk): 걷기 6장 한 바퀴에 가는 그림 점. 8fps 쯤
         rim: { color: '#1a0608', px: 1, alpha: 0.85 },
         hp: 1000, speedX: 38, speedY: 28, radius: 48, height: 150,
         hurtbox: { x0: -62, x1: 58, yTop: -150, yBot: 0 },
@@ -1569,6 +1575,7 @@
           mist: { frames: seq(EN + 'mist/mist_', 5), pivot: { x: 88, y: 172 }, fps: 10 }    // 안개 + 박쥐 구름(바닥 가운데 기준, 한 번)
         },
         walkAnim: 'walk',
+        walkStride: 41,   // 보폭 걷기(enemies.js stepWalk): 걷기 6장 한 바퀴에 가는 그림 점. 7.5fps 쯤
         rim: { color: '#9ab8ff', px: 1, alpha: 0.5 },
         hp: 980, speedX: 38, speedY: 26, radius: 34, height: 156,
         hurtbox: { x0: -30, x1: 24, yTop: -155, yBot: 0 },
@@ -1691,6 +1698,7 @@
           shockwave: { frames: seq(EN + 'shockwave/shockwave_', 5), pivot: { x: 120, y: 116 }, fps: 12 }   // 불꽃 고리(고리 가운데 기준, 한 크기로 그림 → 코드에서 늘림)
         },
         walkAnim: 'walk',
+        walkStride: 32,   // 보폭 걷기(enemies.js stepWalk): 걷기 6장 한 바퀴에 가는 그림 점. 7.5fps 쯤 (3장이 원본에서 1점 뜨지만 줄인 그림에서는 바닥에 닿아 높이 맞춤 안 함)
         // 체력·데미지: 자동 조종(?bot=1, 피하지 않음) 시험에서 8단계 흡혈 백작보다 조금 버겁게 맞춤(그림 자료 제안 hp 1250 보다 낮춤, 판 배율 x1.6)
         hp: 1150, speedX: 30, speedY: 22, radius: 42, height: 165,
         hurtbox: { x0: -44, x1: 40, yTop: -162, yBot: 0 },
@@ -1759,6 +1767,7 @@
           aura:   { frames: seq(EN + 'kingaura/aura_', 4),     pivot: { x: 64, y: 212 }, fps: 10 }    // 각성 오라(마왕 발에 맞춤, 반복)
         },
         walkAnim: 'walk',
+        walkStride: 37, walkDy: [2, 0, 0, 0, 0, 0],   // 보폭 걷기(enemies.js stepWalk): 걷기 6장 한 바퀴에 가는 그림 점. 7.5fps 쯤, walkDy = 1장이 2점 떠 있음
         // 체력·데미지: 자동 조종(?bot=1) 시험에서 9단계 마왕군 장군보다 조금 버겁게 맞춤(그림 자료 제안 hp 1600 보다 낮춤, 판 배율 x1.7)
         hp: 1100, speedX: 34, speedY: 24, radius: 46, height: 178,
         hurtbox: { x0: -36, x1: 34, yTop: -176, yBot: 0 },
@@ -2658,6 +2667,7 @@
       }
       mul(T, ['radius', 'height', 'engage', 'alignY', 'deathKnock'], S);
       mul(T, ['speedX', 'speedY'], MV);
+      mul(T, ['walkStride'], S * DS);   // 보스 보폭 걷기: 그림 속 거리 → 그림과 같이 줄임(선장은 drawScale 도)
       // 적 걷기 그림은 시간으로 넘긴다 → 속도를 덜 줄인 만큼 그림도 빠르게(발과 바닥의 관계가 원래와 같게)
       var wa = T.anims[T.walkAnim];
       if (wa) wa.fps *= MV / S;
