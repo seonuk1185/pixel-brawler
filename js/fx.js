@@ -129,7 +129,8 @@
   // 글자 가운데 = x, 글자 윗줄 = y. 매끈한 화면(renderScale > 1)이면 둥근 글꼴(Fredoka)로 그린 부드러운 숫자
   function drawPixelText(ctx, str, x, y, st) {
     var R = (window.CFG && CFG.view.renderScale) || 1;
-    if (R > 1) { drawSmoothText(ctx, str, x, y, st, R); return; }
+    // 글자가 섞인 줄(「+13 XP」「LEVEL UP!」, 2026-11-05 성장)은 도트 글꼴에 글자가 없어서 도트 화면(?rs=1)에서도 부드러운 글꼴로
+    if (R > 1 || /[^0-9!]/.test(str)) { drawSmoothText(ctx, str, x, y, st, R); return; }
     var t = textSprite(str, st);
     ctx.drawImage(t.img, Math.round(x - t.w / 2), Math.round(y) - t.pad);
   }
@@ -149,7 +150,8 @@
     var h = (FONT_H[st.font] || 8) * Math.max(1, st.scale || 1);   // 숫자 높이(도트)
     var size = h / 0.72 * (st.bold ? 1.08 : 1);                   // 글꼴 크기(도트): 숫자 높이 ≈ 0.72em
     var ol = st.outline ? 1.15 : 0, sh = st.shadow ? 1 : 0, pad = 3 + ol;
-    var fam = fontReady ? 'DmgFont' : '"Arial Black", "Arial Rounded MT Bold", sans-serif';
+    // DmgFont 에 없는 글자(+ · 영어)는 뒤의 굵은 기본 글꼴로 채움
+    var fam = (fontReady ? 'DmgFont, ' : '') + '"Arial Black", "Arial Rounded MT Bold", sans-serif';
     var c = document.createElement('canvas'), g = c.getContext('2d');
     var font = '700 ' + (size * R).toFixed(2) + 'px ' + fam;
     g.font = font;

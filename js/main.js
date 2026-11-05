@@ -256,7 +256,8 @@
     var p = G.player;
     var dir = src ? src.dir : p.dir;
     var W = CFG.weapons[src ? src.wk : p.weaponKey];
-    var dmg = Math.round(rand(W.damage[0], W.damage[1]) * st.dmg);
+    // 레벨 공격력(성장 2026-11-05, Growth.atkMul = 1 + 2% × (Lv-1)): 적·허수아비를 때리는 모든 타·기술에 곱함(소품은 그대로)
+    var dmg = Math.round(rand(W.damage[0], W.damage[1]) * st.dmg * (target.isProp ? 1 : Growth.atkMul()));
     // 소품(상자·통): 단계만 넘김(데미지 숫자·콤보 수 없음). 기술(damageStyle) = 한 번에 부서짐, 맞은 곳 = 마법이면 그 자리, 아니면 몸 앞
     if (target.isProp) {
       Props.hit(target, { dmg: dmg, strong: !!st.damageStyle, finisher: !!st.finisher, dir: dir,
@@ -1005,6 +1006,33 @@
     });
   }
 
+  // ---------- 성장: 경험치·레벨 (2026-11-05, 수치 = config growth, 계산·저장 = growth.js) ----------
+  // 레벨에 맞는 최대 체력으로(새 판 시작·다시 하기 = 가득 참)
+  function applyGrowth(p) { p.maxHp = Growth.maxHp(); p.hp = p.maxHp; }
+  // 쓰러진 적(어떻게 쓰러졌든: 플레이어 타·기술·보스와 같이 쓰러짐)마다 한 번 경험치. 적 머리 위에 「+13 XP」
+  function xpStep() {
+    var idx = G.stageNo - 1;
+    G.enemies.forEach(function (e) {
+      if (e.alive() || e.xpDone) return;
+      e.xpDone = true;
+      var n = Growth.enemyXp(e.type, e.T, idx);
+      if (!(n > 0) || Growth.isMax()) return;
+      G.xpGot = (G.xpGot || 0) + n;
+      FX.damage(e.x, e.y - e.T.height - 8, '+' + n + ' XP', false, J, null, 'xp', e.id + ':xp');
+      var up = Growth.gain(n);
+      if (up > 0) onLevelUp(up);
+    });
+  }
+  // 레벨업: 늘어난 최대 체력만큼 바로 회복 + 머리 위 「LEVEL UP!」 + 짧은 번쩍·반짝 불똥(멈추지 않음)
+  function onLevelUp(up) {
+    var p = G.player, LU = CFG.growth.levelUp || {}, add = Growth.maxHp() - p.maxHp;
+    p.maxHp = Growth.maxHp();
+    if (p.state !== 'dead' && add > 0) p.hp = Math.min(p.maxHp, p.hp + add);
+    FX.damage(p.x, p.y - (p.z || 0) - 118 * AS, 'LEVEL UP!', false, J, null, 'levelup', 'player:lv');
+    if (LU.flash) Skills.flash(LU.flash);
+    FX.impact(p.x, p.y - (p.z || 0) - 60 * AS, p.dir, LU.sparkCol || '#ffe066', Math.round(J.sparkCount * 1.4), true, G.assets.fx && G.assets.fx.impact, 1);
+  }
+
   function onBossDown(boss) {
     var S = G.stage;
     S.bossDownT = 0;
@@ -1272,6 +1300,7 @@
       var E = G.ectx;
       E.now += dt; E.view.x0 = G.camX; E.view.x1 = G.camX + LW - (controlPad ? controlPad + 14 : 0);   // 적은 몸이 넓어서 버튼 쪽으로 조금 더 띄움
       G.enemies.forEach(function (e) { e.update(dt, E); });
+      xpStep();              // 쓰러진 적 → 경험치(성장)
       separate();
       propCollide();
       heldStep();            // 미라에게 붙잡힘: 잡은 적 앞에 붙여 둠
@@ -1367,7 +1396,7 @@
 
   // ---------- HUD (체력 막대, 보스 막대, GO, 알림) ----------
   var hud = {};
-  ['pHp', 'pHpLag', 'pHpNum', 'bossBar', 'bHp', 'bHpLag', 'bossName', 'goPrompt', 'banner', 'stageInfo'].forEach(function (k) { hud[k] = document.getElementById(k); });
+  ['pHp', 'pHpLag', 'pHpNum', 'pLv', 'pXp', 'bossBar', 'bHp', 'bHpLag', 'bossName', 'goPrompt', 'banner', 'stageInfo'].forEach(function (k) { hud[k] = document.getElementById(k); });
   var lastHud = {};
   function setIf(key, val, fn) { if (lastHud[key] !== val) { lastHud[key] = val; fn(val); } }
   function updateHud() {
@@ -1375,6 +1404,14 @@
     var pr = p.hp / p.maxHp;
     setIf('php', pr, function (v) { hud.pHp.style.width = (v * 100) + '%'; hud.pHpLag.style.width = (v * 100) + '%'; hud.pHp.classList.toggle('low', v < 0.3); });
     setIf('phpn', p.hp, function (v) { hud.pHpNum.textContent = v; });
+    // 레벨 + 경험치 막대(성장). 최고 레벨이면 「Lv 30 MAX」 + 막대 가득
+    setIf('plv', Growth.lv, function (v) {
+      hud.pLv.textContent = 'Lv ' + v + (Growth.isMax() ? ' MAX' : '');
+      var box = hud.pLv.parentNode; box.classList.toggle('max', Growth.isMax());
+      if (lastHud.plvSeen && v > lastHud.plvSeen) { box.classList.remove('up'); void box.offsetWidth; box.classList.add('up'); }
+      lastHud.plvSeen = v;
+    });
+    setIf('pxp', Growth.isMax() ? 1 : Growth.xp / Growth.need(), function (v) { hud.pXp.style.width = (v * 100) + '%'; });
     var B = S.boss, showBoss = !!(B && (B.alive() || S.bossDownT < 800));
     setIf('bshow', showBoss, function (v) { hud.bossBar.hidden = !v; });
     if (B) setIf('bname', B.label, function (v) { hud.bossName.textContent = v; });
@@ -1414,7 +1451,8 @@
     document.getElementById('resStats').innerHTML =
       (end ? '<span class="endline">마왕을 쓰러뜨렸다!</span>' + (full ? '1단계부터 총 시간 <b>' + fmtTime(tot) + '</b><br>' : '') : clear && last ? '모든 스테이지를 깼다!<br>' : '') +
       '시간 <b>' + fmtTime(S.time) + '</b> · 맞힌 수 <b>' + G.hits + '</b> · 최대 콤보 <b>' + G.maxCombo + '</b>' +
-      (clear ? ' · 남은 체력 <b>' + p.hp + '</b>' : '');
+      (clear ? ' · 남은 체력 <b>' + p.hp + '</b>' : '') +
+      '<br>얻은 경험치 <b>' + (G.xpGot || 0) + '</b> · <b>Lv ' + Growth.lv + '</b>';
     var nx = document.getElementById('btnNext');
     nx.hidden = !(clear && !last && !end);
     openMenu(resultEl, clear && !last && !end ? nx : clear ? document.getElementById('btnSel') : document.getElementById('btnRetry'));
@@ -1451,9 +1489,11 @@
     G.enemies = [];
     G.stage = newStage();
     G.ectx = makeEnemyCtx();
+    G.xpGot = 0;   // 이 판에서 얻은 경험치(결과 화면)
     G.hits = 0; G.totalDmg = 0; G.maxCombo = 0; G.comboT = 0; G.hitstop = 0; G.slowT = 0; comboEl.hidden = true;
     var god = G.player && G.player.god;
     G.player = new Player(CFG);
+    applyGrowth(G.player);
     G.player.god = !!god;
     G.player.x = 90;
     G.player.y = Math.round((world.laneTop + world.laneBottom) / 2);
@@ -1677,6 +1717,8 @@
     resetCd: function () { G.player.skillCd = {}; },
     hurt: function (n, heavy) { var p = G.player; p.invulnT = 0; p.takeHit(n || 10, -p.dir, 10, 0, !!heavy); },
     god: function (on) { G.player.god = on !== false; },
+    // 경험치 바로 주기(성장 시험): GAME.test.xp(500)
+    xp: function (n) { var up = Growth.gain(n); if (up > 0) onLevelUp(up); return { lv: Growth.lv, xp: Growth.xp, need: Growth.need() }; },
     bot: function (on) { G.bot = on !== false; if (!G.bot) Input.setOverride(null); },
     retry: function () { resetStage(); },
     // 판 바로 가기: GAME.test.stage(2) (판 번호 = id, ?stage= 와 같음) / 고르기 화면 열기: GAME.test.select()
@@ -1693,6 +1735,7 @@
           (e.atk && (e.atk.spec.type === 'burrow' || e.atk.spec.type === 'dive' || e.atk.spec.type === 'teleport') ? '/' + e.atk.phase : '') + (e.faded() ? '/faded' : '') + (e.hidden ? '/hidden' : '') + (e.atk && e.atk.held ? '/hold' : '') + (e.atk ? '/' + e.atk.name : '') + (e.airborne() ? '/air' : '') + ':' + e.hp + '@' + Math.round(e.x) + ',' + Math.round(e.y); }),
         poison: p.poison ? Math.round(p.poison.t) : 0, ending: S ? !!S.ending : false,
         run: G.run ? { from: G.run.from, ms: G.run.ms } : null,
+        lv: Growth.lv, xp: Growth.xp, need: Growth.need(), xpGot: G.xpGot || 0, maxHp: p.maxHp, atkMul: Growth.atkMul(),
         hits: G.hits, maxCombo: G.maxCombo, rocks: rocks.length, puddles: puddles.length, shots: shots.length, cannons: cannons.length, spikes: spikes.length, rings: rings.length, stageId: CFG.stage.id,
         shotsX: shots.filter(function (b) { return !(b.wait > 0); }).map(function (b) { return Math.round(b.x); }),
         props: Props.list.map(function (pr) { return pr.type + ':' + (pr.state === 'idle' ? pr.hitsLeft : pr.state) + '@' + Math.round(pr.x) + ',' + Math.round(pr.y); }),
@@ -1749,6 +1792,7 @@
     Object.keys(assets.characters).forEach(function (k) { bakeFilter(assets.characters[k]); });
     document.body.classList.add('mode-' + MODE);
     G.player = new Player(CFG);
+    applyGrowth(G.player);
     if (MODE === 'practice') G.dummy = new Dummy(CFG, assets.dummy);
     resize();
     G.player.y = Math.round((world.laneTop + world.laneBottom) / 2);

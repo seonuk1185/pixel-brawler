@@ -756,6 +756,11 @@
       // 음식 먹고 회복한 양(2026-11-04): 초록 숫자, 보통 숫자와 같은 크기
       heal: { font: 'mid', scale: 1, top: '#d6ffc4', bottom: '#4cd64a', outline: '#123a16', shadow: 'rgba(6,30,10,0.35)',
               pop: { top: '#ffffff', bottom: '#a8ff8a' } },
+      // 성장(2026-11-05): 적을 잡았을 때 「+13 XP」(작은 노란 글자) · 레벨업 「LEVEL UP!」(큰 금색 글자). 글자는 fx.js 가 기본 굵은 글꼴로
+      xp: { font: 'large', scale: 1, top: '#fff6c0', bottom: '#ffd23f', outline: '#4a3410', shadow: 'rgba(30,20,4,0.35)',
+            pop: { top: '#ffffff', bottom: '#fff6c0' } },
+      levelup: { font: 'huge', scale: 1, bold: true, top: '#fff6a0', bottom: '#ffb52e', outline: '#5a2a08', shadow: 'rgba(30,12,4,0.45)',
+                 pop: { top: '#ffffff', bottom: '#ffe066' } },
       hurtBottom: '#b82c26',
       popK: 0.12,
       // 여러 번 한꺼번에 맞을 때 숫자 쌓기 (2026-11-03, 메이플처럼 위로 줄 세움, fx.js 의 FX.damage)
@@ -784,6 +789,32 @@
       //   넘어짐~깜빡임 동안 무적. 쓰러짐(체력 0) = knockdown 뒤 마지막 장(누움)에 그대로 → deathOverMs 뒤 GAME OVER
       down: { slide: [0, 10, 20, 24], slideMul: 1.5, lyingMs: 600, getupBlinkMs: 700 },
       deathOverMs: 1800
+    },
+
+    // ---------- 성장: 레벨·경험치 (2026-11-05, 기획\성장시스템-설계안.md 1·2단계. 계산·저장은 growth.js) ----------
+    // 다음 레벨까지 필요한 경험치 = needBase + needPerLv × 지금 레벨 (Lv1→2 = 50, Lv29→30 = 1170). 최고 maxLv
+    // 레벨당 최대 체력 +hpPerLv (hero.hp 150 기준), 공격력 +atkPerLv (플레이어의 모든 타·기술 데미지에 곱함: Lv10 = 1.18배)
+    //   레벨업 하면 늘어난 체력만큼 바로 회복. 죽어도 경험치는 안 잃음. 깬 판을 다시 해도 경험치를 그대로 줌
+    // 적 경험치 = 종류 기본값(xp) × 판 배율(1 + stageMul × 목록 순서(0부터)) → 1판 1.0배 … 10판 2.62배. 반올림
+    //   stageMul: 설계안은 0.3(10판 3.7배)이었는데, 실제 판의 적 수(판마다 33~47마리, 단단한 잡몹 많음)로 자동 조종 시험을 해 보니
+    //   0.3 = 판 도착 Lv 1,5,7,10,12,15,17,19,21,23 · 마왕 뒤 26 (목표보다 2~3 높음) → 0.18 = 1,5,7,10,12,13,15,17,19,21 · 마왕 뒤 23 (목표와 거의 같음)
+    //   종류 정하는 법(적 config 기본 체력 hp 기준, 판·변종 배율 곱하기 전):
+    //     finalBoss = king(마왕) · boss = boss(판 보스) · 보스 아님 + hp ≥ eliteHp = elite(용암 골렘, 설계안 「중간 대장」)
+    //     · hp ≥ toughHp = tough(해골·미라·도마뱀·설인·유령 기사·마족 병사) · 나머지 = mob(고블린·늑대·박쥐·총잡이·불 도깨비)
+    //     kind = 위 규칙 대신 직접 정함(흑마법사는 체력 60이지만 설계안대로 「단단한 잡몹」)
+    //   보스가 부른 졸개 · 보스가 쓰러질 때 같이 쓰러진 졸개도 똑같이 줌
+    // 시험: 주소 뒤 ?lv=N = 이번 창에서만 LvN(경험치 0)으로 시작. 그동안 얻은 경험치는 저장 안 함(저장된 레벨은 그대로)
+    growth: {
+      maxLv: 30,
+      needBase: 10, needPerLv: 40,
+      hpPerLv: 5,
+      atkPerLv: 0.02,
+      stageMul: 0.18,
+      xp: { mob: 10, tough: 15, elite: 40, boss: 150, king: 300 },
+      toughHp: 75, eliteHp: 200,
+      kind: { mage: 'tough' },
+      // 레벨업 연출: 머리 위 「LEVEL UP!」 글자(damageText.levelup) + 짧은 화면 번쩍(flash) + 반짝 불똥(sparkCol)
+      levelUp: { flash: { color: '#fff3b0', alpha: 0.28, ms: 260 }, sparkCol: '#ffe066' }
     },
 
     // ---------- 적끼리 공통 ----------

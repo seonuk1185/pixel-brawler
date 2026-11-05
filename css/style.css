@@ -61,8 +61,19 @@ body.smooth #screen { image-rendering: auto; }
 .php .lbl { color: #ffd23f; font-size: 14px; }
 .php .bar { width: 150px; }
 .php .num { font-size: 13px; min-width: 28px; }
+/* 레벨 + 얇은 노란 경험치 막대 (성장 2026-11-05): 체력 막대 바로 밑. 최고 레벨이면 막대가 가득(.max) */
+.plv {
+  position: absolute; left: max(10px, env(safe-area-inset-left)); top: 71px;
+  display: flex; align-items: center; gap: 6px; font-weight: 800; text-shadow: 2px 2px 0 #2a1020;
+}
+.plv .lv { color: #ffd23f; font-size: 12px; min-width: 34px; white-space: nowrap; transform-origin: left center; }
+.plv .xbar { position: relative; width: 136px; height: 6px; background: #2a1020; border: 1px solid #120a14; border-radius: 3px; overflow: hidden; }
+.plv .xbar i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: linear-gradient(#fff2a0, #f2b631); transition: width .25s; }
+.plv.max .xbar i { background: linear-gradient(#fff8d0, #ffd23f); }
+.plv.up .lv { animation: lvpop .5s ease-out; }
+@keyframes lvpop { 0% { transform: scale(1.7); color: #fff; } 100% { transform: scale(1); } }
 .stageinfo {
-  position: absolute; left: max(10px, env(safe-area-inset-left)); top: 72px;
+  position: absolute; left: max(10px, env(safe-area-inset-left)); top: 88px;
   font-size: 11px; font-weight: 700; color: #fffc; text-shadow: 1px 1px 0 #2a1020; white-space: nowrap;
 }
 .bossbar {
@@ -204,7 +215,8 @@ body.smooth #screen { image-rendering: auto; }
 /* 세로 화면(폰 세로): 게임 화면은 위(고르기 버튼 아래), 조작은 아래 빈 곳 (main.js 가 body 에 portrait 를 붙임) */
 .portrait .php { top: 6px; }
 .portrait .combo { top: 58px; }
-.portrait .stageinfo { top: 26px; }
+.portrait .plv { top: 25px; }
+.portrait .stageinfo { top: 44px; }
 .portrait .bossbar { bottom: 6px; width: 70%; }
 .portrait .go { font-size: 26px; }
 .portrait .banner { font-size: 26px; }

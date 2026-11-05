@@ -41,6 +41,8 @@
   <!-- 스테이지 판 화면 위 글자: 체력 막대, 보스 막대, GO, 알림 (게임 화면 크기에 맞춰 main.js 가 위치를 잡음) -->
   <div class="hud" id="hud" hidden>
     <div class="php"><span class="lbl">HP</span><div class="bar"><em id="pHpLag"></em><i id="pHp"></i></div><span class="num" id="pHpNum">150</span></div>
+    <!-- 레벨 + 얇은 경험치 막대 (성장 2026-11-05, main.js updateHud) -->
+    <div class="plv"><span class="lv" id="pLv">Lv 1</span><div class="xbar"><i id="pXp"></i></div></div>
     <div class="stageinfo" id="stageInfo"></div>
     <div class="bossbar" id="bossBar" hidden><span id="bossName">오크 족장</span><div class="bar"><em id="bHpLag"></em><i id="bHp"></i></div></div>
     <div class="go" id="goPrompt" hidden>GO →</div>
@@ -79,6 +81,7 @@
 </div>
 
 <script src="js/config.js"></script>
+<script src="js/growth.js"></script>
 <script src="js/assets.js"></script>
 <script src="js/input.js"></script>
 <script src="js/fx.js"></script>
