@@ -375,6 +375,7 @@
     var W = cfg.weapons[this.weaponKey];
     this.animT += dtMs / 1000;
     if (this.invulnT > 0) this.invulnT -= dtMs;
+    if (this.redT > 0) this.redT -= dtMs;   // 맞은 뒤 빨간 번쩍(2026-11-06 밤)
     for (var ck in this.skillCd) if (this.skillCd[ck] > 0) this.skillCd[ck] -= dtMs;   // 기술 쿨타임
 
     // 맞고 움찔 / 넘어짐 / 쓰러짐: 조작 안 됨, 밀려나기만
@@ -569,6 +570,11 @@
       var sil = FX.whiteSilhouette(img, 0, 0, img.width, img.height, 1);
       ctx.globalAlpha = 0.7; Assets.blit(ctx, img, def.pivot.x, def.pivot.y, sil);
       ctx.globalAlpha = 1;
+    }
+    if (img && this.redT > 0 && !hurtFlash) {   // 그 뒤 빨갛게 번쩍(2026-11-06 밤, main.js 가 맞을 때 redT = juice.hurt.redMs)
+      if (!img._redP) { var rc = document.createElement('canvas'); rc.width = img.width; rc.height = img.height; var rg = rc.getContext('2d'); rg.drawImage(img, 0, 0);
+        rg.globalCompositeOperation = 'source-in'; rg.fillStyle = '#ff2a2a'; rg.fillRect(0, 0, rc.width, rc.height); if (Assets.copyMeta) Assets.copyMeta(img, rc); img._redP = rc; }
+      ctx.globalAlpha = 0.55 * Math.min(1, this.redT / 120); Assets.blit(ctx, img, def.pivot.x, def.pivot.y, img._redP); ctx.globalAlpha = 1;
     }
 
     if (debug) {

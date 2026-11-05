@@ -164,6 +164,7 @@
       s.aimT = aimTargets(p, K);
     }
     p.skillCd[d.key] = L.cd;
+    if (d.zoom && (!d.zoom.lv5 || L.lv5) && H.zoom) H.zoom(d.zoom.k, d.zoom.ms);   // 큰 기술 화면 당기기(2026-11-06 밤)
   }
 
   // ---------- 진행 (매 장면). 끝나면 true ----------
@@ -385,8 +386,9 @@
     if (h.slowMs) H.slow(h.slowMs);
   }
   function doFlash(f) {
-    if (flash && flash.alpha * (1 - flash.t / flash.life) > f.alpha) return;
-    flash = { color: f.color, alpha: f.alpha, t: 0, life: f.ms || 120 };
+    var a = Math.min(0.8, f.alpha * FLY('flashMul', 1));   // 기술 번쩍 조금 더 밝게(2026-11-06 밤, juice.flashy.flashMul)
+    if (flash && flash.alpha * (1 - flash.t / flash.life) > a) return;
+    flash = { color: f.color, alpha: a, t: 0, life: f.ms || 120 };
   }
 
   // ---------- 효과 ----------
@@ -406,8 +408,16 @@
     if (tintImgCache) { m = m || {}; m[color] = c; tintImgCache.set(img, m); }
     return c;
   }
+  // 기술 화려하게(2026-11-06 밤): config juice.flashy 값
+  function FLY(k, def) { var F = CFG.juice && CFG.juice.flashy; return F && F[k] != null ? F[k] : def; }
   function playFx(p, f) {
     var dir = f.back ? -p.dir : p.dir, x = p.x + dir * (f.x || 0), y = p.y + (f.y || 0);
+    // 베기·효과 그림이 나올 때 둘레에 둥근 빛(더하기) + 반짝 불티 → 그림 자체는 또렷하게 두고 빛만 부드럽게
+    if ((f.type === 'slash' || f.type === 'art') && FLY('glow', 0) > 0) {
+      var gc = f.tint || (f.ph && f.ph.tint) || '#cfe8ff';
+      glow(x, y, 34 * AS(), gc, 220, FLY('glow', 0));
+      debris(x, y, p.y, 6, { cols: ['#ffffff', gc], glow: true, sp: 150, size: 1.3, ms: 300 });
+    }
     if (f.type === 'dust') { H.dust(p.x - p.dir * 10 * AS(), p.y, p.dir); return; }
     if (f.type === 'thrust') { FX.thrust(x, y, dir, f.len || 60, f.color || '#ffffff', f.ms || 200); return; }
     if (f.type === 'ring') {
@@ -467,6 +477,8 @@
     wave(pr.x, pr.z, R * 1.7, { flat: 0.3, w: 4, ms: 420, color: '#ffd28a', glow: '#ff5a10', ground: true });
     debris(pr.x, pr.y, pr.z, 16, { cols: ['#ffd27a', '#ff8a2a', '#ff5a1e', '#fff4d0'], glow: true, sp: 210, size: 2, ms: 600 });
     debris(pr.x, pr.y + 6 * AS(), pr.z, 9, { cols: ['#5a3a26', '#7a5236', '#3e2a1e'], sp: 170, size: 2.6, ms: 800 });
+    debris(pr.x, pr.y - 4 * AS(), pr.z, 10, { cols: ['#3a3038', '#5a4e58'], sp: 60, size: 3, ms: 900, g: -60, spread: 0.6 });   // 연기(위로 천천히, 2026-11-06 밤)
+    glow(pr.x, pr.y, R * 0.9, '#fff2c0', 160, 0.8);
     var st = stOf(c.hit, S.d), any = false;
     H.targets().forEach(function (t) {
       if (!t || !H.canHit(t, c.hit)) return;
@@ -494,6 +506,7 @@
     // 땅 충격파 + 기둥 빛 + 전기 불티 (2026-11-03 HD)
     wave(x, z, KR * 2.6, { flat: 0.3, w: 4, ms: 360, color: '#f4ffff', glow: K.color || '#59e6ff', ground: true });
     glow(x, z - 20 * AS(), KR * 1.9, '#9ff4ff', 240, 0.85);
+    glow(x, z - 60 * AS(), KR * 1.4, '#e8ffff', 160, 0.5);   // 기둥 위쪽 빛(2026-11-06 밤)
     debris(x, z - 4 * AS(), z, 10, { cols: ['#ffffff', '#bff8ff', '#fff6a0'], glow: true, sp: 190, size: 1.6, ms: 420, spread: 1.4 });
     FX.shake(CFG.juice.shakePx * (h.shake || 1.5), CFG.juice.shakeMs);
     if (h.flash) doFlash(h.flash);
@@ -614,6 +627,7 @@
     if (A) spriteFrom(pr.x, pr.y, A.fr, A.fps, A.pivot, pr.dir < 0, 1, 0);
     else { var fr = tintFx(M.frames, '#bff4ff', 0.75); if (fr) FX.sprite(pr.x, pr.y, fr, M.fps, M.pivot, pr.dir < 0, false, 1.8); }
     glow(pr.x, pr.y, 34 * AS(), '#bfefff', 240, 0.8);
+    debris(pr.x, pr.y, pr.z, 8, { cols: ['#ffffff', '#d8f8ff', '#9fe8ff'], glow: true, sp: 190, size: 1.4, ms: 380 });   // 얼음 반짝(2026-11-06 밤)
     if (A && A.ours) return;   // 우리 그림에 고리·조각이 들어 있음
     wave(pr.x, pr.y, 40 * AS(), { flat: 0.8, w: 3, ms: 260, color: '#ffffff', glow: '#7fd8ff' });
     debris(pr.x, pr.y, pr.z, 10, { cols: ['#ffffff', '#d8f8ff', '#9fe8ff', '#6ac8ff'], sp: 160, size: 1.8, ms: 520, spread: 1.5 });
@@ -664,6 +678,8 @@
       H.hitstop(110); FX.shake(CFG.juice.shakePx * 3.6, CFG.juice.shakeMs * 2.2);
       doFlash(M.hit.flash || { color: '#ffc070', alpha: 0.5, ms: 200 });
       glow(x, y, R * 1.1, '#ffb050', 380, 0.7);
+      debris(x, y, z, 18, { cols: ['#ffd27a', '#ff8a2a', '#fff4d0'], glow: true, sp: 300, size: 2, ms: 650 });   // 불티 더(2026-11-06 밤)
+      debris(x, y - 10 * AS(), z, 12, { cols: ['#2e2a36', '#4a4452'], sp: 70, size: 3.4, ms: 1100, g: -50, spread: 0.8 });   // 연기
       H.dust(x - 20 * AS(), z, -1); H.dust(x + 20 * AS(), z, 1);
       meteorHit(m, x, z, y, R);
       return;

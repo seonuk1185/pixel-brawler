@@ -357,6 +357,7 @@
         darken: { ms: 600, alpha: 0.45 },
         iframes: { frames: [0, 5] },
         hits: [ merge(SPIN_HIT, { frame: 1 }), merge(SPIN_HIT, { frame: 3 }), merge(SPIN_LAST, { frame: 5 }) ],
+        trail: { frames: [1, 5], everyMs: 45, lifeMs: 200, alpha: 0.3, color: '#cfe8ff' },   // 잔상(2026-11-06 밤 화려하게)
         fx: [
           { frame: 1, type: 'art', fx: 'spin_ring', x: 0, y: -50, follow: true, split: true, alpha: 0.7, scale: 0.75,
             ph: { type: 'ring', y: -58, r: 70, ms: 300, color: '#cfe8ff' } },
@@ -384,6 +385,7 @@
         darken: { ms: 320, alpha: 0.3 },
         iframes: [0, 200],
         shot: { frame: 2, x: 40, y: -60, speed: 380, range: 320, box: { w: 54, h: 76 }, depth: 22, gapMs: 150, hit: WAVE_HIT },
+        trail: { frames: [1, 2], everyMs: 35, lifeMs: 170, alpha: 0.35, color: '#a8d4ff' },   // 휘두르는 잔상(2026-11-06 밤)
         look: { proj: 'sword_wave', projLv5: 'sword_wave_lv5' },   // 2026-11-06 우리 그림(검기, Lv5 = 큰 금테 검기). 없으면 코드 초승달
         fx: [ { frame: 2, type: 'slash', x: 30, y: -62, rot: -8, sx: 1.4, sy: 1.2, tint: '#a8d4ff', ms: 200 } ],
         placeholder: { anim: 'attack1', f: [0, 1, 3, 3, 4], d: [70, 50, 130, 110, 110] }
@@ -400,6 +402,8 @@
         iframes: [0, 560],
         leap: { at: [80, 380], h: 46, fwd: 26 },
         quake: { at: 380, r: 130, depth: 40, hit: SLAM_HIT },
+        trail: { frames: [1, 3], everyMs: 40, lifeMs: 200, alpha: 0.32, color: '#ffe0a0' },   // 뛰어오르는 잔상(2026-11-06 밤)
+        zoom: { k: 1.07, ms: 520, lv5: true },   // 화면 당기기(기술 Lv5 만, 2026-11-06 밤). k = 확대 배율
         look: { ring: 'ground_slam' },   // 2026-11-06 우리 그림(내려꽂힘·양옆 충격파·먼지·돌)
         fx: [ { frame: 0, type: 'dust' } ],
         placeholder: { anims: ['jump', 'jump', 'jump', 'attack3', 'attack3', 'attack3'], f: [0, 1, 2, 3, 4, 5], d: [80, 120, 100, 80, 200, 160] },
@@ -434,7 +438,8 @@
       bolt: {
         name: '번개', icon: '번', mp: 16, cooldownMs: 8000, damageStyle: 'skill_bolt', motion: 'motion_cast_sky',
         desc: '앞쪽 가까운 적에게 번개 세 줄기를 내리꽂아요. 맞은 적은 잠깐 감전돼 멈춰요',
-        lv5: { area: 1.3, bolts: 5, wide: 110, say: '번개 5줄기 · 더 넓게 · 굵기 +30%' },   // 2026-11-06: bolts = 줄기 수, wide = 늘어난 줄기가 겨눈 자리 바깥으로 떨어지는 거리(원래 크기 도트)
+        lv5: { area: 1.3, bolts: 5, wide: 110, say: '번개 5줄기 · 더 넓게 · 굵기 +30%' },
+        zoom: { k: 1.06, ms: 900, lv5: true },   // 화면 당기기(Lv5 만, 2026-11-06 밤)   // 2026-11-06: bolts = 줄기 수, wide = 늘어난 줄기가 겨눈 자리 바깥으로 떨어지는 거리(원래 크기 도트)
         darken: { ms: 950, alpha: 0.5 },
         iframes: { frames: [0, 2] },
         strikes: strikesOf(120, [75, 120, 165]),
@@ -473,6 +478,7 @@
         darken: { ms: 1300, alpha: 0.55 },
         iframes: { frames: [0, 2] },
         meteor: { frame: 3, x: 140, aim: { range: 240, depth: 70 }, markMs: 560, fallMs: 380, r: 120, depth: 60, size: 30, hit: METEOR_HIT },
+        zoom: { k: 1.06, ms: 1300 },   // 화면 당기기(늘, 2026-11-06 밤)
         look: { art: 'meteor', rock: 'fireball', boom: 'fire_explosion' },   // art = 우리 그림(떨어짐~폭발 한 벌, 6장 = 쾅). 없으면 rock·boom
         placeholder: { anim: 'attack2', f: [0, 1, 2, 3, 3, 3, 4], d: [80, 90, 60, 160, 160, 110, 100] },
         female: {
@@ -884,7 +890,15 @@
       // 손맛 화려하게(2026-11-06 밤, 형님 「임팩트 화려하게」): 무거운 타 = 콤보 마무리·기술·넘어뜨리는 타·띄우기
       //   heavyStop = 무거운 타 멈춤 배율, heavyShake / lightShake = 흔들림 배율, spark = 불똥 수 배율, glow = 무거운 타 맞은 곳 둥근 빛(더하기) 세기,
       //   glowR = 그 빛 반지름(원래 크기 도트), flashHeavy = 무거운 타 하얀 번쩍 길이 배율, numPop = 마무리·치명타 숫자가 처음 튀어나오는 크기
-      impact: { heavyStop: 1.3, heavyShake: 1.25, lightShake: 1.0, spark: 1.3, glow: 0.65, glowR: 30, flashHeavy: 1.6, numPop: 1.35 }
+      impact: { heavyStop: 1.3, heavyShake: 1.25, lightShake: 1.0, spark: 1.3, glow: 0.65, glowR: 30, flashHeavy: 1.6, numPop: 1.35 },
+      // 플레이어가 맞음(2026-11-06 밤, 형님 「맞는 것도 화려하게」): stop / shake / spark = 멈춤·흔들림·불똥 배율, redMs = 몸 빨갛게 번쩍,
+      //   vig = 화면 가장자리 빨강 최대 세기(데미지가 최대 체력 x fullAt 이상이면 최대), vigMs = 사라지는 시간, bits = 튀는 조각 수
+      hurt: { stop: 1.35, shake: 1.2, spark: 1.4, redMs: 220, vig: 0.85, fullAt: 0.12, vigMs: 650, bits: 10 },
+      // 기술 화려하게(2026-11-06 밤): hitBits = 기술에 맞은 곳 기술 색 불티 수, cols = 기술 숫자 모양 → 불티 색,
+      //   glow = 기술 효과가 나올 때 둘레 빛(더하기) 세기, flashMul = 기술 화면 번쩍 세기 배율. 화면 당기기 = 기술마다 zoom(config SKILLS)
+      flashy: { hitBits: 7, glow: 0.55, flashMul: 1.3,
+                cols: { skill_knight: ['#ffffff', '#cfe8ff', '#8fc4ff'], skill_fire: ['#fff4d0', '#ffb040', '#ff5a1e'], skill_bolt: ['#ffffff', '#fff6a0', '#5ae6ff'],
+                        skill_ice: ['#ffffff', '#d8f8ff', '#7fe0ff'], skill_earth: ['#ffffff', '#ead8ff', '#b892ff'] } }
     },
 
     // ---------- 데미지 숫자 모양 (그리는 곳·글꼴 모양: fx.js 의 FONTS) ----------

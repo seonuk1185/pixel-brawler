@@ -325,6 +325,8 @@
     // big = 기술의 큰 불똥(마무리 타처럼 많이·멀리). damageStyle = 기술 숫자 모양(config damageText)
     var big = !otg && !!(st.finisher || st.big);
     FX.impact(hx, hy, dir, W.sparkColor, Math.round(J.sparkCount * (IM.spark || 1) * (big ? 1.6 : 1) * (sc < 1 ? 0.7 : 1) * (st.damageStyle ? 1.3 : 1)), big, impSpr, sc);
+    var FLC = st.damageStyle && J.flashy && J.flashy.hitBits && J.flashy.cols[st.damageStyle];   // 기술에 맞음: 기술 색 불티 더(2026-11-06 밤)
+    if (FLC && Skills.debris) Skills.debris(hx, hy, target.y, J.flashy.hitBits, { cols: FLC, glow: true, sp: 210, size: 1.6, ms: 420 });
     if (heavyHit && !otg && IM.glow && Skills.glow) Skills.glow(hx, hy, (IM.glowR || 30) * AS * Math.max(0.8, sc), W.sparkColor || '#fff2c8', 170, IM.glow);   // 무거운 타: 맞은 곳 둥근 빛
     // 숫자: crit = 마무리 모양(「22!」), numStyle = 숫자 모양만 따로(달리며 공격 작은 타 = push). 마지막 = 대상(같은 대상 숫자는 위로 쌓임)
     FX.damage(target.x, topY, dmg, crit || !!(st.finisher || st.crit || (st.damageStyle && st.knockdown)), J, null, crit ? 'agicrit' : st.numStyle || st.damageStyle, target.id || 'dummy', !!st.mergeNum && !crit);
@@ -396,9 +398,14 @@
     dmg = guardDmg(dmg);   // 늘 켜진 기술 「강철 피부」(받는 피해 -%)
     var dir = p.x >= e.x ? 1 : -1;
     if (!p.takeHit(dmg, dir, spec.knock, spec.flinchMs, !!spec.heavy)) return false;   // heavy = 넘어짐. 안 맞았으면 false(총알은 그대로 지나감)
-    G.hitstop = Math.max(G.hitstop, J.hitstopMs * (e.T.boss ? 1.3 : 0.8));
-    FX.shake(J.shakePx * (spec.shake || 1.2), J.shakeMs * 1.3);
-    FX.impact(p.x - dir * 4, p.y - 60 * AS, -dir, '#ff6a5a', Math.round(J.sparkCount * 0.8), e.T.boss, null, 0.8);
+    // 맞는 느낌 세게(2026-11-06 밤, config juice.hurt): 짧은 멈춤 + 흔들림 + 빨간 번쩍(몸) + 화면 가장자리 빨갛게(데미지만큼) + 불똥·피 조각
+    var HU = J.hurt || {}, hk = Math.min(1, dmg / Math.max(1, p.maxHp * (HU.fullAt || 0.12)));   // hk = 이번 데미지 세기 0~1
+    G.hitstop = Math.max(G.hitstop, J.hitstopMs * (e.T.boss ? 1.3 : 0.8) * (HU.stop || 1));
+    FX.shake(J.shakePx * (spec.shake || 1.2) * (HU.shake || 1), J.shakeMs * 1.3);
+    FX.impact(p.x - dir * 4, p.y - 60 * AS, -dir, '#ff6a5a', Math.round(J.sparkCount * 0.8 * (HU.spark || 1)), e.T.boss, null, 0.8);
+    p.redT = HU.redMs || 0;   // 몸 빨갛게(entities.js draw)
+    G.vig = Math.min(1, Math.max(G.vig || 0, (HU.vig || 0) * (0.45 + 0.55 * hk)));   // 화면 가장자리 빨갛게(점점 사라짐)
+    if (Skills.debris && HU.bits) Skills.debris(p.x - dir * 4, p.y - 56 * AS, p.y, HU.bits, { cols: ['#ff4a3a', '#ffffff', '#c41a2a', '#ffb0a0'], glow: true, sp: 170, size: 1.6, ms: 420 });
     FX.damage(p.x, p.y - (p.z || 0) - 112 * AS, dmg, false, J, '#ff5a4a', null, 'player');
     vibrate(Math.round(J.vibrateMs * 2.5));
     G.comboT = 0; comboEl.hidden = true;
@@ -1428,10 +1435,12 @@
     FX.updateShake(realMs);
     Skills.tickReal(realMs);
     if (intro) { introStep(realMs); return; }               // 보스 등장 컷인 동안: 게임 멈춤(2026-11-06 밤)
+    if (G.vig > 0) G.vig = Math.max(0, G.vig - realMs / ((J.hurt && J.hurt.vigMs) || 600));   // 가장자리 빨강 줄어듦(진짜 시간)
     if (G.hitstop > 0) { G.hitstop -= realMs; return; }   // 멈춤: 아무것도 안 움직임
     var dt = realMs * J.timeScale;
     if (G.slowT > 0) { G.slowT -= realMs; dt *= 0.3; }
     if (G.comboT > 0) { G.comboT -= dt; if (G.comboT <= 0) comboEl.hidden = true; }
+    if (G.zoom) { G.zoom.t += realMs; if (G.zoom.t >= G.zoom.ms) G.zoom = null; }
     var p = G.player;
     p.weaponKey = G.weaponKey;
     p.setMoveSet(G.moveSet);
@@ -1521,6 +1530,13 @@
     ctx.fillStyle = CFG.view.bg; ctx.fillRect(0, 0, LW, LH);
     ctx.translate(sh.x, sh.y);
     var camX = snap(G.camX);
+    // 큰 기술 순간 화면 당기기(2026-11-06 밤, skills.js zoom): 플레이어 쪽으로 살짝 확대했다 돌아옴
+    if (G.zoom && G.zoom.t < G.zoom.ms) {
+      var zu = G.zoom.t / G.zoom.ms, zk = 1 + (G.zoom.k - 1) * Math.sin(Math.PI * Math.min(1, zu * 1.4)) * (zu < 0.7 ? 1 : (1 - zu) / 0.3);
+      var zx = clamp(G.player.x - camX, LW * 0.3, LW * 0.7), zy = clamp(G.player.y - 40 * AS, LH * 0.35, LH * 0.75);
+      ctx.translate(zx, zy); ctx.scale(zk, zk); ctx.translate(-zx, -zy);
+    }
+
     if (MODE === 'stage') drawStageBg(camX);
     else {
       if (!bgCache) bgCache = buildBackground();
@@ -1554,6 +1570,11 @@
     Skills.drawOver(ctx, camX);                   // 번개 기둥·회전 원
     FX.draw(ctx, camX, false);
     Skills.drawFlash(ctx, LW, LH);                // 기술 맞는 순간 화면 번쩍
+    if (G.vig > 0.01) {                           // 플레이어가 맞음: 화면 가장자리 빨갛게(2026-11-06 밤)
+      var vg = ctx.createRadialGradient(LW / 2, LH / 2, Math.min(LW, LH) * 0.35, LW / 2, LH / 2, Math.max(LW, LH) * 0.62);
+      vg.addColorStop(0, 'rgba(200,0,20,0)'); vg.addColorStop(1, 'rgba(200,0,20,' + (0.55 * G.vig).toFixed(3) + ')');
+      ctx.fillStyle = vg; ctx.fillRect(-8, -8, LW + 16, LH + 16);
+    }
     drawIntro();                                  // 보스 등장 컷인(맨 위)
 
     if (DEBUG) drawDebug(camX);
@@ -2256,6 +2277,7 @@
       fx: function () { return G.assets.fx; },
       hitstop: function (ms) { G.hitstop = Math.max(G.hitstop, ms); },
       slow: function (ms) { G.slowT = Math.max(G.slowT, ms); },
+      zoom: function (k, ms) { G.zoom = { k: k, ms: ms, t: 0 }; },   // 큰 기술 화면 당기기(2026-11-06 밤)
       noMp: noMp             // 마나가 모자라 기술이 안 나감(2026-11-06)
     });
     Object.keys(assets.characters).forEach(function (k) { bakeFilter(assets.characters[k]); });
