@@ -41,7 +41,9 @@
 
   <!-- 스테이지 판 화면 위 글자: 체력 막대, 보스 막대, GO, 알림 (게임 화면 크기에 맞춰 main.js 가 위치를 잡음) -->
   <div class="hud" id="hud" hidden>
-    <div class="php"><span class="lbl">HP</span><div class="bar"><em id="pHpLag"></em><i id="pHp"></i></div><span class="num" id="pHpNum">150</span></div>
+    <div class="php"><span class="lbl">HP</span><div class="bar"><em id="pHpLag"></em><i id="pHp"></i></div><span class="num" id="pHpNum">150</span>
+      <!-- 포만감(2026-11-06 밤): 막대 없이 글자만(체력 숫자 오른쪽). 빵·고기로 참, 있는 동안 체력이 천천히 참(main.js fullStep) -->
+      <span class="full" id="pFull">포만감 50%</span></div>
     <!-- 마나(MP, 2026-11-06): 체력 밑 파란 막대. 기술을 쓰면 줄어듦(성장 4단계) -->
     <div class="pmp"><span class="lbl">MP</span><div class="bar"><i id="pMp"></i></div><span class="num" id="pMpNum">40</span></div>
     <!-- 레벨 + 얇은 경험치 막대 (성장 2026-11-05, main.js updateHud) -->

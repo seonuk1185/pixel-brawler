@@ -71,6 +71,9 @@ body.smooth #screen { image-rendering: auto; }
 .pmp .bar { width: 150px; height: 9px; background: #10183a; }
 .hud .pmp .bar i { background: linear-gradient(#8fd0ff, #2f7fe0); transition: width .15s; }
 .pmp .num { font-size: 11px; color: #cfe8ff; }
+/* 포만감 (2026-11-06 밤): 체력 숫자 오른쪽 글자만(막대 없음). 0% = 회색(회복 멈춤) */
+.php .full { font-size: 11px; color: #ffcf8a; white-space: nowrap; }
+.php .full.empty { color: #8a8296; }
 /* 레벨 + 얇은 노란 경험치 막대 (성장 2026-11-05): 마나 막대 밑(2026-11-06 전엔 체력 막대 바로 밑). 최고 레벨이면 막대가 가득(.max) */
 .plv {
   position: absolute; left: max(10px, env(safe-area-inset-left)); top: 84px;

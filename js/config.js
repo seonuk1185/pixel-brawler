@@ -988,6 +988,13 @@
       // 음식 먹고 회복한 양(2026-11-04): 초록 숫자, 보통 숫자와 같은 크기
       heal: { font: 'mid', scale: 1, top: '#d6ffc4', bottom: '#4cd64a', outline: '#123a16', shadow: 'rgba(6,30,10,0.35)',
               pop: { top: '#ffffff', bottom: '#a8ff8a' } },
+      // 물약·포만감(2026-11-06 밤): 「+HP 52」(빨강) · 「+MP 30」(파랑) · 「포만감 +30%」(주황)
+      pothp: { font: 'large', scale: 1, bold: true, top: '#ffe0dc', bottom: '#ff4a4a', outline: '#4a0a0e', shadow: 'rgba(30,6,6,0.4)',
+               pop: { top: '#ffffff', bottom: '#ffb0a8' } },
+      potmp: { font: 'large', scale: 1, bold: true, top: '#e0f2ff', bottom: '#3f9cff', outline: '#0a1e4a', shadow: 'rgba(6,10,30,0.4)',
+               pop: { top: '#ffffff', bottom: '#b8e4ff' } },
+      full:  { font: 'large', scale: 1, top: '#fff0d0', bottom: '#ffa84a', outline: '#4a2408', shadow: 'rgba(30,14,4,0.4)',
+               pop: { top: '#ffffff', bottom: '#ffd8a0' } },
       // 성장(2026-11-05): 적을 잡았을 때 「+13 XP」(작은 노란 글자) · 레벨업 「LEVEL UP!」(큰 금색 글자). 글자는 fx.js 가 기본 굵은 글꼴로
       xp: { font: 'large', scale: 1, top: '#fff6c0', bottom: '#ffd23f', outline: '#4a3410', shadow: 'rgba(30,20,4,0.35)',
             pop: { top: '#ffffff', bottom: '#fff6c0' } },
@@ -2823,18 +2830,42 @@
       breakFps: 14, holdMs: 600, fadeMs: 400, hitAbove: 40,
       actorDepth: 3, lookAhead: 48,
       drop: { meat: 0.2, bread: 0.35 },
+      potion: 0.3,                // 물약(2026-11-06 밤): 부서질 때 음식과 따로 이 확률로 물약 하나(종류 = potions.weights)
       woodColors: ['#c8894a', '#9a5f30', '#6e4022', '#e0b070']   // 나뭇조각 색
     },
-    // ---------- 음식 (부서진 소품에서 나옴, 밟으면 체력 회복) ----------
-    //   heal = 회복량(최대 체력은 안 넘음), frames = 그림(같은 기준점), pickup = 줍는 거리 { r = 가로, depth = 위아래 }(원래 크기)
+    // ---------- 음식 (부서진 소품에서 나옴, 밟으면 바로 먹음) ----------
+    //   2026-11-06 밤 형님 결정: 빵·고기는 체력을 바로 채우지 않고 「포만감 %」를 채움(full, 아래 fullness). 예전 heal 은 안 씀
+    //   frames = 그림(같은 기준점), pickup = 줍는 거리 { r = 가로, depth = 위아래 }(원래 크기)
     //   lifeMs = 바닥에 남아 있는 시간, blinkMs = 사라지기 전 깜빡이는 시간, hop = 나올 때 튀어 오르는 높이(원래 크기), pickupDelayMs = 나오자마자 줍지 않게
     food: {
       pivot: { x: 30, y: 26 },
       items: {
-        meat:  { frame: 'assets/props/stage1/food/meat_01.png',  heal: 40 },
-        bread: { frame: 'assets/props/stage1/food/bread_01.png', heal: 20 }
+        meat:  { frame: 'assets/props/stage1/food/meat_01.png',  full: 60 },
+        bread: { frame: 'assets/props/stage1/food/bread_01.png', full: 30 }
       },
       pickup: { r: 16, depth: 12 }, lifeMs: 15000, blinkMs: 3000, hop: 22, pickupDelayMs: 250, shadow: 12
+    },
+    // ---------- 포만감 (2026-11-06 밤, 기획\성장시스템-설계안.md 「물약·포만감」) : 막대 없이 체력·마나 옆 글자 「포만감 65%」 ----------
+    //   빵 +30% · 고기 +60% (최대 max). 포만감이 0 보다 크면 체력이 저절로 참: 초당 최대 체력 x regenPct (조금씩 모아서 1씩)
+    //   시간이 지나면 초당 decayPerSec 씩 줄고, 기술을 한 번 쓸 때마다 skillCost 더 줆. 0% = 회복만 멈춤(벌칙 없음)
+    //   start = 판 시작(다시 하기 포함)마다 이 값으로(저장 안 함). 값 고른 기준: 100% 를 시간으로만 다 쓰면(100초) 최대 체력 150 → 45, 200 → 60
+    //   = 예전 고기(40)와 비슷하거나 조금 더. 기술을 많이 쓰면 그만큼 빨리 끝남
+    fullness: { start: 50, max: 100, regenPct: 0.003, decayPerSec: 1, skillCost: 2 },
+    // ---------- 물약 (2026-11-06 밤): 밟으면 바로 마심(가방·버튼 없음, 게이지가 꽉 차 있어도 마심) ----------
+    //   items = 종류마다 채우는 양(최대의 비율): red = 체력, blue = 마나, purple = 둘 다. col = 물약 색 [밝음, 가운데, 어두움], pop = 머리 위 글자 모양(damageText)
+    //   어디서: 부서지는 소품 props.potion 확률 · 잡몹 mob(단단한 잡몹 = 원래 체력 toughHp 이상은 tough) 확률 · 보스는 꼭 하나(boss 종류)
+    //     bossAt = 보스가 물약을 떨어뜨리는 때: 'rage' = 화날 때(체력 절반 아래, 마왕 = 각성) → 싸우는 중에 마실 수 있음 / 'death' = 쓰러질 때
+    //   weights = 소품·잡몹에서 나올 때 종류 비율. 그림 = props.js 가 코드로 그리는 작은 도트 물약병(위아래로 둥실 + 반짝)
+    //   pickup·lifeMs·blinkMs·hop·pickupDelayMs = 음식과 같은 뜻
+    potions: {
+      items: {
+        red:    { hp: 0.3, col: ['#ffb0a8', '#e8303a', '#8a1020'], label: '빨간 물약' },
+        blue:   { mp: 0.45, col: ['#b8e4ff', '#2f86ec', '#163a8e'], label: '파란 물약' },
+        purple: { hp: 0.25, mp: 0.35, col: ['#ecc0ff', '#a040e8', '#4e1882'], label: '보라 물약' }
+      },
+      weights: { red: 0.5, blue: 0.3, purple: 0.2 },
+      mob: 0.06, tough: 0.12, toughHp: 75, boss: 'purple', bossAt: 'rage',
+      pickup: { r: 16, depth: 12 }, lifeMs: 20000, blinkMs: 3000, hop: 26, pickupDelayMs: 300, shadow: 7
     },
 
     // 먼지 효과(오크 돌진): 112x64, 바닥 가운데 기준

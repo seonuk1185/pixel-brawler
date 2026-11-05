@@ -177,6 +177,7 @@
                      L: L, mul: L.dmg, area: (L.lv5 && L.lv5.area) || 1, shotDone: 0, quaked: false, met: false, chain: chain, pl: null, plDone: false };
     if (q.L) p.mp = Math.max(0, (p.mp || 0) - L.mp);   // 마나 씀
     casts[d.id] = (casts[d.id] || 0) + 1;
+    if (H.onCast) H.onCast(d);   // 포만감이 조금 더 줆(main.js, 2026-11-06 밤)
     if (d.strikes) {
       var K = s.K = boltsFor(d.strikes, L);
       s.sx = K.x.map(function (x) { return p.x + p.dir * x; });   // 적이 없을 때 고정 자리

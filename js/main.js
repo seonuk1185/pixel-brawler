@@ -1118,8 +1118,49 @@
   Props.init(CFG, {
     laneY: laneY,
     fx: function () { return G.assets && G.assets.fx; },
-    hitstop: function (ms) { G.hitstop = Math.max(G.hitstop, ms); }
+    hitstop: function (ms) { G.hitstop = Math.max(G.hitstop, ms); },
+    feed: feed,     // 빵·고기 = 포만감 +%(2026-11-06 밤)
+    drink: drink,   // 물약 = 체력·마나 바로(2026-11-06 밤)
+    // 물약이 머무는 곳: 걷는 길 + 지금 화면(폰 버튼 밑 빼고)
+    view: function () { return { laneTop: world.laneTop, laneBottom: world.laneBottom, x0: G.camX + 14, x1: G.camX + LW - 14 - controlPad }; }
   });
+
+  // ---------- 포만감 · 물약 (2026-11-06 밤, 형님 결정, 수치 = config fullness · potions) ----------
+  // 포만감(G.full, 0~100 %): 판 시작마다 start. 0 보다 크면 체력이 초당 최대 체력 x regenPct 씩 참(조금씩 모아서 1씩), 초당 decayPerSec 씩 줆,
+  //   기술을 쓸 때마다 skillCost 더 줆(skills.js start → H.onCast). 0 = 회복만 멈춤
+  function feed(n) { var F = CFG.fullness; G.full = Math.min(F.max, (G.full || 0) + n); }
+  function fullStep(dt) {
+    var F = CFG.fullness, p = G.player;
+    if (!F || p.state === 'dead') return;
+    if (G.full > 0) {
+      G.fullAcc = (G.fullAcc || 0) + p.maxHp * F.regenPct * dt / 1000;
+      if (G.fullAcc >= 1) { var n = Math.floor(G.fullAcc); G.fullAcc -= n; p.hp = Math.min(p.maxHp, p.hp + n); }
+      G.full = Math.max(0, G.full - F.decayPerSec * dt / 1000);
+    }
+  }
+  function onCast() { if (CFG.fullness && MODE === 'stage') G.full = Math.max(0, (G.full || 0) - CFG.fullness.skillCost); }
+  // 물약 마심: 최대의 비율만큼 바로(꽉 차 있어도 마심). 돌려주는 값 = 실제로 찬 양 { hp, mp }
+  function drink(kind) {
+    var it = CFG.potions.items[kind], p = G.player, h0 = p.hp, m0 = p.mp;
+    if (it.hp) p.hp = Math.min(p.maxHp, p.hp + Math.round(p.maxHp * it.hp));
+    if (it.mp) p.mp = Math.min(p.maxMp, p.mp + Math.round(p.maxMp * it.mp));
+    G.potGot = (G.potGot || 0) + 1;
+    return { hp: p.hp - h0, mp: Math.round(p.mp - m0) };
+  }
+  // 잡몹이 쓰러질 때 가끔 물약(단단한 잡몹은 조금 더 자주). 보스·보스와 같이 쓰러진 졸개(noDrop)는 안 줌(보스는 bossPotion)
+  function mobPotion(e) {
+    var PO = CFG.potions;
+    if (!PO || e.T.boss || e.noDrop) return;
+    if (Math.random() < (e.T.hp >= PO.toughHp ? PO.tough : PO.mob)) Props.dropPotion(e.x, e.y, G.player.x > e.x ? -1 : 1, null);
+  }
+  // 보스는 꼭 하나(config potions.bossAt: 'rage' = 화날 때 · 'death' = 쓰러질 때). 플레이어 쪽으로 튐
+  function bossPotion(B, when) {
+    var PO = CFG.potions;
+    if (!PO || B.potionDone || (PO.bossAt || 'rage') !== when) return;
+    B.potionDone = true;
+    var dir = G.player.x >= B.x ? 1 : -1;
+    Props.dropPotion(B.x + dir * (B.T.radius + 10 * AS), B.y, dir, PO.boss);
+  }
 
   // ---------- 막힘 지킴이 (2026-11-04): 웨이브가 고정된 동안 적 하나가 안 와서 웨이브가 안 끝나는 일 막기 ----------
   //   살아 있는 적이 STUCK.ms 넘게 ① 「화면 밖」이거나 ② 「플레이어에게서 가로 STUCK.far 넘게 떨어져서 제자리(STUCK.move 안)」이면
@@ -1168,6 +1209,7 @@
     G.enemies.forEach(function (e) {
       if (e.alive() || e.xpDone) return;
       e.xpDone = true;
+      mobPotion(e);   // 물약(2026-11-06 밤)
       var n = Growth.enemyXp(e.type, e.T, idx);
       if (!(n > 0) || Growth.isMax()) return;
       G.xpGot = (G.xpGot || 0) + n;
@@ -1211,7 +1253,8 @@
       FX.shake(J.shakePx * 4, 900);
     }
     // 남은 졸개들도 같이 쓰러짐
-    G.enemies.forEach(function (e) { if (e !== boss && e.alive()) e.takeHit(9999, e.x > boss.x ? 1 : -1, 10, true, { force: true }); });
+    G.enemies.forEach(function (e) { if (e !== boss && e.alive()) { e.noDrop = true; e.takeHit(9999, e.x > boss.x ? 1 : -1, 10, true, { force: true }); } });
+    bossPotion(boss, 'death');
   }
 
   // 이름 뒤 「이/가」: 마지막 글자에 받침이 있으면 a, 없으면 b (거대 두꺼비가 / 전갈 왕이)
@@ -1257,6 +1300,7 @@
         Skills.flash({ color: AW.flash || '#ff3a8c', alpha: 0.55, ms: 520 });
         FX.shake(J.shakePx * AW.shake, 900);
         G.hitstop = Math.max(G.hitstop, 160);
+        bossPotion(B, 'rage');   // 보스 물약(2026-11-06 밤): 마왕은 각성할 때
         (B.T.enrage.summon || []).forEach(function (t, k) {
           var q = summonOf(t);
           S.queue.push({ type: q.type, side: k % 2 ? 'L' : 'R', at: S.waveT + 1100 + k * 900, opt: q.opt });
@@ -1272,6 +1316,7 @@
         Skills.flash({ color: B.rageColor(), alpha: RG.flash, ms: 420 });
         FX.shake(J.shakePx * RG.shake, 700);
         pushPlayer(B, RG.push * AS);
+        bossPotion(B, 'rage');   // 보스 물약(2026-11-06 밤): 화날 때 꼭 하나(보라)
         if (Skills.debris) Skills.debris(B.x, B.y - B.T.height * 0.5, B.y, 22, { cols: ['#fff2c0', B.rageColor(), '#ff3a10', '#ffd27a'], glow: true, sp: 240, size: 2, ms: 700 });
         (B.T.enrage.summon || []).forEach(function (t, k) {
           var q = summonOf(t);
@@ -1546,6 +1591,7 @@
       ringsStep(dt);         // 마왕군 장군 화염 충격파 고리
       poisonStep(dt);        // 전갈 왕 독 · 독 웅덩이
       mpStep(dt);            // 마나 차기
+      fullStep(dt);          // 포만감: 체력 천천히 + 줄어듦(2026-11-06 밤)
       stageStep(dt);
       Props.update(dt, p);   // 부서지는 그림·음식 줍기
     } else {
@@ -1640,7 +1686,7 @@
 
   // ---------- HUD (체력 막대, 보스 막대, GO, 알림) ----------
   var hud = {};
-  ['pHp', 'pHpLag', 'pHpNum', 'pMp', 'pMpNum', 'pLv', 'pXp', 'bossBar', 'bHp', 'bHpLag', 'bossName', 'goPrompt', 'banner', 'stageInfo'].forEach(function (k) { hud[k] = document.getElementById(k); });
+  ['pHp', 'pHpLag', 'pHpNum', 'pMp', 'pMpNum', 'pFull', 'pLv', 'pXp', 'bossBar', 'bHp', 'bHpLag', 'bossName', 'goPrompt', 'banner', 'stageInfo'].forEach(function (k) { hud[k] = document.getElementById(k); });
   var lastHud = {};
   function setIf(key, val, fn) { if (lastHud[key] !== val) { lastHud[key] = val; fn(val); } }
   function updateHud() {
@@ -1651,6 +1697,8 @@
     // 마나 막대(2026-11-06): 숫자는 정수로
     setIf('pmp', p.maxMp ? Math.floor(p.mp) / p.maxMp : 0, function (v) { hud.pMp.style.width = (v * 100) + '%'; });
     setIf('pmpn', Math.floor(p.mp), function (v) { hud.pMpNum.textContent = v; });
+    // 포만감(2026-11-06 밤): 막대 없이 글자만. 0% = 회색(회복 멈춤)
+    setIf('pfull', Math.ceil(G.full || 0), function (v) { hud.pFull.textContent = '포만감 ' + v + '%'; hud.pFull.classList.toggle('empty', v <= 0); });
     // 레벨 + 경험치 막대(성장). 최고 레벨이면 「Lv 30 MAX」 + 막대 가득
     setIf('plv', Growth.lv, function (v) {
       hud.pLv.textContent = 'Lv ' + v + (Growth.isMax() ? ' MAX' : '');
@@ -1743,6 +1791,7 @@
     G.stage = newStage();
     G.ectx = makeEnemyCtx();
     G.xpGot = 0;   // 이 판에서 얻은 경험치(결과 화면)
+    G.full = CFG.fullness ? CFG.fullness.start : 0; G.fullAcc = 0; G.potGot = 0;   // 포만감·물약(2026-11-06 밤): 판마다 처음부터
     G.hits = 0; G.totalDmg = 0; G.maxCombo = 0; G.comboT = 0; G.cstats = { launch: 0, air: 0, otg: 0, cancel: 0, maxAirMs: 0, maxAirHits: 0 }; G.comboTagT = 0; G.hitstop = 0; G.slowT = 0; comboEl.hidden = true;
     var god = G.player && G.player.god;
     G.player = new Player(CFG);
@@ -2234,6 +2283,9 @@
     // 기술 책 시험(2026-11-06, ?lv=N 일 때만): 이번 창에서만 그 직업으로 전직한 저장처럼 + 기술 점수를 계획(config skills.botPlan)대로
     skillSetup: function (cls, clsLv, plan) { var r = Growth.testSetup(cls, clsLv, plan); refreshGrowth(); return r; },
     resetCd: function () { G.player.skillCd = {}; },
+    // 물약·포만감 시험(2026-11-06 밤): 플레이어 앞 dx 도트에 물약(kind 없으면 비율로) / 포만감 바로 정하기
+    potion: function (kind, dx) { var p = G.player; return Props.dropPotion(p.x + (dx || 50), p.y, 1, kind); },
+    full: function (n) { G.full = n; return G.full; },
     hurt: function (n, heavy) { var p = G.player; p.invulnT = 0; p.takeHit(n || 10, -p.dir, 10, 0, !!heavy); },
     god: function (on) { G.player.god = on !== false; },
     // 경험치 바로 주기(성장 시험): GAME.test.xp(500)
@@ -2265,7 +2317,8 @@
         hits: G.hits, maxCombo: G.maxCombo, rocks: rocks.length, puddles: puddles.length, shots: shots.length, cannons: cannons.length, spikes: spikes.length, rings: rings.length, stageId: CFG.stage.id,
         shotsX: shots.filter(function (b) { return !(b.wait > 0); }).map(function (b) { return Math.round(b.x); }),
         props: Props.list.map(function (pr) { return pr.type + ':' + (pr.state === 'idle' ? pr.hitsLeft : pr.state) + '@' + Math.round(pr.x) + ',' + Math.round(pr.y); }),
-        food: Props.food.map(function (f) { return f.kind + '@' + Math.round(f.x) + ',' + Math.round(f.y); }) };
+        food: Props.food.map(function (f) { return f.kind + '@' + Math.round(f.x) + ',' + Math.round(f.y); }),
+        potions: Props.potions.map(function (f) { return f.kind + '@' + Math.round(f.x) + ',' + Math.round(f.y); }), full: Math.round((G.full || 0) * 10) / 10, potGot: G.potGot || 0 };
     }
   };
 
@@ -2319,7 +2372,8 @@
       slow: function (ms) { G.slowT = Math.max(G.slowT, ms); },
       zoom: function (k, ms) { G.zoom = { k: k, ms: ms, t: 0 }; },   // 큰 기술 화면 당기기(2026-11-06 밤)
       noMp: noMp,            // 마나가 모자라 기술이 안 나감(2026-11-06)
-      comboTag: comboTag     // 캔슬로 기술이 나감 → 콤보 글자 「CANCEL」(2026-11-06 밤)
+      comboTag: comboTag,    // 캔슬로 기술이 나감 → 콤보 글자 「CANCEL」(2026-11-06 밤)
+      onCast: onCast         // 기술을 씀 → 포만감이 조금 더 줆(2026-11-06 밤)
     });
     Object.keys(assets.characters).forEach(function (k) { bakeFilter(assets.characters[k]); });
     document.body.classList.add('mode-' + MODE);
