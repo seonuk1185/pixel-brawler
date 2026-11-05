@@ -332,15 +332,16 @@ body.smooth #screen { image-rendering: auto; }
   .btn.jump.down { transform: scale(.9); background: #4aa85ce0; }
   /* 기술 버튼 2개: 점프 오른쪽(B)과 위(A). --cd = 남은 쿨타임 비율(1 → 0) */
   .btn.sk {
-    width: 44px; height: 44px; padding: 0; overflow: hidden; font-size: 17px; line-height: 1;
+    width: 40px; height: 40px; padding: 0; overflow: hidden; font-size: 16px; line-height: 1;
     background: #2f4f8ccc; border-color: #0008; box-shadow: inset 0 -4px 0 #0003;
   }
   .btn.sk[hidden] { display: none; }
-  .btn.skA { right: 18px; bottom: 140px; }
-  .btn.skB { right: -8px; bottom: 90px; }
-  /* 3·4번 칸(2026-11-06, Lv13 부터): 1번 왼쪽(점프 위)과 1번 위 → 공격 버튼 둘레 부채꼴. 싸움 못 들어가는 폭(controlPad)이 조금 늘어남 */
-  .btn.skC { right: 66px; bottom: 140px; }
-  .btn.skD { right: 42px; bottom: 188px; }
+  /* 2026-11-06 기술 4칸: 조금 작게(40px) + 공격 버튼 위로 감싸는 부채꼴(B 오른쪽 위 → A → D 맨 위, C 는 점프 위).
+     모든 버튼 왼쪽 끝이 점프 버튼 왼쪽 끝(공격 버튼 오른쪽에서 86px) 안 → 싸움 못 들어가는 폭(controlPad)이 기술 2칸 때와 같음 */
+  .btn.skA { right: 2px; bottom: 132px; }
+  .btn.skB { right: -10px; bottom: 86px; }
+  .btn.skC { right: 46px; bottom: 142px; }
+  .btn.skD { right: 24px; bottom: 180px; }
   /* 마나가 모자람: 회색 + 밑에 드는 마나(파랑). 눌렀는데 모자라면 잠깐 흔들림(nompHit) */
   .btn.sk .mp { position: absolute; left: 0; right: 0; bottom: 1px; z-index: 2; font-size: 9px; line-height: 1; color: #bfe0ff; text-shadow: 1px 1px 0 #000; display: none; }
   .btn.sk.nomp { background: #4a4a5acc; }
