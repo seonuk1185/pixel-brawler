@@ -37,6 +37,8 @@
     this.retreatT = 0;
     this.staggerCd = 0;
     this.enraged = false;
+    // 보폭으로 걷기(T.walkStride 가 있는 보스만): walkPh = 걷기 한 바퀴 중 어디(0~1), mvx·mvy = 지난번 걸은 속도, walkHold = 멈춰도 걷기 그림을 잠깐 더 유지하는 남은 시간
+    this.walkPh = 0; this.mvx = 0; this.mvy = 0; this.walkHold = 0;
     this.wave = -1;
     // 맞음 반응
     this.clock = 0;                    // 이 적의 시계(ms, 멈춤·슬로모션 반영)
@@ -276,6 +278,7 @@
     this.lastP = p;                    // 날아 있을 때 점프 공격만 맞게(canBeHit)
     this.animT += dtMs;
     this.clock += dtMs;
+    if (T.walkStride) this.stepWalk(dtMs);
     if (this.flashT > 0) this.flashT -= dtMs;
     if (this.staggerCd > 0) this.staggerCd -= dtMs;
     if (this.retreatT > 0) this.retreatT -= dtMs;
@@ -401,8 +404,34 @@
 
   Enemy.prototype.setMove = function (vx, vy) {
     var moving = Math.abs(vx) > 4 || Math.abs(vy) > 4;
+    if (this.T.walkStride) {
+      // 보폭으로 걷는 보스: 걷기 그림은 걸은 거리로 넘기고(stepWalk), 잠깐 멈췄다 다시 걸어도 처음 장으로 돌아가지 않음.
+      //   멈춰도 WALK_HOLD_MS 동안은 걷기 그림(그 장 그대로)을 유지 → 목표 근처에서 섰다 걸었다 할 때 idle↔walk 그림이 번갈아 튀지 않음
+      this.mvx = moving ? vx : 0; this.mvy = moving ? vy : 0;
+      if (moving) this.walkHold = WALK_HOLD_MS;
+      else if (this.state === 'walk' && this.walkHold > 0) return;
+      var w = moving ? 'walk' : 'idle';
+      if (this.state !== w) { this.state = w; if (w === 'idle') this.animT = 0; }
+      return;
+    }
     var s = moving ? 'walk' : 'idle';
     if (this.state !== s) { this.state = s; this.animT = 0; }
+  };
+
+  // 보폭 걷기(2026-11-05): 보스 걷기 그림을 시간 대신 「걸은 거리」로 넘긴다(플레이어 걷기와 같은 방식).
+  //   T.walkStride = 걷기 그림 한 바퀴 동안 가는 도트 수(config, scaleActors 가 그림 크기에 맞춰 줄임).
+  //   바라보는 쪽과 반대로 움직이면(플레이어를 보며 뒤로 물러남) 그림을 거꾸로 넘김. 느려지면(목표 근처·화남) 그림도 그만큼 느려지거나 빨라짐
+  var WALK_HOLD_MS = 140;
+  Enemy.prototype.stepWalk = function (dtMs) {
+    if (this.state !== 'walk') { this.walkHold = 0; this.mvx = this.mvy = 0; return; }
+    var d = Math.hypot(this.mvx, this.mvy * 1.6) * dtMs / 1000;   // 위아래로 걸을 때는 화면에서 덜 움직여 보이므로 1.6배(플레이어 depthStrideMul 과 같음)
+    var sg = this.mvx * this.dir < 0 ? -1 : 1;
+    this.walkPh = ((this.walkPh + sg * d / this.T.walkStride) % 1 + 1) % 1;
+    if (this.walkHold > 0) this.walkHold -= dtMs;
+  };
+  Enemy.prototype.walkIdx = function () {
+    var n = this.art[this.T.walkAnim].length;
+    return Math.floor(this.walkPh * n) % n;
   };
 
   // 해적 총잡이(T.ranged, 6단계): 플레이어와 keep 사이 거리에 서서(가까우면 플레이어를 보며 뒤로 물러남, 멀면 다가감) 차례가 되면 쏨.
@@ -935,7 +964,7 @@
       }
       return this.frameAt(s.anim, a.t).img;
     }
-    if (this.state === 'walk') return this.frameAt(T.walkAnim, this.animT).img;
+    if (this.state === 'walk') return T.walkStride ? this.art[T.walkAnim][this.walkIdx()] : this.frameAt(T.walkAnim, this.animT).img;
     if (this.asleep && this.pose !== 'idle' && this.hasAnim(this.pose)) return this.frameAt(this.pose, this.animT).img;   // 쉬는 그림(있을 때만)
     return this.frameAt('idle', this.animT).img;
   };
@@ -1097,6 +1126,8 @@
     g.globalAlpha = alpha;
     g.translate(x, y + by - snapPx(fz));
     var ds = T.drawScale || 1;    // 6단계 선장: 그림만 조금 크게(판정은 config 에서 같이 키움)
+    // 걷기 그림 장마다 높이 맞춤(T.walkDy = 그림 점, + 아래로): 발이 땅에서 뜬 장을 바닥에 붙임(마왕 1장·전갈 2~6장)
+    if (T.walkDy && T.walkStride && this.state === 'walk') { var wdy = T.walkDy[this.walkIdx()] || 0; if (wdy) g.translate(0, snapPx(wdy * AS() * ds)); }
     g.scale(-this.dir * ds, ds);  // 그림이 왼쪽을 보므로 반대로
     var rim = (auk > 0 && T.awaken.rim) || T.rim;   // 마왕은 각성 뒤 붉은 보랏빛 테두리
     if (rim) drawRim(g, img, T.pivot, rim);   // 7단계 와이번: 붉은 하늘에 안 묻히게 어두운 테두리
