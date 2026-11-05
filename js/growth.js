@@ -1,6 +1,7 @@
 // 성장: 레벨·경험치 계산 + 능력치 점수 + 저장 (2026-11-05, 기획\성장시스템-설계안.md 1·2단계 / 2026-11-06 전직·능력치). 수치는 config.js 의 growth
 //   main.js 가 쓰는 것: Growth.lv / xp / need() / maxHp(직업) / atkMul(마법?) / enemyXp(적, 판 순서) / gain(경험치) / isMax()
 //     능력치(2026-11-06): stats { str, agi, vit, int, wis } / pts(안 쓴 점수) / add(이름) / reset() / auto(직업) / atkSpd() / moveMul() / critChance()
+//     마나(2026-11-06): maxMp(직업) / mpRegen() (초당)
 //   저장 = 이 브라우저 localStorage 'pixelBrawler.save' = { v: 2, slot: 1, slots: { 1: { lv, xp, class, stats, pts } } }
 //     class = 전직한 직업('knight' / 'mage', 2026-11-06). 없으면 견습(맨손). 한 번 정하면 setClass 가 안 바꿈(새 저장칸에서 다른 직업)
 //     stats = 올린 능력치, pts = 안 쓴 점수. 예전 저장(능력치 없음, v1)은 지금 레벨만큼 점수를 한꺼번에 줌(3 × (Lv-1), 안 쓴 채로)
@@ -46,6 +47,13 @@
       var cb = GR.classBase && GR.classBase[cls || G.cls || 'novice'];
       return Math.round(CFG.hero.hp + GR.hpPerLv * (G.lv - 1) + ST.vit * G.stats.vit + ((cb && cb.hp) || 0));
     },
+    // 최대 마나: 직업 기본(법사가 많음) + 레벨 몫 + 지혜(WIS)
+    maxMp: function (cls) {
+      var cb = GR.classBase && GR.classBase[cls || G.cls || 'novice'];
+      return Math.round(((cb && cb.mp) || 0) + GR.mp.perLv * (G.lv - 1) + ST.wis.mp * G.stats.wis);
+    },
+    // 마나 회복(초당): 기본 + 지혜
+    mpRegen: function () { return GR.mp.regen + ST.wis.regen * G.stats.wis; },
     // 공격 배율: 레벨 몫 + 힘(물리) 또는 지능(마법). magic = 법사 지팡이·완드(config weapons 의 magic)
     atkMul: function (magic) { return 1 + GR.atkPerLv * (G.lv - 1) + (magic ? ST.int * G.stats.int : ST.str * G.stats.str); },
     // 민첩: 콤보 휘두르는 빠르기 · 이동 빠르기(둘 다 spdCap 까지) · 치명타 확률(critCap 까지)

@@ -324,6 +324,7 @@
     if (crit) G.crits = (G.crits || 0) + 1;
     vibrate(Math.round(J.vibrateMs * (st.finisher ? 2 : 1)));
     G.hits++; G.totalDmg += dmg;
+    p.mp = Math.min(p.maxMp, p.mp + CFG.growth.mp.onHit);   // 마나: 맞힐 때마다 조금 참
     G.comboHits = G.comboT > 0 ? G.comboHits + 1 : 1;
     G.maxCombo = Math.max(G.maxCombo, G.comboHits);
     G.comboT = 1200;
@@ -1021,11 +1022,17 @@
 
   // ---------- 성장: 경험치·레벨 (2026-11-05, 수치 = config growth, 계산·저장 = growth.js) ----------
   // 레벨에 맞는 최대 체력으로(새 판 시작·다시 하기 = 가득 참)
-  function applyGrowth(p) { p.maxHp = Growth.maxHp(G.classKey); p.hp = p.maxHp; }
+  function applyGrowth(p) { p.maxHp = Growth.maxHp(G.classKey); p.hp = p.maxHp; p.maxMp = Growth.maxMp(G.classKey); p.mp = p.maxMp; }
   // 능력치·직업이 바뀜(판 도중): 최대 체력만 새로(지금 체력은 그대로, 넘치면 잘라 냄 → 초기화·다시 올리기로 회복되지 않게)
   function refreshGrowth() {
     var p = G.player; if (!p) return;
     p.maxHp = Growth.maxHp(G.classKey); p.hp = Math.min(p.hp, p.maxHp);
+    p.maxMp = Growth.maxMp(G.classKey); p.mp = Math.min(p.mp, p.maxMp);
+  }
+  // 마나(2026-11-06): 초당 Growth.mpRegen() 씩 참(쓰러지면 안 참). 맞힐 때 회복은 onHit
+  function mpStep(dt) {
+    var p = G.player;
+    if (p.state !== 'dead' && p.mp < p.maxMp) p.mp = Math.min(p.maxMp, p.mp + Growth.mpRegen() * dt / 1000);
   }
   // 쓰러진 적(어떻게 쓰러졌든: 플레이어 타·기술·보스와 같이 쓰러짐)마다 한 번 경험치. 적 머리 위에 「+13 XP」
   function xpStep() {
@@ -1046,6 +1053,9 @@
     var p = G.player, LU = CFG.growth.levelUp || {}, add = Growth.maxHp(G.classKey) - p.maxHp;
     p.maxHp = Growth.maxHp(G.classKey);
     if (p.state !== 'dead' && add > 0) p.hp = Math.min(p.maxHp, p.hp + add);
+    var addMp = Growth.maxMp(G.classKey) - p.maxMp;   // 마나도 늘어난 만큼 참
+    p.maxMp = Growth.maxMp(G.classKey);
+    if (addMp > 0) p.mp = Math.min(p.maxMp, p.mp + addMp);
     FX.damage(p.x, p.y - (p.z || 0) - 118 * AS, 'LEVEL UP!', false, J, null, 'levelup', 'player:lv');
     if (LU.flash) Skills.flash(LU.flash);
     FX.impact(p.x, p.y - (p.z || 0) - 60 * AS, p.dir, LU.sparkCol || '#ffe066', Math.round(J.sparkCount * 1.4), true, G.assets.fx && G.assets.fx.impact, 1);
@@ -1335,6 +1345,7 @@
       spikesStep(dt);        // 서리 거인 얼음 가시
       ringsStep(dt);         // 마왕군 장군 화염 충격파 고리
       poisonStep(dt);        // 전갈 왕 독 · 독 웅덩이
+      mpStep(dt);            // 마나 차기
       stageStep(dt);
       Props.update(dt, p);   // 부서지는 그림·음식 줍기
     } else {
@@ -1415,7 +1426,7 @@
 
   // ---------- HUD (체력 막대, 보스 막대, GO, 알림) ----------
   var hud = {};
-  ['pHp', 'pHpLag', 'pHpNum', 'pLv', 'pXp', 'bossBar', 'bHp', 'bHpLag', 'bossName', 'goPrompt', 'banner', 'stageInfo'].forEach(function (k) { hud[k] = document.getElementById(k); });
+  ['pHp', 'pHpLag', 'pHpNum', 'pMp', 'pMpNum', 'pLv', 'pXp', 'bossBar', 'bHp', 'bHpLag', 'bossName', 'goPrompt', 'banner', 'stageInfo'].forEach(function (k) { hud[k] = document.getElementById(k); });
   var lastHud = {};
   function setIf(key, val, fn) { if (lastHud[key] !== val) { lastHud[key] = val; fn(val); } }
   function updateHud() {
@@ -1423,6 +1434,9 @@
     var pr = p.hp / p.maxHp;
     setIf('php', pr, function (v) { hud.pHp.style.width = (v * 100) + '%'; hud.pHpLag.style.width = (v * 100) + '%'; hud.pHp.classList.toggle('low', v < 0.3); });
     setIf('phpn', p.hp, function (v) { hud.pHpNum.textContent = v; });
+    // 마나 막대(2026-11-06): 숫자는 정수로
+    setIf('pmp', p.maxMp ? Math.floor(p.mp) / p.maxMp : 0, function (v) { hud.pMp.style.width = (v * 100) + '%'; });
+    setIf('pmpn', Math.floor(p.mp), function (v) { hud.pMpNum.textContent = v; });
     // 레벨 + 경험치 막대(성장). 최고 레벨이면 「Lv 30 MAX」 + 막대 가득
     setIf('plv', Growth.lv, function (v) {
       hud.pLv.textContent = 'Lv ' + v + (Growth.isMax() ? ' MAX' : '');
@@ -1675,7 +1689,8 @@
       return '빠르기 +' + pct(Growth.atkSpd() - 1) + '% · 이동 +' + pct(Growth.moveMul() - 1) + '% · 치명타 ' + pct(Growth.critChance()) + '%'; } },
     vit: { name: '체력', en: 'VIT', desc: '최대 체력이 늘어요', now: function () { return '최대 체력 ' + Growth.maxHp(G.classKey); } },
     int: { name: '지능', en: 'INT', desc: '법사 마법(지팡이 타·마법탄·폭발·기술)이 세져요', now: function () { return '마법 공격 x' + Growth.atkMul(true).toFixed(2); } },
-    wis: { name: '지혜', en: 'WIS', desc: '마나가 늘고 빨리 차요 (마나는 기술 단계에서 써요)', now: function () { return '올린 만큼 나중에 마나로'; } }
+    wis: { name: '지혜', en: 'WIS', desc: '마나가 늘고 빨리 차요 (마나는 기술 단계에서 써요)', now: function () {
+      return '최대 마나 ' + Growth.maxMp(G.classKey) + ' · 초당 +' + (Math.round(Growth.mpRegen() * 10) / 10); } }
   };
   function statBadges() {
     var n = Growth.pts;
@@ -1907,7 +1922,7 @@
         poison: p.poison ? Math.round(p.poison.t) : 0, ending: S ? !!S.ending : false,
         run: G.run ? { from: G.run.from, ms: G.run.ms } : null,
         lv: Growth.lv, xp: Growth.xp, need: Growth.need(), xpGot: G.xpGot || 0, maxHp: p.maxHp, atkMul: Growth.atkMul(), magMul: Growth.atkMul(true),
-        stats: Growth.stats, pts: Growth.pts, cls: Growth.cls, atkSpd: p.atkSpd, moveMul: p.moveMul, crit: Growth.critChance(), crits: G.crits || 0,
+        stats: Growth.stats, pts: Growth.pts, cls: Growth.cls, mp: Math.round(p.mp * 10) / 10, maxMp: p.maxMp, atkSpd: p.atkSpd, moveMul: p.moveMul, crit: Growth.critChance(), crits: G.crits || 0,
         hits: G.hits, maxCombo: G.maxCombo, rocks: rocks.length, puddles: puddles.length, shots: shots.length, cannons: cannons.length, spikes: spikes.length, rings: rings.length, stageId: CFG.stage.id,
         shotsX: shots.filter(function (b) { return !(b.wait > 0); }).map(function (b) { return Math.round(b.x); }),
         props: Props.list.map(function (pr) { return pr.type + ':' + (pr.state === 'idle' ? pr.hitsLeft : pr.state) + '@' + Math.round(pr.x) + ',' + Math.round(pr.y); }),
