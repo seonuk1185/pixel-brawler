@@ -256,8 +256,12 @@
     var p = G.player;
     var dir = src ? src.dir : p.dir;
     var W = CFG.weapons[src ? src.wk : p.weaponKey];
-    // 레벨 공격력(성장 2026-11-05, Growth.atkMul = 1 + 2% × (Lv-1)): 적·허수아비를 때리는 모든 타·기술에 곱함(소품은 그대로)
-    var dmg = Math.round(rand(W.damage[0], W.damage[1]) * st.dmg * (target.isProp ? 1 : Growth.atkMul()));
+    // 레벨·능력치 공격력(성장, Growth.atkMul): 적·허수아비를 때리는 모든 타·기술에 곱함(소품은 그대로)
+    //   2026-11-06: 레벨 몫 + 힘(물리: 맨손·검) 또는 지능(마법: 지팡이·완드로 나간 타·마법탄·터짐·화염구·번개 = 무기 magic)
+    var dmg = Math.round(rand(W.damage[0], W.damage[1]) * st.dmg * (target.isProp ? 1 : Growth.atkMul(!!W.magic)));
+    // 치명타(민첩, 2026-11-06): 적·허수아비를 때릴 때 확률 Growth.critChance() → 데미지 x critMul + 큰 주황 숫자(agicrit). GAME.test.crit 로 시험 고정
+    var crit = !target.isProp && (G.forceCrit != null ? G.forceCrit : Math.random() < Growth.critChance());
+    if (crit) dmg = Math.round(dmg * CFG.growth.stats.critMul);
     // 소품(상자·통): 단계만 넘김(데미지 숫자·콤보 수 없음). 기술(damageStyle) = 한 번에 부서짐, 맞은 곳 = 마법이면 그 자리, 아니면 몸 앞
     if (target.isProp) {
       Props.hit(target, { dmg: dmg, strong: !!st.damageStyle, finisher: !!st.finisher, dir: dir,
@@ -316,7 +320,8 @@
     var big = !otg && !!(st.finisher || st.big);
     FX.impact(hx, hy, dir, W.sparkColor, Math.round(J.sparkCount * (big ? 1.6 : 1) * (sc < 1 ? 0.7 : 1) * (st.damageStyle ? 1.3 : 1)), big, impSpr, sc);
     // 숫자: crit = 마무리 모양(「22!」), numStyle = 숫자 모양만 따로(달리며 공격 작은 타 = push). 마지막 = 대상(같은 대상 숫자는 위로 쌓임)
-    FX.damage(target.x, topY, dmg, !!(st.finisher || st.crit || (st.damageStyle && st.knockdown)), J, null, st.numStyle || st.damageStyle, target.id || 'dummy', !!st.mergeNum);
+    FX.damage(target.x, topY, dmg, crit || !!(st.finisher || st.crit || (st.damageStyle && st.knockdown)), J, null, crit ? 'agicrit' : st.numStyle || st.damageStyle, target.id || 'dummy', !!st.mergeNum && !crit);
+    if (crit) G.crits = (G.crits || 0) + 1;
     vibrate(Math.round(J.vibrateMs * (st.finisher ? 2 : 1)));
     G.hits++; G.totalDmg += dmg;
     G.comboHits = G.comboT > 0 ? G.comboHits + 1 : 1;
@@ -1016,7 +1021,12 @@
 
   // ---------- 성장: 경험치·레벨 (2026-11-05, 수치 = config growth, 계산·저장 = growth.js) ----------
   // 레벨에 맞는 최대 체력으로(새 판 시작·다시 하기 = 가득 참)
-  function applyGrowth(p) { p.maxHp = Growth.maxHp(); p.hp = p.maxHp; }
+  function applyGrowth(p) { p.maxHp = Growth.maxHp(G.classKey); p.hp = p.maxHp; }
+  // 능력치·직업이 바뀜(판 도중): 최대 체력만 새로(지금 체력은 그대로, 넘치면 잘라 냄 → 초기화·다시 올리기로 회복되지 않게)
+  function refreshGrowth() {
+    var p = G.player; if (!p) return;
+    p.maxHp = Growth.maxHp(G.classKey); p.hp = Math.min(p.hp, p.maxHp);
+  }
   // 쓰러진 적(어떻게 쓰러졌든: 플레이어 타·기술·보스와 같이 쓰러짐)마다 한 번 경험치. 적 머리 위에 「+13 XP」
   function xpStep() {
     var idx = G.stageNo - 1;
@@ -1033,8 +1043,8 @@
   }
   // 레벨업: 늘어난 최대 체력만큼 바로 회복 + 머리 위 「LEVEL UP!」 + 짧은 번쩍·반짝 불똥(멈추지 않음)
   function onLevelUp(up) {
-    var p = G.player, LU = CFG.growth.levelUp || {}, add = Growth.maxHp() - p.maxHp;
-    p.maxHp = Growth.maxHp();
+    var p = G.player, LU = CFG.growth.levelUp || {}, add = Growth.maxHp(G.classKey) - p.maxHp;
+    p.maxHp = Growth.maxHp(G.classKey);
     if (p.state !== 'dead' && add > 0) p.hp = Math.min(p.maxHp, p.hp + add);
     FX.damage(p.x, p.y - (p.z || 0) - 118 * AS, 'LEVEL UP!', false, J, null, 'levelup', 'player:lv');
     if (LU.flash) Skills.flash(LU.flash);
@@ -1261,6 +1271,7 @@
     p.weaponKey = G.weaponKey;
     p.setMoveSet(G.moveSet);
     p.classKey = G.classKey; p.gender = G.charKey;   // 기술 고르기용
+    p.atkSpd = Growth.atkSpd(); p.moveMul = Growth.moveMul();   // 민첩(성장 능력치): 휘두르기·이동 빠르기
     if (MODE === 'stage') { world.minX = G.camX + 14; world.maxX = G.camX + LW - 14 - controlPad; }
     if (G.bot && MODE === 'stage' && !G.stage.result) botThink(dt);
     var ev = p.update(dt, world);
@@ -1420,6 +1431,7 @@
       lastHud.plvSeen = v;
     });
     setIf('pxp', Growth.isMax() ? 1 : Growth.xp / Growth.need(), function (v) { hud.pXp.style.width = (v * 100) + '%'; });
+    setIf('pts', Growth.pts, statBadges);   // 안 쓴 능력치 점수 표시
     var B = S.boss, showBoss = !!(B && (B.alive() || S.bossDownT < 800));
     setIf('bshow', showBoss, function (v) { hud.bossBar.hidden = !v; });
     if (B) setIf('bname', B.label, function (v) { hud.bossName.textContent = v; });
@@ -1649,8 +1661,72 @@
       G.player.weaponKey = G.weaponKey; G.player.setMoveSet(c.moves);
     }
     document.querySelectorAll('[data-class]').forEach(function (b) { b.classList.toggle('on', b.dataset.class === k); });
+    refreshGrowth();   // 직업마다 기본 체력이 다름(기사 +)
     return pr;
   }
+  // ---------- 능력치 창 (2026-11-06, 수치 = config growth.stats, 계산·저장 = growth.js) ----------
+  // 여는 곳: 경험치 막대 옆 「능력치」 · 스테이지 고르기 · 결과 화면. 여는 동안 게임 멈춤, 닫으면 원래대로(열려 있던 고르기·결과 화면으로 돌아감)
+  //   + = 한 점 올리기, 자동 배분 = 남은 점수를 직업 비율대로(지금 입은 직업, 시험 버튼 포함), 초기화 = 올린 점수 전부 돌려받음(공짜)
+  var statEl = document.getElementById('statPanel'), statBack = null;
+  function pct(v) { return Math.round(v * 1000) / 10; }   // 0.096 → 9.6
+  var STAT_INFO = {
+    str: { name: '힘', en: 'STR', desc: '맨손·검 공격과 기사 기술이 세져요', now: function () { return '물리 공격 x' + Growth.atkMul(false).toFixed(2); } },
+    agi: { name: '민첩', en: 'AGI', desc: '휘두르기·걷기가 빨라지고 가끔 치명타(' + CFG.growth.stats.critMul + '배)', now: function () {
+      return '빠르기 +' + pct(Growth.atkSpd() - 1) + '% · 이동 +' + pct(Growth.moveMul() - 1) + '% · 치명타 ' + pct(Growth.critChance()) + '%'; } },
+    vit: { name: '체력', en: 'VIT', desc: '최대 체력이 늘어요', now: function () { return '최대 체력 ' + Growth.maxHp(G.classKey); } },
+    int: { name: '지능', en: 'INT', desc: '법사 마법(지팡이 타·마법탄·폭발·기술)이 세져요', now: function () { return '마법 공격 x' + Growth.atkMul(true).toFixed(2); } },
+    wis: { name: '지혜', en: 'WIS', desc: '마나가 늘고 빨리 차요 (마나는 기술 단계에서 써요)', now: function () { return '올린 만큼 나중에 마나로'; } }
+  };
+  function statBadges() {
+    var n = Growth.pts;
+    document.querySelectorAll('.statbtn .badge, .statopen .badge').forEach(function (b) { b.hidden = !n; b.textContent = n > 99 ? '99+' : n; });
+  }
+  function renderStats() {
+    var rows = document.getElementById('statRows'), focusK = document.activeElement && document.activeElement.dataset && document.activeElement.dataset.k;
+    document.getElementById('statPts').textContent = Growth.pts;
+    document.getElementById('statSum').textContent = 'Lv ' + Growth.lv + ' · ' + ((CFG.classes[G.classKey] || {}).label || '');
+    if (!rows.children.length) Growth.keys.forEach(function (k) {
+      var I = STAT_INFO[k], r = document.createElement('div');
+      r.className = 'srow';
+      r.innerHTML = '<div class="sn"><b>' + I.name + '</b><small>' + I.en + '</small></div><div class="sv"></div><div class="sd">' + I.desc + '<em></em></div>' +
+        '<button type="button" class="splus" data-k="' + k + '" aria-label="' + I.name + ' 올리기">+</button>';
+      r.querySelector('.splus').addEventListener('click', function () { if (Growth.add(k)) { refreshGrowth(); renderStats(); } });
+      rows.appendChild(r);
+    });
+    Growth.keys.forEach(function (k, i) {
+      var r = rows.children[i];
+      r.querySelector('.sv').textContent = Growth.stats[k];
+      r.querySelector('em').textContent = STAT_INFO[k].now();
+      r.querySelector('.splus').disabled = !Growth.pts;
+    });
+    var used = 0; Growth.keys.forEach(function (k) { used += Growth.stats[k]; });
+    document.getElementById('btnStatAuto').disabled = !Growth.pts;
+    document.getElementById('btnStatReset').disabled = !used;
+    statBadges();
+    // 점수를 다 써서 + 가 꺼지면 키보드 자리는 닫기로
+    if (focusK && !Growth.pts && statEl.contains(document.activeElement)) document.getElementById('btnStatClose').focus();
+  }
+  function openStats() {
+    if (!statEl.hidden) return;
+    statBack = { menu: menuEl && !menuEl.hidden ? menuEl : null, paused: G.paused };
+    G.paused = true; Input.setOverride(null);
+    renderStats();
+    openMenu(statEl, statEl.querySelector('.splus:not([disabled])') || document.getElementById('btnStatClose'));
+  }
+  function closeStats() {
+    closeMenu(statEl);
+    var B = statBack || {}; statBack = null;
+    G.paused = !!B.paused;
+    if (B.menu && !B.menu.hidden) openMenu(B.menu, B.menu.querySelector('.statopen'));
+  }
+  document.getElementById('btnStat').addEventListener('click', function () { openStats(); this.blur(); });
+  document.querySelectorAll('.statopen').forEach(function (b) { b.addEventListener('click', function () { openStats(); }); });
+  document.getElementById('btnStatAuto').addEventListener('click', function () { if (Growth.auto(G.classKey)) { refreshGrowth(); renderStats(); } });
+  document.getElementById('btnStatReset').addEventListener('click', function () { Growth.reset(); refreshGrowth(); renderStats(); });
+  document.getElementById('btnStatClose').addEventListener('click', closeStats);
+  window.addEventListener('keydown', function (e) { if (e.code === 'Escape' && !statEl.hidden) { e.preventDefault(); closeStats(); } });
+  G.openStats = openStats; G.closeStats = closeStats;
+
   // ---------- 전직 (2026-11-06, 설계안 3번 · config growth.classChangeStage / classChange) ----------
   // 뜨는 때: 판 모드 + 아직 직업 없음(Growth.cls) + 전직 판(2단계)을 깬 저장. 시험 자동 조종(?bot=1)은 안 띄움(멈추지 않게)
   //   → 2단계 보스를 처음 깬 결과 화면 직전 · 이미 깬 저장이면 다음 스테이지 고르기·바로 시작(?stage=N) 때. 고르면 Growth.cls 가 생겨 다시는 안 뜸
@@ -1810,6 +1886,10 @@
     god: function (on) { G.player.god = on !== false; },
     // 경험치 바로 주기(성장 시험): GAME.test.xp(500)
     xp: function (n) { var up = Growth.gain(n); if (up > 0) onLevelUp(up); return { lv: Growth.lv, xp: Growth.xp, need: Growth.need() }; },
+    // 치명타 고정(true = 늘 / false = 안 남 / null = 확률대로): GAME.test.crit(true)
+    crit: function (v) { G.forceCrit = v == null ? null : !!v; },
+    // 능력치 바로 바꾸기(시험): GAME.test.stats({ str: 10 }) → 남은 점수에서 뺌(모자라면 있는 만큼)
+    stats: function (o) { Object.keys(o || {}).forEach(function (k) { Growth.add(k, o[k]); }); refreshGrowth(); return { stats: Growth.stats, pts: Growth.pts }; },
     bot: function (on) { G.bot = on !== false; if (!G.bot) Input.setOverride(null); },
     retry: function () { resetStage(); },
     // 판 바로 가기: GAME.test.stage(2) (판 번호 = id, ?stage= 와 같음) / 고르기 화면 열기: GAME.test.select()
@@ -1826,7 +1906,8 @@
           (e.atk && (e.atk.spec.type === 'burrow' || e.atk.spec.type === 'dive' || e.atk.spec.type === 'teleport') ? '/' + e.atk.phase : '') + (e.faded() ? '/faded' : '') + (e.hidden ? '/hidden' : '') + (e.atk && e.atk.held ? '/hold' : '') + (e.atk ? '/' + e.atk.name : '') + (e.airborne() ? '/air' : '') + ':' + e.hp + '@' + Math.round(e.x) + ',' + Math.round(e.y); }),
         poison: p.poison ? Math.round(p.poison.t) : 0, ending: S ? !!S.ending : false,
         run: G.run ? { from: G.run.from, ms: G.run.ms } : null,
-        lv: Growth.lv, xp: Growth.xp, need: Growth.need(), xpGot: G.xpGot || 0, maxHp: p.maxHp, atkMul: Growth.atkMul(),
+        lv: Growth.lv, xp: Growth.xp, need: Growth.need(), xpGot: G.xpGot || 0, maxHp: p.maxHp, atkMul: Growth.atkMul(), magMul: Growth.atkMul(true),
+        stats: Growth.stats, pts: Growth.pts, cls: Growth.cls, atkSpd: p.atkSpd, moveMul: p.moveMul, crit: Growth.critChance(), crits: G.crits || 0,
         hits: G.hits, maxCombo: G.maxCombo, rocks: rocks.length, puddles: puddles.length, shots: shots.length, cannons: cannons.length, spikes: spikes.length, rings: rings.length, stageId: CFG.stage.id,
         shotsX: shots.filter(function (b) { return !(b.wait > 0); }).map(function (b) { return Math.round(b.x); }),
         props: Props.list.map(function (pr) { return pr.type + ':' + (pr.state === 'idle' ? pr.hitsLeft : pr.state) + '@' + Math.round(pr.x) + ',' + Math.round(pr.y); }),

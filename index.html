@@ -43,7 +43,9 @@
   <div class="hud" id="hud" hidden>
     <div class="php"><span class="lbl">HP</span><div class="bar"><em id="pHpLag"></em><i id="pHp"></i></div><span class="num" id="pHpNum">150</span></div>
     <!-- 레벨 + 얇은 경험치 막대 (성장 2026-11-05, main.js updateHud) -->
-    <div class="plv"><span class="lv" id="pLv">Lv 1</span><div class="xbar"><i id="pXp"></i></div></div>
+    <div class="plv"><span class="lv" id="pLv">Lv 1</span><div class="xbar"><i id="pXp"></i></div>
+      <!-- 능력치 창 열기 (2026-11-06): 안 쓴 점수가 있으면 노란 숫자 표시(.badge) -->
+      <button type="button" class="statbtn" id="btnStat" aria-label="능력치">능력치<b class="badge" hidden></b></button></div>
     <div class="stageinfo" id="stageInfo"></div>
     <div class="bossbar" id="bossBar" hidden><span id="bossName">오크 족장</span><div class="bar"><em id="bHpLag"></em><i id="bHp"></i></div></div>
     <div class="go" id="goPrompt" hidden>GO →</div>
@@ -54,7 +56,7 @@
       <h2 id="resTitle">STAGE CLEAR!</h2>
       <p id="resStats"></p>
       <!-- 다음 스테이지(클리어, 마지막 판 아니면) · 다시 하기(같은 판) · 스테이지 고르기 · 연습장. 키보드 ←→ 고르기 + Enter/J -->
-      <div class="rbtns"><button type="button" id="btnNext" hidden>다음 스테이지 →</button><button type="button" id="btnRetry">다시 하기</button><button type="button" class="sub" id="btnSel">스테이지 선택</button><a id="resPractice" href="?mode=practice">연습장</a></div>
+      <div class="rbtns"><button type="button" id="btnNext" hidden>다음 스테이지 →</button><button type="button" id="btnRetry">다시 하기</button><button type="button" class="sub" id="btnSel">스테이지 선택</button><button type="button" class="sub statopen" id="btnResStat">능력치<b class="badge" hidden></b></button><a id="resPractice" href="?mode=practice">연습장</a></div>
     </div>
   </div>
   <!-- 스테이지 고르기 (처음 + 결과 화면에서). 판 버튼은 main.js 가 CFG.stages 로 만듦. 위 고르기 버튼(남/여·직업)은 이 위에 그대로 보임 -->
@@ -62,6 +64,7 @@
     <div class="box">
       <h2>스테이지 선택</h2>
       <div class="slist" id="stageList"></div>
+      <div class="rbtns stbtns"><button type="button" class="sub statopen" id="btnSelStat">능력치<b class="badge" hidden></b></button></div>
       <p class="shint">←→ 고르기 · Enter / J 시작</p>
     </div>
   </div>
@@ -73,6 +76,15 @@
       <p class="chint">견습 시절은 끝! 앞으로 함께할 직업을 고르세요. <b>한 번 고르면 바꿀 수 없어요.</b></p>
       <div class="clist" id="classList"></div>
       <div class="rbtns"><button type="button" id="btnClassOk" disabled>직업을 골라 주세요</button></div>
+    </div>
+  </div>
+  <!-- 능력치 창 (2026-11-06): 레벨업마다 3점 → + 로 올림 · 자동 배분 · 초기화(공짜). 여는 동안 게임 멈춤. 줄은 main.js 가 만듦 -->
+  <div class="statpanel" id="statPanel" hidden>
+    <div class="box">
+      <h2>능력치</h2>
+      <p class="spts">남은 점수 <b id="statPts">0</b><span id="statSum"></span></p>
+      <div class="srows" id="statRows"></div>
+      <div class="rbtns"><button type="button" id="btnStatAuto">자동 배분</button><button type="button" class="sub" id="btnStatReset">초기화</button><button type="button" class="sub" id="btnStatClose">닫기</button></div>
     </div>
   </div>
   <div class="combo" id="combo" hidden></div>

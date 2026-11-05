@@ -692,13 +692,15 @@
     ],
 
     // ---------- 무기별 손맛 (맨손 = 가볍게 툭, 검 = 스윽 빠르게, 도끼 = 쾅 무겁게) ----------
+    // magic: true = 마법 공격(성장 능력치 지능 INT 로 세짐, 2026-11-06). 없으면 물리 공격(힘 STR).
+    //   법사 지팡이·완드로 나가는 건 전부 마법: 근접 타·마법탄·터짐·화염구·번개(기술도 쏠 때 무기로 고름, main.js onHit)
     weapons: {
       fist:  { damage: [8, 11],  hitstopMul: 0.9, shakeMul: 0.85, knockMul: 0.85, speed: 1.0, arcColor: '#ffffff', sparkColor: '#ffe6a0' },
       sword: { damage: [11, 15], hitstopMul: 1.0, shakeMul: 1.0, knockMul: 1.0, speed: 1.0,  arcColor: '#cfe8ff', sparkColor: '#fff3b0' },
       axe:   { damage: [19, 26], hitstopMul: 1.6, shakeMul: 1.8, knockMul: 1.6, speed: 0.78, arcColor: '#ffc27a', sparkColor: '#ffb347' },
       // 법사: 근접은 검보다 약간 약하게(검 11~15). 마무리 마법(배율 1.8~1.9, 여러 마리 동시)으로 메운다
-      staff: { damage: [9, 13],  hitstopMul: 1.0, shakeMul: 0.95, knockMul: 0.95, speed: 1.0, arcColor: '#d9c2ff', sparkColor: '#c99bff' },
-      wand:  { damage: [8, 12],  hitstopMul: 0.95, shakeMul: 0.9, knockMul: 0.9, speed: 1.0, arcColor: '#e6d2ff', sparkColor: '#e0a8ff' }
+      staff: { damage: [9, 13],  magic: true, hitstopMul: 1.0, shakeMul: 0.95, knockMul: 0.95, speed: 1.0, arcColor: '#d9c2ff', sparkColor: '#c99bff' },
+      wand:  { damage: [8, 12],  magic: true, hitstopMul: 0.95, shakeMul: 0.9, knockMul: 0.9, speed: 1.0, arcColor: '#e6d2ff', sparkColor: '#e0a8ff' }
     },
 
     // ---------- 법사 마법 그림 재생 ----------
@@ -771,6 +773,9 @@
             pop: { top: '#ffffff', bottom: '#fff6c0' } },
       levelup: { font: 'huge', scale: 1, bold: true, top: '#fff6a0', bottom: '#ffb52e', outline: '#5a2a08', shadow: 'rgba(30,12,4,0.45)',
                  pop: { top: '#ffffff', bottom: '#ffe066' } },
+      // 치명타(2026-11-06, 민첩 AGI 로 확률이 오름, 데미지 x growth.stats.critMul): 기술 숫자만큼 큰 giant + 주황·빨강 → 마무리 「22!」(노랑)와 구분
+      agicrit: { font: 'giant', scale: 1, bold: true, top: '#fff27a', bottom: '#ff5a1a', outline: '#5a0a08', shadow: 'rgba(40,6,4,0.5)',
+                 pop: { top: '#ffffff', bottom: '#ffd040' } },
       hurtBottom: '#b82c26',
       popK: 0.12,
       // 여러 번 한꺼번에 맞을 때 숫자 쌓기 (2026-11-03, 메이플처럼 위로 줄 세움, fx.js 의 FX.damage)
@@ -803,7 +808,7 @@
 
     // ---------- 성장: 레벨·경험치 (2026-11-05, 기획\성장시스템-설계안.md 1·2단계. 계산·저장은 growth.js) ----------
     // 다음 레벨까지 필요한 경험치 = needBase + needPerLv × 지금 레벨 (Lv1→2 = 50, Lv29→30 = 1170). 최고 maxLv
-    // 레벨당 최대 체력 +hpPerLv (hero.hp 150 기준), 공격력 +atkPerLv (플레이어의 모든 타·기술 데미지에 곱함: Lv10 = 1.18배)
+    // 레벨당 최대 체력 +hpPerLv (hero.hp 150 기준), 공격력 +atkPerLv (플레이어의 모든 타·기술 데미지에 곱함: Lv10 = 1.09배, 2026-11-06 전엔 1.18배) + 능력치(아래 stats)
     //   레벨업 하면 늘어난 체력만큼 바로 회복. 죽어도 경험치는 안 잃음. 깬 판을 다시 해도 경험치를 그대로 줌
     // 적 경험치 = 종류 기본값(xp) × 판 배율(1 + stageMul × 목록 순서(0부터)) → 1판 1.0배 … 10판 2.62배. 반올림
     //   stageMul: 설계안은 0.3(10판 3.7배)이었는데, 실제 판의 적 수(판마다 33~47마리, 단단한 잡몹 많음)로 자동 조종 시험을 해 보니
@@ -817,12 +822,39 @@
     growth: {
       maxLv: 30,
       needBase: 10, needPerLv: 40,
-      hpPerLv: 5,
-      atkPerLv: 0.02,
+      // 레벨마다 저절로 오르는 몫(2026-11-06 반으로 줄임: 예전 +5 / +2%). 나머지는 능력치 점수(아래 stats)로 고름
+      hpPerLv: 2.5,
+      atkPerLv: 0.01,
       stageMul: 0.18,
       xp: { mob: 10, tough: 15, elite: 40, boss: 150, king: 300 },
       toughHp: 75, eliteHp: 200,
       kind: { mage: 'tough' },
+      // ---------- 능력치 점수 (2026-11-06, 기획\성장시스템-설계안.md 「변경 (2026-11-06)」, 계산 = growth.js, 창 = main.js) ----------
+      // 레벨업마다 perLv 점. 능력치 창에서 + 로 올림 · 「자동 배분」(남은 점수만) · 「초기화」(공짜, 언제든 → 올린 점수 전부 돌려받음)
+      //   str 힘   = 물리 공격(견습 맨손·기사 검 타와 기사 기술) 1점당 +str (0.008 = +0.8%)
+      //   int 지능 = 마법 공격(법사 지팡이·완드 타·마법탄·터짐·화염구·번개 = weapons 의 magic) 1점당 +int
+      //     → 공격 배율 = 1 + atkPerLv × (Lv-1) + (힘 또는 지능) × 0.008 (모두 더하기)
+      //   vit 체력 = 최대 체력 1점당 +vit
+      //   agi 민첩 = 1점당 콤보 휘두르는 빠르기 +atkSpd · 걷기·달리기·점프 이동 빠르기 +move · 치명타 확률 +crit
+      //     빠르기는 spdCap(+25%)까지만(그림이 너무 빨라 어색하지 않게), 치명타는 critCap 까지.
+      //     치명타 = 데미지 x critMul + 큰 주황 숫자(damageText.agicrit). 적·허수아비를 때릴 때만(소품 빼고)
+      //   wis 지혜 = 최대 마나·마나 회복(마나는 아래 mp)
+      // auto = 「자동 배분」 비율(직업마다). 한 점씩 「비율보다 가장 모자란 능력치」에 넣음 → 레벨마다 고르게 섞여 오름
+      //   기사 = 힘·체력 + 민첩 조금 / 법사 = 지능·지혜 + 체력 조금 / 견습 = 힘·체력·민첩
+      // 값 고른 기준: 자동 배분한 Lv10·20·30 이 예전(+5 체력 · +2% 공격)보다 「조금 더」 세게 (표 = 설계안 변경 절)
+      stats: {
+        perLv: 3,
+        str: 0.008, int: 0.008, vit: 4,
+        agi: { atkSpd: 0.005, move: 0.004, crit: 0.003, spdCap: 0.25, critCap: 0.3 },
+        critMul: 1.5,
+        auto: {
+          novice: { str: 4, vit: 3, agi: 3 },
+          knight: { str: 5, vit: 3, agi: 2 },
+          mage:   { int: 5, wis: 3, vit: 2 }
+        }
+      },
+      // 직업마다 기본 몫: hp = 최대 체력에 더함(기사가 더 튼튼)
+      classBase: { novice: { hp: 0 }, knight: { hp: 15 }, mage: { hp: 0 } },
       // 전직(2026-11-06, 설계안 3번): 이 id 의 판 보스를 처음 깨면 전직 화면(main.js) → 기사/법사 중 하나, 한 번 고르면 이 저장칸에선 못 바꿈.
       //   이미 이 판을 깬 저장인데 직업이 없으면 다음 스테이지 고르기·시작 때 뜸. 고른 직업 = 저장칸(growth.js)의 class
       //   위쪽 견습/기사/법사 버튼은 시험 도구: stagesAllOpen 이 true 일 때만 보이고, 눌러도 저장된 직업은 안 바뀜(이번 창에서만 덮어씀)

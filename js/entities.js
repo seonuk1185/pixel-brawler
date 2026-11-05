@@ -36,6 +36,8 @@
     // 붙잡힘(4단계 미라 잡기, 2026-11-04): state 'held' 동안 조작 안 됨. heldBy = 잡은 적(main.js grabPlayer / releaseGrab 이 넣고 뺌)
     //   poison = 독(전갈 왕 독침) { t = 남은 시간, tick = 다음에 깎기까지, every, dmg } (main.js 가 깎음)
     this.heldBy = null; this.poison = null;
+    // 민첩(성장 능력치 2026-11-06, main.js 가 매 장면 Growth 에서 넣음): atkSpd = 콤보 휘두르는 빠르기 배율, moveMul = 걷기·달리기·점프 이동 빠르기 배율
+    this.atkSpd = 1; this.moveMul = 1;
   }
 
   // ---------- 달리기·점프 도구 ----------
@@ -45,7 +47,9 @@
     var m = this.mv(), A = this.char && this.char.anims;
     return !!(m && A && A.run && A.run[0] && A.jump && A.jump[0] && this.cfg.move);
   };
-  Player.prototype.runSpeed = function () { return this.cfg.player.speedX * ((this.cfg.move && this.cfg.move.runMul) || 2.3); };
+  Player.prototype.runSpeed = function () { return this.walkSpeed() * ((this.cfg.move && this.cfg.move.runMul) || 2.3); };
+  // 걷기 빠르기(좌우) = config player.speedX × 민첩 배율(moveMul)
+  Player.prototype.walkSpeed = function () { return this.cfg.player.speedX * (this.moveMul || 1); };
   Player.prototype.airborne = function () { return this.z > 0.01 || this.vz > 0; };
   // 공중에서 떨어지기(맞아서 점프가 끊겼을 때 등). 땅에 닿으면 true
   Player.prototype.fall = function (dtMs) {
@@ -95,13 +99,13 @@
     }
     if (jp.phase === 'air') {
       // 좌우: 누르면 그쪽으로 천천히 바뀜(steer), 안 누르면 뛴 속도 그대로
-      var top = jp.run ? this.runSpeed() : this.cfg.player.speedX;
+      var top = jp.run ? this.runSpeed() : this.walkSpeed();
       if (Math.abs(ax.x) > 0.1) {
         jp.vx += (ax.x * top - jp.vx) * Math.min(1, dt * (C.jump.steer || 5));
         if (!jp.atk) this.dir = ax.x > 0 ? 1 : -1;
       }
       this.x += jp.vx * dt;
-      this.y += ax.y * this.cfg.player.speedY * (C.jump.depthMul || 0.5) * dt;
+      this.y += ax.y * this.cfg.player.speedY * (this.moveMul || 1) * (C.jump.depthMul || 0.5) * dt;
       this.vz -= this.gz * dt; this.z += this.vz * dt;
       // 공중 공격(한 번 뛸 때 한 번): 1·2장이 판정
       if (!jp.attacked && this.char.anims.jump_attack && this.char.anims.jump_attack[0] && Input.takeAttack(this.cfg.combo.bufferMs)) {
@@ -423,7 +427,7 @@
       var rd = canMove ? Input.runDir(cfg) : 0, running = rd !== 0 && ax.x * rd > 0.3;
       if (canMove && Input.takeJump(cfg.move.jump.bufferMs || 150)) {
         // 점프: 지금 좌우 속도를 가지고 뜸(달리던 중이면 달리기 속도 → 멀리)
-        this.startJump(running ? rd * this.runSpeed() : ax.x * cfg.player.speedX, running);
+        this.startJump(running ? rd * this.runSpeed() : ax.x * this.walkSpeed(), running);
         return this.update(0, world);
       }
       if (Input.takeAttack(C.bufferMs)) {
@@ -435,8 +439,8 @@
         this.comboIdleT = 0;
       } else {
         var dt = dtMs / 1000;
-        var spX = running ? this.runSpeed() : cfg.player.speedX;
-        var spY = cfg.player.speedY * (running ? (cfg.move.runDepthMul || 0.55) : 1);
+        var spX = running ? this.runSpeed() : this.walkSpeed();
+        var spY = cfg.player.speedY * (this.moveMul || 1) * (running ? (cfg.move.runDepthMul || 0.55) : 1);
         var mx = (running ? rd : ax.x) * spX * dt, my = ax.y * spY * dt;
         this.x += mx;
         this.y += my;
@@ -462,7 +466,7 @@
       var steps = this.comboSteps();
       var st = steps[this.atk.step];
       var a = this.atk;
-      a.t += dtMs * W.speed;
+      a.t += dtMs * W.speed * (this.atkSpd || 1);   // 무기 빠르기 × 민첩(성장)
       // 미리 눌러 둔 다음 공격 기억
       if (!a.queued && a.i >= 1 && Input.peekAttack(C.bufferMs) && this.atk.step < steps.length - 1) {
         Input.takeAttack(C.bufferMs); a.queued = true;
