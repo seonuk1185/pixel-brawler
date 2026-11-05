@@ -278,7 +278,8 @@
                     flash: { color: '#e6f2ff', alpha: 0.45, ms: 150 }, slowMs: 280 };
   // 불·번개 기술은 법사 보라 반짝임(impactFx) 대신 기본 불똥(노랑·흰색)이 효과 색과 어울림
   // hitsDown = 크게 휘두르는 타·땅까지 닿는 기술(누운 적도 맞음, ai.otg). 돌진베기·회전베기·화염구 터짐·번개 전부
-  var FIRE_HIT = { dmg: 2.8, hitstop: 2.0, knock: 2.4, shake: 3.0, knockdown: true, spark: 1.4, big: true, hitsDown: true,
+  // 2026-11-06 법사 균형: 화염구 터짐 dmg 2.8 → 3.3 (3판 Lv7 에서 쓸 수 있는 기술이 화염구 하나뿐)
+  var FIRE_HIT = { dmg: 3.3, hitstop: 2.0, knock: 2.4, shake: 3.0, knockdown: true, spark: 1.4, big: true, hitsDown: true,
                    flash: { color: '#ffb060', alpha: 0.4, ms: 160 }, slowMs: 240 };
   // 터짐 판정 = 보이는 폭발 크기(fire_explosion 가장 큰 장 반지름 약 57~64 → r 64), 위아래(안쪽) 폭 40
   //   (위아래로 살짝 어긋나 서 있는 바로 뒤 적도 맞게, 2026-11-03 예전 r 56 / depth 24 는 뒤 적이 자주 빠짐)
@@ -307,7 +308,8 @@
   var SLAM_HIT = { dmg: 2.5, hitstop: 1.6, knock: 0.6, shake: 2.6, stunMs: 700, spark: 1.4, big: true, hitsDown: true, away: true, noJuggle: true,
                    flash: { color: '#fff0d0', alpha: 0.35, ms: 140 }, slowMs: 200 };
   // 얼음창: 처음 맞은 적 하나(Lv5 = 꿰뚫음) + 느려짐(slow: ms 동안 그 적의 시간이 mul 배로 흐름 → 걷기·공격·맞는 동작 전부 느려짐, 보스는 bossMul)
-  var ICE_HIT = { dmg: 2.2, hitstop: 1.1, knock: 0.9, shake: 1.3, spark: 1.2, big: true };
+  // 2026-11-06 법사 균형: 얼음창 dmg 2.2 → 1.9 (화염구 쿨타임을 줄인 만큼 Lv13 뒤 법사가 기사보다 너무 빨리 깨서)
+  var ICE_HIT = { dmg: 1.9, hitstop: 1.1, knock: 0.9, shake: 1.3, spark: 1.2, big: true };
   // 메테오: 떨어진 자리에서 크게 터짐, 둘레 적 넘어뜨림, 누운 적도 맞음
   var METEOR_HIT = { dmg: 5.0, hitstop: 2.4, knock: 2.8, shake: 3.6, knockdown: true, spark: 1.6, big: true, hitsDown: true,
                      flash: { color: '#ffc070', alpha: 0.55, ms: 220 }, slowMs: 320 };
@@ -410,7 +412,8 @@
       // 화염구: 마법탄보다 크고 묵직한 불덩이. 처음 맞은 적(또는 끝까지 날아간 곳)에서 크게 터져 주변을 넘어뜨림
       //   발사 = 남 3장(+127,-65, 260/초, 240) / 여 2장(+85,-75, 340/초, 220) (그림 자료 motions.json)
       fireball: {
-        name: '화염구', icon: '화', mp: 10, cooldownMs: 4500, damageStyle: 'skill_fire', motion: 'motion_cast_forward',
+        name: '화염구', icon: '화', mp: 10, cooldownMs: 3800,   // 2026-11-06 법사 균형: 4500 → 3800 (3판 Lv7 = 기술이 화염구뿐)
+        damageStyle: 'skill_fire', motion: 'motion_cast_forward',
         desc: '큰 불덩이를 던져요. 맞은 곳에서 크게 터져 둘레의 적을 넘어뜨려요',
         lv5: { area: 1.3, say: '폭발 크기 +30%' },
         darken: { ms: 480, alpha: 0.4 },
@@ -826,13 +829,14 @@
     // ---------- 무기별 손맛 (맨손 = 가볍게 툭, 검 = 스윽 빠르게, 도끼 = 쾅 무겁게) ----------
     // magic: true = 마법 공격(성장 능력치 지능 INT 로 세짐, 2026-11-06). 없으면 물리 공격(힘 STR).
     //   법사 지팡이·완드로 나가는 건 전부 마법: 근접 타·마법탄·터짐·화염구·번개(기술도 쏠 때 무기로 고름, main.js onHit)
+    //   2026-11-06 법사 균형: 지팡이 9~13 → 11~15, 완드 8~12 → 10~14 (자동 조종 시험에서 3판 Lv7 법사가 0/6 → 기사와 비슷하게)
     weapons: {
       fist:  { damage: [8, 11],  hitstopMul: 0.9, shakeMul: 0.85, knockMul: 0.85, speed: 1.0, arcColor: '#ffffff', sparkColor: '#ffe6a0' },
       sword: { damage: [11, 15], hitstopMul: 1.0, shakeMul: 1.0, knockMul: 1.0, speed: 1.0,  arcColor: '#cfe8ff', sparkColor: '#fff3b0' },
       axe:   { damage: [19, 26], hitstopMul: 1.6, shakeMul: 1.8, knockMul: 1.6, speed: 0.78, arcColor: '#ffc27a', sparkColor: '#ffb347' },
-      // 법사: 근접은 검보다 약간 약하게(검 11~15). 마무리 마법(배율 1.8~1.9, 여러 마리 동시)으로 메운다
-      staff: { damage: [9, 13],  magic: true, hitstopMul: 1.0, shakeMul: 0.95, knockMul: 0.95, speed: 1.0, arcColor: '#d9c2ff', sparkColor: '#c99bff' },
-      wand:  { damage: [8, 12],  magic: true, hitstopMul: 0.95, shakeMul: 0.9, knockMul: 0.9, speed: 1.0, arcColor: '#e6d2ff', sparkColor: '#e0a8ff' }
+      // 법사: 근접 한 타는 검과 비슷(검 11~15, 2026-11-06 올림: 몸이 약하고 일찍은 기술이 화염구 하나뿐). 마무리 마법(배율 1.8~1.9, 여러 마리 동시)으로 메운다
+      staff: { damage: [11, 15],  magic: true, hitstopMul: 1.0, shakeMul: 0.95, knockMul: 0.95, speed: 1.0, arcColor: '#d9c2ff', sparkColor: '#c99bff' },
+      wand:  { damage: [10, 14],  magic: true, hitstopMul: 0.95, shakeMul: 0.9, knockMul: 0.9, speed: 1.0, arcColor: '#e6d2ff', sparkColor: '#e0a8ff' }
     },
 
     // ---------- 법사 마법 그림 재생 ----------
@@ -993,7 +997,8 @@
         }
       },
       // 직업마다 기본 몫: hp = 최대 체력에 더함(기사가 더 튼튼), mp = 기본 마나(법사가 더 많음)
-      classBase: { novice: { hp: 0, mp: 40 }, knight: { hp: 15, mp: 40 }, mage: { hp: 0, mp: 80 } },
+      //   2026-11-06 법사 균형: 법사 hp 0 → 35 (멀리 서도 보스 공격 폭이 넓어 자주 맞음. 3판 보스 두꺼비 앞에서 너무 쉽게 쓰러짐. 기사는 체력 능력치를 더 찍어서 Lv 가 오르면 기사가 더 튼튼)
+      classBase: { novice: { hp: 0, mp: 40 }, knight: { hp: 15, mp: 40 }, mage: { hp: 35, mp: 80 } },
       // 마나(MP, 2026-11-06): 체력 막대 밑 파란 막대. 지금은 쓰는 곳 없음(기술이 마나 + 쿨타임을 쓰는 건 다음 단계)
       //   최대 = classBase.mp + perLv × (Lv-1) + 지혜 × stats.wis.mp. 초당 regen + 지혜 × stats.wis.regen 씩 참,
       //   적·허수아비를 맞힐 때마다 onHit 만큼 더(소품은 안 셈). 새 판·다시 하기 = 가득, 레벨업 = 늘어난 만큼 참

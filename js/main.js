@@ -1231,6 +1231,7 @@
       Input.setOverride(ax); return;
     }
     var side = best.x > p.x ? 1 : -1;
+    if (G.classKey === 'mage' && !G.botPlain) { botMage(dt, p, best, side, ax); return; }   // botPlain = 예전처럼 붙어서(비교 시험용)
     var want = ({ goblin: 42, wolf: 58, orc: 72, bat: 46, skeleton: 44, golem: 76, mummy: 46, scorpion: 80, lizard: 46, toad: 74, gunner: 40, captain: 70, imp: 44, lavagolem: 76, wyvern: 80, yeti: 50, giant: 82, ghost: 46, vampire: 66, soldier: 52, mage: 40, general: 84, demonking: 86 }[best.type] || 50) * AS;
     var sv = Props.steer(p, R, best.x - side * want, best.y, world, best.x);   // 막는 소품: 목표가 그 안이면 옆으로, 앞에 있으면 돌아감
     var tx = sv.x, ty = best.y;
@@ -1244,6 +1245,39 @@
       Input.pressAttack(); botAtkT = 140;
       if (Math.random() < 0.12) Input.pressSkill(botSlot());   // 가끔 기술(쿨타임·마나 모자람이면 안 나감)
     }
+  }
+
+  // 법사 자동 조종(2026-11-06, 균형 시험용): 붙어서 패지 않고 지팡이 끝 거리(약 70 도트 x AS)를 지키며 같은 줄에 맞춤.
+  //   같은 줄 + 앞쪽 기술 거리(약 200 x AS) 안이면 멀리서 기술(칸 중 무작위, 쿨타임·마나 모자람이면 안 나감),
+  //   적이 너무 가깝거나(몸 반지름 + 30) 공격 중이면(보스 예고 포함) 뒤로 물러남(벽에 막히면 위아래로 빠짐)
+  var botKiteT = 0;
+  function botMage(dt, p, best, side, ax) {
+    var R = CFG.hero.radius, keep = 72 * AS, dx = Math.abs(best.x - p.x), ey = best.y - p.y;
+    var near = Math.max(best.T.radius + R, 38 * AS), threat = best.state === 'attack' && dx < (best.T.boss ? 150 * AS : best.T.engage * 1.3);
+    botKiteT -= dt;
+    if (threat || dx < near) botKiteT = best.T.boss ? 450 : 250;
+    var kite = botKiteT > 0;
+    var tx = kite ? best.x - side * Math.max(keep * 1.6, dx + 40 * AS) : best.x - side * keep;
+    var sv = Props.steer(p, R, tx, best.y, world, best.x), ex = sv.x - p.x, my = sv.y - p.y;
+    if (Math.abs(ex) > 6) ax.x = Math.sign(ex);
+    // 물러나다 화면 끝에 막혔으면 줄을 바꿔 옆으로 빠져나감
+    if (kite && ((ax.x < 0 && p.x <= G.camX + 20 * AS) || (ax.x > 0 && p.x >= G.camX + LW - controlPad - 20 * AS))) { ax.x = 0; ax.y = p.y > (world.laneTop + world.laneBottom) / 2 ? -1 : 1; }
+    else if (Math.abs(kite ? (best.y - p.y) : my) > 3) ax.y = kite ? 0 : Math.sign(my);
+    // 보스가 공격 중이면 줄을 크게 바꿈(보스 공격은 위아래 폭이 좁음: 배치기·혀·돌진). 넓은 쪽으로
+    if (threat && best.T.boss && Math.abs(best.y - p.y) < 34 * AS) {
+      var mid = (world.laneTop + world.laneBottom) / 2;
+      ax.y = best.y > mid ? -1 : 1; if (Math.abs(best.y - mid) < 4) ax.y = p.y >= best.y ? 1 : -1;
+    }
+    Input.setOverride(ax);
+    botAtkT -= dt;
+    if (botAtkT > 0 || Math.abs(ey) > 7) return;
+    if (p.state !== 'attack' && p.state !== 'skill') p.dir = side;
+    if (dx < 205 * AS && !kite) {   // 멀리서 기술
+      var bk = Growth.book(G.classKey), n = bk ? bk.slots() : 2;
+      for (var i = 0; i < n; i++) Input.pressSkill(Skills.slots[(i + Math.floor(Math.random() * n)) % n]);
+    }
+    if (dx < 100 * AS && !threat) { Input.pressAttack(); botAtkT = 140; }   // 지팡이 끝 거리면 콤보(적이 공격 중이면 안 함)
+    else botAtkT = 100;
   }
 
   // ---------- 휘두를 때 효과 (궤적·바람·반짝임) ----------
