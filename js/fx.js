@@ -211,7 +211,7 @@
   }
   // 글자 상자 크기(도트): 튀어나올 때(pop, 굵게) 기준으로 넉넉하게
   function lineSize(f) {
-    var st = dmgStyle(f), h = (FONT_H[st.font] || 8) * Math.max(1, st.scale || 1);
+    var st = dmgStyle(f), h = (FONT_H[st.font] || 8) * Math.max(1, st.scale || 1) * (st.zoom || 1);   // zoom = 각성 숫자 크게(2026-11-06 밤)
     var cw = h * 0.62 * (st.bold || (st.pop && st.pop.bold) ? 1.12 : 1);
     return { w: f.str.length * cw + 2.5, h: h + 1.6 };
   }
@@ -427,9 +427,10 @@
       var lp = linePos(f, 0), fh = (FONT_H[st.font] || 8) * Math.max(1, st.scale || 1);
       ctx.globalAlpha = k > 0.7 ? Math.max(0, 1 - (k - 0.7) / 0.3) : 1;
       // 마무리·치명타 숫자(crit): 처음에 numPop 배 크게 튀어나왔다가 줄어듦(2026-11-06 밤, config juice.impact.numPop)
-      var IMP = window.CFG && CFG.juice.impact, NP = (IMP && IMP.numPop) || 1, pk = (D.popK || 0.12) * 1.8;
-      if (f.crit && NP > 1 && k < pk) {
-        var zs = 1 + (NP - 1) * (1 - k / pk), zx = snapPx(lp.x - camX) + (f.w || 0) / 2, zy = snapPx(lp.y - fh / 2);
+      var IMP = window.CFG && CFG.juice.impact, NP = (IMP && IMP.numPop) || 1, pk = (D.popK || 0.12) * 1.8, Z = st.zoom || 1;
+      // 각성 숫자(Z = zoom, 2026-11-06 밤): 글자 가운데를 기준으로 zoom 배
+      if ((f.crit && NP > 1 && k < pk) || Z !== 1) {
+        var zs = Z * (f.crit && NP > 1 && k < pk ? 1 + (NP - 1) * (1 - k / pk) : 1), zx = snapPx(lp.x - camX) + (Z !== 1 ? 0 : (f.w || 0) / 2), zy = snapPx(lp.y - fh / 2);
         ctx.save(); ctx.translate(zx, zy); ctx.scale(zs, zs); ctx.translate(-zx, -zy);
         drawPixelText(ctx, f.n, snapPx(lp.x - camX), snapPx(lp.y - fh), st);
         ctx.restore();

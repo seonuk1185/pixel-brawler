@@ -16,11 +16,15 @@
   var meteors = [], casts = {}, noMpT = 0;
   // 2026-11-06 밤: pillars = 땅 융기 돌기둥(캐릭터와 깊이 순서로 그림, addEnts)
   var pillars = [];
+  // 2026-11-06 밤 각성 「마력 폭주」: echoes = 한 번 더 터질 기술(법사가 다른 걸 해도 그대로 나감) { t = 남은 ms, fn },
+  //   bright = 효과 빛 세기·크기 배율(각성 중 더 크고 밝게, 그림만 — 판정은 그대로)
+  var echoes = [], bright = 1;
   var SLOTS = ['A', 'B', 'C', 'D'];
   function SM() { return ((CFG && CFG.view.renderScale) || 1) > 1; }   // 매끈한 화면이면 코드로 그린 효과도 부드럽게
   // 충격파: x,y = 가운데, r = 끝 반지름(도트), flat = 세로 비율(땅 고리 0.3, 공중 1), w = 굵기, ms, color, ground = 캐릭터 밑에 그림
   function wave(x, y, r, o) {
     o = o || {};
+    r *= bright;
     waves.push({ x: x, y: y, r: r, flat: o.flat == null ? 0.3 : o.flat, w: o.w || 3, t: 0, life: o.ms || 320, color: o.color || '#ffffff',
                  glow: o.glow || o.color || '#ffffff', ground: !!o.ground, r0: o.r0 || r * 0.15 });
   }
@@ -35,7 +39,7 @@
     }
   }
   // 둥근 빛(더하기 합성): r = 반지름(도트), ms 동안 커지며 사라짐
-  function glow(x, y, r, color, ms, a) { glows.push({ x: x, y: y, r: r, color: color, t: 0, life: ms || 220, a: a == null ? 0.8 : a }); }
+  function glow(x, y, r, color, ms, a) { glows.push({ x: x, y: y, r: r * bright, color: color, t: 0, life: ms || 220, a: Math.min(1, (a == null ? 0.8 : a) * bright) }); }
   var flash = null;              // 화면 번쩍 { color, alpha, t, life } (진짜 시간으로 줄어듦 → 멈춤 중에도 보임)
   var tintImgCache = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
   function AS() { return (CFG && CFG.actorScale) || 1; }
@@ -118,6 +122,13 @@
     var bk = bookOf(p.classKey), id = bk && bk.at(i), d = defFor(p, id);
     return d ? { d: d, L: lvStat(d, bk.lv(id)) } : null;
   }
+  // 드는 마나: 각성 「마력 폭주」(p.freeMp) = 0
+  function mpCost(p, L) { return p && p.freeMp ? 0 : L.mp; }
+  // 각성 「마력 폭주」 한 번 더: config awaken.mage.echoMs[기술 id] 뒤에 fn (게임 시간, 멈춤·슬로 따름)
+  function echo(d, fn) {
+    var E = CFG.awaken && CFG.awaken.mage && CFG.awaken.mage.echoMs;
+    echoes.push({ t: (E && E[d.id]) || 180, fn: fn });
+  }
 
   // 효과 그림(CFG.skillFx 이름): 불러와져 있으면 { fr = 그림들, fps, pivot(줄인 크기 기준), loop }, 없으면 null
   function fxArt(name, fps) {
@@ -152,7 +163,7 @@
       if (!q) { Input.clearSkill(slot); return; }
       if (skip && skip.indexOf(q.d.id) >= 0) return;
       if ((p.skillCd[q.d.key] || 0) > 0) return;
-      if ((p.mp || 0) < q.L.mp) {
+      if ((p.mp || 0) < mpCost(p, q.L)) {
         Input.clearSkill(slot);
         if (noMpT <= 0 && H.noMp) { H.noMp(slot); noMpT = CFG.skills.noMpMs || 500; }
         return;
@@ -175,7 +186,12 @@
     var s = p.sk = { d: d, t: 0, x0: p.x, z: p.y, dir: p.dir, done: {}, hitWin: {}, fxDone: {}, hitAny: false,
                      finaleDone: false, cast: false, strikeDone: {}, ghostT: 0, boxes: [], exitT: 0,
                      L: L, mul: L.dmg, area: (L.lv5 && L.lv5.area) || 1, shotDone: 0, quaked: false, met: false, chain: chain, pl: null, plDone: false };
-    if (q.L) p.mp = Math.max(0, (p.mp || 0) - L.mp);   // 마나 씀
+    if (q.L) p.mp = Math.max(0, (p.mp || 0) - mpCost(p, L));   // 마나 씀(각성 마력 폭주 = 0)
+    s.echo = !!p.echoCast;   // 각성 마력 폭주: 이 기술이 한 번 더 터짐(쏘는 순간 echoes 에 넣음)
+    if (s.echo) {            // 쓰는 순간 법사 둘레 보라·하늘 빛(더 크고 밝게)
+      glow(p.x, p.y - 50 * AS(), 46 * AS() / 0.55, '#b46aff', 320, 0.6);
+      debris(p.x, p.y - 40 * AS(), p.y, 10, { cols: ['#ffffff', '#d8b0ff', '#5ae6ff'], glow: true, sp: 160, size: 1.5, ms: 420, g: -60, spread: 1.6 });
+    }
     casts[d.id] = (casts[d.id] || 0) + 1;
     if (H.onCast) H.onCast(d);   // 포만감이 조금 더 줆(main.js, 2026-11-06 밤)
     if (d.strikes) {
@@ -235,7 +251,13 @@
         wave(fx0, p.y, 120 * AS(), { flat: 0.28, w: 4, ms: 360, color: '#e8f4ff', glow: '#7fb8ff', ground: true });
       }
     }
-    if (d.cast && !s.cast && t1 >= d.cast.at) { s.cast = true; if (d.cast.burst) castFireball(p, d); else castIce(p, d); }
+    if (d.cast && !s.cast && t1 >= d.cast.at) {
+      s.cast = true;
+      var co = { x: p.x, y: p.y, dir: p.dir, dy: 0 }, cf = d.cast.burst ? castFireball : castIce;
+      cf(p, d, s, co);
+      // 각성 마력 폭주: 같은 자리·방향에서 한 발 더(조금 위/아래로 비켜서)
+      if (s.echo) echo(d, function () { cf(p, d, s, { x: co.x, y: co.y, dir: co.dir, dy: (d.cast.burst ? -12 : 9) * AS() }); });
+    }
     // 2026-11-06 새 기술: 뛰어올라 내려찍기(leap·quake) · 검기(shot) · 메테오(meteor)
     if (d.leap) {
       var Lp = d.leap, ln = Math.max(1, Lp.at[1] - Lp.at[0]), v0 = clamp((t0 - Lp.at[0]) / ln, 0, 1), v1 = clamp((t1 - Lp.at[0]) / ln, 0, 1);
@@ -247,13 +269,20 @@
       var nShot = 1 + ((s.L.lv5 && s.L.lv5.extra) || 0);
       while (s.shotDone < nShot && t1 >= d.shot.at + s.shotDone * (d.shot.gapMs || 150)) { castWave(p, d, s.shotDone); s.shotDone++; }
     }
-    if (d.meteor && !s.met && t1 >= d.meteor.at) { s.met = true; castMeteor(p, d); }
+    if (d.meteor && !s.met && t1 >= d.meteor.at) {
+      s.met = true;
+      var m1 = castMeteor(p, d, s, null, null);
+      if (s.echo) { var mo = { x: p.x, y: p.y, dir: p.dir }; echo(d, function () { castMeteor(p, d, s, mo, m1); }); }   // 각성: 다른 적에게 하나 더
+    }
     if (d.pillar) pillarStep(p, d, s, t1);   // 땅 융기(2026-11-06 밤)
     if (d.strikes) {
       var K = s.K || d.strikes;
       lockStrikes(s, K, p.dir);
       K.at.forEach(function (at, k) {
-        if (!s.strikeDone[k] && t1 >= at) { s.strikeDone[k] = true; strike(p, d, k); }
+        if (!s.strikeDone[k] && t1 >= at) {
+          s.strikeDone[k] = true; strike(p, d, s, k, s.sx[k], s.sz[k]);
+          if (s.echo) { var ex = s.sx[k], ez = s.sz[k]; echo(d, function () { strike(p, d, s, k, ex, ez); }); }   // 각성: 같은 자리에 한 번 더
+        }
       });
     }
     var end = t1 >= d.ms;
@@ -472,13 +501,14 @@
   }
 
   // 화염구: 느리고 큰 불덩이 → 처음 맞은 적(또는 끝)에서 터짐
-  function castFireball(p, d) {
+  // s = 그 기술 진행(데미지 배율·Lv5 크기), o = 쏘는 자리 { x, y, dir, dy(위아래로 비킴) } (각성 「한 발 더」는 처음 쏜 자리 그대로)
+  function castFireball(p, d, s, o) {
     var c = d.cast, real = fxArt(c.art), B = CFG.magic.bolt;
     var fr = real ? real.fr : tintFx(B.frames, c.tint, c.tintK);
-    Projectiles.spawn({ x: p.x + p.dir * c.x, y: p.y + c.y, z: p.y, dir: p.dir, speed: c.speed, range: c.range, box: c.box, depth: c.depth,
+    Projectiles.spawn({ x: o.x + o.dir * c.x, y: o.y + c.y + (o.dy || 0), z: o.y, dir: o.dir, speed: c.speed, range: c.range, box: c.box, depth: c.depth,
       burstAtEnd: true, backReach: c.backReach || 0, frames: fr, fps: real ? real.fps : B.fps,
       pivot: real ? real.pivot : B.pivot, scale: real ? 1 : (c.scale || 1),
-      skill: { d: d, c: c, wk: p.weaponKey, emberT: 0, mul: p.sk.mul, area: p.sk.area },
+      skill: { d: d, c: c, wk: p.weaponKey, emberT: 0, mul: s.mul, area: s.area },
       glow: SM() ? fireGlow : null,
 
       onImpact: function (pr, t) { fireBurst(pr, t); } });
@@ -523,8 +553,9 @@
   }
 
   // 번개 한 줄기: 정해 둔 바닥 자리(sx[k], sz[k] = 겨눈 적 발밑 또는 법사 앞 고정 자리)에 화면 맨 위에서 내리꽂힘
-  function strike(p, d, k) {
-    var s = p.sk, K = s.K || d.strikes, x = s.sx[k], z = s.sz[k], h = K.hits[Math.min(k, K.hits.length - 1)], KR = K.r * s.area;   // KR = Lv5 번개 굵기
+  //   (2026-11-06 밤: s = 그 기술 진행, x·z = 꽂힐 자리 → 각성 「한 번 더」가 같은 자리에 다시 꽂을 수 있게)
+  function strike(p, d, s, k, x, z) {
+    var K = s.K || d.strikes, h = K.hits[Math.min(k, K.hits.length - 1)], KR = K.r * s.area;   // KR = Lv5 번개 굵기
     bolts.push({ x: x, z: z, t: 0, life: K.ms || 200, K: K, seed: Math.random() * 1000 });
     var hitA = fxArt(K.hitArt), M = CFG.magic.spark;
     if (hitA) spriteFrom(x, z, hitA.fr, hitA.fps, hitA.pivot, s.dir < 0, 1, K.hitFromFrame);   // 땅 번쩍(기준 = 아래 가운데)
@@ -625,10 +656,10 @@
   }
 
   // 얼음창: 처음 맞은 적 하나(Lv5 = 꿰뚫음) + 느려짐. 날아가는 그림 = look.proj(없으면 마법탄을 얼음색으로)
-  function castIce(p, d) {
-    var c = d.cast, s = p.sk, lk = lookOf(d), real = fxArt(lk.proj), B = CFG.magic.bolt, hitIds = {};
+  function castIce(p, d, s, o) {
+    var c = d.cast, lk = lookOf(d), real = fxArt(lk.proj), B = CFG.magic.bolt, hitIds = {};
     var fr = real ? real.fr : tintFx(B.frames, c.tint, c.tintK), pierce = !!(s.L.lv5 && s.L.lv5.pierce);
-    Projectiles.spawn({ x: p.x + p.dir * c.x, y: p.y + c.y, z: p.y, dir: p.dir, speed: c.speed, range: c.range, box: c.box, depth: c.depth,
+    Projectiles.spawn({ x: o.x + o.dir * c.x, y: o.y + c.y + (o.dy || 0), z: o.y, dir: o.dir, speed: c.speed, range: c.range, box: c.box, depth: c.depth,
       backReach: c.backReach || 0, frames: fr, fps: real ? real.fps : B.fps, pivot: real ? real.pivot : B.pivot, scale: real ? 1 : (c.scale || 1),
       loop: real ? real.range : null, fade: 30 * AS(), glow: SM() ? iceGlow : null,
       skill: { d: d, c: c, wk: p.weaponKey, mul: s.mul },
@@ -678,13 +709,29 @@
     if (s.pl && !s.plDone) {
       var g = s.pl.tgt;
       if (g && t < P.burstAt - (P.lockMs || 90) && (!g.alive || g.alive()) && g.state !== 'down') { s.pl.x = g.x; s.pl.z = g.y; }
-      if (t >= P.burstAt) { s.plDone = true; pillarBurst(p, d, s); }
+      if (t >= P.burstAt) {
+        s.plDone = true; pillarBurst(p, d, s, s.pl.x, s.pl.z);
+        if (s.echo) {   // 각성 마력 폭주: 다른 적(없으면 조금 더 앞) 발밑에 기둥 하나 더
+          var x0 = s.pl.x, z0 = s.pl.z, first = s.pl.tgt, dir = p.dir, px = p.x, pz = p.y;
+          echo(d, function () {
+            var tgt = null, best = 1e9;
+            H.targets().forEach(function (e) {
+              if (!e || e.isProp || !e.T || e === first || (e.alive && !e.alive()) || e.state === 'down' || !H.canHit(e, P.hit)) return;
+              var dx = (e.x - px) * dir;
+              if (dx < -6 * AS() || dx > P.aim.range || Math.abs(e.y - pz) > P.aim.depth) return;
+              var dd = Math.abs(dx) + Math.abs(e.y - pz) * 0.5;
+              if (dd < best) { best = dd; tgt = e; }
+            });
+            pillarBurst(p, d, s, tgt ? tgt.x : x0 + dir * 56 * AS(), tgt ? tgt.y : z0);
+          });
+        }
+      }
     }
   }
   // 돌기둥 솟음: 우리 그림(look.pillar, 기둥 솟음~무너짐) + 흔들림·보라 빛·돌 파편 + 기둥 위 적 띄우기(판정 = 기둥 폭 r x area, 위아래 depth)
-  function pillarBurst(p, d, s) {
-    var P = d.pillar, x = s.pl.x, z = s.pl.z, R = P.r * s.area, lk = lookOf(d), A = fxArt(lk.pillar);
-    pillars.push({ x: x, z: z, A: A, t: 0, life: A ? A.fr.length * 1000 / A.fps : 520, dir: p.dir, k: s.area });
+  function pillarBurst(p, d, s, x, z) {
+    var P = d.pillar, R = P.r * s.area, lk = lookOf(d), A = fxArt(lk.pillar);
+    pillars.push({ x: x, z: z, A: A, t: 0, life: A ? A.fr.length * 1000 / A.fps : 520, dir: s.dir, k: s.area });
     H.hitstop(50);
     FX.shake(CFG.juice.shakePx * 1.8, CFG.juice.shakeMs * 1.4);
     H.dust(x - 12 * AS(), z, -1); H.dust(x + 12 * AS(), z, 1);
@@ -738,18 +785,22 @@
   }
 
   // 메테오: 앞쪽 가까운 적 발밑(없으면 법사 앞 x)에 표시 → markMs 동안 그 적을 따라가다 고정 → fallMs 동안 비스듬히 떨어져 터짐
-  function castMeteor(p, d) {
-    var M = d.meteor, s = p.sk, tgt = null, best = 1e9;
+  //   (2026-11-06 밤 각성: o = 처음 쓴 자리, first = 처음 운석 → 그 적은 빼고 다음 가까운 적, 없으면 처음 자리보다 조금 더 앞. 돌려주는 값 = 운석)
+  function castMeteor(p, d, s, o, first) {
+    var M = d.meteor, tgt = null, best = 1e9;
+    o = o || { x: p.x, y: p.y, dir: p.dir };
     H.targets().forEach(function (t) {
-      if (!t || t.isProp || !t.T || (t.alive && !t.alive())) return;
-      var dx = (t.x - p.x) * p.dir;
-      if (dx < -6 * AS() || dx > M.aim.range || Math.abs(t.y - p.y) > M.aim.depth) return;
-      var dd = Math.abs(dx) + Math.abs(t.y - p.y) * 0.5;
+      if (!t || t.isProp || !t.T || (t.alive && !t.alive()) || (first && t === first.tgt)) return;
+      var dx = (t.x - o.x) * o.dir;
+      if (dx < -6 * AS() || dx > M.aim.range || Math.abs(t.y - o.y) > M.aim.depth) return;
+      var dd = Math.abs(dx) + Math.abs(t.y - o.y) * 0.5;
       if (dd < best) { best = dd; tgt = t; }
     });
-    meteors.push({ x: tgt ? tgt.x : p.x + p.dir * M.x, z: tgt ? tgt.y : p.y, dir: p.dir, t: 0, M: M, d: d, tgt: tgt, wk: p.weaponKey,
-                   mul: s.mul, area: s.area, boom: false, emberT: 0 });
+    var x = tgt ? tgt.x : first ? first.x + o.dir * 70 * AS() : o.x + o.dir * M.x, z = tgt ? tgt.y : first ? first.z : o.y;
+    var m = { x: x, z: z, dir: o.dir, t: 0, M: M, d: d, tgt: tgt, wk: p.weaponKey, mul: s.mul, area: s.area, boom: false, emberT: 0 };
+    meteors.push(m);
     FX.shake(CFG.juice.shakePx * 0.8, CFG.juice.shakeMs);
+    return m;
   }
   // 운석 자리(u = 떨어지는 진행 0→1): 뒤쪽 위에서 비스듬히 내려옴
   function meteorPos(m, u) {
@@ -871,6 +922,7 @@
 
   // ---------- 매 장면 (효과들 시간 흐름) ----------
   function update(dt) {
+    for (var ei = echoes.length - 1; ei >= 0; ei--) { var E = echoes[ei]; E.t -= dt; if (E.t <= 0) { echoes.splice(ei, 1); E.fn(); } }   // 각성: 한 번 더
     meteorStep(dt);
     [bolts, rings, ghosts, arts, waves, parts, glows, pillars].forEach(function (L) {
       for (var i = L.length - 1; i >= 0; i--) { L[i].t += dt; if (L[i].t >= L[i].life) L.splice(i, 1); }
@@ -1153,9 +1205,9 @@
     var changed = false, p = G.player;
     SLOTS.forEach(function (slot, i) {
       var q = p ? slotSkill({ classKey: G.classKey, gender: G.charKey }, i) : null, d = q && q.d;
-      var rem = d && p.skillCd ? Math.max(0, p.skillCd[d.key] || 0) : 0;
-      var frac = d ? Math.round(Math.min(1, rem / q.L.cd) * 100) / 100 : 0, nomp = !!d && (p.mp || 0) < q.L.mp;
-      var key = d ? d.key + '|' + d.icon + '|' + frac + '|' + Math.ceil(rem / 100) + '|' + nomp + '|' + q.L.mp : 'none';
+      var rem = d && p.skillCd ? Math.max(0, p.skillCd[d.key] || 0) : 0, cost = d ? mpCost(p, q.L) : 0;
+      var frac = d ? Math.round(Math.min(1, rem / q.L.cd) * 100) / 100 : 0, nomp = !!d && (p.mp || 0) < cost;
+      var key = d ? d.key + '|' + d.icon + '|' + frac + '|' + Math.ceil(rem / 100) + '|' + nomp + '|' + cost : 'none';
       if (uiLast[slot] === key) return;
       var wasHidden = !uiLast[slot] || uiLast[slot] === 'none';
       if (wasHidden !== !d) changed = true;
@@ -1166,12 +1218,12 @@
         el.classList.toggle('cool', rem > 0);
         el.classList.toggle('nomp', nomp);
         el.style.setProperty('--cd', frac);
-        el.title = d.name + ' (MP ' + q.L.mp + ')';
+        el.title = d.name + ' (MP ' + cost + ')';
         el.setAttribute('aria-label', d.name);
         var ic = el.querySelector('.ic'), sec = el.querySelector('.sec'), mp = el.querySelector('.mp');
         if (ic && ic.textContent !== d.icon) ic.textContent = d.icon;
         if (sec) sec.textContent = rem > 0 ? (rem >= 1000 ? Math.ceil(rem / 1000) : (rem / 1000).toFixed(1)) : '';
-        if (mp) mp.textContent = q.L.mp;
+        if (mp) mp.textContent = cost;
       });
     });
     return changed;
@@ -1191,13 +1243,17 @@
     canChain: function (p) { var s = p.sk; return !!(s && s.t >= s.d.chainAt); },
     chainIds: function (p) { var s = p.sk; return s ? (s.chain || []).concat([s.d.id]) : []; },
     // 그 칸 기술이 지금 나갈 수 있나(쿨타임 끝 + 마나 넉넉) → { d, L, slot } 또는 null (자동 조종용)
-    ready: function (p, i) { var q = slotSkill(p, i); return q && !((p.skillCd[q.d.key] || 0) > 0) && (p.mp || 0) >= q.L.mp ? { d: q.d, L: q.L, slot: SLOTS[i] } : null; },
+    ready: function (p, i) { var q = slotSkill(p, i); return q && !((p.skillCd[q.d.key] || 0) > 0) && (p.mp || 0) >= mpCost(p, q.L) ? { d: q.d, L: q.L, slot: SLOTS[i] } : null; },
+    // 각성(2026-11-06 밤): 잔상 하나(직업 색) · 효과 빛 세기 배율(마력 폭주 = 더 크고 밝게, 그림만)
+    ghost: function (p, color, ms, alpha) { addGhost(p, { color: color, lifeMs: ms || 260, alpha: alpha == null ? 0.5 : alpha }); },
+    setBright: function (k) { bright = k || 1; },
+    wave: wave,
     addEnts: addEnts,
     update: update, tickReal: tickReal,
     drawBackdrop: drawBackdrop, drawUnder: drawUnder, drawGhosts: drawGhosts, drawOver: drawOver, drawFlash: drawFlash, drawDebug: drawDebug,
     ui: ui, shakeSlot: shakeSlot, slots: SLOTS, lvStat: lvStat, slotSkill: slotSkill,
     _meteors: function () { return meteors; },   // 시험용
-    clear: function () { meteors.length = 0; pillars.length = 0; noMpT = 0; bolts.length = 0; rings.length = 0; ghosts.length = 0; arts.length = 0; waves.length = 0; parts.length = 0; glows.length = 0; flash = null; },
+    clear: function () { meteors.length = 0; pillars.length = 0; echoes.length = 0; bright = 1; noMpT = 0; bolts.length = 0; rings.length = 0; ghosts.length = 0; arts.length = 0; waves.length = 0; parts.length = 0; glows.length = 0; flash = null; },
     // 화면 번쩍(콤보 마무리 타도 씀): { color, alpha, ms }
     flash: function (f) { doFlash(f); },
     // 파편·둥근 빛(소품 나뭇조각·음식 반짝임도 씀, props.js)

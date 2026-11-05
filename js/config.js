@@ -924,6 +924,28 @@
                  titles: { orc: '숲의 폭군', golem: '동굴의 돌 수호자', toad: '늪의 탐식가', scorpion: '모래 속 독침의 왕', giant: '얼음 봉우리의 거인',
                            captain: '검은 바다의 약탈자', wyvern: '화산을 나는 날개', vampire: '피에 굶주린 밤의 귀족', general: '마왕군 선봉장', demonking: '어둠의 왕좌' } },
 
+    // ---------- 분노·각성 (2026-11-06 밤, 기획\성장시스템-설계안.md 「분노·각성」, 그림·계산 = main.js) ----------
+    // 분노(rage, 0~100 %): 마나 밑 주황 막대. 평타 적중 +hit · 기술 적중 +skillHit(대상마다, 공중·누운 적 타도 셈) · 맞음 +hurt. 소품은 안 셈
+    //   idleMs 동안 때리지도 맞지도 않으면 초당 drainPerSec 씩 줆. 판 시작 = 0. 각성하면 0 이 되고 각성 동안은 안 참
+    rage: { hit: 2, skillHit: 4, hurt: 6, idleMs: 4000, drainPerSec: 6 },
+    // 각성(awaken): 분노 100% → 「각성」 버튼(폰: 기술 버튼 위 / PC: L·F) → ms 동안
+    //   공통 = 공격 x atkMul · 슈퍼아머(보통 타에 움찔·밀림 없음, 넘어뜨리는 큰 타는 그대로. 맞은 뒤 armorMs 동안 또 안 맞음) · 기술 쿨타임 cdRate 배로 빨리 끝남(= 절반)
+    //     · 데미지 숫자 크게 직업 색(damageText.awk_직업) · 화면 가장자리 직업 색
+    //   변신 순간(introMs, 진짜 시간): 화면 어둡게 + 슬로(slowMs) + 몸 흰 번쩍 + 발밑 빛기둥 + 얼굴 컷인 띠 「각성!」 + 흔들림 + 주변 적 밀침(pushR 안, push 도트) · 그동안 무적
+    //   끝 = 주변 큰 폭발(end: r 반지름 · depth 위아래 · dmg = 무기 데미지 배율(레벨·능력치 공격력 그대로 곱함) · 넘어뜨림) → 원래 색
+    //   knight 「광전사」: 콤보 빠르기 +atkSpd(민첩과 합쳐 spdCap 까지) · 타격마다 준 데미지 x lifesteal 만큼 체력(최소 1). 붉은 불꽃
+    //   mage 「마력 폭주」: 기술 마나 0 · 기술이 한 번 더 터짐(화염구·얼음창 = 한 발 더, 번개 = 같은 자리에 한 번 더, 메테오·땅 융기 = 다른 적에게 하나 더, echoMs 뒤)
+    //   novice(전직 전 견습): 공통만(금색)
+    //   거리 값(pushR·push·end.r·end.depth)은 원래 그림 크기 기준(쓸 때 actorScale 곱함)
+    awaken: {
+      ms: 10000, introMs: 650, slowMs: 650, atkMul: 1.3, cdRate: 2, armorMs: 400, pushR: 150, push: 70,
+      end: { r: 170, depth: 70, dmg: 4 },
+      knight: { name: '광전사', color: '#ff3a1a', glow: '#ff8a3a', atkSpd: 0.25, spdCap: 1.5, lifesteal: 0.05,
+                look: { hue: -18, sat: 1.25, bright: 0.72, color: '#8a0a0a', colorK: 0.38 } },
+      mage:   { name: '마력 폭주', color: '#b46aff', glow: '#5ae6ff', echoMs: { fireball: 160, ice: 130, bolt: 200, meteor: 260, rise: 190 },
+                look: { hue: 12, sat: 1.35, bright: 0.72, color: '#3a0a6a', colorK: 0.3 } },
+      novice: { name: '각성', color: '#ffd23f', glow: '#fff2a0' }
+    },
     juice: {
       hitstopMs: 75,        // 맞는 순간 화면 멈춤
       shakePx: 3,           // 화면 흔들림 세기(도트)
@@ -988,6 +1010,13 @@
       // 음식 먹고 회복한 양(2026-11-04): 초록 숫자, 보통 숫자와 같은 크기
       heal: { font: 'mid', scale: 1, top: '#d6ffc4', bottom: '#4cd64a', outline: '#123a16', shadow: 'rgba(6,30,10,0.35)',
               pop: { top: '#ffffff', bottom: '#a8ff8a' } },
+      // 각성 중 데미지(2026-11-06 밤): 기술 숫자(giant)보다 zoom 배 크게 + 직업 색(광전사 = 붉은 불꽃 / 마력 폭주 = 보라·하늘 / 견습 = 금색)
+      awk_knight: { font: 'giant', scale: 1, bold: true, zoom: 1.3, top: '#fff0d8', bottom: '#ff3a1a', outline: '#3a0404', shadow: 'rgba(40,4,4,0.5)',
+                    pop: { top: '#ffffff', bottom: '#ffb040' } },
+      awk_mage:   { font: 'giant', scale: 1, bold: true, zoom: 1.3, top: '#f6eaff', bottom: '#b46aff', outline: '#20083a', shadow: 'rgba(20,6,40,0.5)',
+                    pop: { top: '#ffffff', bottom: '#8ff0ff' } },
+      awk_novice: { font: 'giant', scale: 1, bold: true, zoom: 1.3, top: '#fffbe0', bottom: '#ffc030', outline: '#4a2a04', shadow: 'rgba(30,20,4,0.5)',
+                    pop: { top: '#ffffff', bottom: '#fff2a0' } },
       // 물약·포만감(2026-11-06 밤): 「+HP 52」(빨강) · 「+MP 30」(파랑) · 「포만감 +30%」(주황)
       pothp: { font: 'large', scale: 1, bold: true, top: '#ffe0dc', bottom: '#ff4a4a', outline: '#4a0a0e', shadow: 'rgba(30,6,6,0.4)',
                pop: { top: '#ffffff', bottom: '#ffb0a8' } },
@@ -2882,7 +2911,9 @@
       skillB: ['KeyI', 'KeyV'],
       // 기술 3·4번 칸 (2026-11-06, Lv13 부터): 오른손은 U·I 옆 O·P, 왼손은 C·V 옆 B·N
       skillC: ['KeyO', 'KeyB'],
-      skillD: ['KeyP', 'KeyN']
+      skillD: ['KeyP', 'KeyN'],
+      // 각성(2026-11-06 밤, 분노 100%): 오른손 = J·K 옆 L, 왼손 = F
+      awaken: ['KeyL', 'KeyF']
     },
 
     // ---------- 직업 기술 (위 SKILLS 설명 참고) ----------

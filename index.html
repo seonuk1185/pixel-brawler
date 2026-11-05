@@ -46,6 +46,8 @@
       <span class="full" id="pFull">포만감 50%</span></div>
     <!-- 마나(MP, 2026-11-06): 체력 밑 파란 막대. 기술을 쓰면 줄어듦(성장 4단계) -->
     <div class="pmp"><span class="lbl">MP</span><div class="bar"><i id="pMp"></i></div><span class="num" id="pMpNum">40</span></div>
+    <!-- 분노(2026-11-06 밤): 마나 밑 주황 막대. 100% = 빛남 → 각성. 각성 중 = 남은 시간(직업 색) + 각성 이름 (main.js updateHud) -->
+    <div class="prg"><span class="lbl">분노</span><div class="bar"><i id="pRage"></i></div><span class="num" id="pRageNum">0%</span></div>
     <!-- 레벨 + 얇은 경험치 막대 (성장 2026-11-05, main.js updateHud) -->
     <div class="plv"><span class="lv" id="pLv">Lv 1</span><div class="xbar"><i id="pXp"></i></div>
       <!-- 능력치 창 · 기술 창 열기 (2026-11-06): 안 쓴 점수가 있으면 빨간 숫자 표시(.badge). 기술 버튼은 전직한 직업만 -->
@@ -102,7 +104,7 @@
     </div>
   </div>
   <div class="combo" id="combo" hidden></div>
-  <div class="keyhint">이동 ←↑↓→ / WASD · 달리기 ←← / →→ · 점프 K / X / Space · 공격 J / Z (연타 3타)<span class="skkeys"> · 기술 <span class="skchip" data-skill="A" hidden><kbd>U</kbd><span class="ic"></span><b class="sec"></b></span><span class="skchip" data-skill="B" hidden><kbd>I</kbd><span class="ic"></span><b class="sec"></b></span><span class="skchip" data-skill="C" hidden><kbd>O</kbd><span class="ic"></span><b class="sec"></b></span><span class="skchip" data-skill="D" hidden><kbd>P</kbd><span class="ic"></span><b class="sec"></b></span><span class="alt">(왼손 C V B N)</span></span></div>
+  <div class="keyhint">이동 ←↑↓→ / WASD · 달리기 ←← / →→ · 점프 K / X / Space · 공격 J / Z (연타 3타)<span class="skkeys"> · 기술 <span class="skchip" data-skill="A" hidden><kbd>U</kbd><span class="ic"></span><b class="sec"></b></span><span class="skchip" data-skill="B" hidden><kbd>I</kbd><span class="ic"></span><b class="sec"></b></span><span class="skchip" data-skill="C" hidden><kbd>O</kbd><span class="ic"></span><b class="sec"></b></span><span class="skchip" data-skill="D" hidden><kbd>P</kbd><span class="ic"></span><b class="sec"></b></span><span class="alt">(왼손 C V B N)</span></span><span class="awkchip" id="awkChip"> · <b>각성</b> <kbd>L</kbd> / <kbd>F</kbd></span></div>
 
   <!-- 폰 조작 -->
   <div class="joyzone" id="joyZone">
@@ -116,6 +118,8 @@
     <button type="button" class="btn sk skB" id="btnSkB" data-skill="B" hidden aria-label="기술 2"><i class="sweep"></i><span class="ic"></span><b class="sec"></b><small class="mp"></small></button>
     <button type="button" class="btn sk skC" id="btnSkC" data-skill="C" hidden aria-label="기술 3"><i class="sweep"></i><span class="ic"></span><b class="sec"></b><small class="mp"></small></button>
     <button type="button" class="btn sk skD" id="btnSkD" data-skill="D" hidden aria-label="기술 4"><i class="sweep"></i><span class="ic"></span><b class="sec"></b><small class="mp"></small></button>
+    <!-- 각성(2026-11-06 밤): 분노 100% 면 빛남(.ready), 각성 중 = 직업 색(.on). 안쪽 차오름 = 분노(--rg). 기술 버튼 부채꼴 위 왼쪽(걷는 길 밖, main.js controlPad 에 안 들어감) -->
+    <button type="button" class="btn awk" id="btnAwk" aria-label="각성"><i class="fill"></i><span>각성</span></button>
   </div>
 </div>
 

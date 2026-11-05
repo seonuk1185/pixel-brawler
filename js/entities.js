@@ -38,6 +38,10 @@
     this.heldBy = null; this.poison = null;
     // 민첩(성장 능력치 2026-11-06, main.js 가 매 장면 Growth 에서 넣음): atkSpd = 콤보 휘두르는 빠르기 배율, moveMul = 걷기·달리기·점프 이동 빠르기 배율
     this.atkSpd = 1; this.moveMul = 1;
+    // 각성(2026-11-06 밤, main.js 가 켜고 끔): superArmor = 보통 타에 움찔·밀림 없음(데미지만), noHitT = 남은 「안 맞음」 시간(깜빡임 없음 —
+    //   변신 순간 · 슈퍼아머로 맞은 뒤), cdRate = 기술 쿨타임이 줄어드는 빠르기(2 = 절반), freeMp = 기술 마나 0, echoCast = 기술 한 번 더(법사)
+    //   look = 그리기 덧칠 { paint(img) → 다시 칠한 그림, outline: { color, alpha, glow }, white = 흰 번쩍 세기 }
+    this.superArmor = false; this.noHitT = 0; this.cdRate = 1; this.freeMp = false; this.echoCast = false; this.look = null;
   }
 
   // ---------- 달리기·점프 도구 ----------
@@ -222,12 +226,18 @@
 
   // 적에게 맞음. dir = 밀려나는 방향(1 = 오른쪽). heavy = 무거운 공격(넘어짐). 맞았으면 true
   Player.prototype.takeHit = function (dmg, dir, knock, flinchMs, heavy) {
-    if (this.state === 'dead' || this.state === 'down' || this.invulnT > 0) return false;
+    if (this.state === 'dead' || this.state === 'down' || this.invulnT > 0 || this.noHitT > 0) return false;
     if (this.state === 'held') return false;   // 붙잡혀 있는 동안은 다른 적에게 안 맞음(놓을 때 main.js 가 상태를 풀고 때림)
     if (this.state === 'skill' && window.Skills && Skills.invulnerable(this)) return false;   // 기술 무적 구간
+    var H = this.cfg.hero;
+    // 각성 슈퍼아머(2026-11-06 밤): 보통 타 = 데미지만(움찔·밀림·기술 끊김 없음) + 짧게 안 맞음. 넘어뜨리는 큰 타·쓰러지는 타는 원래대로
+    if (this.superArmor && !heavy && (this.god || this.hp - dmg > 0)) {
+      if (!this.god) this.hp -= dmg;
+      this.noHitT = (this.cfg.awaken && this.cfg.awaken.armorMs) || 400;
+      return true;
+    }
     this.sk = null;                          // 기술 도중(무적 구간 밖)에 맞으면 기술은 끊김
     this.jp = null; this.ratk = null;        // 점프·달리며 공격도 끊김(공중이면 그대로 떨어짐: fall)
-    var H = this.cfg.hero;
     if (!this.god) this.hp = Math.max(0, this.hp - dmg);
     this.atk = null;
     this.vx = dir * (knock || 0) * (H.knockMul || 1) * 9;
@@ -378,7 +388,8 @@
     this.animT += dtMs / 1000;
     if (this.invulnT > 0) this.invulnT -= dtMs;
     if (this.redT > 0) this.redT -= dtMs;   // 맞은 뒤 빨간 번쩍(2026-11-06 밤)
-    for (var ck in this.skillCd) if (this.skillCd[ck] > 0) this.skillCd[ck] -= dtMs;   // 기술 쿨타임
+    if (this.noHitT > 0) this.noHitT -= dtMs;   // 각성: 안 맞는 시간(깜빡임 없음)
+    for (var ck in this.skillCd) if (this.skillCd[ck] > 0) this.skillCd[ck] -= dtMs * (this.cdRate || 1);   // 기술 쿨타임(각성 = 2배 빨리)
 
     // 맞고 움찔 / 넘어짐 / 쓰러짐: 조작 안 됨, 밀려나기만
     if (this.state === 'hurt' || this.state === 'dead' || this.state === 'down') {
@@ -575,9 +586,15 @@
     }
     var back = anc && wImg && (anc.layer ? anc.layer === 'back' : wDef.layer === 'back');
     var k = (img && img._k) || 1;   // 그림 점 → 도트 (HD 0.5, 예전 도트 그림 1). 손 위치·기준점은 그림 점 단위
+    // 각성 덧칠(2026-11-06 밤, main.js 가 look 을 넣음): 몸 둘레 빛 테두리(몸 뒤) → 다시 칠한 몸(갑옷 검붉게 · 로브 진보라)
+    var L = this.look, body = img && L && L.paint ? L.paint(img) : img;
+    if (img && L && L.outline) drawOutline(ctx, img, def.pivot, L.outline);
     if (back) drawWeapon(ctx, def, anc, wDef, wImg, k);
-    if (img) Assets.blit(ctx, img, def.pivot.x, def.pivot.y);
+    if (img) Assets.blit(ctx, body, def.pivot.x, def.pivot.y);
     if (anc && wImg && !back) drawWeapon(ctx, def, anc, wDef, wImg, k);
+    if (img && L && L.white > 0) {   // 변신 순간 흰 번쩍
+      ctx.globalAlpha = Math.min(1, L.white); Assets.blit(ctx, img, def.pivot.x, def.pivot.y, FX.whiteSilhouette(img, 0, 0, img.width, img.height, 1)); ctx.globalAlpha = 1;
+    }
     if (hurtFlash) {   // 맞는 순간 하얗게 번쩍
       var sil = FX.whiteSilhouette(img, 0, 0, img.width, img.height, 1);
       ctx.globalAlpha = 0.7; Assets.blit(ctx, img, def.pivot.x, def.pivot.y, sil);
@@ -595,6 +612,31 @@
     }
     ctx.restore();
   };
+
+  // 몸 둘레 빛 테두리(각성, 2026-11-06 밤): 그림 한 장을 한 색 실루엣으로(그림·색마다 한 번만 만듦) →
+  //   위아래좌우 1도트씩 비켜 4번(테두리) + glow 면 2도트 비켜 흐리게 한 번 더(번지는 빛). O = { color, alpha, glow }
+  var silCache = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
+  function silhouette(img, color) {
+    var m = silCache && silCache.get(img);
+    if (m && m[color]) return m[color];
+    var c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+    var g = c.getContext('2d'); g.drawImage(img, 0, 0);
+    g.globalCompositeOperation = 'source-in'; g.fillStyle = color; g.fillRect(0, 0, c.width, c.height);
+    if (window.Assets && Assets.copyMeta) Assets.copyMeta(img, c);
+    if (silCache) { m = m || {}; m[color] = c; silCache.set(img, m); }
+    return c;
+  }
+  function drawOutline(ctx, img, pv, O) {
+    var s = silhouette(img, O.color), a0 = ctx.globalAlpha;
+    var d = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+    if (O.glow) {
+      ctx.globalAlpha = a0 * O.alpha * 0.45;
+      [[-2, 0], [2, 0], [0, -2], [0, -3]].forEach(function (q) { ctx.save(); ctx.translate(q[0], q[1]); Assets.blit(ctx, s, pv.x, pv.y); ctx.restore(); });
+    }
+    ctx.globalAlpha = a0 * O.alpha;
+    d.forEach(function (q) { ctx.save(); ctx.translate(q[0], q[1]); Assets.blit(ctx, s, pv.x, pv.y); ctx.restore(); });
+    ctx.globalAlpha = a0;
+  }
 
   // k = 몸 그림 점 → 도트 (손 위치를 도트로 바꿈). 무기 그림은 자기 배율(Assets.blit)
   function drawWeapon(ctx, def, anc, wDef, wImg, k) {

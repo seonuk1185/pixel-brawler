@@ -5,6 +5,7 @@
   var keysDown = {};
   var attackQueued = 0;   // 누른 순간 기록(시각)
   var jumpQueued = 0;     // 점프 누른 순간
+  var awakenQueued = 0;   // 각성 누른 순간(2026-11-06 밤, 분노 100%)
   var skillQueued = { A: 0, B: 0, C: 0, D: 0 };   // 기술 칸 A~D 누른 순간 (C·D = 2026-11-06 성장 4단계, Lv13 부터 보임)
   var SLOTS = ['A', 'B', 'C', 'D'];
   var joy = { x: 0, y: 0, active: false, id: null };
@@ -23,7 +24,7 @@
     CF = cfg;
     var K = cfg.keys;
     window.addEventListener('keydown', function (e) {
-      var sk = [], jp = K.jump || [];
+      var sk = [], jp = K.jump || [], aw = K.awaken || [];
       SLOTS.forEach(function (k) { sk = sk.concat(K['skill' + k] || []); });
       if (e.repeat) { if (matches(e.code, K.attack) || matches(e.code, sk) || matches(e.code, jp)) e.preventDefault(); return; }
       // 달리기: 같은 쪽을 doubleTapMs 안에 다시 누름(그 쪽 키를 모두 뗐다가). 반대쪽을 누르면 달리기 끝
@@ -37,8 +38,9 @@
       keysDown[e.code] = true;
       if (matches(e.code, K.attack)) attackQueued = performance.now();
       if (matches(e.code, jp)) jumpQueued = performance.now();
+      if (matches(e.code, aw)) awakenQueued = performance.now();
       SLOTS.forEach(function (k) { if (matches(e.code, K['skill' + k] || [])) skillQueued[k] = performance.now(); });
-      if ([].concat(K.left, K.right, K.up, K.down, K.attack, jp, sk).indexOf(e.code) >= 0) e.preventDefault();
+      if ([].concat(K.left, K.right, K.up, K.down, K.attack, jp, sk, aw).indexOf(e.code) >= 0) e.preventDefault();
     });
     window.addEventListener('keyup', function (e) {
       keysDown[e.code] = false;
@@ -117,6 +119,7 @@
     btn('btnAtk', function () { attackQueued = performance.now(); });
     btn('btnJump', function () { jumpQueued = performance.now(); });
     SLOTS.forEach(function (k) { btn('btnSk' + k, function () { skillQueued[k] = performance.now(); }); });
+    btn('btnAwk', function () { awakenQueued = performance.now(); });   // 각성 버튼(폰)
   }
 
   var override = null;   // 시험용 자동 조종(?bot=1)이 넣는 방향 { x, y, run }
@@ -164,6 +167,9 @@
     peekSkill: function (slot, bufferMs) { return fresh(skillQueued[slot], bufferMs); },
     clearSkill: function (slot) { skillQueued[slot] = 0; },
     pressSkill: function (slot) { skillQueued[slot] = performance.now(); },   // 시험용
+    // 각성(2026-11-06 밤): 버퍼 안에 눌렸으면 꺼내 씀
+    takeAwaken: function (bufferMs) { if (fresh(awakenQueued, bufferMs)) { awakenQueued = 0; return true; } return false; },
+    pressAwaken: function () { awakenQueued = performance.now(); },   // 시험용(자동 조종)
     setOverride: function (ax) { override = ax; },                   // 시험용(자동 조종). null 이면 원래대로
     state: function () { return { runKey: runKey, joyRun: joyRun, joyFlick: joyFlick, joy: { x: joy.x, y: joy.y, active: joy.active } }; }   // 시험용
   };

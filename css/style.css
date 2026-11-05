@@ -74,9 +74,26 @@ body.smooth #screen { image-rendering: auto; }
 /* 포만감 (2026-11-06 밤): 체력 숫자 오른쪽 글자만(막대 없음). 0% = 회색(회복 멈춤) */
 .php .full { font-size: 11px; color: #ffcf8a; white-space: nowrap; }
 .php .full.empty { color: #8a8296; }
-/* 레벨 + 얇은 노란 경험치 막대 (성장 2026-11-05): 마나 막대 밑(2026-11-06 전엔 체력 막대 바로 밑). 최고 레벨이면 막대가 가득(.max) */
+/* 분노 막대 (2026-11-06 밤): 마나 밑 가는 주황 막대. 가득(.full) = 빛남, 각성 중(.awk) = 남은 시간 + 직업 색 */
+.prg {
+  position: absolute; left: max(10px, env(safe-area-inset-left)); top: 82px;
+  display: flex; align-items: center; gap: 6px; font-weight: 800; text-shadow: 2px 2px 0 #2a1020;
+}
+.prg .lbl { color: #ffae5a; font-size: 10px; min-width: 19px; }
+.prg .bar { width: 150px; height: 7px; background: #2a1408; border-width: 1px; }
+.hud .prg .bar i { background: linear-gradient(#ffd08a, #ff7a1a); transition: width .15s; }
+.prg .num { font-size: 10px; color: #ffd8b0; white-space: nowrap; }
+.prg.full .bar { border-color: #ffd23f; box-shadow: 0 0 6px #ff9a2a; animation: ragefull .6s ease-in-out infinite alternate; }
+.hud .prg.full .bar i { background: linear-gradient(#fff2a0, #ffa020); }
+.prg.full .num { color: #fff2a0; }
+.hud .prg.awk-knight .bar i { background: linear-gradient(#ff8a6a, #d01a10); }
+.hud .prg.awk-mage .bar i { background: linear-gradient(#e0b0ff, #7a2ae0); }
+.hud .prg.awk-novice .bar i { background: linear-gradient(#fff2a0, #f0b020); }
+.prg.awk .num { color: #fff; }
+@keyframes ragefull { from { box-shadow: 0 0 3px #ff9a2a; } to { box-shadow: 0 0 9px #ffd23f; } }
+/* 레벨 + 얇은 노란 경험치 막대 (성장 2026-11-05): 분노 막대 밑(2026-11-06 밤, 그 전엔 마나 막대 밑). 최고 레벨이면 막대가 가득(.max) */
 .plv {
-  position: absolute; left: max(10px, env(safe-area-inset-left)); top: 84px;
+  position: absolute; left: max(10px, env(safe-area-inset-left)); top: 96px;
   display: flex; align-items: center; gap: 6px; font-weight: 800; text-shadow: 2px 2px 0 #2a1020;
 }
 .plv .lv { color: #ffd23f; font-size: 12px; min-width: 34px; white-space: nowrap; transform-origin: left center; }
@@ -104,7 +121,7 @@ body.smooth #screen { image-rendering: auto; }
 .stbtns { margin-top: 12px; }
 @media (pointer: coarse) { .statbtn { font-size: 13px; padding: 5px 12px; } }
 .stageinfo {
-  position: absolute; left: max(10px, env(safe-area-inset-left)); top: 101px;
+  position: absolute; left: max(10px, env(safe-area-inset-left)); top: 113px;
   font-size: 11px; font-weight: 700; color: #fffc; text-shadow: 1px 1px 0 #2a1020; white-space: nowrap;
 }
 .bossbar {
@@ -368,14 +385,35 @@ body.smooth #screen { image-rendering: auto; }
   }
   .btn.sk.cool .ic { opacity: .2; }
   .btn.sk:not(.cool) { box-shadow: inset 0 -4px 0 #0003, 0 0 0 2px #9cc8ff66; }
+  /* 각성 버튼 (2026-11-06 밤): 기술 부채꼴 위 왼쪽(C 위·D 왼쪽, 걷는 길보다 높음 → 싸움 못 들어가는 폭 controlPad 는 그대로).
+     평소 = 어둡고 안쪽이 분노만큼 차오름(--rg), 100% = 주황으로 빛나며 숨쉼(.ready), 각성 중 = 붉게(.on) */
+  .btn.awk {
+    right: 66px; bottom: 188px; width: 44px; height: 44px; padding: 0; overflow: hidden; font-size: 12px; line-height: 1;
+    background: #3a2418b3; border-color: #0008; box-shadow: inset 0 -4px 0 #0003;
+  }
+  .btn.awk .fill { position: absolute; left: 0; right: 0; bottom: 0; height: calc(var(--rg, 0) * 100%); background: #ff8a2a66; pointer-events: none; }
+  .btn.awk span { position: relative; z-index: 1; opacity: .55; }
+  .btn.awk.ready { background: radial-gradient(#ffe08a, #ff7a1a 70%); color: #3a1204; text-shadow: 0 1px 0 #fff8; border-color: #ffd23f; animation: awkready .55s ease-in-out infinite alternate; }
+  .btn.awk.ready span, .btn.awk.on span { opacity: 1; }
+  .btn.awk.ready .fill, .btn.awk.on .fill { display: none; }
+  .btn.awk.on { background: #c8301ad0; border-color: #ff8a6a; }
+  .btn.awk.down { transform: scale(.9); }
+  @keyframes awkready { from { box-shadow: 0 0 4px 1px #ff9a2a; } to { box-shadow: 0 0 14px 5px #ffd23f; } }
 }
+.mode-practice .btn.awk, .mode-practice .awkchip, .mode-practice .prg { display: none; }
+/* PC: 아래 조작 글자 끝 「각성 L / F」 — 분노 100% 면 주황으로 빛남 */
+.awkchip { color: #fff8; }
+.awkchip kbd { font: inherit; font-size: 10px; color: #cfe0ff; }
+.awkchip.ready b, .awkchip.ready kbd { color: #ffb040; text-shadow: 0 0 6px #ff9a2a; }
+.awkchip.on b { color: #ff6a4a; }
 
 /* 세로 화면(폰 세로): 게임 화면은 위(고르기 버튼 아래), 조작은 아래 빈 곳 (main.js 가 body 에 portrait 를 붙임) */
 .portrait .php { top: 6px; }
-.portrait .combo { top: 70px; }
+.portrait .combo { top: 82px; }
 .portrait .pmp { top: 23px; }
-.portrait .plv { top: 38px; }
-.portrait .stageinfo { top: 56px; }
+.portrait .prg { top: 37px; }
+.portrait .plv { top: 51px; }
+.portrait .stageinfo { top: 69px; }
 .portrait .bossbar { bottom: 6px; width: 70%; }
 .portrait .go { font-size: 26px; }
 .portrait .banner { font-size: 26px; }
@@ -392,6 +430,7 @@ body.smooth #screen { image-rendering: auto; }
   .portrait .btn.skB { right: 12px; bottom: 116px; }
   .portrait .btn.skC { right: 140px; bottom: 76px; }
   .portrait .btn.skD { right: 70px; bottom: 146px; }
+  .portrait .btn.awk { right: 150px; bottom: 140px; width: 50px; height: 50px; font-size: 13px; }
 }
 
 /* PC: 아래 조작 글자 옆 작은 기술 칸(아이콘 + 쿨타임 초) */

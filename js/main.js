@@ -268,6 +268,7 @@
     // 치명타(민첩, 2026-11-06): 적·허수아비를 때릴 때 확률 Growth.critChance() → 데미지 x critMul + 큰 주황 숫자(agicrit). GAME.test.crit 로 시험 고정
     var crit = !target.isProp && (G.forceCrit != null ? G.forceCrit : Math.random() < Growth.critChance());
     if (crit) dmg = Math.round(dmg * CFG.growth.stats.critMul);
+    if (G.awk && !target.isProp) dmg = Math.round(dmg * CFG.awaken.atkMul);   // 각성: 공격 +30%(2026-11-06 밤)
     // 소품(상자·통): 단계만 넘김(데미지 숫자·콤보 수 없음). 기술(damageStyle) = 한 번에 부서짐, 맞은 곳 = 마법이면 그 자리, 아니면 몸 앞
     if (target.isProp) {
       Props.hit(target, { dmg: dmg, strong: !!st.damageStyle, finisher: !!st.finisher, dir: dir,
@@ -337,10 +338,18 @@
     if (FLC && Skills.debris) Skills.debris(hx, hy, target.y, J.flashy.hitBits, { cols: FLC, glow: true, sp: 210, size: 1.6, ms: 420 });
     if (heavyHit && !otg && IM.glow && Skills.glow) Skills.glow(hx, hy, (IM.glowR || 30) * AS * Math.max(0.8, sc), W.sparkColor || '#fff2c8', 170, IM.glow);   // 무거운 타: 맞은 곳 둥근 빛
     // 숫자: crit = 마무리 모양(「22!」), numStyle = 숫자 모양만 따로(달리며 공격 작은 타 = push). 마지막 = 대상(같은 대상 숫자는 위로 쌓임)
-    FX.damage(target.x, topY, dmg, crit || !!(st.finisher || st.crit || (st.damageStyle && st.knockdown)), J, null, crit ? 'agicrit' : st.numStyle || st.damageStyle, target.id || 'dummy', !!st.mergeNum && !crit);
+    //   각성 중(2026-11-06 밤) = 숫자 크게 직업 색(damageText.awk_직업)
+    FX.damage(target.x, topY, dmg, crit || !!(st.finisher || st.crit || (st.damageStyle && st.knockdown)), J, null, G.awk ? 'awk_' + G.awk.cls : crit ? 'agicrit' : st.numStyle || st.damageStyle, target.id || 'dummy', !!st.mergeNum && !crit);
     if (crit) G.crits = (G.crits || 0) + 1;
     vibrate(Math.round(J.vibrateMs * (st.finisher ? 2 : 1)));
     G.hits++; G.totalDmg += dmg;
+    // 분노(2026-11-06 밤): 평타 +2 · 기술 +4(공중·누운 적 타도). 각성 광전사 = 준 데미지 x lifesteal 만큼 체력(머리 위 초록 숫자는 합쳐서)
+    G.combatT = 0;
+    if (!st.noRage) rageAdd(st.damageStyle ? CFG.rage.skillHit : CFG.rage.hit);
+    if (G.awk && G.awk.A.lifesteal && p.state !== 'dead') {
+      var ls = Math.min(p.maxHp - p.hp, Math.max(1, Math.round(dmg * G.awk.A.lifesteal)));
+      if (ls > 0) { p.hp += ls; FX.damage(p.x, p.y - (p.z || 0) - 112 * AS, ls, false, J, null, 'heal', 'player:ls', true); }
+    }
     p.mp = Math.min(p.maxMp, p.mp + CFG.growth.mp.onHit);   // 마나: 맞힐 때마다 조금 참
     G.comboHits = G.comboT > 0 ? G.comboHits + 1 : 1;
     G.maxCombo = Math.max(G.maxCombo, G.comboHits);
@@ -406,6 +415,7 @@
     dmg = guardDmg(dmg);   // 늘 켜진 기술 「강철 피부」(받는 피해 -%)
     var dir = p.x >= e.x ? 1 : -1;
     if (!p.takeHit(dmg, dir, spec.knock, spec.flinchMs, !!spec.heavy)) return false;   // heavy = 넘어짐. 안 맞았으면 false(총알은 그대로 지나감)
+    G.combatT = 0; rageAdd(CFG.rage.hurt);   // 분노: 맞으면 +6(2026-11-06 밤)
     // 맞는 느낌 세게(2026-11-06 밤, config juice.hurt): 짧은 멈춤 + 흔들림 + 빨간 번쩍(몸) + 화면 가장자리 빨갛게(데미지만큼) + 불똥·피 조각
     var HU = J.hurt || {}, hk = Math.min(1, dmg / Math.max(1, p.maxHp * (HU.fullAt || 0.12)));   // hk = 이번 데미지 세기 0~1
     G.hitstop = Math.max(G.hitstop, J.hitstopMs * (e.T.boss ? 1.3 : 0.8) * (HU.stop || 1));
@@ -1162,6 +1172,307 @@
     Props.dropPotion(B.x + dir * (B.T.radius + 10 * AS), B.y, dir, PO.boss);
   }
 
+  // ================= 분노·각성 (2026-11-06 밤, 형님 「좋아」, 수치 = config rage · awaken) =================
+  // G.rage = 분노 0~100(마나 밑 주황 막대), G.combatT = 마지막으로 때리거나 맞은 뒤 지난 게임 시간(ms) → idleMs 넘으면 천천히 줆
+  // G.awk = 각성 중 { cls(knight·mage·novice), A(그 직업 값), t(지난 게임 시간), ms, intro(변신 순간 지난 진짜 시간), fxT·ghostT(불꽃·잔상 시계) }
+  //   보스 분노(enemies.js rage)와는 따로. 콤보: 공중·누운 적 타도 onHit 를 지나므로 그대로 분노가 참
+  var awkPush = [];   // 변신 순간 밀려나는 적 { e, dir, dist, t, ms }
+  function rageAdd(n) {
+    if (MODE !== 'stage' || G.awk || !CFG.rage) return;
+    G.rage = Math.min(100, (G.rage || 0) + n);
+  }
+  function rageStep(dt) {
+    var R = CFG.rage;
+    if (!R || MODE !== 'stage') return;
+    G.combatT = (G.combatT || 0) + dt;
+    if (!G.awk && G.rage > 0 && G.combatT > R.idleMs) G.rage = Math.max(0, G.rage - R.drainPerSec * dt / 1000);
+  }
+  function awkClass() { return CFG.awaken[G.classKey] ? G.classKey : 'novice'; }
+  function canAwaken(p) {
+    return MODE === 'stage' && !G.awk && (G.rage || 0) >= 100 && !G.stage.result && p.state !== 'dead' && p.state !== 'down' && p.state !== 'held' && p.state !== 'hurt';
+  }
+  function startAwaken() {
+    var p = G.player, AW = CFG.awaken, cls = awkClass(), A = AW[cls];
+    G.rage = 0; G.awkCount = (G.awkCount || 0) + 1;
+    G.awk = { cls: cls, A: A, t: 0, ms: AW.ms, intro: 0, fxT: 0, ghostT: 0 };
+    // 공통: 슈퍼아머 · 쿨타임 2배 빨리 / 법사: 마나 0 · 한 번 더 · 효과 더 크고 밝게 / 갑옷·로브 다시 칠하기 + 빛 테두리(entities.js look)
+    p.superArmor = true; p.cdRate = AW.cdRate;
+    p.freeMp = p.echoCast = cls === 'mage';
+    Skills.setBright(cls === 'mage' ? 1.35 : 1);
+    p.look = { paint: awkPaint(cls), outline: { color: A.color, alpha: 0.9, glow: true }, white: 1 };
+    // 변신 순간: 안 맞음 + 슬로 + 흔들림 + 직업 색 번쩍 + 발밑 충격파·빛 + 주변 적 밀침(그리기 = drawAwk…)
+    p.noHitT = Math.max(p.noHitT, AW.introMs + 200);
+    G.slowT = Math.max(G.slowT, AW.slowMs);
+    FX.shake(J.shakePx * 3.2, 650);
+    Skills.flash({ color: A.color, alpha: 0.3, ms: 420 });
+    var R = AW.pushR * AS;
+    Skills.wave(p.x, p.y, R, { flat: 0.3, w: 5, ms: 520, color: '#ffffff', glow: A.color, ground: true });
+    Skills.glow(p.x, p.y - 50 * AS, 60 * AS / 0.55, A.glow, 520, 0.85);
+    Skills.debris(p.x, p.y - 30 * AS, p.y, 22, { cols: ['#ffffff', A.color, A.glow], glow: true, sp: 260, size: 1.8, ms: 620, g: -40, spread: 1.7 });
+    G.enemies.forEach(function (e) {
+      if (!e.alive() || e.hidden) return;
+      var dx = e.x - p.x;
+      if (Math.abs(dx) > R || Math.abs(e.y - p.y) > R * 0.45) return;
+      awkPush.push({ e: e, dir: dx >= 0 ? 1 : -1, dist: AW.push * AS * (e.T.boss ? 0.3 : 1) * (1 - Math.abs(dx) / R * 0.5), t: 0, ms: 340 });
+    });
+  }
+  function awkPushStep(dt) {
+    for (var i = awkPush.length - 1; i >= 0; i--) {
+      var q = awkPush[i], u0 = Math.min(1, q.t / q.ms); q.t += dt;
+      var u1 = Math.min(1, q.t / q.ms), ea = function (u) { return 1 - (1 - u) * (1 - u); };
+      if (q.e.alive()) q.e.x += q.dir * q.dist * (ea(u1) - ea(u0));
+      if (u1 >= 1) awkPush.splice(i, 1);
+    }
+  }
+  // 매 장면: 시간 · 흰 번쩍 · 빛 테두리 일렁임 · 불꽃(기사 머리 위)·빛 알갱이 · 붉은 잔상(기사) · 끝나면 폭발
+  function awkStep(dt, realMs) {
+    var a = G.awk, p = G.player;
+    if (!a) return;
+    if (p.state === 'dead') { endAwaken(false); return; }
+    a.intro += realMs; a.t += dt;
+    var L = p.look, AW = CFG.awaken;
+    if (L) { L.white = a.intro < 300 ? 1 - a.intro / 300 : 0; L.outline.alpha = 0.7 + 0.3 * Math.sin(a.t / 70) * Math.sin(a.t / 23 + 1); }
+    a.fxT -= dt;
+    if (a.fxT <= 0) {
+      a.fxT = 45;
+      var hy = p.y - (p.z || 0);
+      if (a.cls === 'knight') {   // 머리 위로 솟는 불꽃 + 몸 둘레 불티
+        Skills.debris(p.x + (Math.random() * 2 - 1) * 7 * AS, hy - 92 * AS, p.y, 2, { cols: ['#fff2a0', '#ffb040', '#ff5a1a', '#ff2a10'], glow: true, sp: 70, size: 2.2, ms: 520, g: -260, spread: 0.45 });
+        Skills.debris(p.x + (Math.random() * 2 - 1) * 16 * AS, hy - (20 + Math.random() * 60) * AS, p.y, 1, { cols: ['#ffd27a', '#ff5a1a', '#ff2a10'], glow: true, sp: 50, size: 1.6, ms: 420, g: -220, spread: 0.6 });
+      } else if (a.cls === 'mage') {   // 발밑 마법진에서 오르는 보라·하늘 빛 알갱이
+        Skills.debris(p.x + (Math.random() * 2 - 1) * 26 * AS, p.y - 2, p.y, 1, { cols: ['#ffffff', '#d8b0ff', '#5ae6ff', '#b46aff'], glow: true, sp: 40, size: 1.5, ms: 700, g: -140, spread: 0.4 });
+      } else {
+        Skills.debris(p.x + (Math.random() * 2 - 1) * 14 * AS, hy - (30 + Math.random() * 50) * AS, p.y, 1, { cols: ['#ffffff', '#fff2a0', '#ffd23f'], glow: true, sp: 40, size: 1.4, ms: 480, g: -160, spread: 0.6 });
+      }
+    }
+    // 붉은 잔상(기사): 움직이거나 휘두르는 동안
+    if (a.cls === 'knight') {
+      a.ghostT -= dt;
+      var moving = p.state !== 'idle' && p.state !== 'hurt';
+      if (a.ghostT <= 0 && moving) { a.ghostT = 70; Skills.ghost(p, '#ff2a1a', 300, 0.42); }
+    }
+    if (a.t >= a.ms) endAwaken(true);
+  }
+  // 끝: boom = 주변 큰 폭발(데미지 = 무기 데미지 x end.dmg x 레벨·능력치 공격력, 넘어뜨림 · 누운 적도) → 원래 색
+  function endAwaken(boom) {
+    var a = G.awk, p = G.player, AW = CFG.awaken;
+    if (!a) return;
+    if (boom) {
+      var A = a.A, R = AW.end.r * AS, x = p.x, z = p.y;
+      G.hitstop = Math.max(G.hitstop, 130);
+      FX.shake(J.shakePx * 4, 750);
+      Skills.flash({ color: A.color, alpha: 0.45, ms: 480 });
+      Skills.glow(x, z - 40 * AS, R * 1.25, A.glow, 560, 0.9);
+      Skills.glow(x, z - 40 * AS, R * 0.6, '#ffffff', 280, 0.95);
+      Skills.wave(x, z, R * 1.1, { flat: 0.3, w: 7, ms: 620, color: '#ffffff', glow: A.color, ground: true });
+      Skills.wave(x, z, R * 0.7, { flat: 0.3, w: 5, ms: 420, color: '#fff2e0', glow: A.glow, ground: true });
+      Skills.wave(x, z - 45 * AS, R * 0.85, { flat: 0.85, w: 5, ms: 460, color: '#ffffff', glow: A.color });
+      Skills.debris(x, z - 30 * AS, z, 34, { cols: ['#ffffff', A.color, A.glow, '#fff2c0'], glow: true, sp: 340, size: 2.2, ms: 780, spread: 1.7 });
+      Skills.debris(x, z - 6 * AS, z, 14, { cols: ['#5a4636', '#7a6248', '#3a2e24'], sp: 240, size: 2.6, ms: 820, spread: 1.2 });
+      var st = { dmg: AW.end.dmg, knock: 2.6, knockdown: true, hitsDown: true, big: true, finisher: true, hitstop: 1.3, shake: 1, damageStyle: 'awk_' + a.cls, noRage: true };
+      hitTargets().forEach(function (t) {
+        if (!t || !canHit(t, st)) return;
+        var hb = t.hurtbox();
+        if (Math.abs(hb.z - z) > AW.end.depth * AS || hb.x1 < x - R || hb.x0 > x + R) return;
+        onHit(st, t, { dir: t.x >= x ? 1 : -1, wk: p.weaponKey, x: clamp(x, hb.x0, hb.x1), y: z - 40 * AS });
+      });
+    }
+    G.awk = null;
+    p.superArmor = false; p.cdRate = 1; p.freeMp = p.echoCast = false; p.look = null;
+    Skills.setBright(1);
+  }
+  // 갑옷·로브 다시 칠하기(그림마다 한 번, 처음 그릴 때): 기사 = 회색 쇠·파란 겉옷 → 검붉게, 법사 = 보라 로브 → 진보라(더 짙고 진하게).
+  //   피부·머리·금테는 그대로. 파일로 열어서 점을 못 읽으면 그림 전체를 config look 값으로 물들임(tintImg, 적 변종과 같은 방식)
+  var awkPaintCache = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
+  function awkPaint(cls) {
+    var V = CFG.awaken[cls] && CFG.awaken[cls].look;
+    if (!V) return null;
+    return function (img) {
+      var m = awkPaintCache && awkPaintCache.get(img);
+      if (m && m[cls]) return m[cls];
+      var out;
+      try { out = recolorGear(img, cls); } catch (e) { out = tintImg(img, V); }
+      if (awkPaintCache) { m = m || {}; m[cls] = out; awkPaintCache.set(img, m); }
+      return out;
+    };
+  }
+  function recolorGear(img, cls) {
+    var c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+    var g = c.getContext('2d'); g.drawImage(img, 0, 0);
+    var d = g.getImageData(0, 0, c.width, c.height), p = d.data;
+    for (var i = 0; i < p.length; i += 4) {
+      if (p[i + 3] < 10) continue;
+      var r = p[i] / 255, gg = p[i + 1] / 255, b = p[i + 2] / 255, mx = Math.max(r, gg, b), mn = Math.min(r, gg, b), l = (mx + mn) / 2, s = 0, h = 0, dd = mx - mn;
+      if (dd > 0) {
+        s = l > 0.5 ? dd / (2 - mx - mn) : dd / (mx + mn);
+        h = (mx === r ? ((gg - b) / dd + (gg < b ? 6 : 0)) : mx === gg ? ((b - r) / dd + 2) : ((r - gg) / dd + 4)) * 60;
+      }
+      var nh = null, ns = 0, nl = l;
+      if (cls === 'knight') {
+        if (s < 0.2 && l > 0.12 && l < 0.97) { nh = 2; ns = 0.62; nl = l * 0.68; }                  // 회색 쇠 갑옷 → 검붉은 쇠(밝은 곳은 조금 밝게 남김)
+        else if (h >= 190 && h <= 265 && s > 0.2) { nh = 352; ns = Math.min(1, s * 1.1); nl = l * 0.7; }   // 파란 겉옷 → 진홍
+      } else if (cls === 'mage') {
+        if (h >= 245 && h <= 325 && s > 0.15) { nh = 276; ns = Math.min(1, s * 1.25 + 0.1); nl = l * 0.66; }   // 보라 로브 → 진보라
+      }
+      if (nh === null) continue;
+      var q = nl < 0.5 ? nl * (1 + ns) : nl + ns - nl * ns, pp = 2 * nl - q, hk = nh / 360;
+      for (var j = 0; j < 3; j++) {
+        var t = hk + (1 - j) / 3; if (t < 0) t += 1; if (t > 1) t -= 1;
+        var v = t < 1 / 6 ? pp + (q - pp) * 6 * t : t < 1 / 2 ? q : t < 2 / 3 ? pp + (q - pp) * (2 / 3 - t) * 6 : pp;
+        p[i + j] = Math.round(v * 255);
+      }
+    }
+    g.putImageData(d, 0, 0);
+    return Assets.copyMeta(img, c);
+  }
+
+  // ---------- 각성 그리기 (전부 코드, 0원) ----------
+  // 변신 순간 env(0~1): 빨리 차고 introMs 끝에서 사라짐
+  function awkIntroK() {
+    var a = G.awk, AW = CFG.awaken;
+    if (!a || a.intro >= AW.introMs + 250) return 0;
+    return Math.min(1, a.intro / 90) * (a.intro > AW.introMs - 120 ? Math.max(0, 1 - (a.intro - (AW.introMs - 120)) / 370) : 1);
+  }
+  // 배경 위·캐릭터 아래: 변신 순간 화면 어둡게(캐릭터·적은 밝게 남음)
+  function drawAwkBackdrop() {
+    var k = awkIntroK();
+    if (k <= 0) return;
+    ctx.fillStyle = 'rgba(6,2,12,' + (0.6 * k).toFixed(3) + ')'; ctx.fillRect(-8, -8, LW + 16, LH + 16);
+  }
+  // 바닥(캐릭터 밑): 법사 = 발밑 마법진(따라다님, 두 고리 + 도는 눈금 + 두 삼각형), 기사 = 붉은 불빛, 견습 = 금빛
+  function drawAwkUnder(camX) {
+    var a = G.awk, p = G.player;
+    if (!a) return;
+    var x = p.x - camX, y = p.y, t = a.t / 1000, A = a.A;
+    ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.translate(x, y); ctx.scale(1, 0.32);   // 발밑 빛(납작한 둥근 빛)
+    var gr = ctx.createRadialGradient(0, 0, 0, 0, 0, 34);
+    gr.addColorStop(0, A.color); gr.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.globalAlpha = 0.35 + 0.1 * Math.sin(t * 9); ctx.fillStyle = gr; ctx.fillRect(-34, -34, 68, 68);
+    ctx.restore();
+    if (a.cls !== 'mage') return;
+    var rx = 30, ry = 9.5, k = Math.min(1, a.t / 250);
+    ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.lineWidth = 1;
+    ctx.globalAlpha = 0.85; ctx.strokeStyle = '#b46aff';
+    ctx.beginPath(); ctx.ellipse(x, y, rx * k, ry * k, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha = 0.7; ctx.strokeStyle = '#5ae6ff';
+    ctx.beginPath(); ctx.ellipse(x, y, rx * 0.72 * k, ry * 0.72 * k, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = '#e8d0ff';
+    for (var i = 0; i < 12; i++) {   // 두 고리 사이 도는 눈금
+      var an = t * 1.6 + i * Math.PI / 6, ex = x + Math.cos(an) * rx * 0.86 * k, ey = y + Math.sin(an) * ry * 0.86 * k;
+      ctx.globalAlpha = 0.6 + 0.4 * Math.sin(t * 5 + i); ctx.fillRect(ex - 0.75, ey - 0.75, 1.5, 1.5);
+    }
+    ctx.globalAlpha = 0.55; ctx.strokeStyle = '#d8b0ff';
+    [0, Math.PI].forEach(function (o) {   // 반대로 도는 두 삼각형(육망성)
+      ctx.beginPath();
+      for (var j = 0; j <= 3; j++) { var an2 = -t * 1.1 + o + j * Math.PI * 2 / 3, px = x + Math.cos(an2) * rx * 0.7 * k, py = y + Math.sin(an2) * ry * 0.7 * k; if (j) ctx.lineTo(px, py); else ctx.moveTo(px, py); }
+      ctx.stroke();
+    });
+    ctx.restore();
+  }
+  // 법사 룬 4개: 허리 높이 납작한 원을 따라 돎. back = 뒤쪽 반(캐릭터 뒤) / 앞쪽 반(캐릭터 앞). 룬 = 5x5 도트 글자(우리 그림)
+  var RUNES = ['..#..|.###.|#.#.#|..#..|.#.#.', '#...#|.#.#.|..#..|.#.#.|#...#', '.###.|#...#|#.#.#|#...#|.###.', '#.#.#|.###.|..#..|..#..|.###.'];
+  function drawRunes(camX, back) {
+    var a = G.awk, p = G.player;
+    if (!a || a.cls !== 'mage') return;
+    var t = a.t / 1000, cx = p.x - camX, cy = p.y - (p.z || 0) - 44 * AS, rx = 30, ry = 8, k = Math.min(1, a.t / 300);
+    ctx.save();
+    RUNES.forEach(function (R, i) {
+      var an = t * 2.2 + i * Math.PI / 2, sn = Math.sin(an);
+      if ((sn < 0) !== back) return;
+      var x = Math.round(cx + Math.cos(an) * rx * k), y = Math.round(cy + sn * ry * k + Math.sin(t * 3 + i) * 2), rows = R.split('|');
+      ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = back ? 0.45 : 0.9;
+      var gr = ctx.createRadialGradient(x, y, 0, x, y, 9); gr.addColorStop(0, i % 2 ? '#5ae6ff' : '#b46aff'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = gr; ctx.fillRect(x - 9, y - 9, 18, 18);
+      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = back ? 0.55 : 1;
+      rows.forEach(function (row, ry2) { for (var cx2 = 0; cx2 < 5; cx2++) if (row[cx2] === '#') {   // 1.5 도트 점(폰에서도 보이게) + 진한 그림자
+        var px = x - 3.75 + cx2 * 1.5, py = y - 3.75 + ry2 * 1.5;
+        ctx.fillStyle = '#2a0a4a'; ctx.fillRect(px + 0.5, py + 0.5, 1.5, 1.5);
+        ctx.fillStyle = i % 2 ? '#bff8ff' : '#f0dcff'; ctx.fillRect(px, py, 1.5, 1.5);
+      } });
+    });
+    ctx.restore();
+  }
+  // 맨 위: 발밑에서 솟는 빛기둥(변신 순간 → 천천히 사라짐) + 화면 가장자리 직업 색 + 얼굴 컷인 띠
+  function drawAwkOver(camX) {
+    var a = G.awk, p = G.player, AW = CFG.awaken;
+    if (!a) return;
+    var A = a.A;
+    if (a.intro < AW.introMs + 500) {   // 빛기둥
+      var u = a.intro / (AW.introMs + 500), al = (u < 0.1 ? u / 0.1 : 1 - (u - 0.1) / 0.9), w = 18 * (1 + 0.6 * Math.min(1, u * 4)), x = p.x - camX;
+      ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = Math.max(0, al) * 0.85;
+      var g = ctx.createLinearGradient(x - w, 0, x + w, 0);
+      g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(0.3, A.color); g.addColorStop(0.5, '#ffffff'); g.addColorStop(0.7, A.color); g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g; ctx.fillRect(x - w, -8, w * 2, p.y + 8);
+      var g2 = ctx.createRadialGradient(x, p.y, 0, x, p.y, w * 2.2); g2.addColorStop(0, '#ffffff'); g2.addColorStop(0.4, A.color); g2.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g2; ctx.fillRect(x - w * 2.2, p.y - w * 2.2, w * 4.4, w * 4.4);
+      ctx.restore();
+    }
+    // 가장자리 직업 색(숨쉬듯, 끝나기 1.5초 전부터 깜빡여 알림)
+    var left = a.ms - a.t, blink = left < 1500 ? 0.55 + 0.45 * Math.abs(Math.sin(a.t / 90)) : 1;
+    var va = (0.42 + 0.1 * Math.sin(a.t / 160)) * blink + 0.3 * awkIntroK();
+    ctx.save(); ctx.translate(LW / 2, LH / 2); ctx.scale(LW / 2, LH / 2);   // 화면 비율대로 납작한 둥근 물듦(위아래 가장자리도 물듦)
+    var vg = ctx.createRadialGradient(0, 0, 0.62, 0, 0, 1.18);
+    vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, A.color);
+    ctx.globalAlpha = Math.min(0.8, va); ctx.fillStyle = vg; ctx.fillRect(-1.1, -1.1, 2.2, 2.2); ctx.restore();
+  }
+  // 얼굴 컷인(보스 등장 컷인과 같은 방식, 플레이어 서 있는 그림의 머리·어깨를 크게 + 「각성!」 + 각성 이름)
+  var faceBox = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
+  function figTop(img, pv) {   // 그림 속 몸 맨 윗줄(그림 점). 못 읽으면 기준점 위 몸 높이쯤
+    var v = faceBox && faceBox.get(img);
+    if (v != null) return v;
+    v = pv.y - 96 * AS / ((img._k) || 1);
+    try {
+      var c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+      var g = c.getContext('2d'); g.drawImage(img, 0, 0);
+      var d = g.getImageData(0, 0, c.width, c.height).data;
+      outer: for (var y = 0; y < c.height; y++) for (var x = 0; x < c.width; x++) if (d[(y * c.width + x) * 4 + 3] > 40) { v = y + ((img._oy) || 0); break outer; }
+    } catch (e) {}
+    if (faceBox) faceBox.set(img, v);
+    return v;
+  }
+  function drawAwkCut() {
+    var a = G.awk, p = G.player, AW = CFG.awaken;
+    if (!a || a.intro >= AW.introMs + 40 || !p.char) return;
+    var A = a.A, T = a.intro, ms = AW.introMs, inK = introEase(T / 150), outK = introEase((T - (ms - 160)) / 160);
+    var by = Math.round(LH * 0.3), bh = Math.round(LH * 0.28), off = (1 - inK) * -LW * 0.9 + outK * LW * 0.9;
+    ctx.save(); ctx.translate(off, 0);
+    ctx.fillStyle = 'rgba(8,4,14,0.92)'; ctx.fillRect(-8, by, LW + 16, bh);
+    var gr = ctx.createLinearGradient(0, 0, LW, 0);
+    gr.addColorStop(0, A.color); gr.addColorStop(0.55, 'rgba(0,0,0,0)');
+    ctx.globalAlpha = 0.75; ctx.fillStyle = gr; ctx.fillRect(-8, by, LW + 16, bh); ctx.globalAlpha = 1;
+    ctx.save(); ctx.beginPath(); ctx.rect(-8, by, LW + 16, bh); ctx.clip();
+    ctx.globalCompositeOperation = 'lighter';
+    for (var f = 0; f < 22; f++) {   // 빠르게 지나가는 빛 줄(속도선)
+      var lx = ((f * 97 + T * (0.9 + (f % 5) * 0.25)) % (LW + 80)) - 40, ly = by + 2 + ((f * 37) % (bh - 4));
+      ctx.globalAlpha = 0.35; ctx.fillStyle = f % 3 ? A.color : '#ffffff'; ctx.fillRect(Math.round(lx), ly, 18 + (f % 4) * 8, 1);
+    }
+    ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+    // 얼굴: 서 있는 그림 1장(각성 색으로 칠한 것)을 머리·어깨가 띠에 꽉 차게 크게(도트 그대로)
+    var im = p.char.anims.idle && p.char.anims.idle[0];
+    if (im) {
+      var L = p.look, body = L && L.paint ? L.paint(im) : im, pv = p.char.def.pivot, k = im._k || 1;
+      var top = figTop(im, pv), hf = (pv.y - top) * k;     // 몸 높이(도트)
+      var sc = bh / (hf * 0.42), fx = Math.round(LW * 0.28), headY = by + bh * 0.52;
+      var sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false;
+      ctx.translate(fx, headY + (pv.y - top) * k * sc * 0.83); ctx.scale(sc, sc);
+      if (L && L.outline) { ctx.globalAlpha = 0.9; }
+      Assets.blit(ctx, body, pv.x, pv.y);
+      ctx.imageSmoothingEnabled = sm;
+    }
+    ctx.restore();
+    ctx.fillStyle = A.color; ctx.fillRect(-8, by, LW + 16, 2); ctx.fillRect(-8, by + bh - 2, LW + 16, 2);
+    // 글자: 각성 이름(작게, 직업 색) + 「각성!」(크게, 흰 글자 + 진한 테두리) — 꽝 하고 커졌다 돌아옴
+    var nx = LW * 0.5, big = Math.round(bh * 0.46), pop = 1 + 0.45 * Math.max(0, 1 - (T - 80) / 160);
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
+    ctx.font = 'bold ' + Math.round(bh * 0.17) + 'px system-ui, sans-serif'; ctx.lineWidth = 4; ctx.strokeStyle = '#100410'; ctx.fillStyle = A.glow;
+    ctx.strokeText(A.name, nx + 2, by + bh * 0.2); ctx.fillText(A.name, nx + 2, by + bh * 0.2);
+    ctx.save(); ctx.translate(nx, by + bh * 0.62); ctx.scale(pop, pop);   // 글자 왼쪽 가운데 기준으로 커졌다 돌아옴
+    ctx.font = '900 ' + big + 'px system-ui, sans-serif'; ctx.lineWidth = 6; ctx.strokeStyle = '#100410';
+    ctx.strokeText('각성!', 0, 0); ctx.fillStyle = '#ffffff'; ctx.fillText('각성!', 0, 0);
+    ctx.restore();
+    ctx.restore();
+  }
+
   // ---------- 막힘 지킴이 (2026-11-04): 웨이브가 고정된 동안 적 하나가 안 와서 웨이브가 안 끝나는 일 막기 ----------
   //   살아 있는 적이 STUCK.ms 넘게 ① 「화면 밖」이거나 ② 「플레이어에게서 가로 STUCK.far 넘게 떨어져서 제자리(STUCK.move 안)」이면
   //   (공격·맞음·넘어짐·휘청·방패·자는 중은 안 셈. 느린 설인이 화면을 가로질러 걸어오는 중처럼 움직이고 있으면 ②는 안 셈)
@@ -1414,6 +1725,8 @@
       Input.setOverride(ax); return;
     }
     var side = best.x > p.x ? 1 : -1;
+    // 각성(2026-11-06 밤): 분노가 차면 적이 가까이 있을 때 바로 씀
+    if ((G.rage || 0) >= 100 && !G.awk && Math.abs(best.x - p.x) < 170 * AS && Math.abs(best.y - p.y) < 50 * AS) Input.pressAwaken();
     if (G.classKey === 'mage' && !G.botPlain) { botMage(dt, p, best, side, ax); return; }   // botPlain = 예전처럼 붙어서(비교 시험용)
     var want = ({ goblin: 42, wolf: 58, orc: 72, bat: 46, skeleton: 44, golem: 76, mummy: 46, scorpion: 80, lizard: 46, toad: 74, gunner: 40, captain: 70, imp: 44, lavagolem: 76, wyvern: 80, yeti: 50, giant: 82, ghost: 46, vampire: 66, soldier: 52, mage: 40, general: 84, demonking: 86 }[best.type] || 50) * AS;
     var sv = Props.steer(p, R, best.x - side * want, best.y, world, best.x);   // 막는 소품: 목표가 그 안이면 옆으로, 앞에 있으면 돌아감
@@ -1513,6 +1826,8 @@
     Skills.tickReal(realMs);
     if (intro) { introStep(realMs); return; }               // 보스 등장 컷인 동안: 게임 멈춤(2026-11-06 밤)
     if (G.vig > 0) G.vig = Math.max(0, G.vig - realMs / ((J.hurt && J.hurt.vigMs) || 600));   // 가장자리 빨강 줄어듦(진짜 시간)
+    // 각성(2026-11-06 밤): 분노 100% 에 버튼·L·F → 변신. 맞는 순간 멈춤 중에 눌러도 바로(움찔·넘어짐·잡힘 중에는 눌러 둔 것을 잠깐 기억했다가)
+    if (G.player && canAwaken(G.player) && Input.takeAwaken(300)) startAwaken();
     if (G.hitstop > 0) { G.hitstop -= realMs; return; }   // 멈춤: 아무것도 안 움직임
     var dt = realMs * J.timeScale;
     if (G.slowT > 0) { G.slowT -= realMs; dt *= 0.3; }
@@ -1524,8 +1839,10 @@
     p.setMoveSet(G.moveSet);
     p.classKey = G.classKey; p.gender = G.charKey;   // 기술 고르기용
     p.atkSpd = Growth.atkSpd(); p.moveMul = Growth.moveMul();   // 민첩(성장 능력치): 휘두르기·이동 빠르기
+    if (G.awk && G.awk.A.atkSpd) p.atkSpd = Math.min(G.awk.A.spdCap, p.atkSpd + G.awk.A.atkSpd);   // 각성 광전사: 더 빠르게(상한 있음)
     if (MODE === 'stage') { world.minX = G.camX + 14; world.maxX = G.camX + LW - 14 - controlPad; }
     if (G.bot && MODE === 'stage' && !G.stage.result) botThink(dt);
+    awkStep(dt, realMs);   // 각성 시간·불꽃·잔상·끝 폭발
     var ev = p.update(dt, world);
     if (ev.slash) {
       // fx 는 하나 또는 여러 개(법사 2타 = 바람 + 지팡이 끝 반짝임)
@@ -1592,6 +1909,8 @@
       poisonStep(dt);        // 전갈 왕 독 · 독 웅덩이
       mpStep(dt);            // 마나 차기
       fullStep(dt);          // 포만감: 체력 천천히 + 줄어듦(2026-11-06 밤)
+      rageStep(dt);          // 분노: 싸움이 없으면 천천히 줆(2026-11-06 밤)
+      awkPushStep(dt);       // 각성 변신 순간 밀려나는 적
       stageStep(dt);
       Props.update(dt, p);   // 부서지는 그림·음식 줍기
     } else {
@@ -1626,6 +1945,7 @@
 
     }
     Skills.drawBackdrop(ctx, LW, LH, G.player);   // 기술 쓰는 동안 배경만 어둡게
+    drawAwkBackdrop();                            // 각성 변신 순간 배경 어둡게(2026-11-06 밤)
 
     // 바닥 위: 보스 공격 예고 띠, 먼지
     G.enemies.forEach(function (e) { e.drawTelegraph(ctx, camX); });
@@ -1636,8 +1956,9 @@
     FX.draw(ctx, camX, true);
     if (MODE === 'stage') Props.drawUnder(ctx, camX, LW);   // 소품 그림자·모닥불 빛
     Skills.drawUnder(ctx, camX, G.player);        // 번개 떨어질 자리 표시
-    // 깊이 순서(아래쪽 = 앞쪽)
-    var ents = [{ y: G.player.y, d: function () { Skills.drawGhosts(ctx, camX); G.player.draw(ctx, camX, G.assets.weapons, DEBUG); } }];
+    drawAwkUnder(camX);                           // 각성: 발밑 마법진·불빛
+    // 깊이 순서(아래쪽 = 앞쪽). 각성 법사 룬은 몸 뒤 반 · 앞 반
+    var ents = [{ y: G.player.y, d: function () { Skills.drawGhosts(ctx, camX); drawRunes(camX, true); G.player.draw(ctx, camX, G.assets.weapons, DEBUG); drawRunes(camX, false); } }];
     if (G.dummy) ents.push({ y: G.dummy.y, d: function () { G.dummy.draw(ctx, camX, DEBUG); } });
     G.enemies.forEach(function (e) { ents.push({ y: e.y + (e.alive() ? 0 : -0.5), d: function () { e.draw(ctx, camX, DEBUG); } }); });
     if (MODE === 'stage') Props.addDraw(ents, ctx, camX, LW, DEBUG);
@@ -1658,6 +1979,8 @@
       vg.addColorStop(0, 'rgba(200,0,20,0)'); vg.addColorStop(1, 'rgba(200,0,20,' + (0.55 * G.vig).toFixed(3) + ')');
       ctx.fillStyle = vg; ctx.fillRect(-8, -8, LW + 16, LH + 16);
     }
+    drawAwkOver(camX);                            // 각성: 빛기둥 · 화면 가장자리 직업 색
+    drawAwkCut();                                 // 각성 얼굴 컷인 「각성!」
     drawIntro();                                  // 보스 등장 컷인(맨 위)
 
     if (DEBUG) drawDebug(camX);
@@ -1686,7 +2009,7 @@
 
   // ---------- HUD (체력 막대, 보스 막대, GO, 알림) ----------
   var hud = {};
-  ['pHp', 'pHpLag', 'pHpNum', 'pMp', 'pMpNum', 'pFull', 'pLv', 'pXp', 'bossBar', 'bHp', 'bHpLag', 'bossName', 'goPrompt', 'banner', 'stageInfo'].forEach(function (k) { hud[k] = document.getElementById(k); });
+  ['pHp', 'pHpLag', 'pHpNum', 'pMp', 'pMpNum', 'pFull', 'pRage', 'pRageNum', 'btnAwk', 'awkChip', 'pLv', 'pXp', 'bossBar', 'bHp', 'bHpLag', 'bossName', 'goPrompt', 'banner', 'stageInfo'].forEach(function (k) { hud[k] = document.getElementById(k); });
   var lastHud = {};
   function setIf(key, val, fn) { if (lastHud[key] !== val) { lastHud[key] = val; fn(val); } }
   function updateHud() {
@@ -1699,6 +2022,16 @@
     setIf('pmpn', Math.floor(p.mp), function (v) { hud.pMpNum.textContent = v; });
     // 포만감(2026-11-06 밤): 막대 없이 글자만. 0% = 회색(회복 멈춤)
     setIf('pfull', Math.ceil(G.full || 0), function (v) { hud.pFull.textContent = '포만감 ' + v + '%'; hud.pFull.classList.toggle('empty', v <= 0); });
+    // 분노 막대(2026-11-06 밤): 평소 = 분노 %(가득 = 빛남), 각성 중 = 남은 시간(직업 색) + 각성 이름. 각성 버튼(폰)·글자(PC)도 같이
+    var A = G.awk, rg = A ? Math.max(0, 1 - A.t / A.ms) : (G.rage || 0) / 100, rs = A ? 'awk awk-' + A.cls : rg >= 1 ? 'full' : '';
+    setIf('prg', Math.round(rg * 200) / 200, function (v) { hud.pRage.style.width = (v * 100) + '%'; });
+    setIf('prgn', A ? '각성 ' + Math.max(0, Math.ceil((A.ms - A.t) / 1000)) + '초' : Math.floor(G.rage || 0) + '%', function (v) { hud.pRageNum.textContent = v; });
+    setIf('prgc', rs, function (v) {
+      hud.pRage.parentNode.parentNode.className = 'prg ' + v;
+      var ready = v === 'full';
+      [hud.btnAwk, hud.awkChip].forEach(function (el) { if (el) { el.classList.toggle('ready', ready); el.classList.toggle('on', !!A); } });
+    });
+    setIf('pawkf', A ? 1 : Math.floor((G.rage || 0) / 5) / 20, function (v) { if (hud.btnAwk) hud.btnAwk.style.setProperty('--rg', v); });
     // 레벨 + 경험치 막대(성장). 최고 레벨이면 「Lv 30 MAX」 + 막대 가득
     setIf('plv', Growth.lv, function (v) {
       hud.pLv.textContent = 'Lv ' + v + (Growth.isMax() ? ' MAX' : '');
@@ -1792,6 +2125,7 @@
     G.ectx = makeEnemyCtx();
     G.xpGot = 0;   // 이 판에서 얻은 경험치(결과 화면)
     G.full = CFG.fullness ? CFG.fullness.start : 0; G.fullAcc = 0; G.potGot = 0;   // 포만감·물약(2026-11-06 밤): 판마다 처음부터
+    G.rage = 0; G.combatT = 0; G.awk = null; G.awkCount = 0; awkPush.length = 0;   // 분노·각성(2026-11-06 밤): 판 시작 = 0
     G.hits = 0; G.totalDmg = 0; G.maxCombo = 0; G.comboT = 0; G.cstats = { launch: 0, air: 0, otg: 0, cancel: 0, maxAirMs: 0, maxAirHits: 0 }; G.comboTagT = 0; G.hitstop = 0; G.slowT = 0; comboEl.hidden = true;
     var god = G.player && G.player.god;
     G.player = new Player(CFG);
@@ -2286,6 +2620,9 @@
     // 물약·포만감 시험(2026-11-06 밤): 플레이어 앞 dx 도트에 물약(kind 없으면 비율로) / 포만감 바로 정하기
     potion: function (kind, dx) { var p = G.player; return Props.dropPotion(p.x + (dx || 50), p.y, 1, kind); },
     full: function (n) { G.full = n; return G.full; },
+    // 분노·각성 시험(2026-11-06 밤): 분노 바로 정하기 / 바로 각성(분노 100 으로 채우고 누름)
+    rage: function (n) { G.rage = n == null ? 100 : n; return G.rage; },
+    awaken: function () { G.rage = 100; Input.pressAwaken(); },
     hurt: function (n, heavy) { var p = G.player; p.invulnT = 0; p.takeHit(n || 10, -p.dir, 10, 0, !!heavy); },
     god: function (on) { G.player.god = on !== false; },
     // 경험치 바로 주기(성장 시험): GAME.test.xp(500)
@@ -2318,7 +2655,8 @@
         shotsX: shots.filter(function (b) { return !(b.wait > 0); }).map(function (b) { return Math.round(b.x); }),
         props: Props.list.map(function (pr) { return pr.type + ':' + (pr.state === 'idle' ? pr.hitsLeft : pr.state) + '@' + Math.round(pr.x) + ',' + Math.round(pr.y); }),
         food: Props.food.map(function (f) { return f.kind + '@' + Math.round(f.x) + ',' + Math.round(f.y); }),
-        potions: Props.potions.map(function (f) { return f.kind + '@' + Math.round(f.x) + ',' + Math.round(f.y); }), full: Math.round((G.full || 0) * 10) / 10, potGot: G.potGot || 0 };
+        potions: Props.potions.map(function (f) { return f.kind + '@' + Math.round(f.x) + ',' + Math.round(f.y); }), full: Math.round((G.full || 0) * 10) / 10, potGot: G.potGot || 0,
+        rage: Math.round(G.rage || 0), awk: G.awk ? { cls: G.awk.cls, t: Math.round(G.awk.t) } : null, awkCount: G.awkCount || 0 };
     }
   };
 
