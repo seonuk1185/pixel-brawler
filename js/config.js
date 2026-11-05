@@ -302,14 +302,14 @@
   //   look = 그림 갈아 끼우는 곳(효과 그림 이름 = 아래 skillFx). 새 그림이 오면 skillFx 에 이름·장 수를 적고 look 값만 바꾸면 됨
   //   (판정·데미지는 안 건드림). 그림이 없거나(count 0) 못 불러오면 저절로 지금 임시 그림
   // 검기: 날아가며 길 위의 적을 모두 꿰뚫음(적마다 한 번). 누운 적은 위로 지나감(hitsDown 없음)
-  var WAVE_HIT = { dmg: 1.5, hitstop: 0.6, knock: 1.1, shake: 1.2, spark: 1.2, big: true, hitY: -58 };
+  var WAVE_HIT = { dmg: 1.6, hitstop: 0.6, knock: 1.1, shake: 1.2, spark: 1.2, big: true, hitY: -58 };
   // 내려찍기: 착지 자리 양옆 땅 충격파. 맞은 적은 짧게 기절(stunMs, 넘어뜨리지는 않음), 누운 적도 맞음
-  var SLAM_HIT = { dmg: 2.3, hitstop: 1.6, knock: 0.6, shake: 2.6, stunMs: 700, spark: 1.4, big: true, hitsDown: true, away: true, noJuggle: true,
+  var SLAM_HIT = { dmg: 2.5, hitstop: 1.6, knock: 0.6, shake: 2.6, stunMs: 700, spark: 1.4, big: true, hitsDown: true, away: true, noJuggle: true,
                    flash: { color: '#fff0d0', alpha: 0.35, ms: 140 }, slowMs: 200 };
   // 얼음창: 처음 맞은 적 하나(Lv5 = 꿰뚫음) + 느려짐(slow: ms 동안 그 적의 시간이 mul 배로 흐름 → 걷기·공격·맞는 동작 전부 느려짐, 보스는 bossMul)
-  var ICE_HIT = { dmg: 1.9, hitstop: 1.1, knock: 0.9, shake: 1.3, spark: 1.2, big: true };
+  var ICE_HIT = { dmg: 2.2, hitstop: 1.1, knock: 0.9, shake: 1.3, spark: 1.2, big: true };
   // 메테오: 떨어진 자리에서 크게 터짐, 둘레 적 넘어뜨림, 누운 적도 맞음
-  var METEOR_HIT = { dmg: 4.2, hitstop: 2.4, knock: 2.8, shake: 3.6, knockdown: true, spark: 1.6, big: true, hitsDown: true,
+  var METEOR_HIT = { dmg: 5.0, hitstop: 2.4, knock: 2.8, shake: 3.6, knockdown: true, spark: 1.6, big: true, hitsDown: true,
                      flash: { color: '#ffc070', alpha: 0.55, ms: 220 }, slowMs: 320 };
   var SKILLS = {
     knight: {
@@ -492,7 +492,7 @@
       { id: 'dash', unlock: 0 },
       { id: 'spin', unlock: 8 },
       { id: 'mastery', unlock: 10, name: '검 숙련', icon: '숙', desc: '검으로 하는 모든 공격(콤보·기술)이 세져요',
-        passive: { stat: 'phys', val: [0.06, 0.09, 0.12, 0.15, 0.2] } },
+        passive: { stat: 'phys', val: [0.08, 0.12, 0.16, 0.2, 0.25] } },
       { id: 'skin', unlock: 11, name: '강철 피부', icon: '피', desc: '적에게 받는 피해가 줄어요',
         passive: { stat: 'guard', val: [0.05, 0.08, 0.11, 0.14, 0.18] } },
       { id: 'wave', unlock: 13 },
@@ -506,7 +506,7 @@
       { id: 'fireball', unlock: 0 },
       { id: 'bolt', unlock: 8 },
       { id: 'amp', unlock: 10, name: '원소 증폭', icon: '증', desc: '모든 마법(지팡이 타·마법탄·기술)이 세져요',
-        passive: { stat: 'magic', val: [0.06, 0.09, 0.12, 0.15, 0.2] } },
+        passive: { stat: 'magic', val: [0.08, 0.12, 0.16, 0.2, 0.25] } },
       { id: 'flow', unlock: 11, name: '마나 순환', icon: '순', desc: '마나가 더 빨리 차요',
         passive: { stat: 'mpRegen', val: [0.2, 0.35, 0.5, 0.65, 0.85] } },
       { id: 'ice', unlock: 13 },
@@ -2763,7 +2763,7 @@
     //   botPlan = 시험용(GAME.test.skillSetup): 기술 점수를 이 순서로 돌아가며 1점씩
     skills: { bufferMs: 300, cancelAfterHit: true, knight: SKILLS.knight, mage: SKILLS.mage,
               tree: SKILL_TREE, perLv: 1, maxLv: 5, classLv: 7, slots: [2, 4], moreLv: 13, noMpMs: 500,
-              curve: { dmg: [1, 1.15, 1.3, 1.45, 1.65], cd: [1, 0.94, 0.88, 0.82, 0.75], mp: [1, 1.05, 1.1, 1.15, 1.2] },
+              curve: { dmg: [1, 1.2, 1.4, 1.6, 1.85], cd: [1, 0.94, 0.88, 0.82, 0.75], mp: [1, 1.05, 1.1, 1.15, 1.2] },
               test: { pts: 24 },
               botPlan: { knight: ['dash', 'spin', 'mastery', 'skin', 'wave', 'slam'], mage: ['fireball', 'bolt', 'amp', 'flow', 'ice', 'meteor'] } },
 
