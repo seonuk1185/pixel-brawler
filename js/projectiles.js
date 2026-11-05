@@ -7,7 +7,7 @@
   //       box: { w, h } 탄 크기, depth = 위아래(줄) 판정 폭, frames = 그림 목록, fps, pivot, burstAtEnd,
   //       backReach = 처음 한 번은 나온 곳에서 이만큼 뒤(쏜 사람 쪽)까지도 확인 → 바로 앞에 붙은 적을 탄이 건너뛰지 않게,
   //       skip(대상) = true 면 그 대상은 안 맞음(꿰뚫는 기술 탄: 이미 맞은 적·누운 적, 2026-11-06),
-  //       drawFn(ctx) = 그림 대신 코드로 그리기, fade = 끝나기 전 이 거리(도트) 동안 흐려짐,
+  //       drawFn(ctx) = 그림 대신 코드로 그리기, fade = 끝나기 전 이 거리(도트) 동안 흐려짐, loop = [첫, 끝] 장만 반복(앞 장은 한 번),
   //       ...아무 값(main 이 씀) }
   //   onImpact 안에서 p.dead = false 로 되돌리면 꿰뚫고 계속 날아감(검기·Lv5 얼음창)
   function spawn(o) {
@@ -60,9 +60,15 @@
     }
   }
 
+  // 몇 번째 장: loop = [첫, 끝] 이 있으면 앞 장(나가는 순간)은 한 번 → 그 구간만 반복(2026-11-06 우리 검기), 없으면 전부 반복
+  function frameIdx(p) {
+    var n = Math.floor(p.t / 1000 * (p.fps || 12)), L = p.loop;
+    if (!L) return n % p.frames.length;
+    return n < L[0] ? n : L[0] + (n - L[0]) % (L[1] - L[0] + 1);
+  }
   function draw(ctx, camX) {
     list.forEach(function (p) {
-      var fr = p.frames && p.frames.length ? p.frames[Math.floor(p.t / 1000 * (p.fps || 12)) % p.frames.length] : null;
+      var fr = p.frames && p.frames.length ? p.frames[frameIdx(p)] : null;
       var x = snapPx(p.x - camX), y = snapPx(p.y);
       var fa = p.fade ? Math.max(0, Math.min(1, (p.range - p.trav) / p.fade)) : 1;
       if (!fr && p.drawFn) {   // 코드로 그린 탄(그림이 없을 때 검기 등)

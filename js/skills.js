@@ -110,7 +110,9 @@
     var F = H.fx(), fr = name && F && F['skill_' + name];
     if (!fr || !fr.length) return null;
     var M = CFG.magic['skill_' + name], S = CFG.skillFx[name] || {};
-    return { fr: fr, fps: fps || S.fps || 16, pivot: M ? M.pivot : centerPivot(fr), loop: !!S.loop };
+    // range = 날아가는 동안 반복할 장 [첫, 끝](우리 그림), ours = 우리가 그린 도트 그림(1배 그대로), hit = 「쾅」 장
+    return { fr: fr, fps: fps || S.fps || 16, pivot: M ? M.pivot : centerPivot(fr), loop: !!S.loop,
+             range: Array.isArray(S.loop) ? S.loop : null, ours: !!S.ours, hit: S.hit };
   }
   // 기존 효과 그림을 색으로 물들여서(없으면 null)
   function tintFx(name, color, k) {
@@ -156,9 +158,10 @@
     if (q.L) p.mp = Math.max(0, (p.mp || 0) - L.mp);   // 마나 씀
     casts[d.id] = (casts[d.id] || 0) + 1;
     if (d.strikes) {
-      s.sx = d.strikes.x.map(function (x) { return p.x + p.dir * x; });   // 적이 없을 때 고정 자리
-      s.sz = d.strikes.x.map(function () { return p.y; });
-      s.aimT = aimTargets(p, d.strikes);
+      var K = s.K = boltsFor(d.strikes, L);
+      s.sx = K.x.map(function (x) { return p.x + p.dir * x; });   // 적이 없을 때 고정 자리
+      s.sz = K.x.map(function () { return p.y; });
+      s.aimT = aimTargets(p, K);
     }
     p.skillCd[d.key] = L.cd;
   }
@@ -224,8 +227,8 @@
     }
     if (d.meteor && !s.met && t1 >= d.meteor.at) { s.met = true; castMeteor(p, d); }
     if (d.strikes) {
-      var K = d.strikes;
-      lockStrikes(s, K);
+      var K = s.K || d.strikes;
+      lockStrikes(s, K, p.dir);
       K.at.forEach(function (at, k) {
         if (!s.strikeDone[k] && t1 >= at) { s.strikeDone[k] = true; strike(p, d, k); }
       });
@@ -248,10 +251,29 @@
     });
     if (!list.length) return null;
     list.sort(function (a, b) { return a.d - b.d; });
-    return K.x.map(function (x, k) { return list[Math.min(k, list.length - 1)].t; });
+    return K.x.map(function (x, k) { return K.base && k >= K.base ? null : list[Math.min(k, list.length - 1)].t; });
+  }
+  // 번개 Lv5(2026-11-06): 줄기를 lv5.bolts 개로(지금 번개 그림 그대로). 원래 줄기(겨눔·시각·마지막 넘어뜨림)는 그대로 두고,
+  //   늘어난 줄기(base 번째부터)는 적을 안 겨누고 겨눈 자리 바깥(앞 → 뒤 번갈아)으로 wide 만큼 떨어진 곳에 2·3번 줄기와 같이 떨어짐
+  //   → 한 적에게 더 세지지는 않고(wide = 몸 + 번개 폭보다 멀리) 둘레의 다른 적까지 넓게 맞힘
+  function boltsFor(K, L) {
+    var n = L && L.lv5 && L.lv5.bolts, b = K.x.length;
+    if (!n || n <= b) return K;
+    var o = {}, k;
+    for (k in K) o[k] = K[k];
+    var gx = (K.x[b - 1] - K.x[0]) / Math.max(1, b - 1);
+    o.base = b; o.wide = (L.lv5.wide || 90) * AS(); o.x = K.x.slice(); o.at = K.at.slice(); o.hits = [];
+    for (k = 0; k < b; k++) o.hits.push(K.hits[Math.min(k, K.hits.length - 1)]);
+    for (k = b; k < n; k++) {
+      var j = k - b;
+      o.x.push(j % 2 ? K.x[0] - gx * (1 + (j >> 1)) : K.x[b - 1] + gx * (1 + (j >> 1)));   // 적이 없을 때 고정 자리(양 끝 바깥)
+      o.at.push(K.at[Math.min(b - 1, 1 + j)]);
+      o.hits.push(K.hits[0]);
+    }
+    return o;
   }
   // 번개 자리: 바닥 표시가 뜨면(markMs 전) 겨눈 적의 발밑을 따라가다가, 떨어지기 lockMs 전에 고정(그 뒤로는 안 움직임 → 피할 틈)
-  function lockStrikes(s, K) {
+  function lockStrikes(s, K, dir) {
     if (!s.aimT) return;
     var lockMs = K.lockMs != null ? K.lockMs : 90;
     K.at.forEach(function (at, k) {
@@ -259,6 +281,10 @@
       if (s.t < at - (K.markMs || 200)) return;
       var t = s.aimT[k];
       if (t && (!t.alive || t.alive())) { s.sx[k] = t.x; s.sz[k] = t.y; }
+      else if (K.base && k >= K.base) {   // Lv5 늘어난 줄기: 겨눈 줄기 바깥(앞 → 뒤 번갈아)으로 wide 씩
+        var j = k - K.base, ref = j % 2 ? 0 : K.base - 1, side = j % 2 ? -1 : 1;
+        s.sx[k] = s.sx[ref] + side * (dir || 1) * K.wide * (1 + Math.floor(j / 2)); s.sz[k] = s.sz[ref];
+      }
       if (s.t >= at - lockMs) { s.locked = s.locked || {}; s.locked[k] = true; }
     });
   }
@@ -459,7 +485,7 @@
 
   // 번개 한 줄기: 정해 둔 바닥 자리(sx[k], sz[k] = 겨눈 적 발밑 또는 법사 앞 고정 자리)에 화면 맨 위에서 내리꽂힘
   function strike(p, d, k) {
-    var s = p.sk, K = d.strikes, x = s.sx[k], z = s.sz[k], h = K.hits[Math.min(k, K.hits.length - 1)], KR = K.r * s.area;   // KR = Lv5 번개 굵기
+    var s = p.sk, K = s.K || d.strikes, x = s.sx[k], z = s.sz[k], h = K.hits[Math.min(k, K.hits.length - 1)], KR = K.r * s.area;   // KR = Lv5 번개 굵기
     bolts.push({ x: x, z: z, t: 0, life: K.ms || 200, K: K, seed: Math.random() * 1000 });
     var hitA = fxArt(K.hitArt), M = CFG.magic.spark;
     if (hitA) spriteFrom(x, z, hitA.fr, hitA.fps, hitA.pivot, s.dir < 0, 1, K.hitFromFrame);   // 땅 번쩍(기준 = 아래 가운데)
@@ -479,6 +505,7 @@
       if (x < hb.x0 - KR || x > hb.x1 + KR) return;
       var dir = Math.abs(t.x - x) < 3 ? s.dir : (t.x > x ? 1 : -1);
       H.onHit(st, t, { dir: dir, wk: p.weaponKey, x: x, y: t.y - 40 * AS(), mul: s.mul });
+      t.stunKind = 'shock';
       any = true;
     });
     if (any && h.slowMs) H.slow(h.slowMs);
@@ -491,15 +518,20 @@
 
   // 검기 날리기: 앞으로 날아가며 길 위의 적을 모두 꿰뚫음(적마다 한 번). k = 몇 번째 검기(Lv5 = 2개, 두 번째는 살짝 위)
   function castWave(p, d, k) {
-    var w = d.shot, s = p.sk, lk = lookOf(d), A = fxArt(lk.proj, lk.fps), hitIds = {};
-    var fr = A ? (A.fr.length > 2 ? A.fr.slice(1) : A.fr) : null;
+    var w = d.shot, s = p.sk, lk = lookOf(d), A = (s.L.lv5 && fxArt(lk.projLv5, lk.fps)) || fxArt(lk.proj, lk.fps), hitIds = {};
+    // 우리 그림(ours): 나가는 장 → 반복 구간(range)만 날아가는 동안 → 끝에서 흩어지는 장(range 뒤)을 그 자리에 한 번
+    var ours = !!(A && A.ours && A.range), fr = A ? (ours ? A.fr.slice(0, A.range[1] + 1) : (A.fr.length > 2 ? A.fr.slice(1) : A.fr)) : null;
     Projectiles.spawn({ x: p.x + p.dir * w.x, y: p.y + w.y - (k ? 12 * AS() : 0), z: p.y, dir: p.dir, speed: w.speed, range: w.range,
-      box: w.box, depth: w.depth, backReach: w.x, frames: fr, fps: A ? A.fps : 12, pivot: A ? A.pivot : null, scale: A ? (lk.scale || 1) : 1,
-      fade: 40 * AS(), drawFn: fr ? null : waveShape, glow: SM() ? waveGlow : null,
+      box: w.box, depth: w.depth, backReach: w.x, frames: fr, fps: A ? A.fps : 12, pivot: A ? A.pivot : null, scale: A && !A.ours ? (lk.scale || 1) : 1,
+      loop: ours ? A.range : null, burstAtEnd: ours,
+      fade: ours ? 0 : 40 * AS(), drawFn: fr ? null : waveShape, glow: SM() ? waveGlow : null,
       skill: { d: d, c: w, wk: p.weaponKey, mul: s.mul },
       skip: function (t) { return hitIds[t.id || 'dummy'] || !H.canHit(t, w.hit); },
       onImpact: function (pr, t) {
-        if (!t) return;
+        if (!t) {   // 끝까지 날아감: 흩어지는 장
+          if (ours && A.fr.length > A.range[1] + 1) FX.sprite(pr.x, pr.y, A.fr.slice(A.range[1] + 1), A.fps, A.pivot, pr.dir < 0, false, 1);
+          return;
+        }
         hitIds[t.id || 'dummy'] = true;
         H.onHit(stOf(w.hit, d), t, { dir: pr.dir, wk: pr.skill.wk, x: pr.x, y: pr.y, mul: pr.skill.mul });
         debris(pr.x, pr.y, pr.z, 5, { cols: ['#ffffff', '#cfe8ff', '#8fc4ff'], glow: true, sp: 140, size: 1.4, ms: 260 });
@@ -530,11 +562,13 @@
     FX.shake(CFG.juice.shakePx * 2.6, CFG.juice.shakeMs * 1.8);
     H.dust(x - 16 * AS(), z, -1); H.dust(x + 16 * AS(), z, 1);
     if (A) spriteFrom(x, z, A.fr, A.fps, A.pivot, p.dir < 0, s.area, 0);
-    wave(x, z, R * 1.15, { flat: 0.28, w: 5, ms: 420, color: '#fff2d6', glow: '#ffb050', ground: true });
-    wave(x, z, R * 0.75, { flat: 0.28, w: 4, ms: 300, color: '#ffffff', glow: '#ffd890', ground: true });
+    if (!A || !A.ours) {   // 우리 그림에는 양옆 충격파·돌이 들어 있음 → 코드 고리·돌은 그림이 없을 때만
+      wave(x, z, R * 1.15, { flat: 0.28, w: 5, ms: 420, color: '#fff2d6', glow: '#ffb050', ground: true });
+      wave(x, z, R * 0.75, { flat: 0.28, w: 4, ms: 300, color: '#ffffff', glow: '#ffd890', ground: true });
+      debris(x - R * 0.4, z - 4 * AS(), z, 9, { cols: ['#6a5a4a', '#8a7258', '#4a3e32', '#c8b08a'], sp: 220, size: 2.6, ms: 760, spread: 1.0 });
+      debris(x + R * 0.4, z - 4 * AS(), z, 9, { cols: ['#6a5a4a', '#8a7258', '#4a3e32', '#c8b08a'], sp: 220, size: 2.6, ms: 760, spread: 1.0 });
+    }
     glow(x, z - 8 * AS(), R * 0.55, '#ffe0a0', 260, 0.7);
-    debris(x - R * 0.4, z - 4 * AS(), z, 9, { cols: ['#6a5a4a', '#8a7258', '#4a3e32', '#c8b08a'], sp: 220, size: 2.6, ms: 760, spread: 1.0 });
-    debris(x + R * 0.4, z - 4 * AS(), z, 9, { cols: ['#6a5a4a', '#8a7258', '#4a3e32', '#c8b08a'], sp: 220, size: 2.6, ms: 760, spread: 1.0 });
     debris(x, z - 6 * AS(), z, 10, { cols: ['#fff2a0', '#ffb040', '#ffffff'], glow: true, sp: 180, size: 1.5, ms: 380, spread: 1.4 });
     var st = stOf(Q.hit, d), any = false;
     H.targets().forEach(function (t) {
@@ -544,6 +578,7 @@
       if (hb.x1 < x - R || hb.x0 > x + R) return;
       var dir = Math.abs(t.x - x) < 3 ? p.dir : (t.x > x ? 1 : -1);
       H.onHit(st, t, { dir: dir, wk: p.weaponKey, x: t.x - dir * 6 * AS(), y: z - 30 * AS(), mul: s.mul });
+      t.stunKind = 'stars';   // 기절 표시 = 머리 위 별(감전 그림은 번개만)
       any = true;
     });
     if (any) impact(Q.hit);
@@ -555,7 +590,7 @@
     var fr = real ? real.fr : tintFx(B.frames, c.tint, c.tintK), pierce = !!(s.L.lv5 && s.L.lv5.pierce);
     Projectiles.spawn({ x: p.x + p.dir * c.x, y: p.y + c.y, z: p.y, dir: p.dir, speed: c.speed, range: c.range, box: c.box, depth: c.depth,
       backReach: c.backReach || 0, frames: fr, fps: real ? real.fps : B.fps, pivot: real ? real.pivot : B.pivot, scale: real ? 1 : (c.scale || 1),
-      fade: 30 * AS(), glow: SM() ? iceGlow : null,
+      loop: real ? real.range : null, fade: 30 * AS(), glow: SM() ? iceGlow : null,
       skill: { d: d, c: c, wk: p.weaponKey, mul: s.mul },
       skip: function (t) { return hitIds[t.id || 'dummy'] || !H.canHit(t, c.hit); },
       onImpact: function (pr, t) {
@@ -579,6 +614,7 @@
     if (A) spriteFrom(pr.x, pr.y, A.fr, A.fps, A.pivot, pr.dir < 0, 1, 0);
     else { var fr = tintFx(M.frames, '#bff4ff', 0.75); if (fr) FX.sprite(pr.x, pr.y, fr, M.fps, M.pivot, pr.dir < 0, false, 1.8); }
     glow(pr.x, pr.y, 34 * AS(), '#bfefff', 240, 0.8);
+    if (A && A.ours) return;   // 우리 그림에 고리·조각이 들어 있음
     wave(pr.x, pr.y, 40 * AS(), { flat: 0.8, w: 3, ms: 260, color: '#ffffff', glow: '#7fd8ff' });
     debris(pr.x, pr.y, pr.z, 10, { cols: ['#ffffff', '#d8f8ff', '#9fe8ff', '#6ac8ff'], sp: 160, size: 1.8, ms: 520, spread: 1.5 });
   }
@@ -615,12 +651,23 @@
           debris(q.x, q.y, m.z, 2, { cols: ['#ffd27a', '#ff8a2a', '#ff5a1e'], glow: true, sp: 60, size: 1.6, ms: 300, g: -40 });
         }
       }
+      // 우리 메테오 그림(look.art): 「쾅」 장(hit)이 터지는 순간에 오도록 그만큼 먼저 떨어지는 장부터 재생(자리는 이미 고정됨)
+      var MA = !m.artOn && fxArt(lookOf(m.d).art);
+      if (MA && m.t >= M.markMs + M.fallMs - (MA.hit || 0) * 1000 / MA.fps) { m.artOn = true; FX.sprite(m.x, m.z, MA.fr, MA.fps, MA.pivot, m.dir < 0, false, 1); }
       if (!m.boom && m.t >= M.markMs + M.fallMs) { m.boom = true; meteorBoom(m); }
       if (m.boom && m.t >= M.markMs + M.fallMs + 100) meteors.splice(i, 1);
     }
   }
   function meteorBoom(m) {
     var M = m.M, R = M.r * m.area, x = m.x, z = m.z, lk = lookOf(m.d), A = fxArt(lk.boom), B = CFG.magic.burst, y = z - 24 * AS();
+    if (m.artOn) {   // 우리 그림(폭발·불고리·연기 들어 있음): 빛·흔들림·데미지만
+      H.hitstop(110); FX.shake(CFG.juice.shakePx * 3.6, CFG.juice.shakeMs * 2.2);
+      doFlash(M.hit.flash || { color: '#ffc070', alpha: 0.5, ms: 200 });
+      glow(x, y, R * 1.1, '#ffb050', 380, 0.7);
+      H.dust(x - 20 * AS(), z, -1); H.dust(x + 20 * AS(), z, 1);
+      meteorHit(m, x, z, y, R);
+      return;
+    }
     if (A) spriteFrom(x, y, A.fr, A.fps, A.pivot, m.dir < 0, 1.9 * m.area, 1);
     else { var fr = tintFx(B.frames, '#ff6a10', 0.6); if (fr) spriteFrom(x, y, fr, B.fps, B.pivot, m.dir < 0, 3 * m.area, 1); }
     H.hitstop(110);
@@ -633,7 +680,11 @@
     debris(x, y, z, 26, { cols: ['#ffd27a', '#ff8a2a', '#ff5a1e', '#fff4d0'], glow: true, sp: 280, size: 2.2, ms: 700 });
     debris(x, z - 4 * AS(), z, 16, { cols: ['#5a3a26', '#7a5236', '#3e2a1e', '#2a2020'], sp: 240, size: 3, ms: 900 });
     H.dust(x - 20 * AS(), z, -1); H.dust(x + 20 * AS(), z, 1);
-    var st = stOf(M.hit, m.d), any = false;
+    meteorHit(m, x, z, y, R);
+  }
+  // 메테오 데미지(터지는 자리 둘레 R, 위아래 depth)
+  function meteorHit(m, x, z, y, R) {
+    var M = m.M, st = stOf(M.hit, m.d), any = false;
     H.targets().forEach(function (t) {
       if (!t || !H.canHit(t, M.hit)) return;
       var hb = t.hurtbox();
@@ -662,7 +713,7 @@
   // 떨어지는 운석: look.rock(화염구 그림, 크게·비스듬히) 또는 코드로 그린 불덩이 + 빛
   function drawMeteors(ctx, camX) {
     meteors.forEach(function (m) {
-      if (m.boom || m.t < m.M.markMs) return;
+      if (m.boom || m.t < m.M.markMs || m.artOn) return;   // 우리 그림이 떨어지는 중이면 코드 운석은 안 그림
       var u = clamp((m.t - m.M.markMs) / m.M.fallMs, 0, 1), q = meteorPos(m, u), x = q.x - camX, S = m.M.size;
       var ang = Math.atan2(m.z + 40 * AS(), 120 * AS());   // 떨어지는 기울기
       var r = S * 1.6, g = ctx.createRadialGradient(x, q.y, 0, x, q.y, r);
@@ -742,7 +793,7 @@
   function drawUnder(ctx, camX, p) {
     waves.forEach(function (w) { if (w.ground) drawWave(ctx, camX, w); });
     drawMeteorMarks(ctx, camX);   // 메테오 떨어질 자리(2026-11-06)
-    var s = p && p.state === 'skill' && p.sk, K = s && s.d.strikes;
+    var s = p && p.state === 'skill' && p.sk, K = s && (s.K || s.d.strikes);
     if (!K) return;
     K.at.forEach(function (at, k) {
       if (s.strikeDone[k] || s.t < at - (K.markMs || 200)) return;
@@ -808,8 +859,11 @@
   function drawOver(ctx, camX) {
     arts.forEach(function (a) { if (a.split) drawArt(ctx, camX, a, 'bottom'); else if (!a.back) drawArt(ctx, camX, a); });
     var SH = fxArt('shock');
+    H.targets().forEach(function (e) {   // 내려찍기 기절 = 머리 위 도는 별(2026-11-06, 감전 번개 표시 대신)
+      if (e && e.T && e.stunT > 0 && e.state === 'hit' && e.stunKind === 'stars') drawStars(ctx, camX, e);
+    });
     if (SH) H.targets().forEach(function (e) {
-      if (!e || !e.T || !(e.stunT > 0) || e.state !== 'hit') return;
+      if (!e || !e.T || !(e.stunT > 0) || e.state !== 'hit' || e.stunKind === 'stars') return;
       var im = SH.fr[Math.floor(e.clock * SH.fps / 1000) % SH.fr.length], k = clamp(e.T.height / (100 * AS()), 0.6, 1.4);
       // 감전 그림은 기술 효과 배율(skillFxScale)로 커졌으므로 그만큼 되돌려 적 몸 크기에 맞춤
       k /= (CFG.skillFxScale || 1);
@@ -860,6 +914,19 @@
       }
       ctx.restore();
     });
+  }
+  // 기절 별: 머리 위 납작한 타원을 따라 작은 노란 별 3개가 돎(뒤쪽 = 어둡게). 도트 단위로 반올림해서 또렷하게
+  function drawStars(ctx, camX, e) {
+    var t = e.clock / 1000, cx = e.x - camX, cy = e.y - e.T.height - 4 * AS(), rx = Math.max(8, e.T.radius * 0.7), ry = rx * 0.3;
+    ctx.save();
+    for (var i = 0; i < 3; i++) {
+      var an = t * 5 + i * Math.PI * 2 / 3, x = Math.round(cx + Math.cos(an) * rx), y = Math.round(cy + Math.sin(an) * ry), back = Math.sin(an) < 0;
+      ctx.globalAlpha = back ? 0.65 : 1;
+      ctx.fillStyle = '#3a2a10'; ctx.fillRect(x - 2, y - 1, 5, 3); ctx.fillRect(x - 1, y - 2, 3, 5);
+      ctx.fillStyle = back ? '#c8a030' : '#ffe14a'; ctx.fillRect(x - 1, y, 3, 1); ctx.fillRect(x, y - 1, 1, 3);
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(x, y, 1, 1);
+    }
+    ctx.restore();
   }
   // 충격파 고리 한 개: 빠르게 퍼지고(처음 빠르게) 굵기·투명도가 줄어듦. 바깥 빛(glow 색) + 흰 심
   function drawWave(ctx, camX, w) {
@@ -945,7 +1012,7 @@
       s.boxes.forEach(function (b) { rect(b, '#ff2a2a'); });
       // 아직 안 온 판정 구간도 흐리게
       (s.d.hits || []).forEach(function (h) { if (s.t < h.at[0]) rect(boxOf(p, h.reach), 'rgba(255,80,80,0.35)'); });
-      var K = s.d.strikes;
+      var K = s.K || s.d.strikes;
       if (K) K.at.forEach(function (at, k) {
         rect({ x0: s.sx[k] - K.r, x1: s.sx[k] + K.r, y0: s.sz[k] - 100 * AS(), y1: s.sz[k] }, s.strikeDone[k] ? 'rgba(255,240,80,0.4)' : '#ffe94a');
       });

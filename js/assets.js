@@ -56,8 +56,12 @@
 
   // 그림 한 장을 「기준점(px,py, 그림 점 단위)이 지금 원점(0,0)에 오게」 그림. alt = 같은 크기의 다른 그림(하얀 번쩍 캔버스)
   //   HD 그림이면 _k 배율로 줄이고, 잘라낸 여백(_ox,_oy)만큼 옮겨서 그린다
+  //   _dots(우리가 그린 도트 효과) = 매끈한 화면(HD)에서도 부드럽게 하기를 끄고 그림 → 도트가 또렷하게
   function blit(ctx, img, px, py, alt) {
     if (!img) return;
+    if (img._dots && ctx.imageSmoothingEnabled) {
+      ctx.imageSmoothingEnabled = false; blit(ctx, img, px, py, alt); ctx.imageSmoothingEnabled = true; return;
+    }
     var k = img._k || 1, ox = img._ox || 0, oy = img._oy || 0;
     if (k !== 1) { ctx.save(); ctx.scale(k, k); }
     if (alt) ctx.drawImage(alt, 0, 0, img.width, img.height, ox - px, oy - py, img.width, img.height);
@@ -66,7 +70,7 @@
   }
   // 그림을 복사한 캔버스(물들이기·잔상)에 HD 정보(_k, 잘라낸 위치)를 그대로 옮김
   function copyMeta(src, dst) {
-    if (src && dst) ['_hd', '_k', '_f', '_ox', '_oy', '_full'].forEach(function (k) { if (src[k] != null) dst[k] = src[k]; });
+    if (src && dst) ['_hd', '_k', '_f', '_ox', '_oy', '_full', '_dots'].forEach(function (k) { if (src[k] != null) dst[k] = src[k]; });
     return dst;
   }
   // 그림 가운데 기준점(그림 점 단위, 잘라낸 여백 포함한 원래 캔버스 기준)
@@ -366,6 +370,9 @@
             var M = null;
             Object.keys(cfg.magic || {}).forEach(function (m) { if (cfg.magic[m].frames === k) M = cfg.magic[m]; });
             var p0 = M && M.pivot ? { x: M.pivot.x, y: M.pivot.y } : null;
+            // 2026-11-06 우리가 그린 효과(skillFx 의 ours): 게임 도트 그대로 → 줄이지도 키우지도 않음(_k 1) + 그릴 때 부드럽게 하기 끔(_dots)
+            var SF = /^skill_/.test(k) && cfg.skillFx && cfg.skillFx[k.slice(6)];
+            if (SF && SF.ours) { out.fx[k].forEach(function (im) { im._k = 1; im._dots = true; }); return; }
             prepList(out.fx[k], S, p0);
             // 기술 효과(skill_*)는 CFG.skillFxScale 배 크게 그린다(HD 는 그만큼 큰 해상도로 구워 둠)
             if (/^skill_/.test(k)) {

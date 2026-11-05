@@ -382,7 +382,7 @@
         darken: { ms: 320, alpha: 0.3 },
         iframes: [0, 200],
         shot: { frame: 2, x: 40, y: -60, speed: 380, range: 320, box: { w: 54, h: 76 }, depth: 22, gapMs: 150, hit: WAVE_HIT },
-        look: { proj: 'slash_wave', fps: 14, scale: 0.85, tint: '#a8d4ff' },
+        look: { proj: 'sword_wave', projLv5: 'sword_wave_lv5' },   // 2026-11-06 우리 그림(검기, Lv5 = 큰 금테 검기). 없으면 코드 초승달
         fx: [ { frame: 2, type: 'slash', x: 30, y: -62, rot: -8, sx: 1.4, sy: 1.2, tint: '#a8d4ff', ms: 200 } ],
         placeholder: { anim: 'attack1', f: [0, 1, 3, 3, 4], d: [70, 50, 130, 110, 110] }
       },
@@ -398,7 +398,7 @@
         iframes: [0, 560],
         leap: { at: [80, 380], h: 46, fwd: 26 },
         quake: { at: 380, r: 130, depth: 40, hit: SLAM_HIT },
-        look: { ring: null },
+        look: { ring: 'ground_slam' },   // 2026-11-06 우리 그림(내려꽂힘·양옆 충격파·먼지·돌)
         fx: [ { frame: 0, type: 'dust' } ],
         placeholder: { anims: ['jump', 'jump', 'jump', 'attack3', 'attack3', 'attack3'], f: [0, 1, 2, 3, 4, 5], d: [80, 120, 100, 80, 200, 160] },
         female: {
@@ -431,7 +431,7 @@
       bolt: {
         name: '번개', icon: '번', mp: 16, cooldownMs: 8000, damageStyle: 'skill_bolt', motion: 'motion_cast_sky',
         desc: '앞쪽 가까운 적에게 번개 세 줄기를 내리꽂아요. 맞은 적은 잠깐 감전돼 멈춰요',
-        lv5: { area: 1.3, say: '번개 굵기 +30%' },
+        lv5: { area: 1.3, bolts: 5, wide: 110, say: '번개 5줄기 · 더 넓게 · 굵기 +30%' },   // 2026-11-06: bolts = 줄기 수, wide = 늘어난 줄기가 겨눈 자리 바깥으로 떨어지는 거리(원래 크기 도트)
         darken: { ms: 950, alpha: 0.5 },
         iframes: { frames: [0, 2] },
         strikes: strikesOf(120, [75, 120, 165]),
@@ -451,7 +451,7 @@
         iframes: { frames: [0, 3] },
         cast: { frame: 3, x: 127, y: -65, speed: 460, range: 300, box: { w: 50, h: 30 }, depth: 18, backReach: 110,
                 tint: '#9fe8ff', tintK: 0.85, scale: 1.5, hit: ICE_HIT, slow: { ms: 2600, mul: 0.5, bossMul: 0.72 } },
-        look: { proj: null, hit: null },
+        look: { proj: 'ice_lance', hit: 'ice_shatter' },   // 2026-11-06 우리 그림
         fx: [ { frame: 3, type: 'spark', x: 127, y: -65, scale: 1.4, tint: '#bff4ff' } ],
         placeholder: { anim: 'attack3', f: [0, 1, 2, 3, 4, 5], d: [80, 90, 60, 150, 110, 110] },
         female: {
@@ -470,7 +470,7 @@
         darken: { ms: 1300, alpha: 0.55 },
         iframes: { frames: [0, 2] },
         meteor: { frame: 3, x: 140, aim: { range: 240, depth: 70 }, markMs: 560, fallMs: 380, r: 120, depth: 60, size: 30, hit: METEOR_HIT },
-        look: { rock: 'fireball', boom: 'fire_explosion' },
+        look: { art: 'meteor', rock: 'fireball', boom: 'fire_explosion' },   // art = 우리 그림(떨어짐~폭발 한 벌, 6장 = 쾅). 없으면 rock·boom
         placeholder: { anim: 'attack2', f: [0, 1, 2, 3, 3, 3, 4], d: [80, 90, 60, 160, 160, 110, 100] },
         female: {
           placeholder: { anim: 'attack3', f: [0, 1, 2, 2, 2, 3, 4], d: [80, 90, 160, 160, 120, 80, 70] }
@@ -2781,7 +2781,19 @@
       fire_explosion:   { count: 6, fps: 16, pivot: { x: 64, y: 64 } },
       lightning_bolt:   { count: 4, fps: 20, pivot: { x: 48, y: 197 } },   // 번개 기둥(기준 = 아래 끝 = 땅)
       lightning_impact: { count: 4, fps: 16, pivot: { x: 64, y: 63 } },    // 땅 번쩍(기준 = 아래 가운데)
-      shock:            { count: 3, fps: 15, pivot: { x: 44, y: 60 }, loop: true }    // 감전(멈춘 적 몸 가운데에 겹침)
+      shock:            { count: 3, fps: 15, pivot: { x: 44, y: 60 }, loop: true },   // 감전(멈춘 적 몸 가운데에 겹침)
+      // 2026-11-06 우리가 코드로 직접 그린 효과(pipeline/ourfx/ourfx.js → assets/fx/ourfx/<이름>/<이름>_01.png …). 새 기술 4개 + 9단계 장군만.
+      //   ours = 게임 도트 그대로 그린 그림: 줄이거나 키우지 않고(skillFxScale 안 곱함) 1배로, 부드럽게 하기 끄고 그린다(assets.js blit).
+      //   pivot = 그림 속 기준점(게임 도트), loop = 날아가는 동안 반복할 장 [첫, 끝](0부터), hit = 「쾅」 장(메테오)
+      sword_wave:          { ours: true, count: 10, fps: 18, pivot: { x: 23, y: 31 }, loop: [2, 5] },    // 검기(0~1 나감 · 2~5 반복 · 6~9 흩어짐)
+      sword_wave_lv5:      { ours: true, count: 10, fps: 18, pivot: { x: 30, y: 38 }, loop: [2, 5] },    // 검기 Lv5(크게 + 금테 + 이중)
+      ground_slam:         { ours: true, count: 14, fps: 18, pivot: { x: 88, y: 56 } },                  // 대지 내려찍기(기준 = 칼이 땅에 닿는 곳)
+      ice_lance:           { ours: true, count: 4, fps: 16, pivot: { x: 56, y: 12 }, loop: [0, 3] },     // 얼음창(기준 = 창 머리)
+      ice_shatter:         { ours: true, count: 9, fps: 18, pivot: { x: 38, y: 34 } },                   // 얼음창 부서짐
+      meteor:              { ours: true, count: 20, fps: 18, pivot: { x: 150, y: 150 }, hit: 6 },        // 메테오 전체(기준 = 떨어지는 땅 자리, 6장 = 쾅)
+      demon_charge_ground: { ours: true, count: 12, fps: 20, pivot: { x: 80, y: 128 } },                 // 9단계 장군 기 모으기: 땅 금 + 몸 뒤 불꽃(기준 = 발)
+      demon_charge_body:   { ours: true, count: 12, fps: 20, pivot: { x: 80, y: 128 } },                 //   〃 몸 앞 낮은 불꽃 + 모여드는 불씨
+      demon_release:       { ours: true, count: 5, fps: 20, pivot: { x: 90, y: 136 } }                   // 9단계 장군 칼 꽂는 순간 번쩍(빛기둥 = 기준점 오른쪽 6)
     },
     motions: MOTIONS
   };
@@ -2795,7 +2807,7 @@
     if (C.art.fx) Object.keys(C.skillFx).forEach(function (k) {
       var F = C.skillFx[k];
       if (!(F.count > 0)) return;
-      C.art.fx['skill_' + k] = seq('assets/fx/skill/' + k + '_', F.count);
+      C.art.fx['skill_' + k] = seq(F.ours ? 'assets/fx/ourfx/' + k + '/' + k + '_' : 'assets/fx/skill/' + k + '_', F.count);
       C.magic['skill_' + k] = { frames: 'skill_' + k, fps: F.fps, pivot: { x: F.pivot.x, y: F.pivot.y } };
     });
     Object.keys(C.motions).forEach(function (ch) {
