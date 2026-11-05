@@ -38,11 +38,13 @@
     var fade = u < 0.75 ? 1 : 1 - (u - 0.75) / 0.25, fi = Math.floor(tMs / 50);
     var power = u < 0.12 ? 0.55 + u / 0.12 * 0.45 : u < 0.55 ? 1 : 1 - (u - 0.55) / 0.45 * 0.8;
     // 1) 지나간 자리 그을음 + 바닥 열기(안쪽 띠) + 맞는 선
-    for (var y = Math.floor(cy - ry - 2); y <= cy + ry + 2; y++) for (var x = Math.floor(cx - r - 2); x <= cx + r + 2; x++) {
-      var a = (x - cx) / r, b = (y - cy) / ry, q = Math.sqrt(a * a + b * b), dd = (1 - q) * r;   // dd = 고리 선에서 안쪽으로 몇 도트(가로 기준)
-      if (dd < -1.5 || dd > 26) continue;
-      if (dd < 0) { if (dith(x, y, 0.5 * fade)) set(x, y, HF.r); continue; }
-      if (dd < 2.2) { set(x, y, fade > 0.5 ? (dd < 1 ? HF.l : HF.y) : HF.m); continue; }
+    //   2026-11-06 밤(형님: 위쪽 반이 덜 퍼져 보임): 뒤쪽 반(가운데 줄 위)은 안쪽 열기가 아래(가운데 쪽)로만 깔려 얇아 보였음 →
+    //   뒤쪽 반은 맞는 선을 조금 굵게 + 바깥(위)으로도 열기 띠(4도트)를 깔아 앞쪽 반만큼 두껍게. 맞는 띠(판정)는 그대로
+    for (var y = Math.floor(cy - ry - 6); y <= cy + ry + 2; y++) for (var x = Math.floor(cx - r - 2); x <= cx + r + 2; x++) {
+      var a = (x - cx) / r, b = (y - cy) / ry, q = Math.sqrt(a * a + b * b), dd = (1 - q) * r, bk = y < cy;   // dd = 고리 선에서 안쪽으로 몇 도트(가로 기준), bk = 뒤쪽 반
+      if (dd < (bk ? -5 : -1.5) || dd > 26) continue;
+      if (dd < 0) { if (dd > -1.5 ? dith(x, y, 0.5 * fade) : (bk && dith(x, y, (0.55 + dd / 12) * fade * power))) set(x, y, dd > -2.5 ? HF.m : HF.r); continue; }
+      if (dd < (bk ? 3 : 2.2)) { set(x, y, fade > 0.5 ? (dd < 1 ? HF.l : HF.y) : HF.m); continue; }
       if (dd < 7) { if (dith(x, y, (0.75 - dd / 12) * fade)) set(x, y, dd < 4.5 ? HF.m : HF.r); continue; }
       if (dith(x, y, (0.55 - dd / 50) * fade)) set(x, y, hash(x, y, fi) < 0.06 ? HF.r : dd < 14 ? HF.k : HF.sc);
     }
@@ -53,12 +55,13 @@
         var ang = (k + hash(k, 0, seed) * 0.6) / NS * Math.PI * 2, sn = Math.sin(ang); if ((sn >= 0) !== front) continue;
         var bx = cx + Math.cos(ang) * r, by = cy + sn * ry;
         var ph = (tMs / (260 + 120 * hash(k, 1, seed)) + hash(k, 2, seed)) % 1, lf = Math.sin(Math.PI * ph);
-        var h = (7 + 16 * hash(k, 3, seed)) * lf * power * (front ? 1 : 0.85);
+        // 뒤쪽 반 불꽃: 예전 0.85 배(작게) → 1.2 배·더 굵게(멀어서 덜 커 보이는 만큼 + 보스 몸 뒤로 가리는 만큼). 끝 색만 조금 어둡게(깊이)
+        var h = (7 + 16 * hash(k, 3, seed)) * lf * power * (front ? 1 : 1.2);
         if (h < 1.5) { if (fade > 0.2) set(bx, by - 1, HF.y); continue; }
-        var lean = Math.cos(ang) * 0.35, sway = (hash(k, fi, seed) - 0.5) * 0.6, wb = h > 9 ? 2 : 1;
+        var lean = Math.cos(ang) * 0.35, sway = (hash(k, fi, seed) - 0.5) * 0.6, wb = h > (front ? 9 : 7) ? 2 : 1;
         for (var j = 0; j < h; j++) {
           var v = j / h, wd = Math.round(wb * (1 - v * v) + 0.2), ox = (lean + sway) * j * (0.4 + v);
-          var c = v < 0.15 ? HF.w : v < 0.32 ? HF.l : v < 0.5 ? HF.y : v < 0.68 ? HF.m : v < 0.84 ? HF.r : HF.d;
+          var c = v < 0.15 ? HF.w : v < 0.32 ? HF.l : v < 0.5 ? HF.y : v < 0.68 ? HF.m : v < (front ? 0.84 : 0.8) ? HF.r : HF.d;
           if (ph > 0.7 && v > 0.55) c = v > 0.8 ? HF.k : HF.d;
           for (var w = -wd; w <= wd; w++) set(bx + ox + w, by - j, (Math.abs(w) === wd && wd > 0 && v > 0.15) ? (v < 0.5 ? HF.m : HF.r) : c);
         }
@@ -80,7 +83,7 @@
     var t = Math.max(0, tMs);
     if (o.novaT !== t || !o.cv) {
       var r = Math.min(R.rMax, R.r0 + R.speed * t / 1000), ry = Math.max(1, Math.min(r, R.ringRx) / R.ringRx * R.ryMax);
-      var up = 30, w = Math.ceil(r * 2 + 12), h = Math.ceil(ry * 2 + up + 8);
+      var up = 38, w = Math.ceil(r * 2 + 12), h = Math.ceil(ry * 2 + up + 8);   // up = 뒤쪽 반 불꽃(1.2 배)까지 들어가는 높이
       board(o, w, h);
       o.ncx = w >> 1; o.ncy = Math.ceil(ry) + up;
       novaRing(R, o.ncx, o.ncy, t, seed);
