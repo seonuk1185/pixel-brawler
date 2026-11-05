@@ -237,6 +237,7 @@
     if (this.hidden && !opts.force) return null;   // 땅속(전갈 왕)
     if (this.state === 'awaken' && !opts.force) return null;   // 각성 중(10단계 마왕)
     this.asleep = false; this.alertT = 0;   // 자다가 맞으면 바로 깸(「!」 없이)
+    this.hitOut = true;                     // 맞음 = 화면에 보임 → keepInView 가 띠 안으로(2026-11-06 밤)
     var T = this.T, AI = this.cfg.ai, R = AI.react;
     var before = this.hp / this.maxHp;
     this.hp = Math.max(0, this.hp - dmg);
@@ -416,7 +417,9 @@
     if (this.retreatT > 0) { tx = p.x + this.side * (T.engage + 90 * AS()); ty = p.y + this.yOff; }
     // 아직 화면 밖(들어오기 전): 목표를 화면 안으로(2026-11-04 막힘 고침). 플레이어가 화면 끝에 붙어 있으면 「플레이어 옆」 목표가 화면 밖이라
     //   거기 멈춰 서서 영영 안 들어오고(entered 가 안 되면 공격도 안 함) 웨이브가 안 끝났음
-    if (!this.entered) tx = Math.max(ctx.view.x0 + 20 * AS(), Math.min(ctx.view.x1 - 20 * AS(), tx));
+    // 2026-11-06 밤 버그 고침(오른쪽 안 보이는 벽): 들어온 뒤에도 목표(기다리는 자리 포함)를 플레이어가 갈 수 있는 띠 안으로.
+    //   예전엔 들어오기 전만 → 플레이어 오른쪽에서 차례를 기다리는 적이 화면 끝(버튼 밑 바로 앞)에 붙어 서 있었음
+    tx = Math.max(ctx.view.x0 + 20 * AS(), Math.min(ctx.view.x1 - 20 * AS(), tx));
     ty = Math.max(ctx.world.laneTop, Math.min(ctx.world.laneBottom, ty));
     if (ctx.steer && !T.flying) { var sv = ctx.steer(this, tx, ty); tx = sv.x; ty = sv.y; }   // 나는 적(박쥐)은 소품 위로 지나감   // 막는 소품(상자·통): 목표가 그 안이면 옆으로, 앞에 있으면 위나 아래로 돌아감 (props.js)
     var mx = tx - this.x, my = ty - this.y;
@@ -1013,7 +1016,8 @@
   Enemy.prototype.keepInView = function (ctx) {
     var w = ctx.world;
     var x0 = ctx.view.x0 + 12 * AS(), x1 = ctx.view.x1 - 12 * AS();
-    if (!this.entered && this.x > x0 && this.x < x1) this.entered = true;
+    // 들어오기 전이라도 화면에 보여 맞았으면(hitOut, 마법탄·검기 등) 들어온 것으로 → 아래에서 띠 안으로 당김(밀려서 버튼 밑에 남지 않게)
+    if (!this.entered && ((this.x > x0 && this.x < x1) || this.hitOut)) this.entered = true;
     if (this.entered) this.x = Math.max(x0, Math.min(x1, this.x));
     this.y = Math.max(w.laneTop, Math.min(w.laneBottom, this.y));
   };

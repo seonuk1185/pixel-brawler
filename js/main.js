@@ -124,14 +124,16 @@
     world.laneBottom = Math.min(LH - 8, world.bgOff + B.laneBottom);
   }
 
-  // 공격 버튼(+ 점프·기술 버튼 4개)이 덮는 게임 화면 오른쪽 폭(도트). 버튼이 안 보이거나 걷는 길과 안 겹치면 0
+  // 공격·점프 버튼이 덮는 게임 화면 오른쪽 폭(도트). 버튼이 안 보이거나 걷는 길과 안 겹치면 0
+  //   2026-11-06 밤 버그 고침(웨이브 2부터 오른쪽 안 보이는 벽): 기술 버튼(공격 버튼 위 부채꼴)은 걷는 길보다 높아서 빼고,
+  //   걷는 길 띠도 발 높이 + 몸 조금(30)만 봄(예전 100 = 키 큰 몸 → 위쪽 버튼까지 벽이 넓어졌음). 플레이어·적 모두 이 선 안에서만 움직임
   function measureControlPad() {
     var c = canvas.getBoundingClientRect();
     if (!c.width || !c.height) return 0;
     var ky = c.height / LH;
-    var laneT = c.top + world.laneTop * ky - 100 * AS * ky, laneB = c.top + world.laneBottom * ky;   // 키 큰 몸(100도트)까지
+    var laneT = c.top + world.laneTop * ky - 30 * AS * ky, laneB = c.top + world.laneBottom * ky;    // 발 띠 + 몸 조금
     var pad = 0;
-    ['btnAtk', 'btnJump', 'btnSkA', 'btnSkB', 'btnSkC', 'btnSkD'].forEach(function (id) {
+    ['btnAtk', 'btnJump'].forEach(function (id) {
       var btn = document.getElementById(id);
       if (!btn || !btn.offsetParent || btn.hidden) return;
       var b = btn.getBoundingClientRect();
