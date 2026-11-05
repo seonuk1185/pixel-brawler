@@ -288,12 +288,14 @@
     this.comboStep = 0;
   };
 
-  // 보통 콤보 타에서 기술로 끊을 수 있나: 판정 장 도중은 안 됨, 그 타의 (첫) 판정이 시작된 뒤의 장(회복)부터 됨
+  // 보통 콤보 타에서 기술로 끊을 수 있나(캔슬). 2026-11-06 밤 콤보: cancel.fromActive = 그 타의 첫 판정 장이 한 번 지나간 뒤(이미 맞힘·마법 나감)부터
+  //   판정 장 도중에도 됨(1·2·3타 모두). 예전(fromActive 없음) = 판정 장이 끝난 회복 장부터
   Player.prototype.canSkillCancel = function () {
     var S = this.cfg.skills;
     if (this.state !== 'attack' || !this.atk || !S || !S.cancelAfterHit) return false;
-    if (this.activeWindow() >= 0) return false;
     var ws = hitWindows(this.comboSteps()[this.atk.step]);
+    if (S.cancel && S.cancel.fromActive) return this.atk.i >= ws[0].active[0] && !!this.atk.slashed[0];
+    if (this.activeWindow() >= 0) return false;
     return this.atk.i > ws[0].active[0];
   };
 
@@ -403,6 +405,11 @@
     if (this.state === 'held') { this.vx = 0; this.clamp(world); return ev; }
     // 기술 쓰는 중: 조작 안 됨(이동·판정·효과는 skills.js)
     if (this.state === 'skill') {
+      // 기술 끝무렵에 다른 기술 칸을 누르면 이어서 나감(캔슬, 2026-11-06 밤). 이번에 이어서 쓴 기술은 다시 안 나감
+      if (this.sk && Skills.canChain(this)) {
+        var sc = Skills.pick(this, Skills.chainIds(this));
+        if (sc) { Skills.start(this, sc); return this.update(0, world); }
+      }
       if (!this.sk || Skills.advance(this, dtMs)) {
         this.state = 'idle'; this.sk = null; this.animT = 0; this.comboIdleT = 0; this.comboStep = 0;
       }
@@ -410,6 +417,11 @@
       return ev;
     }
     // 점프 중(공중 공격 포함) / 달리며 공격 중: 기술·콤보 안 됨
+    // 착지 웅크림에서는 기술이 나감(2026-11-06 밤 콤보: 공중 공격 → 내려서 바로 기술)
+    if (this.state === 'jump' && this.jp && this.jp.phase === 'land' && window.Skills && this.cfg.skills) {
+      var sj = Skills.pick(this);
+      if (sj) { this.jp = null; this.z = 0; Skills.start(this, sj); return this.update(0, world); }
+    }
     if (this.state === 'jump' && this.jp) { this.updateJump(dtMs, ev); this.clamp(world); return ev; }
     if (this.state === 'runatk' && this.ratk) { this.updateRunAttack(dtMs, ev); this.clamp(world); return ev; }
     if (this.airborne()) this.fall(dtMs);    // 혹시 남은 높이(점프가 끊김)는 떨어뜨림

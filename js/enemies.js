@@ -101,13 +101,65 @@
   //   7단계 와이번이 날아 있는 동안(diveAir)은 땅에서 하는 공격은 안 맞고, 플레이어가 jumpZ 넘게 떠 있을 때(점프 공격)만 맞음
   Enemy.prototype.canBeHit = function () {
     if (!this.alive() || this.state === 'down' || this.state === 'awaken' || this.hidden || this.burrowInvuln() || this.faded() || this.teleInvuln()) return false;
+    if (this.state === 'air') return true;   // 띄워진 잡몹(콤보, 2026-11-06): 평타·기술 다 맞음
     if (this.diveAir()) return !!(this.lastP && (this.lastP.z || 0) > this.atk.spec.jumpZ);
     return !this.airborne();
+  };
+
+  // ---------- 띄우기·공중 콤보 (2026-11-06 밤, config ai.air) ----------
+  // 띄우기 기술(올려베기·땅 융기, 판정 값 launch)에 맞은 잡몹은 공중으로 떠오름(state 'air', az = 땅에서 높이).
+  //   떠 있는 동안 모든 공격(평타·기술·공중 공격)에 맞고, 맞을 때마다 살짝 다시 뜸. 오래 뜰수록·많이 맞을수록 빨리 떨어짐(중력 배율)
+  //   → 땅에 닿으면 넘어짐(down)의 바닥에 닿는 장부터 = 누운 적 때리기(ai.otg) 그대로.
+  //   보스·큰 적(canLaunch 가 false)은 안 뜸 → 잡몹은 휘청(맞은 그림에 잠깐 멈춤), 보스는 보통 맞음
+  Enemy.prototype.canLaunch = function () {
+    var A = this.cfg.ai.air, T = this.T;
+    return !!A && !T.boss && !T.noLaunch && T.hp < A.heavyHp && this.hasAnim('knockdown');
+  };
+  // 위로 쳐 올리기: h = 이번에 올라갈 높이(도트, 지금 위치에서). 이미 더 빠르게 오르는 중이면 그대로
+  Enemy.prototype.airKick = function (h) {
+    var A = this.cfg.ai.air, g = A.g * AS(), v = Math.sqrt(2 * g * Math.max(0, h));
+    if (v > (this.avz || 0)) this.avz = v;
+  };
+  // 띄우기 시작(땅 → 공중). k = 띄우는 세기(판정 값 launch, 1 = 보통)
+  Enemy.prototype.startAir = function (k) {
+    var A = this.cfg.ai.air;
+    this.state = 'air'; this.animT = 0; this.atk = null; this.hidden = false; this.stunT = 0;
+    this.az = 0; this.avz = 0; this.airT = 0; this.airHits = 0; this.recentHits = [];
+    this.airKick(A.launchH * AS() * k);
+  };
+  // 공중에서 또 맞음: 많이 맞을수록·오래 떠 있을수록 덜 뜸(refloatCut 번째부터 0, maxAirMs 넘으면 0)
+  Enemy.prototype.airHit = function (launch) {
+    var A = this.cfg.ai.air;
+    this.airHits++;
+    var cut = Math.max(0, 1 - this.airHits / A.refloatCut) * (this.airT < A.maxAirMs ? 1 : 0);
+    // 공중에서 다시 띄우기 기술에 맞으면 더 크게(그래도 줄어듦)
+    this.airKick((launch ? A.relaunchH * launch : A.refloatH) * AS() * cut);
+  };
+  // 지금 중력(도트/초²): 맞은 수·뜬 시간만큼 커짐, maxAirMs 넘으면 크게
+  Enemy.prototype.airG = function () {
+    var A = this.cfg.ai.air, k = 1 + A.gravHit * this.airHits + A.gravSec * this.airT / 1000;
+    if (this.airT >= A.maxAirMs) k *= A.capGravMul;
+    return A.g * AS() * k;
+  };
+  // 공중 갱신. 땅에 닿으면 넘어짐(바닥에 닿는 장 바로 앞부터 → 곧 누움 = 누운 적 때리기 됨)
+  Enemy.prototype.updateAir = function (dtMs, ctx) {
+    var dt = dtMs / 1000;
+    this.airT += dtMs;
+    this.avz -= this.airG() * dt;
+    this.az = Math.max(0, this.az + this.avz * dt);
+    if (this.az > 0 || this.avz > 0) return;
+    this.lastAirMs = this.airT; this.lastAirHits = this.airHits;
+    var DT = this.downTimes(), step = 1000 / this.T.anims.knockdown.fps;
+    this.state = 'down'; this.downT = Math.max(0, DT.slide - step); this.animT = 0; this.atk = null;
+    this.downExtra = 0; this.otgHits = 0; this.recentHits = []; this.avz = 0; this.az = 0;
+    this.landed = true;   // main.js 가 보고 먼지·흔들림(한 번)
+    if (ctx && ctx.dust) { ctx.dust(this.x - 8 * AS(), this.y, -1); ctx.dust(this.x + 8 * AS(), this.y, 1); }
+    if (ctx && ctx.shake) ctx.shake(this.cfg.ai.air.landShake || 0.4);
   };
   // 누운 적 때리기(OTG, config ai.otg): 땅까지 닿는 공격(hitsDown)이면 누워 있는 동안도 맞음
   //   맞는 때 = 쓰러지며 밀려나는 그림이 끝난 뒤(바닥에 닿음) ~ 일어나는 그림 전. 한 번 넘어질 때 maxHits 번까지
   Enemy.prototype.canBeHitDown = function () {
-    if (this.state !== 'down' || this.hidden) return false;
+    if (this.state !== 'down' || this.hidden) return false;   // 띄워진 적(air)은 canBeHit 로 다 맞음
     var O = this.cfg.ai.otg; if (!O) return false;
     var DT = this.downTimes();
     return this.downT >= DT.slide && this.downT < DT.kd + DT.lying && (this.otgHits || 0) < O.maxHits;
@@ -119,6 +171,7 @@
   // 공중(두꺼비 배치기 leap 의 뛰는 그림 2·3장 / 와이번 날아오름~떨어짐): 안 맞고, 몸끼리 안 밀림(main.js separate)
   Enemy.prototype.airborne = function () {
     var a = this.atk;
+    if (this.state === 'air') return true;   // 띄워짐(콤보): 몸끼리 안 밀림·소품 위로 지나감 (맞는 것은 canBeHit 가 따로 허락)
     if (this.state !== 'attack' || !a) return false;
     if (a.spec.type === 'dive') return this.diveAir();
     if (a.spec.type !== 'leap') return false;
@@ -143,7 +196,11 @@
     return a.phase === 'hidden' || a.phase === 'gather';
   };
   // 지금 땅에서 떠 있는 높이(그림·몸 판정을 그만큼 위로, 그림자는 땅에)
-  Enemy.prototype.flyZ = function () { var a = this.atk; return this.state === 'attack' && a && a.spec.type === 'dive' ? a.z || 0 : 0; };
+  //   띄워진 잡몹(state 'air')·공중에서 쓰러진 잡몹(떨어지는 중)은 az
+  Enemy.prototype.flyZ = function () {
+    if (this.az > 0 && (this.state === 'air' || this.state === 'dead')) return this.az;
+    var a = this.atk; return this.state === 'attack' && a && a.spec.type === 'dive' ? a.z || 0 : 0;
+  };
   // 땅속 숨기 무적 장: 파고드는 그림 invuln(3·4장) / 솟구치는 그림 eruptInvuln(1장) / 땅속(둔덕·떨림)
   Enemy.prototype.burrowInvuln = function () {
     var a = this.atk;
@@ -205,6 +262,8 @@
     var h = this.T.hurtbox, SG = this.T.stagger;
     if (this.state === 'stagger' && SG && SG.hurtbox && this.staggerIdx() === 2) h = SG.hurtbox;   // 휘청 3장(전갈 뒤집힘) = 몸이 더 넓게 누움
     var xa = this.x + h.x0 * this.dir, xb = this.x + h.x1 * this.dir, z = this.flyZ();   // 날아 있으면 그만큼 위로(점프 공격 판정과 맞춤)
+    // 띄워진 잡몹: 떠 있는 몸 꼭대기 ~ 땅까지 (땅에서 휘두르는 평타·기술도 닿게. 공중 공격은 떠 있는 몸에)
+    if (this.state === 'air') return { x0: Math.min(xa, xb), x1: Math.max(xa, xb), y0: this.y - z + h.yTop, y1: this.y + h.yBot, z: this.y };
     return { x0: Math.min(xa, xb), x1: Math.max(xa, xb), y0: this.y - z + h.yTop, y1: this.y - z + h.yBot, z: this.y };
   };
   // 공격 판정 상자
@@ -243,6 +302,18 @@
     this.hp = Math.max(0, this.hp - dmg);
     this.flashT = this.cfg.juice.flashMs * (opts.flashK != null ? opts.flashK : 1);   // flashK = 하얀 번쩍 길이 배율(밀고 가는 작은 타는 짧게)
     var kv = dir * knockPx * AI.enemyKnockMul * (T.knockResist != null ? T.knockResist : 1) * 10;
+    // 공중(띄워진 잡몹, ai.air): 넘어지지 않고 살짝 다시 뜸 + 조금만 밀림. 쓰러지면 그 높이에서 떨어지며 쓰러짐(dead 도 az 로 떨어짐)
+    if (this.state === 'air' && !opts.force) {
+      this.vx = kv * AI.air.knockMul; this.dir = -dir;
+      if (this.hp <= 0) { this.state = 'dead'; this.animT = 0; this.deadT = 0; this.atk = null; this.vx = dir * T.deathKnock * 0.5; return 'dead'; }
+      this.airHit(opts.launch || 0);
+      return 'air';
+    }
+    // 띄우기(opts.launch): 뜰 수 있는 잡몹 = 공중으로 / 큰 잡몹 = 휘청(맞은 그림에 launchStunMs 멈춤) / 보스 = 아래 보통 맞음
+    if (opts.launch && this.hp > 0 && this.state !== 'down') {
+      if (this.canLaunch()) { this.startAir(opts.launch); this.vx = kv * AI.air.knockMul; this.dir = -dir; return 'launch'; }
+      if (!T.boss) opts.stunMs = Math.max(opts.stunMs || 0, AI.air.launchStunMs);
+    }
     if (this.hp <= 0) {
       if (this.state === 'down') {     // 누워 있다가 죽음: 일어나지 않고 그 자리에 누운 채로
         this.deadImg = this.currentImg();
@@ -324,6 +395,10 @@
     }
 
     if (this.state === 'dead') {
+      if (this.az > 0) {   // 공중에서 쓰러짐: 땅까지 떨어짐(콤보)
+        this.avz = Math.min(this.avz || 0, 0) - this.cfg.ai.air.g * AS() * 1.5 * dt;
+        this.az = Math.max(0, this.az + this.avz * dt);
+      }
       this.deadT += dtMs;
       var fr = this.frameAt('death', this.deadT);
       var AI = this.cfg.ai;
@@ -331,6 +406,7 @@
       this.keepInView(ctx);
       return;
     }
+    if (this.state === 'air') { this.updateAir(dtMs, ctx); this.keepInView(ctx); return; }   // 띄워짐(콤보)
     if (this.state === 'hit') {
       if (this.stunT > 0) this.stunT -= dtMs;   // 번개 기술: 맞은 그림 마지막 장에서 더 멈춰 있음
       if (this.frameAt(this.hitAnim, this.animT).done && !(this.stunT > 0)) { this.state = 'idle'; this.animT = 0; }
@@ -954,6 +1030,7 @@
     if (this.state === 'dead') return this.deadImg || this.frameAt('death', this.deadT).img;
     if (this.state === 'awaken') return this.frameAt(T.awaken.anim, this.awT).img;   // 10단계 마왕 각성
     if (this.state === 'hit') return this.frameAt(this.hitAnim, this.animT).img;
+    if (this.state === 'air') { var KA = this.art.knockdown; return KA[this.avz > 0 ? 0 : Math.min(1, KA.length - 1)]; }   // 띄워짐: 오를 때 넘어짐 1장(날아감), 떨어질 때 2장
     if (this.state === 'guard') { var gi = this.art[T.guard.anim]; return gi[this.guardFlash > 0 && gi[1] ? 1 : 0]; }   // 방패 들기(1) / 막는 순간(2)
     if (this.state === 'down') {
       var DT = this.downTimes();

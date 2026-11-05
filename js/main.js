@@ -234,6 +234,8 @@
   var G = window.GAME = {
     cfg: CFG, assets: null, player: null, dummy: null, enemies: [], mode: MODE,
     hitstop: 0, hits: 0, comboHits: 0, comboT: 0, maxCombo: 0, totalDmg: 0, camX: 0, slowT: 0,
+    // 콤보 기록(2026-11-06 밤, 시험·결과용): launch = 띄움, air = 공중 타, otg = 누운 적 타, cancel = 캔슬(평타→기술 / 기술→기술), maxAirMs = 가장 오래 뜬 시간
+    cstats: { launch: 0, air: 0, otg: 0, cancel: 0, maxAirMs: 0, maxAirHits: 0 }, comboTagTxt: '', comboTagT: 0,
     charKey: 'male', classKey: CFG.defaultClass || 'knight', weaponKey: 'sword', moveSet: 'sword', debug: DEBUG,
     stage: null, bot: params.get('bot') === '1',
     stageNo: startNo, paused: false, props: Props.list
@@ -299,8 +301,14 @@
       var heavy = airHit || (!st.noKnockdown && (!!st.knockdown || st.knock * W.knockMul >= CFG.ai.react.heavyKnock));
       // 누운 적 때리기(OTG, config ai.otg): 땅까지 닿는 공격(hitsDown)만 여기까지 옴 → 데미지 배율, 다시 날아가지 않음
       var otg = target.state === 'down' && !!st.hitsDown;
+      var wasAir = target.state === 'air';   // 띄워진 잡몹을 침(콤보 글자 「AIR」)
       if (otg) dmg = Math.max(1, Math.round(dmg * (CFG.ai.otg.dmgMul != null ? CFG.ai.otg.dmgMul : 1)));
-      var res = target.takeHit(dmg, dir, knock, !!st.finisher && !st.noKnockdown, { heavy: heavy, stunMs: st.stunMs, noJuggle: !!st.noJuggle, flashK: st.flashK != null ? st.flashK : (heavyHit ? IM.flashHeavy || 1 : 1), otg: otg });   // stunMs = 번개 기술
+      var res = target.takeHit(dmg, dir, knock, !!st.finisher && !st.noKnockdown, { heavy: heavy, stunMs: st.stunMs, noJuggle: !!st.noJuggle, flashK: st.flashK != null ? st.flashK : (heavyHit ? IM.flashHeavy || 1 : 1), otg: otg, launch: st.launch || 0 });   // stunMs = 번개 기술, launch = 띄우기(ai.air)
+      // 콤보 기록·글자(2026-11-06 밤): 띄움 / 공중 타 / 누운 적 타
+      var CS = G.cstats;
+      if (res === 'launch') { CS.launch++; comboTag('LAUNCH'); }
+      else if (wasAir && res) { CS.air++; comboTag('AIR'); }
+      else if (otg && res) { CS.otg++; comboTag('OTG'); }
       if (otg && !res) return;   // 누운 채 맞을 수 있는 때가 아님(일어나는 중 등)
       var hb = target.hurtbox();
       // 불똥은 맞은 몸의 가장자리(플레이어 쪽)에서. 마법은 맞은 곳에서 가장 가까운 몸 위치
@@ -528,7 +536,7 @@
   // ---------- 화면 위 글자 ----------
   var comboEl = document.getElementById('combo');
   function showCombo() {
-    comboEl.innerHTML = '<b>' + G.comboHits + '</b> HIT';
+    comboEl.innerHTML = '<b>' + G.comboHits + '</b> HIT' + (G.comboTagT > 0 ? '<i class="ctag ctag-' + G.comboTagTxt.toLowerCase() + '">' + G.comboTagTxt + '</i>' : '');
     comboEl.classList.remove('pop'); void comboEl.offsetWidth; comboEl.classList.add('pop');
     comboEl.hidden = false;
   }
@@ -621,6 +629,12 @@
   }
 
   // ================= 판 진행 =================
+  // 콤보 수 옆 작은 글자(2026-11-06 밤): LAUNCH(띄움) · AIR(공중 타) · OTG(누운 적 타) · CANCEL(캔슬). tagMs 동안 보임, 새 글자가 덮어씀.
+  //   CANCEL 처럼 맞힘 없이 생기는 글자는 콤보 수가 보이는 동안만 다시 그림
+  function comboTag(txt) {
+    G.comboTagTxt = txt; G.comboTagT = 650;
+    if (txt === 'CANCEL') { G.cstats.cancel++; if (G.comboT > 0 && !comboEl.hidden) showCombo(); }
+  }
   // placedQ = 다음 웨이브의 미리 서 있는 적 중 아직 안 내놓은 것(카메라가 다가가면 화면 밖 오른쪽에서부터 내놓음)
   function newStage() {
     return { next: 0, locked: false, lockCam: 0, lastLock: -1, queue: [], waveT: 0, waveIdx: -1, placedQ: [],
@@ -1118,7 +1132,7 @@
     G.enemies.forEach(function (e) {
       // 8단계: 흡혈 백작이 안개로 숨어 순간이동하는 동안(hidden, state 'attack')·유령 기사가 옅어져 돌진하는 동안도 공격 중 = 안 셈
       //   10단계: 마왕이 어둠 순간이동으로 숨은 동안(hidden, state 'attack')·각성 중(awaken)도 안 셈
-      var busy = e.state === 'attack' || e.state === 'hit' || e.state === 'down' || e.state === 'stagger' || e.state === 'guard' || e.state === 'awaken' || e.hidden;
+      var busy = e.state === 'attack' || e.state === 'hit' || e.state === 'down' || e.state === 'air' || e.state === 'stagger' || e.state === 'guard' || e.state === 'awaken' || e.hidden;
       if (!e.alive() || e.asleep || e.alertT > 0 || busy || p.state === 'dead' || p.state === 'held') { e.lostT = 0; e.lostX = null; return; }
       var on = e.x >= V.x0 && e.x <= V.x1;
       if (on && Math.abs(e.x - p.x) <= far) { e.lostT = 0; e.lostX = null; return; }
@@ -1327,6 +1341,20 @@
   var botAtkT = 0;
   // 기술 칸 하나 무작위(지금 보이는 칸 중. 2026-11-06 전엔 A/B 둘 중 하나)
   function botSlot() { var bk = Growth.book(G.classKey), n = bk ? bk.slots() : 2; return Skills.slots[Math.floor(Math.random() * n)]; }
+  // 콤보 자동 조종(2026-11-06 밤, G.botEager = 균형 시험 · GAME.test.botEager): 공격할 때마다 나갈 수 있는 기술 하나를 골라 누름(쿨타임·마나 되면 바로).
+  //   서 있는(뜰 수 있는) 잡몹 = 띄우기 기술 먼저 → 떠 있으면 평타로 2번 이상 친 뒤 다른 기술로 이어 침(공중 타·캔슬) → 넘어지면 땅까지 닿는 기술(누운 적 때리기)
+  function botSkill(p, best) {
+    var bk = Growth.book(G.classKey), n = bk ? bk.slots() : 0, R = [];
+    for (var i = 0; i < n; i++) { var q = Skills.ready(p, i); if (q) R.push(q); }
+    if (!R.length) return;
+    var air = best.state === 'air', up = R.filter(function (q) { return q.d.launcher; }), other = R.filter(function (q) { return !q.d.launcher; });
+    var pick = null;
+    if (air) { if ((best.airHits || 0) >= 2 && other.length) pick = other[Math.floor(Math.random() * other.length)]; }
+    else if (up.length && best.canLaunch && best.canLaunch() && best.state !== 'down') pick = up[0];
+    else if (other.length) pick = other[Math.floor(Math.random() * other.length)];
+    else pick = up[0];
+    if (pick) Input.pressSkill(pick.slot);
+  }
   function botThink(dt) {
     var p = G.player, best = null, bd = 1e9;
     G.enemies.forEach(function (e) {
@@ -1353,7 +1381,8 @@
     if (Math.abs(ey) <= 6 && Math.abs(ex) <= 22 * AS && botAtkT <= 0) {
       if (p.state !== 'attack') p.dir = side;
       Input.pressAttack(); botAtkT = 140;
-      if (Math.random() < 0.12) Input.pressSkill(botSlot());   // 가끔 기술(쿨타임·마나 모자람이면 안 나감)
+      if (G.botEager) botSkill(p, best);                        // 콤보 시험: 띄우기 → 공중 타 → 캔슬
+      else if (Math.random() < 0.12) Input.pressSkill(botSlot());   // 가끔 기술(쿨타임·마나 모자람이면 안 나감)
     }
   }
 
@@ -1383,8 +1412,11 @@
     if (botAtkT > 0 || Math.abs(ey) > 7) return;
     if (p.state !== 'attack' && p.state !== 'skill') p.dir = side;
     if (dx < 205 * AS && !kite) {   // 멀리서 기술
-      var bk = Growth.book(G.classKey), n = bk ? bk.slots() : 2;
-      for (var i = 0; i < n; i++) Input.pressSkill(Skills.slots[(i + Math.floor(Math.random() * n)) % n]);
+      if (G.botEager) botSkill(p, best);   // 콤보 시험(2026-11-06 밤)
+      else {
+        var bk = Growth.book(G.classKey), n = bk ? bk.slots() : 2;
+        for (var i = 0; i < n; i++) Input.pressSkill(Skills.slots[(i + Math.floor(Math.random() * n)) % n]);
+      }
     }
     if (dx < 100 * AS && !threat) { Input.pressAttack(); botAtkT = 140; }   // 지팡이 끝 거리면 콤보(적이 공격 중이면 안 함)
     else botAtkT = 100;
@@ -1441,6 +1473,7 @@
     if (G.slowT > 0) { G.slowT -= realMs; dt *= 0.3; }
     if (G.comboT > 0) { G.comboT -= dt; if (G.comboT <= 0) comboEl.hidden = true; }
     if (G.zoom) { G.zoom.t += realMs; if (G.zoom.t >= G.zoom.ms) G.zoom = null; }
+    if (G.comboTagT > 0) G.comboTagT -= dt;
     var p = G.player;
     p.weaponKey = G.weaponKey;
     p.setMoveSet(G.moveSet);
@@ -1492,8 +1525,11 @@
     if (MODE === 'stage') {
       var E = G.ectx;
       E.now += dt; E.view.x0 = G.camX; E.view.x1 = G.camX + LW - (controlPad ? controlPad + 14 : 0);   // 적은 몸이 넓어서 버튼 쪽으로 조금 더 띄움
-      G.enemies.forEach(function (e) { e.update(dt, E); });
-      xpStep();              // 쓰러진 적 → 경험치(성장)
+      G.enemies.forEach(function (e) {
+        e.update(dt, E);
+        if (e.state === 'air') { G.cstats.maxAirMs = Math.max(G.cstats.maxAirMs, e.airT); G.cstats.maxAirHits = Math.max(G.cstats.maxAirHits, e.airHits); }   // 콤보 기록
+      });
+      xpStep();             // 쓰러진 적 → 경험치(성장)
       separate();
       propCollide();
       heldStep();            // 미라에게 붙잡힘: 잡은 적 앞에 붙여 둠
@@ -1561,6 +1597,7 @@
     if (MODE === 'stage') Props.addDraw(ents, ctx, camX, LW, DEBUG);
     if (spikes.length) addSpikeDraw(ents, camX);   // 얼음 가시(땅에서 솟음 = 캐릭터와 깊이 순서)
     if (rings.length) addRingDraw(ents, camX);     // 화염 충격파 고리(바닥을 따라 퍼짐 = 캐릭터와 깊이 순서)
+    Skills.addEnts(ents, ctx, camX);               // 땅 융기 돌기둥(땅에서 솟음 = 캐릭터와 깊이 순서, 2026-11-06 밤)
     ents.sort(function (a, b) { return a.y - b.y; });
     ents.forEach(function (e) { e.d(); });
     Projectiles.draw(ctx, camX);
@@ -1706,7 +1743,7 @@
     G.stage = newStage();
     G.ectx = makeEnemyCtx();
     G.xpGot = 0;   // 이 판에서 얻은 경험치(결과 화면)
-    G.hits = 0; G.totalDmg = 0; G.maxCombo = 0; G.comboT = 0; G.hitstop = 0; G.slowT = 0; comboEl.hidden = true;
+    G.hits = 0; G.totalDmg = 0; G.maxCombo = 0; G.comboT = 0; G.cstats = { launch: 0, air: 0, otg: 0, cancel: 0, maxAirMs: 0, maxAirHits: 0 }; G.comboTagT = 0; G.hitstop = 0; G.slowT = 0; comboEl.hidden = true;
     var god = G.player && G.player.god;
     G.player = new Player(CFG);
     applyGrowth(G.player);
@@ -1923,7 +1960,7 @@
 
   // ---------- 기술 창 (2026-11-06 성장 4단계, 수치 = config skills · SKILL_TREE, 계산·저장 = growth.js 의 기술 책 Growth.book) ----------
   // 여는 곳: 「능력치」 옆 「기술」 · 스테이지 고르기 · 결과 화면(견습은 버튼이 안 보임). 여는 동안 게임 멈춤, 닫으면 원래대로
-  //   위 = 기술 칸 4개(Lv13 전엔 2개, 키 이름 표시), 아래 = 기술 10개: 쓰는 기술(마나·쿨타임·위력) / 늘 켜진 기술 / 잠김(Lv N) / 준비 중
+  //   위 = 기술 칸 4개(Lv9 전엔 2개 · Lv13 전엔 3개, 키 이름 표시), 아래 = 기술 10개: 쓰는 기술(마나·쿨타임·위력) / 늘 켜진 기술 / 잠김(Lv N) / 준비 중
   //   + = 기술 점수 1점으로 Lv +1(최고 5), 칸 번호(1~4) = 그 칸에 끼우기(다른 칸에 있으면 자리 바꿈), 초기화 = 기술 점수 전부 돌려받음(공짜)
   var skEl = document.getElementById('skillPanel'), skBack = null;
   // 칸 i 의 이름: 키보드 = config keys.skillA~D 의 첫 키(KeyU → U), 손가락 화면(폰) = 1~4
@@ -1965,7 +2002,7 @@
       var id = bk.at(i), d = id && S[id], c = document.createElement('div');
       c.className = 'skslot' + (i >= slots ? ' locked' : '') + (d ? ' on' : '');
       c.innerHTML = '<kbd>' + slotKey(i) + '</kbd><span class="ic">' + (d ? d.icon : '') + '</span><small>' +
-        (d ? d.name : i >= slots ? 'Lv' + (CFG.skills.moreLv || 13) + '에 열림' : '빈 칸') + '</small>';
+        (d ? d.name : i >= slots ? 'Lv' + bk.slotLv(i) + '에 열림' : '빈 칸') + '</small>';
       bar.appendChild(c);
     }
     // 기술 목록
@@ -2206,6 +2243,8 @@
     // 능력치 바로 바꾸기(시험): GAME.test.stats({ str: 10 }) → 남은 점수에서 뺌(모자라면 있는 만큼)
     stats: function (o) { Object.keys(o || {}).forEach(function (k) { Growth.add(k, o[k]); }); refreshGrowth(); return { stats: Growth.stats, pts: Growth.pts }; },
     bot: function (on) { G.bot = on !== false; if (!G.bot) Input.setOverride(null); },
+    // 콤보 자동 조종(균형 시험, 2026-11-06 밤): 공격 때마다 기술 하나를 골라 누름(띄우기 → 공중 타 → 캔슬)
+    botEager: function (on) { G.botEager = on !== false; },
     retry: function () { resetStage(); },
     // 판 바로 가기: GAME.test.stage(2) (판 번호 = id, ?stage= 와 같음) / 고르기 화면 열기: GAME.test.select()
     stage: function (n) { return goStage(stageIndexOfId(n) || n); },   // n = 판 번호(id)
@@ -2242,6 +2281,7 @@
     if (DEBUG && window.Debug) Debug.tick(real, G);
     requestAnimationFrame(frame);
   }
+  G.comboStats = function () { var c = {}, k; for (k in G.cstats) c[k] = Math.round(G.cstats[k]); c.maxCombo = G.maxCombo; return c; };   // 시험용: 콤보 기록
   G.stepFor = function (ms) { var n = Math.round(ms / STEP); for (var i = 0; i < n; i++) step(STEP); render(); };   // 시험용: 빨리 감기
 
   // 연습장 ↔ 스테이지 판 이동 버튼 (?debug=1 같은 다른 옵션은 그대로 둠)
@@ -2278,7 +2318,8 @@
       hitstop: function (ms) { G.hitstop = Math.max(G.hitstop, ms); },
       slow: function (ms) { G.slowT = Math.max(G.slowT, ms); },
       zoom: function (k, ms) { G.zoom = { k: k, ms: ms, t: 0 }; },   // 큰 기술 화면 당기기(2026-11-06 밤)
-      noMp: noMp             // 마나가 모자라 기술이 안 나감(2026-11-06)
+      noMp: noMp,            // 마나가 모자라 기술이 안 나감(2026-11-06)
+      comboTag: comboTag     // 캔슬로 기술이 나감 → 콤보 글자 「CANCEL」(2026-11-06 밤)
     });
     Object.keys(assets.characters).forEach(function (k) { bakeFilter(assets.characters[k]); });
     document.body.classList.add('mode-' + MODE);

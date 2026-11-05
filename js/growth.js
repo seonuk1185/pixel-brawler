@@ -62,8 +62,20 @@
       },
       // 초기화(공짜): 쓴 기술 점수 전부 돌려받음 → 열린 기술은 모두 Lv1
       reset: function () { st.lv = {}; B.save(); },
-      // 칸 수: 시험 책 = 늘 많은 쪽, 저장 책 = moreLv 부터
-      slots: function () { var S = SK.slots || [2, 4]; return test || G.lv >= (SK.moreLv || 13) ? S[1] : S[0]; },
+      // 칸 수: 시험 책 = 늘 가장 많이, 저장 책 = moreLv 마다 하나씩 늘어남(2026-11-06 밤: [2, 3, 4] / Lv9 · Lv13)
+      slots: function () {
+        var S = SK.slots || [2, 4], M = [].concat(SK.moreLv || 13), n = S[0];
+        if (test) return S[S.length - 1];
+        M.forEach(function (lv, k) { if (G.lv >= lv && S[k + 1] != null) n = S[k + 1]; });
+        return n;
+      },
+      // i 번째 칸(0부터)이 열리는 레벨(처음부터 있으면 0) — 기술 창 「LvN에 열림」
+      slotLv: function (i) {
+        var S = SK.slots || [2, 4], M = [].concat(SK.moreLv || 13);
+        if (i < S[0]) return 0;
+        for (var k = 0; k < M.length; k++) if (i < S[k + 1]) return M[k];
+        return M[M.length - 1];
+      },
       // i 번째 칸(0부터)에 끼운 기술 id (안 보이는 칸·안 열린 기술이면 null)
       at: function (i) { var id = i < B.slots() ? st.bar[i] : null; return id && B.unlocked(id) && B.isActive(id) ? id : null; },
       bar: function () { var a = []; for (var i = 0; i < B.slots(); i++) a.push(B.at(i)); return a; },

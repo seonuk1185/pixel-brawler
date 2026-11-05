@@ -1,4 +1,5 @@
 // 직업 기술 (기사 돌진베기·회전베기 / 법사 화염구·번개, 2026-11-03)
+// 2026-11-06 밤 콤보: + 띄우기 기술 올려베기(기사)·땅 융기(법사, 보라 마법진 → 돌기둥) · 기술 끝무렵 다른 기술로 이어짐(캔슬, chain)
 // 2026-11-06 성장 4단계: + 기사 검기 날리기·대지 내려찍기 / 법사 얼음창·메테오. 기술 = 마나 + 쿨타임, 기술 Lv1~5(config skills.curve),
 //   칸 4개(A~D, 무엇을 끼웠는지는 growth.js 의 기술 책). 늘 켜진 기술(검 숙련 등)은 main.js 가 데미지·받는 피해·마나 회복에 곱함
 // 시작 조건·쿨타임·진행(이동·판정·효과)·화면 효과(어둡게·번쩍·잔상·번개)·버튼 표시를 여기서 한다.
@@ -13,6 +14,8 @@
   var waves = [], parts = [], glows = [];
   // 2026-11-06: meteors = 떨어지는 운석(법사가 다른 걸 해도 그대로 떨어짐), casts = 기술마다 쓴 횟수(시험용), noMpT = 「MP 부족」 다시 띄울 때까지
   var meteors = [], casts = {}, noMpT = 0;
+  // 2026-11-06 밤: pillars = 땅 융기 돌기둥(캐릭터와 깊이 순서로 그림, addEnts)
+  var pillars = [];
   var SLOTS = ['A', 'B', 'C', 'D'];
   function SM() { return ((CFG && CFG.view.renderScale) || 1) > 1; }   // 매끈한 화면이면 코드로 그린 효과도 부드럽게
   // 충격파: x,y = 가운데, r = 끝 반지름(도트), flat = 세로 비율(땅 고리 0.3, 공중 1), w = 굵기, ms, color, ground = 캐릭터 밑에 그림
@@ -84,9 +87,20 @@
     if (o.cast && o.cast.at == null) o.cast = cp(o.cast, { at: st(o.cast.frame) });
     if (o.shot && o.shot.at == null) o.shot = cp(o.shot, { at: st(o.shot.frame) });
     if (o.meteor && o.meteor.at == null) o.meteor = cp(o.meteor, { at: st(o.meteor.frame) });
+    if (o.pillar && o.pillar.at == null) o.pillar = cp(o.pillar, { at: st(o.pillar.frame), burstAt: st(o.pillar.burst) });
     if (o.strikes && !Array.isArray(o.strikes.at)) {
       var t0 = st(o.strikes.frame), gap = o.strikes.gapMs || 120;
       o.strikes = cp(o.strikes, { at: o.strikes.x.map(function (x, k) { return t0 + k * gap; }) });
+    }
+    // 다른 기술로 이어지는 때(캔슬, 2026-11-06 밤): chainFrom(장 번호)이 있으면 그 장부터, 없으면 이 기술이 할 일(판정·발사·터짐·뛰기·끝맺음)을
+    //   다 한 뒤 + padMs. 기술 끝보다 늦지 않게
+    if (o.chainAt == null) {
+      var last = 0, pad = (CFG.skills.cancel && CFG.skills.cancel.padMs) || 60;
+      var mx = function (v) { if (v != null && v > last) last = v; };
+      (o.hits || []).forEach(function (h) { mx(h.at[1]); });
+      if (o.cast) mx(o.cast.at); if (o.shot) mx(o.shot.at); if (o.meteor) mx(o.meteor.at); if (o.pillar) mx(o.pillar.burstAt);
+      if (o.quake) mx(o.quake.at); if (o.leap) mx(o.leap.at[1]); if (o.finale) mx(o.finale.at); if (o.strikes) mx(o.strikes.at[o.strikes.at.length - 1]);
+      o.chainAt = o.chainFrom != null ? st(o.chainFrom) : Math.min(o.ms - 1, last + pad);
     }
   }
   function defFor(p, id) { return p.classKey && id ? resolve(p.classKey, id, p.gender || 'male') : null; }
@@ -129,12 +143,14 @@
   // ---------- 시작 ----------
   // 눌린 칸(A~D) 중 쓸 수 있는 기술(쿨타임 끝남 + 마나 넉넉) 하나 → { d, L }. 빈 칸·안 보이는 칸은 입력을 버림.
   //   쿨타임 중이면 입력을 잠깐 기억(버퍼). 마나가 모자라면 입력을 버리고 머리 위 「MP 부족」(H.noMp)
-  function pick(p) {
+  //   skip = 이번에 이어지는 동안(chain) 이미 쓴 기술 id 목록(그 칸의 입력은 그대로 둠 → 다른 칸이 나갈 수 있음)
+  function pick(p, skip) {
     var B = CFG.skills.bufferMs || 300, got = null;
     SLOTS.forEach(function (slot, i) {
       if (got || !Input.peekSkill(slot, B)) return;
       var q = slotSkill(p, i);
       if (!q) { Input.clearSkill(slot); return; }
+      if (skip && skip.indexOf(q.d.id) >= 0) return;
       if ((p.skillCd[q.d.key] || 0) > 0) return;
       if ((p.mp || 0) < q.L.mp) {
         Input.clearSkill(slot);
@@ -151,10 +167,14 @@
     var d = q.d || q, L = q.L || lvStat(d, 1);
     var ax = Input.axis(CFG).x;              // 누르는 방향으로 돌아서 쓴다
     if (ax > 0.3) p.dir = 1; else if (ax < -0.3) p.dir = -1;
+    // 캔슬(2026-11-06 밤): 평타 도중(attack) · 다른 기술 끝무렵(skill)에서 나가면 콤보 글자 「CANCEL」. chain = 이번에 이어서 쓴 기술 id
+    var from = p.state, chain = from === 'skill' && p.sk ? (p.sk.chain || []).concat([p.sk.d.id]) : [];
+    if ((from === 'attack' || from === 'skill') && H.comboTag) H.comboTag('CANCEL');
+    p.z = 0;   // 앞 기술의 뛰기(대지 내려찍기·올려베기)가 끊겨도 땅에서 시작
     p.state = 'skill'; p.atk = null; p.animT = 0; p.comboStep = 0;
     var s = p.sk = { d: d, t: 0, x0: p.x, z: p.y, dir: p.dir, done: {}, hitWin: {}, fxDone: {}, hitAny: false,
                      finaleDone: false, cast: false, strikeDone: {}, ghostT: 0, boxes: [], exitT: 0,
-                     L: L, mul: L.dmg, area: (L.lv5 && L.lv5.area) || 1, shotDone: 0, quaked: false, met: false };
+                     L: L, mul: L.dmg, area: (L.lv5 && L.lv5.area) || 1, shotDone: 0, quaked: false, met: false, chain: chain, pl: null, plDone: false };
     if (q.L) p.mp = Math.max(0, (p.mp || 0) - L.mp);   // 마나 씀
     casts[d.id] = (casts[d.id] || 0) + 1;
     if (d.strikes) {
@@ -227,6 +247,7 @@
       while (s.shotDone < nShot && t1 >= d.shot.at + s.shotDone * (d.shot.gapMs || 150)) { castWave(p, d, s.shotDone); s.shotDone++; }
     }
     if (d.meteor && !s.met && t1 >= d.meteor.at) { s.met = true; castMeteor(p, d); }
+    if (d.pillar) pillarStep(p, d, s, t1);   // 땅 융기(2026-11-06 밤)
     if (d.strikes) {
       var K = s.K || d.strikes;
       lockStrikes(s, K, p.dir);
@@ -433,6 +454,11 @@
                   scale: f.scale || 1, t: 0, life: A.loop ? (f.ms || 600) : A.fr.length * 1000 / A.fps });
       return;
     }
+    if (f.type === 'sparkup') {   // 올려베기(2026-11-06 밤): 위로 솟는 빛 줄기 + 불티
+      glow(x, y - 16 * AS(), 26 * AS(), f.color || '#cfe8ff', 220, 0.7);
+      debris(x, y, p.y, 10, { cols: ['#ffffff', f.color || '#cfe8ff', '#8fc4ff'], glow: true, sp: 260, size: 1.5, ms: 360, spread: 0.35, g: 300 });
+      return;
+    }
     if (f.type === 'spark') {
       var M = CFG.magic.spark, fr = tintFx(M.frames, f.tint, 0.6);
       if (fr) FX.sprite(x, y, fr, M.fps, M.pivot, dir < 0, false, f.scale || 1);
@@ -633,6 +659,83 @@
     debris(pr.x, pr.y, pr.z, 10, { cols: ['#ffffff', '#d8f8ff', '#9fe8ff', '#6ac8ff'], sp: 160, size: 1.8, ms: 520, spread: 1.5 });
   }
 
+  // ---------- 땅 융기 (2026-11-06 밤 콤보) ----------
+  // 마법진 장(pillar.at)에 자리 정함: 앞쪽 가까운 적(소품 빼고, 넘어진 적 빼고) 발밑, 없으면 법사 앞 x. 솟기 lockMs 전까지 그 적을 따라감
+  function pillarStep(p, d, s, t) {
+    var P = d.pillar;
+    if (!s.pl && t >= P.at) {
+      var tgt = null, best = 1e9;
+      H.targets().forEach(function (e) {
+        if (!e || e.isProp || !e.T || (e.alive && !e.alive()) || e.state === 'down' || !H.canHit(e, P.hit)) return;
+        var dx = (e.x - p.x) * p.dir;
+        if (dx < -6 * AS() || dx > P.aim.range || Math.abs(e.y - p.y) > P.aim.depth) return;
+        var dd = Math.abs(dx) + Math.abs(e.y - p.y) * 0.5;
+        if (dd < best) { best = dd; tgt = e; }
+      });
+      s.pl = { x: tgt ? tgt.x : p.x + p.dir * P.x, z: tgt ? tgt.y : p.y, tgt: tgt, t0: t };
+    }
+    if (s.pl && !s.plDone) {
+      var g = s.pl.tgt;
+      if (g && t < P.burstAt - (P.lockMs || 90) && (!g.alive || g.alive()) && g.state !== 'down') { s.pl.x = g.x; s.pl.z = g.y; }
+      if (t >= P.burstAt) { s.plDone = true; pillarBurst(p, d, s); }
+    }
+  }
+  // 돌기둥 솟음: 우리 그림(look.pillar, 기둥 솟음~무너짐) + 흔들림·보라 빛·돌 파편 + 기둥 위 적 띄우기(판정 = 기둥 폭 r x area, 위아래 depth)
+  function pillarBurst(p, d, s) {
+    var P = d.pillar, x = s.pl.x, z = s.pl.z, R = P.r * s.area, lk = lookOf(d), A = fxArt(lk.pillar);
+    pillars.push({ x: x, z: z, A: A, t: 0, life: A ? A.fr.length * 1000 / A.fps : 520, dir: p.dir, k: s.area });
+    H.hitstop(50);
+    FX.shake(CFG.juice.shakePx * 1.8, CFG.juice.shakeMs * 1.4);
+    H.dust(x - 12 * AS(), z, -1); H.dust(x + 12 * AS(), z, 1);
+    glow(x, z - 30 * AS(), R * 1.6, '#b892ff', 260, 0.7);
+    wave(x, z, R * 1.9, { flat: 0.3, w: 3, ms: 320, color: '#ead8ff', glow: '#7e4cd8', ground: true });
+    debris(x, z - 6 * AS(), z, 12, { cols: ['#664a36', '#94704e', '#c09a70', '#3c2a20'], sp: 230, size: 2.6, ms: 760, spread: 0.7 });
+    debris(x, z - 10 * AS(), z, 8, { cols: ['#ead8ff', '#b892ff', '#ffffff'], glow: true, sp: 200, size: 1.4, ms: 380, spread: 0.6 });
+    var st = stOf(P.hit, d), any = false;
+    H.targets().forEach(function (t) {
+      if (!t || !H.canHit(t, P.hit)) return;
+      var hb = t.hurtbox();
+      if (Math.abs(hb.z - z) > P.depth * s.area) return;
+      if (hb.x1 < x - R || hb.x0 > x + R) return;
+      H.onHit(st, t, { dir: p.dir, wk: p.weaponKey, x: x, y: z - 34 * AS(), mul: s.mul });
+      any = true;
+    });
+    if (any) impact(P.hit);
+  }
+  // 마법진(바닥, 캐릭터 밑): 정한 뒤 ~ 솟을 때까지 look.circle 그림(처음 몇 장 = 나타남, 그 뒤 반복). 그림이 없으면 코드로 보라 타원
+  function drawCircle(ctx, camX, p) {
+    var s = p && p.state === 'skill' && p.sk, d = s && s.d;
+    if (!d || !d.pillar || !s.pl || s.plDone) return;
+    var A = fxArt(lookOf(d).circle), t = s.t - s.pl.t0, x = s.pl.x - camX;
+    if (A) {
+      var n = A.fr.length, i = Math.floor(t * A.fps / 1000), lp = A.range || [0, n - 1];
+      if (i > lp[1]) i = lp[0] + (i - lp[0]) % (lp[1] - lp[0] + 1);
+      ctx.save(); ctx.translate(snapPx(x), snapPx(s.pl.z)); if (s.area !== 1) ctx.scale(s.area, s.area);
+      Assets.blit(ctx, A.fr[Math.min(n - 1, i)], A.pivot.x, A.pivot.y); ctx.restore();
+      return;
+    }
+    var R = d.pillar.r * 1.2 * s.area, k = clamp(t / 120, 0, 1);
+    ctx.save(); ctx.globalAlpha = 0.8; ctx.strokeStyle = '#b892ff'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.ellipse(x, s.pl.z, R * k, R * 0.3 * k, 0, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+  }
+  // 돌기둥: 캐릭터와 깊이 순서로(기둥 자리보다 조금 뒤 → 같은 줄 적은 기둥 앞에 보임). main.js render 가 부름
+  function addEnts(ents, ctx, camX) {
+    pillars.forEach(function (q) {
+      ents.push({ y: q.z - 0.5, d: function () {
+        var A = q.A, x = q.x - camX;
+        ctx.save(); ctx.translate(snapPx(x), snapPx(q.z)); ctx.scale(q.dir * q.k, q.k);
+        if (A) Assets.blit(ctx, A.fr[Math.min(A.fr.length - 1, Math.floor(q.t * A.fps / 1000))], A.pivot.x, A.pivot.y);
+        else {   // 그림이 없을 때: 코드로 그린 돌기둥(솟았다 줄어듦)
+          var u = q.t / q.life, h = 70 * AS() * (u < 0.25 ? u / 0.25 : u > 0.7 ? (1 - u) / 0.3 : 1), w = 12 * AS();
+          ctx.fillStyle = '#3c2a20'; ctx.fillRect(-w - 1, -h - 1, w * 2 + 2, h + 1);
+          ctx.fillStyle = '#94704e'; ctx.fillRect(-w, -h, w * 2, h);
+          ctx.fillStyle = '#b892ff'; ctx.fillRect(-w, -h, w * 2, 2);
+        }
+        ctx.restore();
+      } });
+    });
+  }
+
   // 메테오: 앞쪽 가까운 적 발밑(없으면 법사 앞 x)에 표시 → markMs 동안 그 적을 따라가다 고정 → fallMs 동안 비스듬히 떨어져 터짐
   function castMeteor(p, d) {
     var M = d.meteor, s = p.sk, tgt = null, best = 1e9;
@@ -768,7 +871,7 @@
   // ---------- 매 장면 (효과들 시간 흐름) ----------
   function update(dt) {
     meteorStep(dt);
-    [bolts, rings, ghosts, arts, waves, parts, glows].forEach(function (L) {
+    [bolts, rings, ghosts, arts, waves, parts, glows, pillars].forEach(function (L) {
       for (var i = L.length - 1; i >= 0; i--) { L[i].t += dt; if (L[i].t >= L[i].life) L.splice(i, 1); }
     });
     var ds = dt / 1000;
@@ -809,6 +912,7 @@
   function drawUnder(ctx, camX, p) {
     waves.forEach(function (w) { if (w.ground) drawWave(ctx, camX, w); });
     drawMeteorMarks(ctx, camX);   // 메테오 떨어질 자리(2026-11-06)
+    drawCircle(ctx, camX, p);     // 땅 융기 마법진(2026-11-06 밤)
     var s = p && p.state === 'skill' && p.sk, K = s && (s.K || s.d.strikes);
     if (!K) return;
     K.at.forEach(function (at, k) {
@@ -1082,11 +1186,17 @@
     init: function (cfg, hooks) { CFG = cfg; H = hooks; },
     resolve: resolve, pick: pick, start: start, advance: advance, frame: frame, facing: facing,
     invulnerable: invulnerable, passThrough: passThrough, usingArt: usingArt,
+    // 캔슬(2026-11-06 밤): 지금 기술이 끝무렵이라 다른 기술로 이어질 수 있나 / 이번에 이어서 쓴 기술 id(같은 기술은 다시 안 나감)
+    canChain: function (p) { var s = p.sk; return !!(s && s.t >= s.d.chainAt); },
+    chainIds: function (p) { var s = p.sk; return s ? (s.chain || []).concat([s.d.id]) : []; },
+    // 그 칸 기술이 지금 나갈 수 있나(쿨타임 끝 + 마나 넉넉) → { d, L, slot } 또는 null (자동 조종용)
+    ready: function (p, i) { var q = slotSkill(p, i); return q && !((p.skillCd[q.d.key] || 0) > 0) && (p.mp || 0) >= q.L.mp ? { d: q.d, L: q.L, slot: SLOTS[i] } : null; },
+    addEnts: addEnts,
     update: update, tickReal: tickReal,
     drawBackdrop: drawBackdrop, drawUnder: drawUnder, drawGhosts: drawGhosts, drawOver: drawOver, drawFlash: drawFlash, drawDebug: drawDebug,
     ui: ui, shakeSlot: shakeSlot, slots: SLOTS, lvStat: lvStat, slotSkill: slotSkill,
     _meteors: function () { return meteors; },   // 시험용
-    clear: function () { meteors.length = 0; noMpT = 0; bolts.length = 0; rings.length = 0; ghosts.length = 0; arts.length = 0; waves.length = 0; parts.length = 0; glows.length = 0; flash = null; },
+    clear: function () { meteors.length = 0; pillars.length = 0; noMpT = 0; bolts.length = 0; rings.length = 0; ghosts.length = 0; arts.length = 0; waves.length = 0; parts.length = 0; glows.length = 0; flash = null; },
     // 화면 번쩍(콤보 마무리 타도 씀): { color, alpha, ms }
     flash: function (f) { doFlash(f); },
     // 파편·둥근 빛(소품 나뭇조각·음식 반짝임도 씀, props.js)

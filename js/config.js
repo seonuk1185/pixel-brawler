@@ -313,6 +313,15 @@
   // 메테오: 떨어진 자리에서 크게 터짐, 둘레 적 넘어뜨림, 누운 적도 맞음
   var METEOR_HIT = { dmg: 5.0, hitstop: 2.4, knock: 2.8, shake: 3.6, knockdown: true, spark: 1.6, big: true, hitsDown: true,
                      flash: { color: '#ffc070', alpha: 0.55, ms: 220 }, slowMs: 320 };
+  // ---------- 콤보 띄우기 기술 (2026-11-06 밤, 형님 「콤보 시스템」): 올려베기(기사) · 땅 융기(법사) ----------
+  // launch = 띄우기 세기(config ai.air: 잡몹은 공중으로 → 평타·기술 다 맞음 → 떨어지면 넘어짐·누운 적 때리기). 보스·큰 적은 안 뜸(휘청)
+  //   launcher: true = 띄우기 기술(자동 조종이 서 있는 잡몹에게 먼저 씀)
+  // 올려베기: 아래에서 위로 베어 올림. 맞은 잡몹이 높이 뜸. 누운 적은 안 맞음(hitsDown 없음 = 다시 주워 띄우기 없음)
+  var UPPER_HIT = { reach: { x0: -10, x1: 100, yTop: -150, yBot: -4, depth: 22 }, launch: 1, dmg: 1.5, hitstop: 1.5, knock: 0.3, shake: 1.6,
+                   spark: 1.3, big: true, hitY: -74, flash: { color: '#e6f2ff', alpha: 0.28, ms: 110 }, slowMs: 140 };
+  // 땅 융기: 보라 마법진 자리에서 돌기둥이 솟아 그 위 잡몹을 띄움(기둥 폭 r, 위아래 depth). 누운 적은 안 맞음
+  var RISE_HIT = { launch: 1.1, dmg: 1.8, hitstop: 1.5, knock: 0.25, shake: 2.2, spark: 1.3, big: true,
+                  flash: { color: '#c8a0ff', alpha: 0.3, ms: 130 }, slowMs: 160 };
   var SKILLS = {
     knight: {
       // 돌진베기: 1~2장 동안 앞으로 약 120도트 미끄러지며 길 위의 적을 한 번씩 벤다(무적), 베는 장 다음 장에 「쾅」 멈춤
@@ -410,6 +419,27 @@
         female: {
           placeholder: { anims: ['jump', 'jump', 'jump', 'attack3', 'attack3', 'attack3'], f: [0, 1, 2, 0, 1, 4], d: [80, 120, 100, 80, 200, 160] }
         }
+      },
+      // 올려베기(2026-11-06 밤 콤보): 웅크렸다가(0장) 칼을 아래에서 위로 베어 올리며 살짝 뜀(1~2장 판정) → 3장 내려섬.
+      //   동작 그림 없음 → 있는 그림을 이어 붙임(남: 3타 웅크림 → 2타 팔 치켜듦 / 여: 점프 웅크림 → 돌진 올려베기 2장 → 3타)
+      //   hop = 살짝 뛰기(leap 와 같음, ms). 끝무렵(3장)에 다른 기술로 이어짐(캔슬)
+      upper: {
+        name: '올려베기', icon: '올', mp: 9, cooldownMs: 6000, damageStyle: 'skill_knight', launcher: true,
+        desc: '칼을 아래에서 위로 베어 올려 적을 공중에 띄워요. 뜬 적은 평타·기술이 다 맞아요(보스·큰 적은 휘청만)',
+        lv5: { area: 1.25, say: '베는 범위 +25%' },
+        darken: { ms: 360, alpha: 0.3 },
+        iframes: [0, 300],
+        leap: { at: [90, 330], h: 14, fwd: 10 },
+        hits: [ merge(UPPER_HIT, { frames: [1, 2] }) ],
+        fx: [
+          { frame: 0, type: 'dust' },
+          { frame: 1, type: 'slash', x: 30, y: -62, rot: -78, sx: 1.25, sy: 1.6, tint: '#a8d4ff', ms: 260 },
+          { frame: 1, type: 'sparkup', x: 34, y: -30, color: '#cfe8ff' }
+        ],
+        placeholder: { anims: ['attack3', 'attack2', 'attack2', 'attack2'], f: [0, 3, 3, 4], d: [90, 70, 150, 170] },
+        female: {
+          placeholder: { anims: ['jump', 'motion_dash', 'motion_dash', 'attack3'], f: [0, 2, 3, 5], d: [90, 70, 150, 170] }
+        }
       }
     },
     mage: {
@@ -484,6 +514,25 @@
         female: {
           placeholder: { anim: 'attack3', f: [0, 1, 2, 2, 2, 3, 4], d: [80, 90, 160, 160, 120, 80, 70] }
         }
+      },
+      // 땅 융기(2026-11-06 밤 콤보): 「하늘로 들기」 동작을 빠르게. 1장에 앞쪽 가까운 적 발밑(없으면 x 만큼 앞)에 보라 마법진 →
+      //   lockMs 전까지 그 적을 따라가다 고정 → 3장에 돌기둥이 솟아 기둥 위 적을 띄움(기사 대지 내려찍기 = 양옆 땅 충격파·기절과 다른 모양).
+      //   pillar = { frame = 마법진 장, burst = 솟는 장, x = 적이 없을 때 앞 거리, aim = 찾는 범위, lockMs, r = 기둥 판정 반폭, depth = 위아래 폭, hit }
+      //   look = 우리 그림(pipeline/ourfx: earth_circle = 마법진 / earth_pillar = 돌기둥 솟음~무너짐)
+      rise: {
+        name: '땅 융기', icon: '융', mp: 12, cooldownMs: 6500, damageStyle: 'skill_earth', motion: 'motion_cast_sky', launcher: true,
+        motionMs: [90, 110, 120, 70, 160, 130],
+        desc: '앞쪽 바닥에 보라 마법진을 그려 돌기둥을 솟게 해요. 기둥 위 적이 공중에 떠요(보스·큰 적은 휘청만)',
+        lv5: { area: 1.35, say: '기둥 굵기 +35%' },
+        darken: { ms: 420, alpha: 0.35 },
+        iframes: { frames: [0, 2] },
+        pillar: { frame: 1, burst: 3, x: 110, aim: { range: 210, depth: 60 }, lockMs: 90, r: 34, depth: 26, hit: RISE_HIT },
+        look: { circle: 'earth_circle', pillar: 'earth_pillar' },
+        placeholder: { anim: 'attack2', f: [0, 1, 2, 3, 3, 4], d: [90, 110, 120, 70, 160, 130] },
+        female: {
+          motionMs: [70, 100, 110, 60, 160, 120],
+          placeholder: { anim: 'attack3', f: [0, 1, 2, 2, 3, 4], d: [70, 100, 110, 60, 160, 120] }
+        }
       }
     }
   };
@@ -495,11 +544,13 @@
   //     stat: 'phys' = 물리 공격 +% (검 콤보·기사 기술) / 'magic' = 마법 공격 +% / 'guard' = 받는 피해 -% / 'mpRegen' = 마나 회복 +%
   //   soon = 아직 안 만든 기술(2차, 기술 창에 「준비 중」 자물쇠로만 보임). 만들면 soon 을 지우고 SKILLS 에 동작을 넣으면 됨
   //   메모(2026-11-06): 메테오(필살)는 지금 만든 기술이라 Lv15 에 둠. 2차로 순간이동·불기둥이 생기면 Lv23 으로 옮기는 것도 생각(숫자 하나)
-  // 예비 후보(아직 목록에 없음): 집중 · 마력 폭주 · 서리 갑옷
+  // 예비 후보(아직 목록에 없음): 집중 · 마력 폭주 · 서리 갑옷 · 회오리(법사, 적을 빨아들여 띄우는 바람 — 2026-11-06 밤 형님 「나중 후보」)
+  // 2026-11-06 밤 콤보: 띄우기 기술 올려베기(기사)·땅 융기(법사)를 Lv9 로 앞당김(3번째 칸이 Lv9 에 열림 → 바로 끼워짐). 불기둥은 2차 그대로(띄우지 않는 큰 한 방)
   var SKILL_TREE = {
     knight: [
       { id: 'dash', unlock: 0 },
       { id: 'spin', unlock: 8 },
+      { id: 'upper', unlock: 9 },   // 2026-11-06 밤 콤보: 2차(Lv19)에서 앞당김. Lv9 = 3번째 칸이 열리면서 바로 끼워짐
       { id: 'mastery', unlock: 10, name: '검 숙련', icon: '숙', desc: '검으로 하는 모든 공격(콤보·기술)이 세져요',
         passive: { stat: 'phys', val: [0.08, 0.12, 0.16, 0.2, 0.25] } },
       { id: 'skin', unlock: 11, name: '강철 피부', icon: '피', desc: '적에게 받는 피해가 줄어요',
@@ -507,13 +558,13 @@
       { id: 'wave', unlock: 13 },
       { id: 'slam', unlock: 15 },
       { id: 'grit', unlock: 17, soon: true, name: '투지', icon: '투', desc: '체력이 적을수록 공격이 세져요', passive: true },
-      { id: 'upper', unlock: 19, soon: true, name: '올려베기', icon: '올', desc: '적을 공중으로 띄워 콤보를 이어 쳐요' },
       { id: 'counter', unlock: 21, soon: true, name: '반격', icon: '반', desc: '맞는 순간 가끔 바로 되받아 베어요', passive: true },
       { id: 'holy', unlock: 23, soon: true, name: '성검 낙뢰', icon: '성', desc: '(필살) 칼을 하늘로 들어 번개 칼을 여러 개 꽂아요' }
     ],
     mage: [
       { id: 'fireball', unlock: 0 },
       { id: 'bolt', unlock: 8 },
+      { id: 'rise', unlock: 9 },    // 2026-11-06 밤 콤보: 땅 융기(띄우기). 2차 「불기둥」 자리를 대신해 앞당김
       { id: 'amp', unlock: 10, name: '원소 증폭', icon: '증', desc: '모든 마법(지팡이 타·마법탄·기술)이 세져요',
         passive: { stat: 'magic', val: [0.08, 0.12, 0.16, 0.2, 0.25] } },
       { id: 'flow', unlock: 11, name: '마나 순환', icon: '순', desc: '마나가 더 빨리 차요',
@@ -522,7 +573,7 @@
       { id: 'meteor', unlock: 15 },
       { id: 'blink', unlock: 17, soon: true, name: '순간이동', icon: '이', desc: '앞이나 뒤로 짧게 사라졌다 나타나요(피하기)' },
       { id: 'shield', unlock: 19, soon: true, name: '마나 방패', icon: '방', desc: '받는 피해 일부를 마나가 대신 받아요', passive: true },
-      { id: 'pillar', unlock: 21, soon: true, name: '불기둥', icon: '기', desc: '앞 바닥에서 불기둥이 솟아 적을 띄워요' },
+      { id: 'pillar', unlock: 21, soon: true, name: '불기둥', icon: '기', desc: '앞 바닥에서 큰 불기둥이 솟아 그 자리의 적을 크게 태워요(띄우지는 않음)' },
       { id: 'brand', unlock: 23, soon: true, name: '원소 낙인', icon: '낙', desc: '마법에 맞은 적이 잠깐 더 아프게 맞아요', passive: true }
     ]
   };
@@ -925,6 +976,9 @@
       // 얼음창(2026-11-06): 흰색 → 얼음 파랑
       skill_ice:    { font: 'giant', scale: 1, bold: true, top: '#ffffff', bottom: '#7fe0ff', outline: '#0e2a48', shadow: 'rgba(6,14,30,0.45)',
                       pop: { top: '#ffffff', bottom: '#d8f8ff' } },
+      // 땅 융기(2026-11-06 밤): 흰색 → 보라(마법진 색)
+      skill_earth:  { font: 'giant', scale: 1, bold: true, top: '#ffffff', bottom: '#c8a0ff', outline: '#2a1048', shadow: 'rgba(14,6,30,0.45)',
+                      pop: { top: '#ffffff', bottom: '#ead8ff' } },
       // 마나가 모자라 기술이 안 나갈 때 머리 위 「MP 부족」(2026-11-06, 작은 파란 글자)
       nomp: { font: 'large', scale: 1, top: '#d8ecff', bottom: '#6aa8ff', outline: '#10204a', shadow: 'rgba(6,10,30,0.4)',
               pop: { top: '#ffffff', bottom: '#cfe4ff' } },
@@ -1067,6 +1121,16 @@
       //   flash(불꽃색 화면 번쩍 세기) + shake(흔들림 배율) + push(플레이어를 밀어내는 도트, 원래 크기) + 발밑 불꽃 고리 burstMs.
       //   화난 동안 = 몸 둘레 일렁이는 불꽃 테두리(fadeInMs 동안 차오름) + 몸이 조금 붉게(tint). 색 = 보스 rageColor(없으면 color)
       rage: { hitstopMs: 140, slowMs: 380, flash: 0.4, shake: 3, push: 60, burstMs: 650, fadeInMs: 400, tint: 0.16, color: '#ff6a1a' },
+      // 띄우기·공중 콤보(2026-11-06 밤, 형님 「콤보 시스템」): 띄우기 기술(판정 값 launch: 올려베기·땅 융기)에 맞은 잡몹은 공중으로 뜸.
+      //   떠 있는 동안 평타·기술·공중 공격 전부 맞고, 맞을 때마다 refloatH 만큼 살짝 다시 뜸(작은 멈춤은 onHit 그대로) → 땅에 닿으면 넘어짐 → 누운 적 때리기(otg)
+      //   던파처럼 오래 뜰수록 빨리 떨어짐: 중력 = g x (1 + gravHit x 공중에서 맞은 수 + gravSec x 뜬 초).
+      //   다시 뜨는 높이는 refloatCut 번째 맞을 때 0 이 되고(그 뒤로는 맞아도 안 뜸), maxAirMs 넘게 떠 있으면 0 + 중력 capGravMul 배 → 무한 띄우기 없음
+      //   거리 값(launchH·relaunchH·refloatH = 올라가는 높이, g = 1초²에 도트)은 원래 그림 크기 기준(쓸 때 actorScale 곱함)
+      //   launchH = 띄우기 높이(launch 1 기준) · relaunchH = 공중에서 다시 띄우기 기술에 맞을 때 · knockMul = 공중에서 맞을 때 옆으로 밀리는 배율
+      //   안 뜨는 적: 보스 · noLaunch: true · 원래 체력 heavyHp 이상(설인 140 · 용암 골렘 240 = 큰 적) → 띄우기에 맞으면 launchStunMs 휘청(보스는 보통 맞음)
+      //   landShake = 땅에 떨어질 때 화면 흔들림
+      air: { launchH: 85, relaunchH: 50, refloatH: 28, g: 950, gravHit: 0.10, gravSec: 0.45, refloatCut: 10, maxAirMs: 2600, capGravMul: 2.5,
+             knockMul: 0.3, heavyHp: 130, launchStunMs: 420, landShake: 0.5 },
       // 미리 서 있는 적(판 waves 의 placed)이 깨는 조건: 플레이어가 dist 도트 안으로 오면(크기 배율 안 곱함, 화면 도트 그대로)
       //   깨면 머리 위 「!」를 alertMs 동안 보이며 멈춰 있다가 싸움. 같은 무리(group)는 groupDelayMs 안에서 조금씩 늦게 깸
       wake: { dist: 90, alertMs: 300, groupDelayMs: 150 }
@@ -2795,7 +2859,11 @@
     // 성장 4단계(2026-11-06): 기술 = 마나 + 쿨타임. 기술 창(main.js)에서 기술 점수로 Lv1 → 5, 칸에 끼움. 계산·저장 = growth.js 의 기술 책(Growth.book)
     //   tree = 직업마다 기술 10개(위 SKILL_TREE). 전직하면 unlock 0 기술이 Lv1, 레벨이 오르면 저절로 열림(Lv1), 점수로 Lv5 까지
     //   perLv = 전직 뒤 레벨마다 기술 점수(예전 저장 = 지금 Lv - 전직 Lv, 전직 Lv 를 모르면 classLv). maxLv = 기술 최고 Lv
-    //   slots = 기술 칸 수 [처음, moreLv 부터] (폰 동그라미 · 키보드 U I O P)
+    //   slots = 기술 칸 수 [처음, moreLv[0] 부터, moreLv[1] 부터] (폰 동그라미 · 키보드 U I O P)
+    //     2026-11-06 밤 콤보: Lv9 에 3번째 칸(띄우기 기술 올려베기·땅 융기가 열리면서 바로 끼워짐), Lv13 에 4번째 칸
+    //   cancel = 캔슬(콤보, 2026-11-06 밤): 평타 1·2·3타는 판정 장에 들어선 뒤(이미 맞힌 뒤)부터 기술로 끊고 나감(fromActive).
+    //     기술 끝무렵(그 기술의 마지막 판정·발사 + padMs 부터, 기술마다 chainFrom = 장 번호로 바꿀 수 있음)에 다른 기술로 이어짐.
+    //     한 번 이어지는 동안 같은 기술은 한 번만 → 같은 기술로 되돌아가는 무한 반복 없음(쿨타임도 있음). 점프 착지 웅크림에서도 기술 나감
     //   curve = 기술 Lv1~5 배율: dmg = 데미지(맞는 모든 판정에 곱함), cd = 쿨타임, mp = 마나 (마나는 반올림, 쿨타임은 0.1초 단위)
     //     Lv5 는 거기에 더해 기술마다 lv5(크기 +·두 번 날림 등, say = 기술 창에 쓰는 말)
     //   noMpMs = 마나가 모자랄 때 「MP 부족」 글자를 다시 띄우기까지 최소 간격
@@ -2803,10 +2871,11 @@
     //     기술 점수 pts 점(Lv5 까지 올려 보기). 저장 안 함(저장된 직업의 기술 책은 그대로)
     //   botPlan = 시험용(GAME.test.skillSetup): 기술 점수를 이 순서로 돌아가며 1점씩
     skills: { bufferMs: 300, cancelAfterHit: true, knight: SKILLS.knight, mage: SKILLS.mage,
-              tree: SKILL_TREE, perLv: 1, maxLv: 5, classLv: 7, slots: [2, 4], moreLv: 13, noMpMs: 500,
+              cancel: { fromActive: true, padMs: 60 },
+              tree: SKILL_TREE, perLv: 1, maxLv: 5, classLv: 7, slots: [2, 3, 4], moreLv: [9, 13], noMpMs: 500,
               curve: { dmg: [1, 1.2, 1.4, 1.6, 1.85], cd: [1, 0.94, 0.88, 0.82, 0.75], mp: [1, 1.05, 1.1, 1.15, 1.2] },
               test: { pts: 24 },
-              botPlan: { knight: ['dash', 'spin', 'mastery', 'skin', 'wave', 'slam'], mage: ['fireball', 'bolt', 'amp', 'flow', 'ice', 'meteor'] } },
+              botPlan: { knight: ['dash', 'spin', 'upper', 'mastery', 'skin', 'wave', 'slam'], mage: ['fireball', 'bolt', 'rise', 'amp', 'flow', 'ice', 'meteor'] } },
 
     // ---------- 기술 효과 그림 (art\stage1\skills\fx 에서 복사 → assets/fx/skill/<이름>_01.png …, 크기·기준점은 fx.json) ----------
     // count = 장 수(0 = 그림 없음 → 기존 그림을 물들여 쓰거나 코드로 그림), fps = 1초에 장 수, pivot = 그림 속 기준점(원래 크기), loop = 반복
@@ -2831,6 +2900,8 @@
       ground_slam:         { ours: true, count: 14, fps: 18, pivot: { x: 88, y: 56 } },                  // 대지 내려찍기(기준 = 칼이 땅에 닿는 곳)
       ice_lance:           { ours: true, count: 4, fps: 16, pivot: { x: 56, y: 12 }, loop: [0, 3] },     // 얼음창(기준 = 창 머리)
       ice_shatter:         { ours: true, count: 9, fps: 18, pivot: { x: 38, y: 34 } },                   // 얼음창 부서짐
+      earth_circle:        { ours: true, count: 10, fps: 16, pivot: { x: 42, y: 15 }, loop: [3, 9] },   // 땅 융기 보라 마법진(2026-11-06 밤, 0~2 나타남 · 3~9 반복)
+      earth_pillar:        { ours: true, count: 16, fps: 22, pivot: { x: 32, y: 102 } },                // 땅 융기 돌기둥(기준 = 기둥 밑, 0 터짐 · 1~3 솟음 · 10~15 부서짐)
       meteor:              { ours: true, count: 20, fps: 18, pivot: { x: 150, y: 150 }, hit: 6 },        // 메테오 전체(기준 = 떨어지는 땅 자리, 6장 = 쾅)
       demon_charge_ground: { ours: true, count: 12, fps: 20, pivot: { x: 80, y: 128 } },                 // 9단계 장군 기 모으기: 땅 금 + 몸 뒤 불꽃(기준 = 발)
       demon_charge_body:   { ours: true, count: 12, fps: 20, pivot: { x: 80, y: 128 } },                 //   〃 몸 앞 낮은 불꽃 + 모여드는 불씨
@@ -2921,6 +2992,8 @@
       if (once(d.quake)) mul(d.quake, ['r', 'depth'], S);
       var m = d.meteor;
       if (once(m)) { mul(m, ['x', 'r', 'depth', 'size'], S); if (m.aim) mul(m.aim, ['range', 'depth'], S); }
+      var pl = d.pillar;   // 2026-11-06 밤 땅 융기
+      if (once(pl)) { mul(pl, ['x', 'r', 'depth'], S); if (pl.aim) mul(pl.aim, ['range', 'depth'], S); }
       if (d.male) skill2(d.male);
       if (d.female) skill2(d.female);
     }

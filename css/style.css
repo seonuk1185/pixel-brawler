@@ -290,6 +290,12 @@ body.smooth #screen { image-rendering: auto; }
 }
 .combo b { font-size: 30px; color: #ffd23f; margin-right: 4px; }
 .combo.pop { animation: pop .18s ease-out; }
+/* 콤보 글자(2026-11-06 밤): 콤보 수 밑 작은 글자 LAUNCH · AIR · OTG · CANCEL */
+.combo .ctag { display: block; text-align: right; font-style: normal; font-size: 13px; letter-spacing: 2px; margin-top: -2px; color: #9fe8ff; }
+.combo .ctag-launch { color: #ffb04a; }
+.combo .ctag-air { color: #9fe8ff; }
+.combo .ctag-otg { color: #ff8a8a; }
+.combo .ctag-cancel { color: #d8b0ff; }
 @keyframes pop { from { transform: scale(1.5); } to { transform: scale(1); } }
 
 .keyhint {
