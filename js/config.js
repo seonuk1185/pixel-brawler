@@ -861,6 +861,12 @@
     },
 
     // ---------- 타격감 (전부 여기서 조절, ?debug=1 화면에서 실시간 조절 가능) ----------
+    // 보스 등장 컷인(2026-11-06 밤, main.js drawIntro): 그 판 보스가 처음 나올 때 ms 동안 게임 멈춤 + 경고 띠 + 보스 얼굴판 + 칭호·이름.
+    //   공격·점프로 넘김. color = 얼굴판 색(보스 rageColor 가 있으면 그것), king = 10단계 마왕(길게·보라). titles = 보스 종류 → 칭호
+    bossIntro: { on: true, ms: 1800, kingMs: 2600, color: '#c8361a', kingColor: '#7a2ad8',
+                 titles: { orc: '숲의 폭군', golem: '동굴의 돌 수호자', toad: '늪의 탐식가', scorpion: '모래 속 독침의 왕', giant: '얼음 봉우리의 거인',
+                           captain: '검은 바다의 약탈자', wyvern: '화산을 나는 날개', vampire: '피에 굶주린 밤의 귀족', general: '마왕군 선봉장', demonking: '어둠의 왕좌' } },
+
     juice: {
       hitstopMs: 75,        // 맞는 순간 화면 멈춤
       shakePx: 3,           // 화면 흔들림 세기(도트)
@@ -874,7 +880,11 @@
       sparkCount: 9,        // 튀는 불똥 수
       slashMs: 120,         // 베기 궤적 보이는 시간
       vibrateMs: 18,        // 폰 진동(ms). 0이면 끔
-      timeScale: 1.0        // 전체 속도(디버그용 슬로모션)
+      timeScale: 1.0,       // 전체 속도(디버그용 슬로모션)
+      // 손맛 화려하게(2026-11-06 밤, 형님 「임팩트 화려하게」): 무거운 타 = 콤보 마무리·기술·넘어뜨리는 타·띄우기
+      //   heavyStop = 무거운 타 멈춤 배율, heavyShake / lightShake = 흔들림 배율, spark = 불똥 수 배율, glow = 무거운 타 맞은 곳 둥근 빛(더하기) 세기,
+      //   glowR = 그 빛 반지름(원래 크기 도트), flashHeavy = 무거운 타 하얀 번쩍 길이 배율, numPop = 마무리·치명타 숫자가 처음 튀어나오는 크기
+      impact: { heavyStop: 1.3, heavyShake: 1.25, lightShake: 1.0, spark: 1.3, glow: 0.65, glowR: 30, flashHeavy: 1.6, numPop: 1.35 }
     },
 
     // ---------- 데미지 숫자 모양 (그리는 곳·글꼴 모양: fx.js 의 FONTS) ----------

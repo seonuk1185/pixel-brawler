@@ -282,8 +282,10 @@
     // 나는 적(박쥐) + 점프 공격: 데미지 더 세게 + 늘 땅으로 떨어짐(넘어짐)
     var airHit = jumpHit && target.T && target.T.flying;
     if (airHit) dmg = Math.round(dmg * (target.T.flying.jumpDmgMul || 1));
-    G.hitstop = Math.max(G.hitstop, J.hitstopMs * W.hitstopMul * st.hitstop);
-    FX.shake(J.shakePx * W.shakeMul * st.shake, J.shakeMs * (st.finisher ? 1.5 : 1));
+    // 손맛(2026-11-06 밤, config juice.impact): 무거운 타(마무리·기술·넘어뜨림·띄우기)는 더 오래 멈추고 더 흔들림
+    var IM = J.impact || {}, heavyHit = !!(st.finisher || st.damageStyle || st.knockdown || st.launch);
+    G.hitstop = Math.max(G.hitstop, J.hitstopMs * W.hitstopMul * st.hitstop * (heavyHit ? IM.heavyStop || 1 : 1));
+    FX.shake(J.shakePx * W.shakeMul * st.shake * (heavyHit ? IM.heavyShake || 1 : IM.lightShake || 1), J.shakeMs * (st.finisher ? 1.5 : 1));
     // 콤보 마무리 타: 짧은 화면 번쩍(2026-11-03 HD). 기술은 자기 flash 를 따로 씀
     if (st.finisher && !st.damageStyle && CFG.view.renderScale > 1) Skills.flash({ color: '#fff8e8', alpha: 0.2, ms: 90 });
     var knock = J.knockback * AS * W.knockMul * st.knock;
@@ -298,7 +300,7 @@
       // 누운 적 때리기(OTG, config ai.otg): 땅까지 닿는 공격(hitsDown)만 여기까지 옴 → 데미지 배율, 다시 날아가지 않음
       var otg = target.state === 'down' && !!st.hitsDown;
       if (otg) dmg = Math.max(1, Math.round(dmg * (CFG.ai.otg.dmgMul != null ? CFG.ai.otg.dmgMul : 1)));
-      var res = target.takeHit(dmg, dir, knock, !!st.finisher && !st.noKnockdown, { heavy: heavy, stunMs: st.stunMs, noJuggle: !!st.noJuggle, flashK: st.flashK, otg: otg });   // stunMs = 번개 기술
+      var res = target.takeHit(dmg, dir, knock, !!st.finisher && !st.noKnockdown, { heavy: heavy, stunMs: st.stunMs, noJuggle: !!st.noJuggle, flashK: st.flashK != null ? st.flashK : (heavyHit ? IM.flashHeavy || 1 : 1), otg: otg });   // stunMs = 번개 기술
       if (otg && !res) return;   // 누운 채 맞을 수 있는 때가 아님(일어나는 중 등)
       var hb = target.hurtbox();
       // 불똥은 맞은 몸의 가장자리(플레이어 쪽)에서. 마법은 맞은 곳에서 가장 가까운 몸 위치
@@ -322,7 +324,8 @@
     var impSpr = G.assets.fx && ((st.impactFx && G.assets.fx[st.impactFx]) || G.assets.fx.impact);
     // big = 기술의 큰 불똥(마무리 타처럼 많이·멀리). damageStyle = 기술 숫자 모양(config damageText)
     var big = !otg && !!(st.finisher || st.big);
-    FX.impact(hx, hy, dir, W.sparkColor, Math.round(J.sparkCount * (big ? 1.6 : 1) * (sc < 1 ? 0.7 : 1) * (st.damageStyle ? 1.3 : 1)), big, impSpr, sc);
+    FX.impact(hx, hy, dir, W.sparkColor, Math.round(J.sparkCount * (IM.spark || 1) * (big ? 1.6 : 1) * (sc < 1 ? 0.7 : 1) * (st.damageStyle ? 1.3 : 1)), big, impSpr, sc);
+    if (heavyHit && !otg && IM.glow && Skills.glow) Skills.glow(hx, hy, (IM.glowR || 30) * AS * Math.max(0.8, sc), W.sparkColor || '#fff2c8', 170, IM.glow);   // 무거운 타: 맞은 곳 둥근 빛
     // 숫자: crit = 마무리 모양(「22!」), numStyle = 숫자 모양만 따로(달리며 공격 작은 타 = push). 마지막 = 대상(같은 대상 숫자는 위로 쌓임)
     FX.damage(target.x, topY, dmg, crit || !!(st.finisher || st.crit || (st.damageStyle && st.knockdown)), J, null, crit ? 'agicrit' : st.numStyle || st.damageStyle, target.id || 'dummy', !!st.mergeNum && !crit);
     if (crit) G.crits = (G.crits || 0) + 1;
@@ -521,6 +524,93 @@
     comboEl.innerHTML = '<b>' + G.comboHits + '</b> HIT';
     comboEl.classList.remove('pop'); void comboEl.offsetWidth; comboEl.classList.add('pop');
     comboEl.hidden = false;
+  }
+
+
+  // ---------- 보스 등장 컷인 (2026-11-06 밤, 형님 「보스 나올 때 연출」, 수치 = config bossIntro) ----------
+  //   그 판 보스가 처음 나올 때: 게임이 잠깐 멈추고(intro 동안 step 안 함) 화면이 어두워짐 → 위·아래 「WARNING」 띠가 미끄러져 들어옴 →
+  //   오른쪽에 보스 얼굴·상체(보스 서 있는 그림을 크게, 도트 그대로) + 보스 색 불꽃 배경, 왼쪽에 칭호 + 이름 → 사라지며 싸움 시작.
+  //   공격·점프를 누르면 바로 넘어감(처음 300ms 뒤부터). 10단계 마왕 = 더 길고 보라색 + 이름이 꽝 박힐 때 흔들림
+  var intro = null;
+  function startIntro(e) {
+    var BI = CFG.bossIntro;
+    if (!BI || !BI.on || !e) return;
+    var king = !!e.T.finalBoss;
+    intro = { e: e, t: 0, ms: king ? BI.kingMs : BI.ms, king: king, shook: false,
+              title: (BI.titles && BI.titles[e.type]) || '', color: king ? BI.kingColor : (e.T.rageColor || BI.color) };
+    Input.takeAttack(5000); Input.takeJump(5000);   // 미리 눌러 둔 공격으로 바로 넘어가지 않게
+  }
+  function introStep(ms) {
+    intro.t += ms;
+    if (intro.t > 300 && (Input.takeAttack(250) || Input.takeJump(250))) intro.t = Math.max(intro.t, intro.ms - 220);   // 넘기기: 사라지는 장면만
+    if (intro.king && !intro.shook && intro.t > intro.ms * 0.32) { intro.shook = true; FX.shake(J.shakePx * 3, 500); }
+    if (intro.t >= intro.ms) intro = null;
+  }
+  function introEase(u) { u = clamp(u, 0, 1); return 1 - Math.pow(1 - u, 3); }
+  function drawIntro() {
+    if (!intro) return;
+    var I = intro, e = I.e, T = e.T, u = I.t / I.ms, inK = introEase(I.t / 320), outK = introEase((I.t - (I.ms - 260)) / 260), env = inK * (1 - outK);
+    ctx.save();
+    ctx.globalAlpha = 0.62 * env; ctx.fillStyle = I.king ? '#0c0414' : '#08040a'; ctx.fillRect(-8, -8, LW + 16, LH + 16);
+    ctx.globalAlpha = 1;
+    // 위·아래 경고 띠(검붉은 바탕 + 움직이는 빗금 + WARNING 글자)
+    function band(y, h, dir, k) {
+      var off = (1 - k) * LW * dir + outK * LW * -dir;
+      ctx.save(); ctx.translate(off, 0);
+      ctx.fillStyle = I.king ? 'rgba(30,6,40,0.92)' : 'rgba(40,4,8,0.92)'; ctx.fillRect(-4, y, LW + 8, h);
+      ctx.fillStyle = I.king ? '#8a2aff' : '#d81828';
+      var sh = (I.t / 18) % 16;
+      for (var x = -32 + sh * dir; x < LW + 32; x += 16) { ctx.beginPath(); ctx.moveTo(x, y + h); ctx.lineTo(x + 6, y + h); ctx.lineTo(x + 6 + h * 0.6, y); ctx.lineTo(x + h * 0.6, y); ctx.closePath(); ctx.globalAlpha = 0.55; ctx.fill(); }
+      ctx.globalAlpha = 1; ctx.fillRect(-4, y, LW + 8, 1); ctx.fillRect(-4, y + h - 1, LW + 8, 1);
+      if (Math.floor(I.t / 160) % 2 === 0 || u > 0.3) {
+        ctx.font = 'bold ' + Math.round(h * 0.72) + 'px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.lineWidth = 3; ctx.strokeStyle = '#1a0006'; ctx.fillStyle = '#ffffff';
+        var txt = I.king ? '⚠ WARNING · FINAL BOSS ⚠' : '⚠ WARNING ⚠';
+        ctx.strokeText(txt, LW / 2, y + h / 2 + 1); ctx.fillText(txt, LW / 2, y + h / 2 + 1);
+      }
+      ctx.restore();
+    }
+    var bh = Math.round(LH * 0.075);
+    band(Math.round(LH * 0.12), bh, -1, inK);
+    band(Math.round(LH * 0.86) - bh, bh, 1, introEase((I.t - 80) / 320));
+    // 보스 얼굴판(오른쪽): 보스 색 → 어둠 기울기 + 아래에서 솟는 불꽃 줄
+    var px0 = LW * 0.42, pT = LH * 0.24, pB = LH * 0.86 - bh - 4, slide = (1 - introEase((I.t - 120) / 360)) * LW * 0.6 + outK * LW * 0.6;
+    ctx.save(); ctx.translate(slide, 0);
+    ctx.beginPath(); ctx.moveTo(px0 + 30, pT); ctx.lineTo(LW + 4, pT); ctx.lineTo(LW + 4, pB); ctx.lineTo(px0, pB); ctx.closePath();
+    var gr = ctx.createLinearGradient(px0, 0, LW, 0);
+    gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(0.35, I.color); gr.addColorStop(1, '#1a0408');
+    ctx.globalAlpha = 0.85; ctx.fillStyle = gr; ctx.fill(); ctx.globalAlpha = 1;
+    ctx.save(); ctx.clip();
+    ctx.globalCompositeOperation = 'lighter';
+    for (var f = 0; f < 18; f++) {   // 불꽃 줄(아래에서 위로 흘러감)
+      var fx = px0 + 20 + ((f * 53) % 100) / 100 * (LW - px0), fy = pB - ((I.t * (0.08 + (f % 5) * 0.02) + f * 37) % (pB - pT + 30)), fl = 6 + (f % 4) * 4;
+      ctx.globalAlpha = 0.35; ctx.fillStyle = f % 3 ? I.color : '#fff2c0'; ctx.fillRect(Math.round(fx), Math.round(fy), 2, fl);
+    }
+    ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+    // 보스 그림(서 있기 1장)을 크게, 도트 그대로. 발은 판 아래로 잘려서 상체·얼굴만
+    var A = e.art && (e.art.idle || e.art[T.walkAnim]), im = A && A[0];
+    if (im) {
+      var sc = (I.king ? 3 : 2.4) * (pB - pT) / Math.max(60, T.height * 1.6), sm = ctx.imageSmoothingEnabled;
+      ctx.imageSmoothingEnabled = false;
+      ctx.translate(Math.round(LW * 0.76), Math.round(pB + T.height * sc * 0.42)); ctx.scale(sc * (T.drawScale || 1), sc * (T.drawScale || 1));
+      Assets.blit(ctx, im, T.pivot.x, T.pivot.y);
+      ctx.imageSmoothingEnabled = sm;
+    }
+    ctx.restore();
+    ctx.fillStyle = I.color; ctx.fillRect(px0 + 2, pB - 2, LW, 2);
+    ctx.restore();
+    // 이름(왼쪽): 칭호(작게, 보스 색) + 이름(크게, 흰색 + 진한 테두리)
+    var nx = LW * 0.07 - (1 - introEase((I.t - 220) / 320)) * LW * 0.5 - outK * LW * 0.5, ny = LH * 0.5;
+    var big = Math.round(LH * (I.king ? 0.13 : 0.11)), small = Math.round(LH * 0.055);
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'; ctx.lineJoin = 'round';
+    if (I.title) {
+      ctx.font = 'bold ' + small + 'px system-ui, sans-serif'; ctx.lineWidth = 4; ctx.strokeStyle = '#140208'; ctx.fillStyle = I.king ? '#d8b0ff' : '#ffd27a';
+      ctx.strokeText(I.title, nx, ny - big * 0.95); ctx.fillText(I.title, nx, ny - big * 0.95);
+    }
+    ctx.font = '900 ' + big + 'px system-ui, sans-serif'; ctx.lineWidth = 6; ctx.strokeStyle = '#140208';
+    ctx.strokeText(e.label, nx, ny); ctx.fillStyle = '#ffffff'; ctx.fillText(e.label, nx, ny);
+    ctx.fillStyle = I.color; ctx.fillRect(nx, ny + 6, Math.min(LW * 0.4, big * e.label.length * 0.95) * introEase((I.t - 380) / 300), 3);
+    ctx.restore();
   }
 
   // ================= 판 진행 =================
@@ -1130,7 +1220,10 @@
     if (S.locked) {
       S.waveT += dt;
       for (var i = S.queue.length - 1; i >= 0; i--) {
-        if (S.queue[i].at <= S.waveT) { spawnEnemy(S.queue[i].type, S.queue[i].side, S.queue[i].opt); S.queue.splice(i, 1); }
+        if (S.queue[i].at <= S.waveT) {
+          var ne = spawnEnemy(S.queue[i].type, S.queue[i].side, S.queue[i].opt); S.queue.splice(i, 1);
+          if (ne.T.boss && !S.introDone) { S.introDone = true; startIntro(ne); }   // 보스 등장 컷인(판마다 한 번)
+        }
       }
       rescueStuck(dt);
       // 보스 화남: 체력 절반 아래 → 빨라지고 졸개를 부름
@@ -1334,6 +1427,7 @@
     if (G.paused) return;   // 스테이지 고르기 화면: 멈춤
     FX.updateShake(realMs);
     Skills.tickReal(realMs);
+    if (intro) { introStep(realMs); return; }               // 보스 등장 컷인 동안: 게임 멈춤(2026-11-06 밤)
     if (G.hitstop > 0) { G.hitstop -= realMs; return; }   // 멈춤: 아무것도 안 움직임
     var dt = realMs * J.timeScale;
     if (G.slowT > 0) { G.slowT -= realMs; dt *= 0.3; }
@@ -1460,6 +1554,7 @@
     Skills.drawOver(ctx, camX);                   // 번개 기둥·회전 원
     FX.draw(ctx, camX, false);
     Skills.drawFlash(ctx, LW, LH);                // 기술 맞는 순간 화면 번쩍
+    drawIntro();                                  // 보스 등장 컷인(맨 위)
 
     if (DEBUG) drawDebug(camX);
     if (MODE === 'stage') updateHud();
@@ -1582,7 +1677,7 @@
     FX.list.length = 0;
     Projectiles.clear();
     Skills.clear();
-    rocks.length = 0; puddles.length = 0; shots.length = 0; cannons.length = 0; spikes.length = 0; rings.length = 0; shove = null;
+    rocks.length = 0; puddles.length = 0; shots.length = 0; cannons.length = 0; spikes.length = 0; rings.length = 0; shove = null; intro = null;
     // 이어 하기 기록(엔딩 총 시간): 「다음 스테이지」·「다시 하기」로 온 것(G.keepRun)이 아니면 이 판부터 새로
     if (!G.keepRun || !G.run) G.run = { from: CFG.stage.id, ms: {} };
     G.keepRun = false;

@@ -426,7 +426,14 @@
       // 위치 = 묶음(같은 대상) 자리 + 그 안의 줄 높이(off). 묶음째 같이 떠오름
       var lp = linePos(f, 0), fh = (FONT_H[st.font] || 8) * Math.max(1, st.scale || 1);
       ctx.globalAlpha = k > 0.7 ? Math.max(0, 1 - (k - 0.7) / 0.3) : 1;
-      drawPixelText(ctx, f.n, snapPx(lp.x - camX), snapPx(lp.y - fh), st);
+      // 마무리·치명타 숫자(crit): 처음에 numPop 배 크게 튀어나왔다가 줄어듦(2026-11-06 밤, config juice.impact.numPop)
+      var IMP = window.CFG && CFG.juice.impact, NP = (IMP && IMP.numPop) || 1, pk = (D.popK || 0.12) * 1.8;
+      if (f.crit && NP > 1 && k < pk) {
+        var zs = 1 + (NP - 1) * (1 - k / pk), zx = snapPx(lp.x - camX) + (f.w || 0) / 2, zy = snapPx(lp.y - fh / 2);
+        ctx.save(); ctx.translate(zx, zy); ctx.scale(zs, zs); ctx.translate(-zx, -zy);
+        drawPixelText(ctx, f.n, snapPx(lp.x - camX), snapPx(lp.y - fh), st);
+        ctx.restore();
+      } else drawPixelText(ctx, f.n, snapPx(lp.x - camX), snapPx(lp.y - fh), st);
       ctx.globalAlpha = 1;
     }
   }
