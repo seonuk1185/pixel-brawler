@@ -2310,7 +2310,7 @@
   };
   function statBadges() {
     var n = Growth.pts;
-    document.querySelectorAll('.statbtn .badge, .statopen .badge').forEach(function (b) { b.hidden = !n; b.textContent = n > 99 ? '99+' : n; });
+    document.querySelectorAll('.statbtn .badge, .statopen:not(.skopen) .badge').forEach(function (b) { b.hidden = !n; b.textContent = n > 99 ? '99+' : n; });
   }
   function renderStats() {
     var rows = document.getElementById('statRows'), focusK = document.activeElement && document.activeElement.dataset && document.activeElement.dataset.k;
@@ -2351,7 +2351,7 @@
     if (B.menu && !B.menu.hidden) openMenu(B.menu, B.menu.querySelector('.statopen'));
   }
   document.getElementById('btnStat').addEventListener('click', function () { openStats(); this.blur(); });
-  document.querySelectorAll('.statopen').forEach(function (b) { b.addEventListener('click', function () { openStats(); }); });
+  document.querySelectorAll('.statopen:not(.skopen)').forEach(function (b) { b.addEventListener('click', function () { openStats(); }); });
   document.getElementById('btnStatAuto').addEventListener('click', function () { if (Growth.auto(G.classKey)) { refreshGrowth(); renderStats(); } });
   document.getElementById('btnStatReset').addEventListener('click', function () { Growth.reset(); refreshGrowth(); renderStats(); });
   document.getElementById('btnStatClose').addEventListener('click', closeStats);
