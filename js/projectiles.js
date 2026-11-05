@@ -6,7 +6,10 @@
   // o = { x, y(화면 높이, 발 기준이 아닌 실제 y), z(걷는 줄 = 쏜 사람 발 y), dir(1/-1), speed(도트/초), range(도트),
   //       box: { w, h } 탄 크기, depth = 위아래(줄) 판정 폭, frames = 그림 목록, fps, pivot, burstAtEnd,
   //       backReach = 처음 한 번은 나온 곳에서 이만큼 뒤(쏜 사람 쪽)까지도 확인 → 바로 앞에 붙은 적을 탄이 건너뛰지 않게,
+  //       skip(대상) = true 면 그 대상은 안 맞음(꿰뚫는 기술 탄: 이미 맞은 적·누운 적, 2026-11-06),
+  //       drawFn(ctx) = 그림 대신 코드로 그리기, fade = 끝나기 전 이 거리(도트) 동안 흐려짐,
   //       ...아무 값(main 이 씀) }
+  //   onImpact 안에서 p.dead = false 로 되돌리면 꿰뚫고 계속 날아감(검기·Lv5 얼음창)
   function spawn(o) {
     o.trav = 0; o.t = 0; o.dead = false;
     list.push(o);
@@ -38,7 +41,7 @@
             if (p.dir > 0) b.x0 -= p.backReach; else b.x1 += p.backReach;
           }
           targets.forEach(function (t) {
-            if (!t || (t.canBeHit && !t.canBeHit())) return;
+            if (!t || (t.canBeHit && !t.canBeHit()) || (p.skip && p.skip(t))) return;
             if (!overlap(b, t.hurtbox())) return;
             var d = (t.x - p.x) * p.dir;          // 앞쪽으로 가장 가까운 대상 먼저
             if (d < best) { best = d; hit = t; }
@@ -61,6 +64,13 @@
     list.forEach(function (p) {
       var fr = p.frames && p.frames.length ? p.frames[Math.floor(p.t / 1000 * (p.fps || 12)) % p.frames.length] : null;
       var x = snapPx(p.x - camX), y = snapPx(p.y);
+      var fa = p.fade ? Math.max(0, Math.min(1, (p.range - p.trav) / p.fade)) : 1;
+      if (!fr && p.drawFn) {   // 코드로 그린 탄(그림이 없을 때 검기 등)
+        ctx.save(); ctx.translate(x, y); if (p.dir < 0) ctx.scale(-1, 1); ctx.globalAlpha = fa;
+        if (p.glow) p.glow(ctx);
+        p.drawFn(ctx); ctx.restore();
+        return;
+      }
       if (!fr) {   // 그림이 없으면 보라색 동그라미
         ctx.fillStyle = '#c99bff'; ctx.fillRect(x - 5, y - 4, 10, 8);
         ctx.fillStyle = '#ffffff'; ctx.fillRect(x - 2, y - 2, 4, 4);
@@ -68,6 +78,7 @@
       }
       var pv = p.pivot || Assets.centerOf(fr);
       ctx.save(); ctx.translate(x, y); if (p.dir < 0) ctx.scale(-1, 1);   // 그림은 오른쪽으로 날아감
+      if (fa < 1) ctx.globalAlpha = fa;
       if (p.scale && p.scale !== 1) ctx.scale(p.scale, p.scale);        // 크기 배율(기술 화염구 = 마법탄 그림을 크게)
       if (p.glow) p.glow(ctx);                                           // 그림 뒤 빛(화염구)
       Assets.blit(ctx, fr, pv.x, pv.y);

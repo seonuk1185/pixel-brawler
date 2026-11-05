@@ -205,7 +205,8 @@
   };
 
   // ---------- 직업 기술 (2026-11-03): 기사 2개 · 법사 2개, 견습은 없음 ----------
-  // 키보드 U(또는 C) = 기술 A, I(또는 V) = 기술 B / 폰 = 공격 버튼 위 작은 동그라미 2개. MP 없음, 쿨타임만.
+  //   2026-11-06 성장 4단계: 기사·법사 각 4개(+ 늘 켜진 기술 2개, 아래 SKILL_TREE). 기술 = 마나(mp) + 쿨타임, 기술 Lv1~5
+  // 키보드 U(또는 C) · I(V) · O(B) · P(N) = 기술 칸 1~4 (Lv13 전엔 2칸) / 폰 = 공격 버튼 둘레 작은 동그라미. 칸에 무엇을 끼울지는 기술 창
   // 보통 콤보의 「판정 끝난 뒤(회복 장)」에서 바로 끊고 나갈 수 있다(판정 장 도중은 안 됨 → 그 다음 장에서 나감).
   //
   // 기술 = 「동작(motion)」 하나 + 「효과(fx)」 몇 개 (art\stage1\README 「스킬 = 동작 모음집 + 효과」, skills\motions.json).
@@ -235,7 +236,9 @@
 
   // SKILLS = 기술: 어떤 동작 + 어떤 효과를 언제·어디에. 시각은 「장 번호」로 적는다 → 동작의 ms 가 바뀌면 판정·효과가 같이 따라간다.
   //   (skills.js 가 동작의 ms 로 「기술 시작부터 몇 ms」로 바꿔서 쓴다. 장 번호 대신 ms 로 직접 적어도 됨: at: [시작, 끝])
-  //   name = 이름, icon = 버튼 글자, cooldownMs = 쿨타임, motion = 동작 이름(MOTIONS), motionMs = 이 기술만 동작 시간 바꾸기(없으면 MOTIONS 의 ms)
+  //   name = 이름, icon = 버튼 글자, cooldownMs = 쿨타임(기술 Lv1), motion = 동작 이름(MOTIONS), motionMs = 이 기술만 동작 시간 바꾸기(없으면 MOTIONS 의 ms)
+  //   mp = 쓸 때 드는 마나(기술 Lv1, 2026-11-06), desc = 기술 창 설명(쉬운 말), lv5 = 기술 Lv5 덤 { dist(돌진 거리) / area(범위 배율) /
+  //        extra(검기 하나 더) / pierce(꿰뚫기), say = 기술 창에 쓰는 말 }, look = 효과 그림 갈아 끼우는 곳(아래 「성장 4단계 새 기술」)
   //   damageStyle = 데미지 숫자 모양(CFG.damageText), darken = 시작 때 배경 어둡게 { ms, alpha }
   //   (효과 그림 fx 의 scale = 그 효과만 크기 배율. 모든 기술 효과는 이미 skillFxScale(2)배 → 회전 고리는 0.75 를 곱해 1.5배: 몸을 감싸는 크기)
   //   iframes = 무적 { frames: [첫 장, 끝 장] }
@@ -294,11 +297,27 @@
     return { frame: 3, gapMs: gapMs, x: xs, aim: { range: 200, depth: 60 }, markMs: 240, r: 34, depth: 32, ms: 220,
              art: 'lightning_bolt', hitArt: 'lightning_impact', hitFromFrame: 1, color: '#59e6ff', core: '#ffffff', glow: '#fff27a', hits: BOLT_HITS };
   }
+  // ---------- 성장 4단계 새 기술 (2026-11-06): 검기 날리기·대지 내려찍기 / 얼음창·메테오 ----------
+  // 그림은 아직 임시: 있는 효과 그림(slash_wave·fireball·fire_explosion·마법탄)을 물들이거나 코드로 그린 고리·파편.
+  //   look = 그림 갈아 끼우는 곳(효과 그림 이름 = 아래 skillFx). 새 그림이 오면 skillFx 에 이름·장 수를 적고 look 값만 바꾸면 됨
+  //   (판정·데미지는 안 건드림). 그림이 없거나(count 0) 못 불러오면 저절로 지금 임시 그림
+  // 검기: 날아가며 길 위의 적을 모두 꿰뚫음(적마다 한 번). 누운 적은 위로 지나감(hitsDown 없음)
+  var WAVE_HIT = { dmg: 1.5, hitstop: 0.6, knock: 1.1, shake: 1.2, spark: 1.2, big: true, hitY: -58 };
+  // 내려찍기: 착지 자리 양옆 땅 충격파. 맞은 적은 짧게 기절(stunMs, 넘어뜨리지는 않음), 누운 적도 맞음
+  var SLAM_HIT = { dmg: 2.3, hitstop: 1.6, knock: 0.6, shake: 2.6, stunMs: 700, spark: 1.4, big: true, hitsDown: true, away: true, noJuggle: true,
+                   flash: { color: '#fff0d0', alpha: 0.35, ms: 140 }, slowMs: 200 };
+  // 얼음창: 처음 맞은 적 하나(Lv5 = 꿰뚫음) + 느려짐(slow: ms 동안 그 적의 시간이 mul 배로 흐름 → 걷기·공격·맞는 동작 전부 느려짐, 보스는 bossMul)
+  var ICE_HIT = { dmg: 1.9, hitstop: 1.1, knock: 0.9, shake: 1.3, spark: 1.2, big: true };
+  // 메테오: 떨어진 자리에서 크게 터짐, 둘레 적 넘어뜨림, 누운 적도 맞음
+  var METEOR_HIT = { dmg: 4.2, hitstop: 2.4, knock: 2.8, shake: 3.6, knockdown: true, spark: 1.6, big: true, hitsDown: true,
+                     flash: { color: '#ffc070', alpha: 0.55, ms: 220 }, slowMs: 320 };
   var SKILLS = {
     knight: {
       // 돌진베기: 1~2장 동안 앞으로 약 120도트 미끄러지며 길 위의 적을 한 번씩 벤다(무적), 베는 장 다음 장에 「쾅」 멈춤
-      A: {
-        name: '돌진베기', icon: '돌', cooldownMs: 4000, damageStyle: 'skill_knight', motion: 'motion_dash',
+      dash: {
+        name: '돌진베기', icon: '돌', mp: 6, cooldownMs: 4000, damageStyle: 'skill_knight', motion: 'motion_dash',
+        desc: '앞으로 미끄러지며 길 위의 적을 모두 베요. 쓰는 동안 안 맞아요',
+        lv5: { dist: 1.3, say: '돌진 거리 +30%' },
         darken: { ms: 460, alpha: 0.45 },
         iframes: { frames: [0, 4] },
         move: { frames: [1, 2], dist: 120 },
@@ -329,8 +348,10 @@
         }
       },
       // 회전베기: 제자리에서 한 바퀴 돌며 1·3·5장에 앞뒤 둘레를 벤다, 5장(마무리)에 넘어뜨림 + 둘레 적을 밀어냄
-      B: {
-        name: '회전베기', icon: '회', cooldownMs: 7000, damageStyle: 'skill_knight', motion: 'motion_spin',
+      spin: {
+        name: '회전베기', icon: '회', mp: 10, cooldownMs: 7000, damageStyle: 'skill_knight', motion: 'motion_spin',
+        desc: '제자리에서 한 바퀴 돌며 둘레의 적을 세 번 베고 밀어내요',
+        lv5: { area: 1.25, say: '베는 둘레 +25%' },
         darken: { ms: 600, alpha: 0.45 },
         iframes: { frames: [0, 5] },
         hits: [ merge(SPIN_HIT, { frame: 1 }), merge(SPIN_HIT, { frame: 3 }), merge(SPIN_LAST, { frame: 5 }) ],
@@ -350,13 +371,48 @@
           ],
           placeholder: { anim: 'attack2', f: [0, 1, 2, 3, 1, 2, 3, 4], d: [90, 75, 75, 75, 75, 75, 125, 130], spin: [90, 560], everyMs: 75 }
         }
+      },
+      // 검기 날리기(2026-11-06): 기본 1타처럼 휘둘러(동작 그림 없음 → 공격 그림) 2장에 초승달 검기를 앞으로 날림.
+      //   shot = 날아가는 검기 { frame = 나가는 장, x,y = 나오는 곳, speed = 1초에 도트, range = 최대 거리, box = 크기, depth = 위아래 폭,
+      //          hit = 데미지, gapMs = Lv5 두 번째 검기가 나가는 간격 }
+      wave: {
+        name: '검기 날리기', icon: '검', mp: 8, cooldownMs: 5000, damageStyle: 'skill_knight',
+        desc: '칼을 휘둘러 초승달 검기를 멀리 날려요. 길 위의 적을 모두 꿰뚫어요',
+        lv5: { extra: 1, say: '검기 2번 날림' },
+        darken: { ms: 320, alpha: 0.3 },
+        iframes: [0, 200],
+        shot: { frame: 2, x: 40, y: -60, speed: 380, range: 320, box: { w: 54, h: 76 }, depth: 22, gapMs: 150, hit: WAVE_HIT },
+        look: { proj: 'slash_wave', fps: 14, scale: 0.85, tint: '#a8d4ff' },
+        fx: [ { frame: 2, type: 'slash', x: 30, y: -62, rot: -8, sx: 1.4, sy: 1.2, tint: '#a8d4ff', ms: 200 } ],
+        placeholder: { anim: 'attack1', f: [0, 1, 3, 3, 4], d: [70, 50, 130, 110, 110] }
+      },
+      // 대지 내려찍기(2026-11-06): 뛰어올라(점프 그림) 칼을 내려찍으며(3타 그림) 착지 → 양옆 땅 충격파.
+      //   leap = 뛰기 { at: [뜨는 ms, 내려앉는 ms], h = 높이(도트), fwd = 앞으로 가는 거리 }, 그동안 무적(iframes)
+      //   quake = 충격파 { at = 터지는 ms, r = 양옆 반지름, depth = 위아래 폭, hit }
+      //   placeholder.anims = 장마다 다른 그림(점프 3장 → 3타 3장)
+      slam: {
+        name: '대지 내려찍기', icon: '땅', mp: 14, cooldownMs: 9000, damageStyle: 'skill_knight',
+        desc: '뛰어올라 땅을 내려찍어요. 양옆의 적이 모두 맞고 잠깐 기절해요(누운 적도 맞아요)',
+        lv5: { area: 1.35, say: '충격파 크기 +35%' },
+        darken: { ms: 700, alpha: 0.45 },
+        iframes: [0, 560],
+        leap: { at: [80, 380], h: 46, fwd: 26 },
+        quake: { at: 380, r: 130, depth: 40, hit: SLAM_HIT },
+        look: { ring: null },
+        fx: [ { frame: 0, type: 'dust' } ],
+        placeholder: { anims: ['jump', 'jump', 'jump', 'attack3', 'attack3', 'attack3'], f: [0, 1, 2, 3, 4, 5], d: [80, 120, 100, 80, 200, 160] },
+        female: {
+          placeholder: { anims: ['jump', 'jump', 'jump', 'attack3', 'attack3', 'attack3'], f: [0, 1, 2, 0, 1, 4], d: [80, 120, 100, 80, 200, 160] }
+        }
       }
     },
     mage: {
       // 화염구: 마법탄보다 크고 묵직한 불덩이. 처음 맞은 적(또는 끝까지 날아간 곳)에서 크게 터져 주변을 넘어뜨림
       //   발사 = 남 3장(+127,-65, 260/초, 240) / 여 2장(+85,-75, 340/초, 220) (그림 자료 motions.json)
-      A: {
-        name: '화염구', icon: '화', cooldownMs: 4500, damageStyle: 'skill_fire', motion: 'motion_cast_forward',
+      fireball: {
+        name: '화염구', icon: '화', mp: 10, cooldownMs: 4500, damageStyle: 'skill_fire', motion: 'motion_cast_forward',
+        desc: '큰 불덩이를 던져요. 맞은 곳에서 크게 터져 둘레의 적을 넘어뜨려요',
+        lv5: { area: 1.3, say: '폭발 크기 +30%' },
         darken: { ms: 480, alpha: 0.4 },
         iframes: { frames: [0, 3] },
         cast: { frame: 3, x: 127, y: -65, speed: 260, range: 240, box: { w: 56, h: 46 }, depth: 18, backReach: 110,
@@ -372,8 +428,10 @@
       },
       // 번개: 3장(내리꽂기)부터 법사 앞 바닥 3곳에 차례로 화면 맨 위에서 번개가 꽂힌다(가까운 곳 → 먼 곳).
       //   맞으면 잠깐 감전(stun), 마지막은 넘어뜨림. 가운데 번개 자리 = 그림 자료의 낙하점(남 +120, 여 +110)
-      B: {
-        name: '번개', icon: '번', cooldownMs: 8000, damageStyle: 'skill_bolt', motion: 'motion_cast_sky',
+      bolt: {
+        name: '번개', icon: '번', mp: 16, cooldownMs: 8000, damageStyle: 'skill_bolt', motion: 'motion_cast_sky',
+        desc: '앞쪽 가까운 적에게 번개 세 줄기를 내리꽂아요. 맞은 적은 잠깐 감전돼 멈춰요',
+        lv5: { area: 1.3, say: '번개 굵기 +30%' },
         darken: { ms: 950, alpha: 0.5 },
         iframes: { frames: [0, 2] },
         strikes: strikesOf(120, [75, 120, 165]),
@@ -382,8 +440,82 @@
           strikes: strikesOf(100, [70, 110, 150]),
           placeholder: { anim: 'attack3', f: [0, 1, 2, 2, 2, 3, 4], d: [80, 90, 160, 160, 120, 80, 70] }
         }
+      },
+      // 얼음창(2026-11-06): 화염구와 같은 「앞으로 던지기」 동작. 빠르고 가는 얼음창 → 처음 맞은 적 하나(Lv5 = 꿰뚫음) + 느려짐.
+      //   cast 는 화염구와 같은 값(burst 없음 = 터지지 않음). pierce = 꿰뚫기, slow = 느려짐 { ms, mul, bossMul }
+      ice: {
+        name: '얼음창', icon: '얼', mp: 8, cooldownMs: 5000, damageStyle: 'skill_ice', motion: 'motion_cast_forward',
+        desc: '얼음창을 빠르게 던져요. 맞은 적은 잠깐 느려져요(걷기·공격 모두)',
+        lv5: { pierce: true, say: '꿰뚫고 날아감' },
+        darken: { ms: 360, alpha: 0.3 },
+        iframes: { frames: [0, 3] },
+        cast: { frame: 3, x: 127, y: -65, speed: 460, range: 300, box: { w: 50, h: 30 }, depth: 18, backReach: 110,
+                tint: '#9fe8ff', tintK: 0.85, scale: 1.5, hit: ICE_HIT, slow: { ms: 2600, mul: 0.5, bossMul: 0.72 } },
+        look: { proj: null, hit: null },
+        fx: [ { frame: 3, type: 'spark', x: 127, y: -65, scale: 1.4, tint: '#bff4ff' } ],
+        placeholder: { anim: 'attack3', f: [0, 1, 2, 3, 4, 5], d: [80, 90, 60, 150, 110, 110] },
+        female: {
+          cast: { frame: 2, x: 85, y: -75, speed: 520, range: 280, box: { w: 50, h: 30 }, depth: 18, backReach: 75,
+                  tint: '#9fe8ff', tintK: 0.85, scale: 1.5, hit: ICE_HIT, slow: { ms: 2600, mul: 0.5, bossMul: 0.72 } },
+          fx: [ { frame: 2, type: 'spark', x: 85, y: -75, scale: 1.4, tint: '#bff4ff' } ],
+          placeholder: { anim: 'attack3', f: [0, 1, 2, 3, 4], d: [70, 90, 150, 140, 150] }
+        }
+      },
+      // 메테오(2026-11-06): 「하늘로 들기」 동작. 3장에 앞쪽 바닥(가까운 적 발밑, 없으면 x 만큼 앞)에 빨간 표시 → markMs 뒤
+      //   화면 위에서 큰 운석이 비스듬히 fallMs 동안 떨어져 크게 터짐(r, depth). 법사가 다른 걸 해도 운석은 그대로 떨어짐
+      meteor: {
+        name: '메테오', icon: '운', mp: 30, cooldownMs: 16000, damageStyle: 'skill_fire', motion: 'motion_cast_sky',
+        desc: '앞쪽 바닥에 큰 운석을 떨어뜨려요. 크게 터져 둘레의 적을 모두 넘어뜨려요(누운 적도 맞아요)',
+        lv5: { area: 1.3, say: '폭발 크기 +30%' },
+        darken: { ms: 1300, alpha: 0.55 },
+        iframes: { frames: [0, 2] },
+        meteor: { frame: 3, x: 140, aim: { range: 240, depth: 70 }, markMs: 560, fallMs: 380, r: 120, depth: 60, size: 30, hit: METEOR_HIT },
+        look: { rock: 'fireball', boom: 'fire_explosion' },
+        placeholder: { anim: 'attack2', f: [0, 1, 2, 3, 3, 3, 4], d: [80, 90, 60, 160, 160, 110, 100] },
+        female: {
+          placeholder: { anim: 'attack3', f: [0, 1, 2, 2, 2, 3, 4], d: [80, 90, 160, 160, 120, 80, 70] }
+        }
       }
     }
+  };
+
+  // ---------- 기술 책 (성장 4단계, 2026-11-06, 기획\성장시스템-설계안.md) : 직업마다 10개 = 쓰는 기술(active) 6 + 늘 켜진 기술(passive) 4 ----------
+  // 순서 = 기술 창에 나오는 순서. unlock = 그 레벨이 되면 열림(0 = 전직 즉시). 전직 뒤 대략 2레벨마다 하나 → Lv23 에 10개 다 열림
+  //   두 번째 쓰는 기술은 Lv8(전직 바로 다음 레벨): 3판(도착 Lv7) 도중에 열려 「기술이 생겼다」를 빨리 느끼게(자동 조종 시험으로 정함)
+  //   쓰는 기술 = SKILLS[직업][id] (위). passive = 늘 켜진 기술 { stat = 무엇이 오르나, val = 기술 Lv1~5 값 }
+  //     stat: 'phys' = 물리 공격 +% (검 콤보·기사 기술) / 'magic' = 마법 공격 +% / 'guard' = 받는 피해 -% / 'mpRegen' = 마나 회복 +%
+  //   soon = 아직 안 만든 기술(2차, 기술 창에 「준비 중」 자물쇠로만 보임). 만들면 soon 을 지우고 SKILLS 에 동작을 넣으면 됨
+  //   메모(2026-11-06): 메테오(필살)는 지금 만든 기술이라 Lv15 에 둠. 2차로 순간이동·불기둥이 생기면 Lv23 으로 옮기는 것도 생각(숫자 하나)
+  // 예비 후보(아직 목록에 없음): 집중 · 마력 폭주 · 서리 갑옷
+  var SKILL_TREE = {
+    knight: [
+      { id: 'dash', unlock: 0 },
+      { id: 'spin', unlock: 8 },
+      { id: 'mastery', unlock: 10, name: '검 숙련', icon: '숙', desc: '검으로 하는 모든 공격(콤보·기술)이 세져요',
+        passive: { stat: 'phys', val: [0.06, 0.09, 0.12, 0.15, 0.2] } },
+      { id: 'skin', unlock: 11, name: '강철 피부', icon: '피', desc: '적에게 받는 피해가 줄어요',
+        passive: { stat: 'guard', val: [0.05, 0.08, 0.11, 0.14, 0.18] } },
+      { id: 'wave', unlock: 13 },
+      { id: 'slam', unlock: 15 },
+      { id: 'grit', unlock: 17, soon: true, name: '투지', icon: '투', desc: '체력이 적을수록 공격이 세져요', passive: true },
+      { id: 'upper', unlock: 19, soon: true, name: '올려베기', icon: '올', desc: '적을 공중으로 띄워 콤보를 이어 쳐요' },
+      { id: 'counter', unlock: 21, soon: true, name: '반격', icon: '반', desc: '맞는 순간 가끔 바로 되받아 베어요', passive: true },
+      { id: 'holy', unlock: 23, soon: true, name: '성검 낙뢰', icon: '성', desc: '(필살) 칼을 하늘로 들어 번개 칼을 여러 개 꽂아요' }
+    ],
+    mage: [
+      { id: 'fireball', unlock: 0 },
+      { id: 'bolt', unlock: 8 },
+      { id: 'amp', unlock: 10, name: '원소 증폭', icon: '증', desc: '모든 마법(지팡이 타·마법탄·기술)이 세져요',
+        passive: { stat: 'magic', val: [0.06, 0.09, 0.12, 0.15, 0.2] } },
+      { id: 'flow', unlock: 11, name: '마나 순환', icon: '순', desc: '마나가 더 빨리 차요',
+        passive: { stat: 'mpRegen', val: [0.2, 0.35, 0.5, 0.65, 0.85] } },
+      { id: 'ice', unlock: 13 },
+      { id: 'meteor', unlock: 15 },
+      { id: 'blink', unlock: 17, soon: true, name: '순간이동', icon: '이', desc: '앞이나 뒤로 짧게 사라졌다 나타나요(피하기)' },
+      { id: 'shield', unlock: 19, soon: true, name: '마나 방패', icon: '방', desc: '받는 피해 일부를 마나가 대신 받아요', passive: true },
+      { id: 'pillar', unlock: 21, soon: true, name: '불기둥', icon: '기', desc: '앞 바닥에서 불기둥이 솟아 적을 띄워요' },
+      { id: 'brand', unlock: 23, soon: true, name: '원소 낙인', icon: '낙', desc: '마법에 맞은 적이 잠깐 더 아프게 맞아요', passive: true }
+    ]
   };
 
   // 새 그림(art\stage1): 빈손 남/여 + 손 위치 json → 무기를 코드로 손에 붙인다
@@ -762,6 +894,12 @@
                       pop: { top: '#fff4d0', bottom: '#ffb040' } },
       skill_bolt:   { font: 'giant', scale: 1, bold: true, top: '#fff6a0', bottom: '#5ae6ff', outline: '#14244a', shadow: 'rgba(6,12,30,0.45)',
                       pop: { top: '#ffffff', bottom: '#fff6a0' } },
+      // 얼음창(2026-11-06): 흰색 → 얼음 파랑
+      skill_ice:    { font: 'giant', scale: 1, bold: true, top: '#ffffff', bottom: '#7fe0ff', outline: '#0e2a48', shadow: 'rgba(6,14,30,0.45)',
+                      pop: { top: '#ffffff', bottom: '#d8f8ff' } },
+      // 마나가 모자라 기술이 안 나갈 때 머리 위 「MP 부족」(2026-11-06, 작은 파란 글자)
+      nomp: { font: 'large', scale: 1, top: '#d8ecff', bottom: '#6aa8ff', outline: '#10204a', shadow: 'rgba(6,10,30,0.4)',
+              pop: { top: '#ffffff', bottom: '#cfe4ff' } },
       // 달리며 공격의 밀고 가는 작은 타(2026-11-03): 보통 숫자보다 작고(large 8도트) 하늘색 → 마무리 숫자와 구분
       push: { font: 'large', scale: 1, top: '#e8fbff', bottom: '#8fd6ff', outline: '#163048', shadow: 'rgba(8,14,30,0.35)',
               pop: { top: '#ffffff', bottom: '#d8f4ff' } },
@@ -2605,12 +2743,29 @@
       jump: ['KeyK', 'KeyX', 'Space'], // 점프 (2026-11-03). 달리기 = 좌/우를 빠르게 두 번(CFG.move.doubleTapMs)
       // 기술 (2026-11-03): WASD 이동·J 공격·K 점프와 안 겹치게 J/K 바로 위 U/I, 왼손은 Z(공격)·X(점프) 옆 C/V
       skillA: ['KeyU', 'KeyC'],
-      skillB: ['KeyI', 'KeyV']
+      skillB: ['KeyI', 'KeyV'],
+      // 기술 3·4번 칸 (2026-11-06, Lv13 부터): 오른손은 U·I 옆 O·P, 왼손은 C·V 옆 B·N
+      skillC: ['KeyO', 'KeyB'],
+      skillD: ['KeyP', 'KeyN']
     },
 
     // ---------- 직업 기술 (위 SKILLS 설명 참고) ----------
     // bufferMs = 미리 눌러 둔 기술 입력 기억 시간, cancelAfterHit = 보통 콤보 타의 판정이 끝난 장부터 기술로 끊을 수 있음
-    skills: { bufferMs: 300, cancelAfterHit: true, knight: SKILLS.knight, mage: SKILLS.mage },
+    // 성장 4단계(2026-11-06): 기술 = 마나 + 쿨타임. 기술 창(main.js)에서 기술 점수로 Lv1 → 5, 칸에 끼움. 계산·저장 = growth.js 의 기술 책(Growth.book)
+    //   tree = 직업마다 기술 10개(위 SKILL_TREE). 전직하면 unlock 0 기술이 Lv1, 레벨이 오르면 저절로 열림(Lv1), 점수로 Lv5 까지
+    //   perLv = 전직 뒤 레벨마다 기술 점수(예전 저장 = 지금 Lv - 전직 Lv, 전직 Lv 를 모르면 classLv). maxLv = 기술 최고 Lv
+    //   slots = 기술 칸 수 [처음, moreLv 부터] (폰 동그라미 · 키보드 U I O P)
+    //   curve = 기술 Lv1~5 배율: dmg = 데미지(맞는 모든 판정에 곱함), cd = 쿨타임, mp = 마나 (마나는 반올림, 쿨타임은 0.1초 단위)
+    //     Lv5 는 거기에 더해 기술마다 lv5(크기 +·두 번 날림 등, say = 기술 창에 쓰는 말)
+    //   noMpMs = 마나가 모자랄 때 「MP 부족」 글자를 다시 띄우기까지 최소 간격
+    //   test = 시험 버튼(견습/기사/법사)으로 저장된 직업과 다른 직업을 입었을 때: 이번 창에서만 이번에 만든 기술 전부 Lv1 + 칸 4개 +
+    //     기술 점수 pts 점(Lv5 까지 올려 보기). 저장 안 함(저장된 직업의 기술 책은 그대로)
+    //   botPlan = 시험용(GAME.test.skillSetup): 기술 점수를 이 순서로 돌아가며 1점씩
+    skills: { bufferMs: 300, cancelAfterHit: true, knight: SKILLS.knight, mage: SKILLS.mage,
+              tree: SKILL_TREE, perLv: 1, maxLv: 5, classLv: 7, slots: [2, 4], moreLv: 13, noMpMs: 500,
+              curve: { dmg: [1, 1.15, 1.3, 1.45, 1.65], cd: [1, 0.94, 0.88, 0.82, 0.75], mp: [1, 1.05, 1.1, 1.15, 1.2] },
+              test: { pts: 24 },
+              botPlan: { knight: ['dash', 'spin', 'mastery', 'skin', 'wave', 'slam'], mage: ['fireball', 'bolt', 'amp', 'flow', 'ice', 'meteor'] } },
 
     // ---------- 기술 효과 그림 (art\stage1\skills\fx 에서 복사 → assets/fx/skill/<이름>_01.png …, 크기·기준점은 fx.json) ----------
     // count = 장 수(0 = 그림 없음 → 기존 그림을 물들여 쓰거나 코드로 그림), fps = 1초에 장 수, pivot = 그림 속 기준점(원래 크기), loop = 반복
@@ -2705,7 +2860,21 @@
       if (d.male) skill(d.male);
       if (d.female) skill(d.female);
     }
-    ['knight', 'mage'].forEach(function (c) { if (C.skills[c]) { skill(C.skills[c].A); skill(C.skills[c].B); } });
+    // 2026-11-06 새 기술 값: 검기(shot) · 내려찍기(leap·quake) · 메테오(meteor). 얼음창은 위 cast 그대로
+    function skill2(d) {
+      var w = d.shot;
+      if (once(w)) { mul(w, ['x', 'y', 'speed', 'range', 'depth'], S); if (w.box) mul(w.box, ['w', 'h'], S); }
+      if (once(d.leap)) mul(d.leap, ['h', 'fwd'], S);
+      if (once(d.quake)) mul(d.quake, ['r', 'depth'], S);
+      var m = d.meteor;
+      if (once(m)) { mul(m, ['x', 'r', 'depth', 'size'], S); if (m.aim) mul(m.aim, ['range', 'depth'], S); }
+      if (d.male) skill2(d.male);
+      if (d.female) skill2(d.female);
+    }
+    ['knight', 'mage'].forEach(function (c) {
+      var L = C.skills[c];
+      if (L) Object.keys(L).forEach(function (id) { skill(L[id]); skill2(L[id]); });
+    });
     if (C.art.fx) mul(C.art.fx.slashOffset, ['x', 'y'], S);
     mul(C.player, ['speedX', 'speedY'], MV);
     box(C.player.hitbox);

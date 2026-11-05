@@ -25,7 +25,7 @@
     this.vx = 0;              // 밀려나는 속도
     this.deadT = 0;           // 쓰러진 뒤 지난 시간
     this.god = false;         // 시험용 무적
-    // 기술 (skills.js): sk = 지금 쓰는 기술 진행, skillCd = 기술별 남은 쿨타임(ms, 키 = '직업.A'),
+    // 기술 (skills.js): sk = 지금 쓰는 기술 진행, skillCd = 기술별 남은 쿨타임(ms, 키 = '직업.기술 id' 예: 'knight.dash'),
     // classKey/gender = 지금 직업·성별(main.js 가 매 장면 넣음)
     this.sk = null; this.skillCd = {};
     this.classKey = null; this.gender = 'male';

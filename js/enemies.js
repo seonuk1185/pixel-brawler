@@ -302,6 +302,8 @@
 
   // 매 장면 갱신. ctx = { player, now, enemies, view: {x0,x1}, world, fx(dust 등), onPlayerHit(fn) }
   Enemy.prototype.update = function (dtMs, ctx) {
+    // 느려짐(법사 얼음창, 2026-11-06 skills.js): slowT 동안 이 적의 시간이 slowK 배로 흐름 → 걷기·공격·맞는 동작·쿨타임 전부 느려짐
+    if (this.slowT > 0) { this.slowT -= dtMs; dtMs *= this.slowK || 1; }
     var T = this.T, dt = dtMs / 1000, p = ctx.player;
     this.lastP = p;                    // 날아 있을 때 점프 공격만 맞게(canBeHit)
     this.animT += dtMs;
