@@ -92,6 +92,11 @@ body.smooth #screen { image-rendering: auto; }
   background: #ff5a3a; color: #fff; font-size: 11px; line-height: 14px; font-weight: 900; text-align: center; font-style: normal;
 }
 .statbtn .badge[hidden], .statopen .badge[hidden] { display: none; }
+/* 능력치 · 기술 버튼 묶음 (2026-11-06 성장 4단계): 경험치 막대 오른쪽에 나란히 */
+.hbtns { pointer-events: auto; position: absolute; left: 100%; top: 50%; transform: translateY(-50%); margin-left: 40px; display: flex; gap: 8px; }
+.hbtns .statbtn { position: relative; left: auto; top: auto; transform: none; margin-left: 0; }
+.statbtn.skbtn { background: #8fc4ff; }
+.statbtn[hidden], .statopen[hidden] { display: none; }
 .statopen { position: relative; }
 .stbtns { margin-top: 12px; }
 @media (pointer: coarse) { .statbtn { font-size: 13px; padding: 5px 12px; } }
@@ -190,6 +195,45 @@ body.smooth #screen { image-rendering: auto; }
 .splus:focus-visible, .statbtn:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
 .statpanel .rbtns button { min-height: 44px; }
 .statpanel .rbtns button:disabled { background: #3a3350; color: #8a82a6; cursor: default; }
+/* 기술 창 (2026-11-06 성장 4단계): 능력치 창과 같은 판 + 위 기술 칸 4개 + 기술 줄 10개(아이콘 · 이름·설명·숫자 · 칸 번호 · +) */
+.skillpanel .box { width: min(760px, 97vw); }
+.skbar { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 0 0 8px; }
+.skslot { display: flex; align-items: center; gap: 5px; min-width: 120px; padding: 4px 8px; border-radius: 8px; border: 2px dashed #5a5278; background: #241e36; text-align: left; }
+.skslot.on { border-style: solid; border-color: #8fc4ff; background: #2a3a5a; }
+.skslot.locked { opacity: .45; }
+.skslot kbd { font: inherit; font-size: 11px; font-weight: 900; color: #1c1628; background: #ffd23f; border-radius: 4px; padding: 0 5px; }
+.skslot .ic { font-size: 18px; font-weight: 900; color: #fff; min-width: 18px; }
+.skslot small { font-size: 12px; color: #ddd; white-space: nowrap; }
+.skrows { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; }
+.skrow { display: grid; grid-template-columns: 40px 1fr auto 52px; align-items: center; gap: 8px; background: #2a2440; border-radius: 8px; padding: 5px 6px 5px 8px; text-align: left; }
+.skrow .ki { width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 900; color: #fff; background: #2f4f8c; border: 2px solid #0008; }
+.skrow.pas .ki { background: #6a4a9c; border-radius: 8px; }
+.skrow.lockedrow, .skrow.soon { opacity: .55; }
+.skrow.soon .ki, .skrow.lockedrow .ki { background: #3a3350; color: #8a82a6; }
+.skrow .km b { font-size: 15px; color: #fff; margin-right: 6px; }
+.skrow .km .kk { font-size: 10px; color: #9a92b6; font-weight: 800; margin-right: 6px; }
+.skrow .km .kl { font-size: 12px; font-weight: 900; color: #ffd23f; }
+.skrow.soon .km .kl, .skrow.lockedrow .km .kl { color: #ff9a7a; }
+.skrow .km p { margin: 1px 0 0; font-size: 12px; color: #ccc; line-height: 1.3; }
+.skrow .km em { display: block; font-style: normal; font-size: 11px; color: #9fe39f; font-weight: 800; }
+.skrow .km .k5 { display: block; font-style: normal; font-size: 11px; color: #8a82a6; font-weight: 800; }
+.skrow .km .k5.got { color: #ffd23f; }
+.skrow .kc { display: flex; gap: 4px; }
+.kslot { font: inherit; width: 34px; height: 40px; border-radius: 7px; border: 2px solid #0008; background: #3a3350; color: #cfc8e6; font-size: 13px; font-weight: 900; cursor: pointer; }
+.kslot.on { background: #8fc4ff; color: #14121c; }
+.kslot:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+@media (max-height: 420px) {
+  .skbar { margin-bottom: 5px; }
+  .skslot { min-width: 0; padding: 2px 6px; }
+  .skrow { padding: 3px 6px 3px 8px; }
+  .skrow .km p { font-size: 11px; }
+}
+@media (max-width: 560px) {
+  .skrow { grid-template-columns: 34px 1fr 48px; }
+  .skrow .kc { grid-column: 2 / 3; }
+  .skslot small { display: none; }
+  .skslot { min-width: 0; flex: 1 1 0; justify-content: center; }
+}
 @media (max-height: 420px) {
   .statpanel h2 { font-size: 18px; }
   .spts { margin-bottom: 5px; }
@@ -294,6 +338,14 @@ body.smooth #screen { image-rendering: auto; }
   .btn.sk[hidden] { display: none; }
   .btn.skA { right: 18px; bottom: 140px; }
   .btn.skB { right: -8px; bottom: 90px; }
+  /* 3·4번 칸(2026-11-06, Lv13 부터): 1번 왼쪽(점프 위)과 1번 위 → 공격 버튼 둘레 부채꼴. 싸움 못 들어가는 폭(controlPad)이 조금 늘어남 */
+  .btn.skC { right: 66px; bottom: 140px; }
+  .btn.skD { right: 42px; bottom: 188px; }
+  /* 마나가 모자람: 회색 + 밑에 드는 마나(파랑). 눌렀는데 모자라면 잠깐 흔들림(nompHit) */
+  .btn.sk .mp { position: absolute; left: 0; right: 0; bottom: 1px; z-index: 2; font-size: 9px; line-height: 1; color: #bfe0ff; text-shadow: 1px 1px 0 #000; display: none; }
+  .btn.sk.nomp { background: #4a4a5acc; }
+  .btn.sk.nomp .mp { display: block; color: #8fb8ff; }
+  .btn.sk.nomp .ic { opacity: .35; }
   .btn.sk.down { transform: scale(.9); }
   .btn.sk .ic { position: relative; z-index: 1; }
   .btn.sk .sweep {
@@ -328,6 +380,8 @@ body.smooth #screen { image-rendering: auto; }
   .portrait .btn.sk { width: 56px; height: 56px; font-size: 21px; background: #2f4f8c; }
   .portrait .btn.skA { right: 82px; bottom: 82px; }
   .portrait .btn.skB { right: 12px; bottom: 116px; }
+  .portrait .btn.skC { right: 140px; bottom: 76px; }
+  .portrait .btn.skD { right: 70px; bottom: 146px; }
 }
 
 /* PC: 아래 조작 글자 옆 작은 기술 칸(아이콘 + 쿨타임 초) */
@@ -338,6 +392,11 @@ body.smooth #screen { image-rendering: auto; }
 .skchip[hidden] { display: none; }
 .skchip.cool { background: #3a3350; color: #fff8; }
 .skchip .sec { font-size: 11px; color: #ffd23f; }
+.skchip kbd { font: inherit; font-size: 10px; color: #cfe0ff; margin-right: 2px; }
+.skchip.nomp { background: #4a4a5a; color: #fff8; }
+.skkeys .alt { color: #fff7; margin-left: 4px; }
+@keyframes nompshake { 0%, 100% { translate: 0 0; } 25% { translate: -3px 0; } 75% { translate: 3px 0; } }
+.nompHit { animation: nompshake .18s linear 2; }
 
 /* 디버그 판 */
 .debug {

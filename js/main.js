@@ -124,14 +124,14 @@
     world.laneBottom = Math.min(LH - 8, world.bgOff + B.laneBottom);
   }
 
-  // 공격 버튼(+ 기술 버튼 2개)이 덮는 게임 화면 오른쪽 폭(도트). 버튼이 안 보이거나 걷는 길과 안 겹치면 0
+  // 공격 버튼(+ 점프·기술 버튼 4개)이 덮는 게임 화면 오른쪽 폭(도트). 버튼이 안 보이거나 걷는 길과 안 겹치면 0
   function measureControlPad() {
     var c = canvas.getBoundingClientRect();
     if (!c.width || !c.height) return 0;
     var ky = c.height / LH;
     var laneT = c.top + world.laneTop * ky - 100 * AS * ky, laneB = c.top + world.laneBottom * ky;   // 키 큰 몸(100도트)까지
     var pad = 0;
-    ['btnAtk', 'btnJump', 'btnSkA', 'btnSkB'].forEach(function (id) {
+    ['btnAtk', 'btnJump', 'btnSkA', 'btnSkB', 'btnSkC', 'btnSkD'].forEach(function (id) {
       var btn = document.getElementById(id);
       if (!btn || !btn.offsetParent || btn.hidden) return;
       var b = btn.getBoundingClientRect();
@@ -258,7 +258,9 @@
     var W = CFG.weapons[src ? src.wk : p.weaponKey];
     // 레벨·능력치 공격력(성장, Growth.atkMul): 적·허수아비를 때리는 모든 타·기술에 곱함(소품은 그대로)
     //   2026-11-06: 레벨 몫 + 힘(물리: 맨손·검) 또는 지능(마법: 지팡이·완드로 나간 타·마법탄·터짐·화염구·번개 = 무기 magic)
-    var dmg = Math.round(rand(W.damage[0], W.damage[1]) * st.dmg * (target.isProp ? 1 : Growth.atkMul(!!W.magic)));
+    //   2026-11-06 성장 4단계: × 기술 Lv 배율(src.mul, 기술만) × 늘 켜진 기술(검 숙련 = 물리 / 원소 증폭 = 마법, 지금 입은 직업의 기술 책)
+    var bk = Growth.book(G.classKey), pas = bk ? bk.bonus(W.magic ? 'magic' : 'phys') : 0;
+    var dmg = Math.round(rand(W.damage[0], W.damage[1]) * st.dmg * (target.isProp ? 1 : Growth.atkMul(!!W.magic) * (1 + pas) * ((src && src.mul) || 1)));
     // 치명타(민첩, 2026-11-06): 적·허수아비를 때릴 때 확률 Growth.critChance() → 데미지 x critMul + 큰 주황 숫자(agicrit). GAME.test.crit 로 시험 고정
     var crit = !target.isProp && (G.forceCrit != null ? G.forceCrit : Math.random() < Growth.critChance());
     if (crit) dmg = Math.round(dmg * CFG.growth.stats.critMul);
@@ -386,6 +388,7 @@
     var p = G.player;
     var dmg = rand(spec.dmg[0], spec.dmg[1]);
     if (e.dmgMul !== 1) dmg = Math.max(1, Math.round(dmg * e.dmgMul));   // 판·변종 공격력 배율
+    dmg = guardDmg(dmg);   // 늘 켜진 기술 「강철 피부」(받는 피해 -%)
     var dir = p.x >= e.x ? 1 : -1;
     if (!p.takeHit(dmg, dir, spec.knock, spec.flinchMs, !!spec.heavy)) return false;   // heavy = 넘어짐. 안 맞았으면 false(총알은 그대로 지나감)
     G.hitstop = Math.max(G.hitstop, J.hitstopMs * (e.T.boss ? 1.3 : 0.8));
@@ -397,6 +400,11 @@
     // 독(전갈 왕 독침): 맞으면 잠깐 독 → poisonStep 이 everyMs 마다 체력을 조금씩 깎음(독으로는 안 쓰러짐)
     if (spec.poison) p.poison = { t: spec.poison.ms, tick: spec.poison.everyMs, every: spec.poison.everyMs, dmg: spec.poison.dmg };
     return true;
+  }
+  // 받는 피해 줄이기(2026-11-06, 늘 켜진 기술 stat 'guard' = 기사 강철 피부): 적 타·불 뿜기에. 1 아래로는 안 줄임
+  function guardDmg(n) {
+    var bk = Growth.book(G.classKey), g = bk ? bk.bonus('guard') : 0;
+    return g > 0 ? Math.max(1, Math.round(n * (1 - g))) : n;
   }
   function poisonStep(dt) {
     var p = G.player, P = p.poison;
@@ -418,7 +426,7 @@
     var p = G.player;
     if (!spec.burn || p.state === 'dead' || p.state === 'down' || p.state === 'held') return;
     if (p.state === 'skill' && Skills.invulnerable(p)) return;
-    var n = Math.max(1, Math.round(rand(spec.burn[0], spec.burn[1]) * (e.dmgMul || 1)));
+    var n = guardDmg(Math.max(1, Math.round(rand(spec.burn[0], spec.burn[1]) * (e.dmgMul || 1))));
     if (!p.god) { n = Math.min(n, p.hp - 1); if (n <= 0) return; p.hp -= n; }
     FX.damage(p.x, p.y - (p.z || 0) - 112 * AS, n, false, J, '#ffa040', null, 'player');
     if (Skills.debris) Skills.debris(p.x, p.y - 50 * AS, p.y, 4, { cols: ['#fff2a0', '#ffb040', '#ff5a1a'], glow: true, sp: 70, size: 1.3, ms: 360, g: -40, spread: 0.8 });
@@ -478,13 +486,12 @@
     if (p.state !== 'dead' && p.state !== 'held') { p.x += shove.dir * shove.dist * (ease(u1) - ease(u0)); p.clamp(world); }
     if (u1 >= 1) shove = null;
   }
-  // 붙잡힌 동안 누른 버튼 수(공격·점프·기술 A/B, 한 번 누름 = 한 번)
+  // 붙잡힌 동안 누른 버튼 수(공격·점프·기술 칸, 한 번 누름 = 한 번)
   function grabMash() {
     var n = 0, ms = 400;
     if (Input.takeAttack(ms)) n++;
     if (Input.takeJump(ms)) n++;
-    if (Input.takeSkill('A', ms)) n++;
-    if (Input.takeSkill('B', ms)) n++;
+    Skills.slots.forEach(function (k) { if (Input.takeSkill(k, ms)) n++; });   // 기술 칸 A~D
     if (n && G.player.state === 'held') FX.shake(J.shakePx * 0.25, 60);   // 버둥: 화면이 살짝 떨림
     return n;
   }
@@ -1029,10 +1036,10 @@
     p.maxHp = Growth.maxHp(G.classKey); p.hp = Math.min(p.hp, p.maxHp);
     p.maxMp = Growth.maxMp(G.classKey); p.mp = Math.min(p.mp, p.maxMp);
   }
-  // 마나(2026-11-06): 초당 Growth.mpRegen() 씩 참(쓰러지면 안 참). 맞힐 때 회복은 onHit
+  // 마나(2026-11-06): 초당 Growth.mpRegen() 씩 참(쓰러지면 안 참). 맞힐 때 회복은 onHit. 기술이 씀(skills.js start, 2026-11-06 성장 4단계)
   function mpStep(dt) {
     var p = G.player;
-    if (p.state !== 'dead' && p.mp < p.maxMp) p.mp = Math.min(p.maxMp, p.mp + Growth.mpRegen() * dt / 1000);
+    if (p.state !== 'dead' && p.mp < p.maxMp) p.mp = Math.min(p.maxMp, p.mp + Growth.mpRegen(G.classKey) * dt / 1000);   // 마나 순환(늘 켜진 기술)도
   }
   // 쓰러진 적(어떻게 쓰러졌든: 플레이어 타·기술·보스와 같이 쓰러짐)마다 한 번 경험치. 적 머리 위에 「+13 XP」
   function xpStep() {
@@ -1200,6 +1207,8 @@
 
   // ---------- 시험용 자동 조종 (?bot=1): 가까운 적에게 붙어서 계속 때림 ----------
   var botAtkT = 0;
+  // 기술 칸 하나 무작위(지금 보이는 칸 중. 2026-11-06 전엔 A/B 둘 중 하나)
+  function botSlot() { var bk = Growth.book(G.classKey), n = bk ? bk.slots() : 2; return Skills.slots[Math.floor(Math.random() * n)]; }
   function botThink(dt) {
     var p = G.player, best = null, bd = 1e9;
     G.enemies.forEach(function (e) {
@@ -1225,7 +1234,7 @@
     if (Math.abs(ey) <= 6 && Math.abs(ex) <= 22 * AS && botAtkT <= 0) {
       if (p.state !== 'attack') p.dir = side;
       Input.pressAttack(); botAtkT = 140;
-      if (Math.random() < 0.12) Input.pressSkill(Math.random() < 0.5 ? 'A' : 'B');   // 가끔 기술(쿨타임이면 안 나감)
+      if (Math.random() < 0.12) Input.pressSkill(botSlot());   // 가끔 기술(쿨타임·마나 모자람이면 안 나감)
     }
   }
 
@@ -1446,6 +1455,8 @@
     });
     setIf('pxp', Growth.isMax() ? 1 : Growth.xp / Growth.need(), function (v) { hud.pXp.style.width = (v * 100) + '%'; });
     setIf('pts', Growth.pts, statBadges);   // 안 쓴 능력치 점수 표시
+    var bk = Growth.book(G.classKey);
+    setIf('skpts', G.classKey + ':' + (bk ? bk.pts() : -1), skillBadges);   // 안 쓴 기술 점수 표시(견습 = 기술 버튼 숨김)
     var B = S.boss, showBoss = !!(B && (B.alive() || S.bossDownT < 800));
     setIf('bshow', showBoss, function (v) { hud.bossBar.hidden = !v; });
     if (B) setIf('bname', B.label, function (v) { hud.bossName.textContent = v; });
@@ -1689,8 +1700,8 @@
       return '빠르기 +' + pct(Growth.atkSpd() - 1) + '% · 이동 +' + pct(Growth.moveMul() - 1) + '% · 치명타 ' + pct(Growth.critChance()) + '%'; } },
     vit: { name: '체력', en: 'VIT', desc: '최대 체력이 늘어요', now: function () { return '최대 체력 ' + Growth.maxHp(G.classKey); } },
     int: { name: '지능', en: 'INT', desc: '법사 마법(지팡이 타·마법탄·폭발·기술)이 세져요', now: function () { return '마법 공격 x' + Growth.atkMul(true).toFixed(2); } },
-    wis: { name: '지혜', en: 'WIS', desc: '마나가 늘고 빨리 차요 (마나는 기술 단계에서 써요)', now: function () {
-      return '최대 마나 ' + Growth.maxMp(G.classKey) + ' · 초당 +' + (Math.round(Growth.mpRegen() * 10) / 10); } }
+    wis: { name: '지혜', en: 'WIS', desc: '마나가 늘고 빨리 차요 (기술을 쓸 때 마나가 들어요)', now: function () {
+      return '최대 마나 ' + Growth.maxMp(G.classKey) + ' · 초당 +' + (Math.round(Growth.mpRegen(G.classKey) * 10) / 10); } }
   };
   function statBadges() {
     var n = Growth.pts;
@@ -1741,6 +1752,117 @@
   document.getElementById('btnStatClose').addEventListener('click', closeStats);
   window.addEventListener('keydown', function (e) { if (e.code === 'Escape' && !statEl.hidden) { e.preventDefault(); closeStats(); } });
   G.openStats = openStats; G.closeStats = closeStats;
+
+  // ---------- 기술 창 (2026-11-06 성장 4단계, 수치 = config skills · SKILL_TREE, 계산·저장 = growth.js 의 기술 책 Growth.book) ----------
+  // 여는 곳: 「능력치」 옆 「기술」 · 스테이지 고르기 · 결과 화면(견습은 버튼이 안 보임). 여는 동안 게임 멈춤, 닫으면 원래대로
+  //   위 = 기술 칸 4개(Lv13 전엔 2개, 키 이름 표시), 아래 = 기술 10개: 쓰는 기술(마나·쿨타임·위력) / 늘 켜진 기술 / 잠김(Lv N) / 준비 중
+  //   + = 기술 점수 1점으로 Lv +1(최고 5), 칸 번호(1~4) = 그 칸에 끼우기(다른 칸에 있으면 자리 바꿈), 초기화 = 기술 점수 전부 돌려받음(공짜)
+  var skEl = document.getElementById('skillPanel'), skBack = null;
+  // 칸 i 의 이름: 키보드 = config keys.skillA~D 의 첫 키(KeyU → U), 손가락 화면(폰) = 1~4
+  function slotKey(i) {
+    if (window.matchMedia && matchMedia('(pointer: coarse)').matches) return String(i + 1);
+    var k = CFG.keys['skill' + Skills.slots[i]]; return k && k[0] ? k[0].replace(/^Key/, '') : '';
+  }
+  function skillBadges() {
+    var bk = Growth.book(G.classKey), n = bk ? bk.pts() : 0;
+    document.querySelectorAll('.skbtn, .skopen').forEach(function (b) { b.hidden = !bk; });
+    document.querySelectorAll('.skbtn .badge, .skopen .badge').forEach(function (b) { b.hidden = !n; b.textContent = n > 99 ? '99+' : n; });
+  }
+  function secTxt(ms) { var s = Math.round(ms / 100) / 10; return (s % 1 ? s.toFixed(1) : s) + '초'; }
+  function pctTxt(v) { return Math.round(v * 100) + '%'; }
+  // 기술 한 줄 설명 숫자: 쓰는 기술 = 마나·쿨타임·위력(+ 다음 Lv), 늘 켜진 기술 = 지금 값(+ 다음 Lv)
+  function skillNums(bk, e, d, lv) {
+    var max = CFG.skills.maxLv || 5, show = Math.max(1, lv);
+    if (d) {
+      var L = Skills.lvStat(d, show), N = show < max ? Skills.lvStat(d, show + 1) : null;
+      var t = 'MP ' + L.mp + ' · 쿨타임 ' + secTxt(L.cd) + ' · 위력 ' + pctTxt(L.dmg);
+      if (N && lv) t += '  →  Lv' + (show + 1) + ': MP ' + N.mp + ' · ' + secTxt(N.cd) + ' · ' + pctTxt(N.dmg);
+      return t;
+    }
+    var P = e.passive, k = { phys: '물리 공격 +', magic: '마법 공격 +', guard: '받는 피해 -', mpRegen: '마나 회복 +' }[P.stat] || '';
+    return k + pctTxt(P.val[show - 1]) + (show < max && lv ? '  →  Lv' + (show + 1) + ': ' + k + pctTxt(P.val[show]) : '');
+  }
+  function renderSkills() {
+    var bk = Growth.book(G.classKey);
+    if (!bk) { if (!skEl.hidden) closeSkills(); return; }
+    var focusK = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.sk : null;
+    var max = CFG.skills.maxLv || 5, S = CFG.skills[bk.cls], pts = bk.pts(), slots = bk.slots();
+    document.getElementById('skPts').textContent = pts;
+    document.getElementById('skSum').textContent = 'Lv ' + Growth.lv + ' · ' + ((CFG.classes[G.classKey] || {}).label || '') +
+      (bk.test ? ' · 시험 기술(저장 안 함)' : '');
+    // 기술 칸
+    var bar = document.getElementById('skBar'), allSlots = (CFG.skills.slots || [2, 4]);
+    bar.innerHTML = '';
+    for (var i = 0; i < allSlots[allSlots.length - 1]; i++) {
+      var id = bk.at(i), d = id && S[id], c = document.createElement('div');
+      c.className = 'skslot' + (i >= slots ? ' locked' : '') + (d ? ' on' : '');
+      c.innerHTML = '<kbd>' + slotKey(i) + '</kbd><span class="ic">' + (d ? d.icon : '') + '</span><small>' +
+        (d ? d.name : i >= slots ? 'Lv' + (CFG.skills.moreLv || 13) + '에 열림' : '빈 칸') + '</small>';
+      bar.appendChild(c);
+    }
+    // 기술 목록
+    var rows = document.getElementById('skRows');
+    rows.innerHTML = '';
+    bk.list().forEach(function (e) {
+      var d = S[e.id] && S[e.id].name ? S[e.id] : null, act = bk.isActive(e.id), lv = bk.lv(e.id), open = bk.unlocked(e.id);
+      var name = d ? d.name : e.name, icon = d ? d.icon : e.icon, desc = d ? d.desc : e.desc;
+      var r = document.createElement('div');
+      r.className = 'skrow' + (e.soon ? ' soon' : !open ? ' lockedrow' : '') + (act ? ' act' : ' pas');
+      var tag = e.soon ? '준비 중' : !open ? 'Lv ' + e.unlock + '에 열려요' : 'Lv ' + lv + ' / ' + max;
+      var kind = e.passive ? '늘 켜짐' : '쓰는 기술';
+      var html = '<div class="ki">' + (icon || '?') + '</div><div class="km"><b>' + name + '</b><span class="kk">' + kind + '</span><span class="kl">' + tag + '</span>' +
+        '<p>' + (desc || '') + '</p>';
+      if (!e.soon) html += '<em>' + skillNums(bk, e, d, lv) + '</em>';
+      if (d && d.lv5 && d.lv5.say && !e.soon) html += '<i class="k5' + (lv >= max ? ' got' : '') + '">Lv5: ' + d.lv5.say + '</i>';
+      html += '</div><div class="kc">';
+      if (act && open) for (var j = 0; j < slots; j++) {
+        html += '<button type="button" class="kslot' + (bk.at(j) === e.id ? ' on' : '') + '" data-sk="' + e.id + ':s' + j + '" aria-label="' + name + ' ' + (j + 1) + '번 칸에 끼우기">' + slotKey(j) + '</button>';
+      }
+      html += '</div><button type="button" class="splus" data-sk="' + e.id + ':+" aria-label="' + name + ' 올리기"' +
+        (pts > 0 && open && lv < max ? '' : ' disabled') + '>+</button>';
+      r.innerHTML = html;
+      rows.appendChild(r);
+    });
+    rows.querySelectorAll('button[data-sk]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var a = b.dataset.sk.split(':'), bk2 = Growth.book(G.classKey);
+        if (!bk2) return;
+        if (a[1] === '+') bk2.add(a[0]); else bk2.put(+a[1].slice(1), a[0]);
+        refreshGrowth(); renderSkills();
+      });
+    });
+    document.getElementById('btnSkReset').disabled = !bk.used();
+    skillBadges();
+    // 다시 그린 뒤 키보드 자리 되돌리기(+ 가 꺼졌으면 닫기로)
+    var fb = focusK && rows.querySelector('button[data-sk="' + focusK + '"]:not([disabled])');
+    if (fb) fb.focus({ preventScroll: true });
+    else if (focusK && skEl.contains(document.activeElement) === false) document.getElementById('btnSkClose').focus({ preventScroll: true });
+  }
+  function openSkills() {
+    if (!skEl.hidden || !Growth.book(G.classKey)) return;
+    skBack = { menu: menuEl && !menuEl.hidden ? menuEl : null, paused: G.paused };
+    G.paused = true; Input.setOverride(null);
+    renderSkills();
+    openMenu(skEl, skEl.querySelector('.splus:not([disabled])') || document.getElementById('btnSkClose'));
+  }
+  function closeSkills() {
+    closeMenu(skEl);
+    var B = skBack || {}; skBack = null;
+    G.paused = !!B.paused;
+    if (B.menu && !B.menu.hidden) openMenu(B.menu, B.menu.querySelector('.skopen'));
+  }
+  document.getElementById('btnSkill').addEventListener('click', function () { openSkills(); this.blur(); });
+  document.querySelectorAll('.skopen').forEach(function (b) { b.addEventListener('click', function () { openSkills(); }); });
+  document.getElementById('btnSkReset').addEventListener('click', function () { var bk = Growth.book(G.classKey); if (bk) { bk.reset(); refreshGrowth(); renderSkills(); } });
+  document.getElementById('btnSkClose').addEventListener('click', closeSkills);
+  window.addEventListener('keydown', function (e) { if (e.code === 'Escape' && !skEl.hidden) { e.preventDefault(); closeSkills(); } });
+  G.openSkills = openSkills; G.closeSkills = closeSkills;
+  // 마나가 모자라 기술이 안 나감: 머리 위 「MP 부족」(파란 작은 글자) + 그 칸 버튼이 잠깐 흔들림 (skills.js pick 이 부름, 너무 자주는 안 띄움)
+  function noMp(slot) {
+    var p = G.player;
+    FX.damage(p.x, p.y - (p.z || 0) - 118 * AS, 'MP 부족', false, J, null, 'nomp', 'player:nomp');
+    Skills.shakeSlot(slot);
+  }
 
   // ---------- 전직 (2026-11-06, 설계안 3번 · config growth.classChangeStage / classChange) ----------
   // 뜨는 때: 판 모드 + 아직 직업 없음(Growth.cls) + 전직 판(2단계)을 깬 저장. 시험 자동 조종(?bot=1)은 안 띄움(멈추지 않게)
@@ -1876,6 +1998,12 @@
   // ---------- 시험용 (콘솔에서 GAME.test.xxx) ----------
   G.test = {
     killAll: function () { G.enemies.forEach(function (e) { if (e.alive()) { if (e.T.boss) { e.takeHit(99999, 1, 10, true); onBossDown(e); } else e.takeHit(9999, 1, 10, true, { force: true }); } }); },
+    // 적 하나 바로 세우기(기술 시험, 2026-11-06): 플레이어 앞 dx, 위아래 dy 도트. 돌려주는 값 = 그 적
+    spawn: function (type, dx, dy) {
+      var p = G.player, e = makeEnemy(type, p.x + (dx || 60), clamp(p.y + (dy || 0), world.laneTop, world.laneBottom));
+      e.entered = true; e.dir = e.x > p.x ? -1 : 1;
+      return e;
+    },
     // 보스 방 바로 앞으로: 남은 웨이브는 건너뜀
     toBoss: function () {
       var S = G.stage, waves = CFG.stage.waves;
@@ -1895,7 +2023,11 @@
       G.player.x = at - 60 + LW * 0.42 - 4;
     },
     // 기술 바로 쓰기(쿨타임 무시): GAME.test.skill('A')
-    skill: function (slot, noCd) { if (noCd) G.player.skillCd = {}; Input.pressSkill(slot || 'A'); },
+    //   slot = 'A'~'D' 또는 0~3, noCd = 쿨타임 무시, 마나는 그대로 듦(GAME.test.mp(999) 로 채움)
+    skill: function (slot, noCd) { if (noCd) G.player.skillCd = {}; Input.pressSkill(typeof slot === 'number' ? Skills.slots[slot] : slot || 'A'); },
+    mp: function (n) { var p = G.player; p.mp = Math.max(0, Math.min(p.maxMp, n == null ? p.maxMp : n)); return p.mp; },
+    // 기술 책 시험(2026-11-06, ?lv=N 일 때만): 이번 창에서만 그 직업으로 전직한 저장처럼 + 기술 점수를 계획(config skills.botPlan)대로
+    skillSetup: function (cls, clsLv, plan) { var r = Growth.testSetup(cls, clsLv, plan); refreshGrowth(); return r; },
     resetCd: function () { G.player.skillCd = {}; },
     hurt: function (n, heavy) { var p = G.player; p.invulnT = 0; p.takeHit(n || 10, -p.dir, 10, 0, !!heavy); },
     god: function (on) { G.player.god = on !== false; },
@@ -1976,7 +2108,8 @@
       dust: function (x, y, dir) { if (G.assets.dust && G.assets.dust.length) FX.sprite(x, y, G.assets.dust, CFG.dust.fps, CFG.dust.pivot, dir > 0, true); },
       fx: function () { return G.assets.fx; },
       hitstop: function (ms) { G.hitstop = Math.max(G.hitstop, ms); },
-      slow: function (ms) { G.slowT = Math.max(G.slowT, ms); }
+      slow: function (ms) { G.slowT = Math.max(G.slowT, ms); },
+      noMp: noMp             // 마나가 모자라 기술이 안 나감(2026-11-06)
     });
     Object.keys(assets.characters).forEach(function (k) { bakeFilter(assets.characters[k]); });
     document.body.classList.add('mode-' + MODE);

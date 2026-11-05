@@ -5,7 +5,8 @@
   var keysDown = {};
   var attackQueued = 0;   // 누른 순간 기록(시각)
   var jumpQueued = 0;     // 점프 누른 순간
-  var skillQueued = { A: 0, B: 0 };   // 기술 A/B 누른 순간
+  var skillQueued = { A: 0, B: 0, C: 0, D: 0 };   // 기술 칸 A~D 누른 순간 (C·D = 2026-11-06 성장 4단계, Lv13 부터 보임)
+  var SLOTS = ['A', 'B', 'C', 'D'];
   var joy = { x: 0, y: 0, active: false, id: null };
   var CF = null;
   // 달리기: runKey = 키보드로 정한 달리는 쪽(-1/1, 0 = 아님), tap = 마지막으로 누른 좌/우와 시각
@@ -22,8 +23,9 @@
     CF = cfg;
     var K = cfg.keys;
     window.addEventListener('keydown', function (e) {
-      var skA = K.skillA || [], skB = K.skillB || [], jp = K.jump || [];
-      if (e.repeat) { if (matches(e.code, K.attack) || matches(e.code, skA) || matches(e.code, skB) || matches(e.code, jp)) e.preventDefault(); return; }
+      var sk = [], jp = K.jump || [];
+      SLOTS.forEach(function (k) { sk = sk.concat(K['skill' + k] || []); });
+      if (e.repeat) { if (matches(e.code, K.attack) || matches(e.code, sk) || matches(e.code, jp)) e.preventDefault(); return; }
       // 달리기: 같은 쪽을 doubleTapMs 안에 다시 누름(그 쪽 키를 모두 뗐다가). 반대쪽을 누르면 달리기 끝
       var d = matches(e.code, K.left) ? -1 : matches(e.code, K.right) ? 1 : 0;
       if (d) {
@@ -35,9 +37,8 @@
       keysDown[e.code] = true;
       if (matches(e.code, K.attack)) attackQueued = performance.now();
       if (matches(e.code, jp)) jumpQueued = performance.now();
-      if (matches(e.code, skA)) skillQueued.A = performance.now();
-      if (matches(e.code, skB)) skillQueued.B = performance.now();
-      if ([].concat(K.left, K.right, K.up, K.down, K.attack, jp, skA, skB).indexOf(e.code) >= 0) e.preventDefault();
+      SLOTS.forEach(function (k) { if (matches(e.code, K['skill' + k] || [])) skillQueued[k] = performance.now(); });
+      if ([].concat(K.left, K.right, K.up, K.down, K.attack, jp, sk).indexOf(e.code) >= 0) e.preventDefault();
     });
     window.addEventListener('keyup', function (e) {
       keysDown[e.code] = false;
@@ -104,7 +105,7 @@
     zone.addEventListener('pointerup', end);
     zone.addEventListener('pointercancel', end);
 
-    // ----- 공격·점프 버튼 + 기술 버튼 2개 -----
+    // ----- 공격·점프 버튼 + 기술 버튼 4개 -----
     function btn(id, onDown) {
       var b = document.getElementById(id);
       if (!b) return;
@@ -115,8 +116,7 @@
     }
     btn('btnAtk', function () { attackQueued = performance.now(); });
     btn('btnJump', function () { jumpQueued = performance.now(); });
-    btn('btnSkA', function () { skillQueued.A = performance.now(); });
-    btn('btnSkB', function () { skillQueued.B = performance.now(); });
+    SLOTS.forEach(function (k) { btn('btnSk' + k, function () { skillQueued[k] = performance.now(); }); });
   }
 
   var override = null;   // 시험용 자동 조종(?bot=1)이 넣는 방향 { x, y, run }
@@ -156,7 +156,7 @@
     pressAttack: function () { attackQueued = performance.now(); }, // 시험용
     takeJump: function (bufferMs) { if (fresh(jumpQueued, bufferMs)) { jumpQueued = 0; return true; } return false; },
     pressJump: function () { jumpQueued = performance.now(); },     // 시험용
-    // 기술: slot = 'A' / 'B'. 버퍼 안에 눌린 기술이 있으면 꺼내 씀
+    // 기술: slot = 'A' ~ 'D'. 버퍼 안에 눌린 기술이 있으면 꺼내 씀
     takeSkill: function (slot, bufferMs) {
       if (fresh(skillQueued[slot], bufferMs)) { skillQueued[slot] = 0; return true; }
       return false;

@@ -42,12 +42,12 @@
   <!-- 스테이지 판 화면 위 글자: 체력 막대, 보스 막대, GO, 알림 (게임 화면 크기에 맞춰 main.js 가 위치를 잡음) -->
   <div class="hud" id="hud" hidden>
     <div class="php"><span class="lbl">HP</span><div class="bar"><em id="pHpLag"></em><i id="pHp"></i></div><span class="num" id="pHpNum">150</span></div>
-    <!-- 마나(MP, 2026-11-06): 체력 밑 파란 막대. 지금은 차기만 함(기술이 쓰는 건 다음 단계) -->
+    <!-- 마나(MP, 2026-11-06): 체력 밑 파란 막대. 기술을 쓰면 줄어듦(성장 4단계) -->
     <div class="pmp"><span class="lbl">MP</span><div class="bar"><i id="pMp"></i></div><span class="num" id="pMpNum">40</span></div>
     <!-- 레벨 + 얇은 경험치 막대 (성장 2026-11-05, main.js updateHud) -->
     <div class="plv"><span class="lv" id="pLv">Lv 1</span><div class="xbar"><i id="pXp"></i></div>
-      <!-- 능력치 창 열기 (2026-11-06): 안 쓴 점수가 있으면 노란 숫자 표시(.badge) -->
-      <button type="button" class="statbtn" id="btnStat" aria-label="능력치">능력치<b class="badge" hidden></b></button></div>
+      <!-- 능력치 창 · 기술 창 열기 (2026-11-06): 안 쓴 점수가 있으면 빨간 숫자 표시(.badge). 기술 버튼은 전직한 직업만 -->
+      <span class="hbtns"><button type="button" class="statbtn" id="btnStat" aria-label="능력치">능력치<b class="badge" hidden></b></button><button type="button" class="statbtn skbtn" id="btnSkill" aria-label="기술" hidden>기술<b class="badge" hidden></b></button></span></div>
     <div class="stageinfo" id="stageInfo"></div>
     <div class="bossbar" id="bossBar" hidden><span id="bossName">오크 족장</span><div class="bar"><em id="bHpLag"></em><i id="bHp"></i></div></div>
     <div class="go" id="goPrompt" hidden>GO →</div>
@@ -58,7 +58,7 @@
       <h2 id="resTitle">STAGE CLEAR!</h2>
       <p id="resStats"></p>
       <!-- 다음 스테이지(클리어, 마지막 판 아니면) · 다시 하기(같은 판) · 스테이지 고르기 · 연습장. 키보드 ←→ 고르기 + Enter/J -->
-      <div class="rbtns"><button type="button" id="btnNext" hidden>다음 스테이지 →</button><button type="button" id="btnRetry">다시 하기</button><button type="button" class="sub" id="btnSel">스테이지 선택</button><button type="button" class="sub statopen" id="btnResStat">능력치<b class="badge" hidden></b></button><a id="resPractice" href="?mode=practice">연습장</a></div>
+      <div class="rbtns"><button type="button" id="btnNext" hidden>다음 스테이지 →</button><button type="button" id="btnRetry">다시 하기</button><button type="button" class="sub" id="btnSel">스테이지 선택</button><button type="button" class="sub statopen" id="btnResStat">능력치<b class="badge" hidden></b></button><button type="button" class="sub statopen skopen" id="btnResSkill" hidden>기술<b class="badge" hidden></b></button><a id="resPractice" href="?mode=practice">연습장</a></div>
     </div>
   </div>
   <!-- 스테이지 고르기 (처음 + 결과 화면에서). 판 버튼은 main.js 가 CFG.stages 로 만듦. 위 고르기 버튼(남/여·직업)은 이 위에 그대로 보임 -->
@@ -66,7 +66,7 @@
     <div class="box">
       <h2>스테이지 선택</h2>
       <div class="slist" id="stageList"></div>
-      <div class="rbtns stbtns"><button type="button" class="sub statopen" id="btnSelStat">능력치<b class="badge" hidden></b></button></div>
+      <div class="rbtns stbtns"><button type="button" class="sub statopen" id="btnSelStat">능력치<b class="badge" hidden></b></button><button type="button" class="sub statopen skopen" id="btnSelSkill" hidden>기술<b class="badge" hidden></b></button></div>
       <p class="shint">←→ 고르기 · Enter / J 시작</p>
     </div>
   </div>
@@ -89,8 +89,18 @@
       <div class="rbtns"><button type="button" id="btnStatAuto">자동 배분</button><button type="button" class="sub" id="btnStatReset">초기화</button><button type="button" class="sub" id="btnStatClose">닫기</button></div>
     </div>
   </div>
+  <!-- 기술 창 (2026-11-06 성장 4단계): 위 = 기술 칸(키 이름), 아래 = 기술 10개(+ 로 기술 Lv 올리기 · 칸 번호로 끼우기). 줄은 main.js 가 만듦 -->
+  <div class="statpanel skillpanel" id="skillPanel" hidden>
+    <div class="box">
+      <h2>기술</h2>
+      <p class="spts">남은 기술 점수 <b id="skPts">0</b><span id="skSum"></span></p>
+      <div class="skbar" id="skBar"></div>
+      <div class="skrows" id="skRows"></div>
+      <div class="rbtns"><button type="button" class="sub" id="btnSkReset">초기화</button><button type="button" class="sub" id="btnSkClose">닫기</button></div>
+    </div>
+  </div>
   <div class="combo" id="combo" hidden></div>
-  <div class="keyhint">이동 ←↑↓→ / WASD · 달리기 ←← / →→ · 점프 K / X / Space · 공격 J / Z (연타 3타)<span class="skkeys"> · 기술 U / C <span class="skchip" data-skill="A" hidden><span class="ic"></span><b class="sec"></b></span> · I / V <span class="skchip" data-skill="B" hidden><span class="ic"></span><b class="sec"></b></span></span></div>
+  <div class="keyhint">이동 ←↑↓→ / WASD · 달리기 ←← / →→ · 점프 K / X / Space · 공격 J / Z (연타 3타)<span class="skkeys"> · 기술 <span class="skchip" data-skill="A" hidden><kbd>U</kbd><span class="ic"></span><b class="sec"></b></span><span class="skchip" data-skill="B" hidden><kbd>I</kbd><span class="ic"></span><b class="sec"></b></span><span class="skchip" data-skill="C" hidden><kbd>O</kbd><span class="ic"></span><b class="sec"></b></span><span class="skchip" data-skill="D" hidden><kbd>P</kbd><span class="ic"></span><b class="sec"></b></span><span class="alt">(왼손 C V B N)</span></span></div>
 
   <!-- 폰 조작 -->
   <div class="joyzone" id="joyZone">
@@ -99,9 +109,11 @@
   <div class="btns">
     <button type="button" class="btn jump" id="btnJump" aria-label="점프">점프</button>
     <button type="button" class="btn atk" id="btnAtk" aria-label="공격">공격</button>
-    <!-- 기술 A/B (기사·법사만 보임, 견습은 숨김). 쿨타임 중엔 어둡고 남은 초 표시 (skills.js 의 ui) -->
-    <button type="button" class="btn sk skA" id="btnSkA" data-skill="A" hidden aria-label="기술 A"><i class="sweep"></i><span class="ic"></span><b class="sec"></b></button>
-    <button type="button" class="btn sk skB" id="btnSkB" data-skill="B" hidden aria-label="기술 B"><i class="sweep"></i><span class="ic"></span><b class="sec"></b></button>
+    <!-- 기술 칸 A~D (기사·법사만, 견습은 숨김. C·D 는 Lv13 부터). 쿨타임 중엔 어둡고 남은 초, 마나가 모자라면 회색 + 밑에 드는 마나 (skills.js 의 ui) -->
+    <button type="button" class="btn sk skA" id="btnSkA" data-skill="A" hidden aria-label="기술 1"><i class="sweep"></i><span class="ic"></span><b class="sec"></b><small class="mp"></small></button>
+    <button type="button" class="btn sk skB" id="btnSkB" data-skill="B" hidden aria-label="기술 2"><i class="sweep"></i><span class="ic"></span><b class="sec"></b><small class="mp"></small></button>
+    <button type="button" class="btn sk skC" id="btnSkC" data-skill="C" hidden aria-label="기술 3"><i class="sweep"></i><span class="ic"></span><b class="sec"></b><small class="mp"></small></button>
+    <button type="button" class="btn sk skD" id="btnSkD" data-skill="D" hidden aria-label="기술 4"><i class="sweep"></i><span class="ic"></span><b class="sec"></b><small class="mp"></small></button>
   </div>
 </div>
 
