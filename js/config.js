@@ -1071,15 +1071,17 @@
     // 아래 묶음마다 on: false 로 따로 끌 수 있음. 거리 값(도트)은 원래 그림 크기 기준(쓸 때 actorScale 곱함)
     hunt: {
       on: true,
-      stages: [1],
+      stages: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],   // 눈맛 연출(숫자·KILL·펑·구슬·흔들림)은 전 판. 몹 수는 아래 horde.stageMul 로 판마다 서서히
       // 몹 떼: 잡몹(성장 경험치 종류 'mob' = 고블린·늑대·박쥐 …, 보스·단단한 잡몹은 그대로)을 mul 배로. 대신 한 마리는 약하게(hpMul),
       //   경험치는 xpMul 배(마리 수 x 배율 = 판 전체 경험치는 그대로 → 레벨 오르는 빠르기 그대로)
       //   늘어난 몹은 반대쪽 끝에서 같이 나옴(양옆에서 떼로) + gapMs 씩 조금 늦게, 화면 밖으로 xOff 도트씩 더 떨어져서(한 덩어리로 겹치지 않게)
       //   미리 서 있는 무리(placed)도 mul 배: 옆으로 placedDx 도트, 위아래 placedDy(길 폭 비율) 비켜 서서 같은 무리로
       //   동시에 때리러 오는 잡몹 수(maxAttackers)·공격 시작 간격(attackGapMs)은 따로 정함(몹이 많아도 한꺼번에 몰매 맞지 않게)
       //   웨이브에 hordeMul: 3 처럼 적으면 그 웨이브만 배수를 바꿈
-      horde: { on: true, mul: 2, hpMul: 0.4, dmgMul: 1.0, xpMul: 0.5, bothSides: true, gapMs: 180, xOff: 34, placedDx: 30, placedDy: 0.2,
-               maxAttackers: 2, attackGapMs: 520 },
+      //   (2026-11-06 형님: 1판부터 많을 필요 없고 판이 올라갈수록 서서히 많이) stageMul = 판 번호별 배수(소수 OK = 몇 마리 중 일부만 하나 더).
+      //   한 마리 체력 = 원래 x 배수^-hpExp (2배 → 0.4), 경험치 = 원래 / 배수 → 판 전체 경험치 그대로. 배수 1 이면 원래 그대로
+      horde: { on: true, mul: 2, stageMul: { 1: 1, 2: 1.15, 3: 1.3, 4: 1.4, 5: 1.5, 6: 1.6, 7: 1.7, 8: 1.8, 9: 1.9, 10: 2 }, hpExp: 1.32, hpMul: 0.4, dmgMul: 1.0, xpMul: 0.5, bothSides: true, gapMs: 180, xOff: 34, placedDx: 30, placedDy: 0.2,
+               maxAttackers: 99, attackGapMs: 120 },   // 2026-11-06 형님: 동시 공격 제한 없음
       // 넓은 범위: 기술 판정·효과 크기 배율(기술 Lv 크기 area 에 곱함). 회전베기 · 대지 내려찍기 · 메테오 · 불기둥
       aoe: { on: true, spin: 1.25, slam: 1.25, meteor: 1.25, pillar: 1.25 },
       // 여러 마리 한꺼번에: 한 장면(한 번의 공격)에 맞은 적이 from 마리 이상이면 화면 흔들림 1 + shake x (마리 - 1) 배(최대 shakeCap 배)
@@ -1271,8 +1273,8 @@
 
     // ---------- 적끼리 공통 ----------
     ai: {
-      maxAttackers: 2,      // 동시에 공격 동작 중인 잡몹 최대 수 (보스는 제외)
-      attackGapMs: 450,     // 잡몹 공격 시작 사이 최소 간격
+      maxAttackers: 99,     // 동시에 공격 동작 중인 잡몹 최대 수 (보스는 제외). 2026-11-06 형님: 제한 없이 다구리 OK(광역기로 쓸어버림) — 예전 2
+      attackGapMs: 120,     // 잡몹 공격 시작 사이 최소 간격(같은 순간 한꺼번에만 막음, 예전 450)
       enemyKnockMul: 1.6,   // 플레이어 공격으로 적이 밀려나는 거리 배율 (허수아비보다 크게)
       sepDepth: 12,         // 위아래 거리가 이보다 가까우면 몸끼리 밀어냄
       deathHoldMs: 700,     // 쓰러진 뒤 누워 있는 시간

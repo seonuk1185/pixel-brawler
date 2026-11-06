@@ -766,15 +766,19 @@
   // 몹 떼로 늘릴 적 = 성장 경험치 종류 'mob'(고블린·늑대·박쥐 …). 보스·단단한 잡몹·정예는 그대로
   function hordeMob(type) { var T = CFG.enemies[type]; return !!T && !T.boss && Growth.kindOf(type, T) === 'mob'; }
   function hordeOf(w) { var HD = huntPart('horde'); return HD && !(w && w.horde === false) ? HD : null; }
+  // 지금 판의 몹 떼 배수(웨이브 hordeMul > 판별 stageMul > mul). 1 = 늘리지 않음
+  function hordeMulOf(w, HD) { return (w && w.hordeMul) || (HD.stageMul && CFG.stage && HD.stageMul[CFG.stage.id]) || HD.mul || 1; }
+  // 소수 배수: 잡몹마다 (배수 - 1) 을 쌓아서 정수가 넘을 때만 한 마리 더(1.5배 = 두 마리 중 하나만 더)
+  function hordeExtra(acc, mul) { var a0 = acc.v; acc.v += mul - 1; return Math.floor(acc.v + 1e-6) - Math.floor(a0 + 1e-6); }
   // 웨이브 spawn 목록 → 몹 떼(잡몹마다 mul 배). 늘어난 몹은 반대쪽 끝에서(bothSides) gapMs 씩 늦게, 화면 밖으로 조금씩 더 떨어져서(off)
   function hordeSpawn(w) {
     var list = (w.spawn || []).map(function (s) { return { type: s[0], side: s[1], at: s[2], opt: s[3], off: 0 }; }), HD = hordeOf(w);
     if (!HD) return list;
-    var mul = w.hordeMul || HD.mul || 1, out = [];
+    var mul = hordeMulOf(w, HD), out = [], acc = { v: 0 };
     list.forEach(function (q) {
       out.push(q);
       if (!hordeMob(q.type)) return;
-      for (var k = 1; k < mul; k++) {
+      for (var k = 1, nx = hordeExtra(acc, mul); k <= nx; k++) {
         var flip = HD.bothSides && k % 2 === 1;
         out.push({ type: q.type, side: flip ? (q.side === 'L' ? 'R' : 'L') : q.side, at: q.at + k * (HD.gapMs || 0), opt: q.opt, off: flip ? Math.floor(k / 2) : k });
       }
@@ -803,9 +807,10 @@
     if (V) { e.variant = vk; if (V.label) e.label = V.label + ' ' + e.label; }
     // 몹 떼(사냥 손맛): 늘어난 만큼 한 마리는 약하게 + 경험치 xpMul 배. 쓰러지면 붕 날아가 펑(hunt.death, enemies.js)
     var HD = hordeOf(null);
-    if (HD && hordeMob(type)) {
-      e.hp = e.maxHp = Math.max(1, Math.round(e.maxHp * (HD.hpMul || 1)));
-      e.dmgMul *= HD.dmgMul || 1; e.xpMul = HD.xpMul || 1; e.horde = true;
+    var hmul = HD ? hordeMulOf(null, HD) : 1;
+    if (HD && hmul > 1 && hordeMob(type)) {
+      e.hp = e.maxHp = Math.max(1, Math.round(e.maxHp * (HD.hpExp ? Math.pow(hmul, -HD.hpExp) : (HD.hpMul || 1))));
+      e.dmgMul *= HD.dmgMul || 1; e.xpMul = HD.hpExp ? 1 / hmul : (HD.xpMul || 1); e.horde = true;
     }
     var HDe = huntPart('death');
     if (HDe && !T.boss) e.huntDeath = HDe;
@@ -836,11 +841,12 @@
     // 몹 떼(사냥 손맛): 미리 서 있는 잡몹도 mul 배 — 옆(placedDx)·위아래(placedDy)로 비켜 서서 같은 무리. 무리가 없던 몹은 늘어난 몹과 한 무리
     var HD = hordeOf(w);
     if (HD) {
-      var mul = w.hordeMul || HD.mul || 1, add = [];
+      var mul = hordeMulOf(w, HD), add = [], acc = { v: 0 };
       S.placedQ.forEach(function (q, n) {
         if (!hordeMob(q.type)) return;
+        var nx = hordeExtra(acc, mul); if (!nx) return;
         if (!q.opt.group) q.opt = Object.assign({}, q.opt, { group: 'horde' + i + '_' + n });
-        for (var k = 1; k < mul; k++) {
+        for (var k = 1; k <= nx; k++) {
           var sx = k % 2 ? 1 : -1, yk = q.yk + (q.yk > 0.5 ? -1 : 1) * (HD.placedDy || 0) * Math.ceil(k / 2);
           add.push({ type: q.type, x: q.x + sx * (HD.placedDx || 0) * Math.ceil(k / 2), yk: clamp(yk, 0.04, 0.96), opt: q.opt, wave: i });
         }
@@ -2390,7 +2396,7 @@
       deathPop: deathPop                                                       // 사냥 손맛: 쓰러진 잡몹 펑 + 경험치 구슬
     };
     var HD = hordeOf(null);   // 몹 떼(사냥 손맛): 동시에 때리러 오는 잡몹 수·공격 시작 간격을 따로
-    if (HD) { E.maxAttackers = HD.maxAttackers; E.attackGapMs = HD.attackGapMs; }
+    if (HD && hordeMulOf(null, HD) > 1) { E.maxAttackers = HD.maxAttackers; E.attackGapMs = HD.attackGapMs; }   // 떼가 늘어난 판만
     Object.defineProperty(E, 'player', { get: function () { return G.player; } });
     return E;
   }
