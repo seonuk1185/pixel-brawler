@@ -67,6 +67,9 @@
       topCss = 52;
     } else {
       SCALE = Math.max(1, Math.min(Math.floor(ph / CFG.view.targetH), Math.floor(pw / (CFG.view.minLandW || 1))));
+      // 정사각형에 가까운 가로 화면(폴드 펼친 화면 834x752 등, 가로/세로 < squareAspect, 2026-11-07): 보이는 폭을 minSquareW 도트 이상으로
+      //   → 캐릭터가 너무 커지지 않고 옆이 넓게. 남는 위쪽은 하늘·천장(걷는 길은 늘 아래). 보통 폰(904x388)·PC(1280x720)는 비율이 넓어서 그대로
+      if (cw / ch < (CFG.view.squareAspect || 1.5)) SCALE = Math.max(1, Math.min(SCALE, Math.floor(pw / (CFG.view.minSquareW || 560))));
       var phUse = ph - Math.round(padB * dpr);
       if (padB) while (SCALE > 1 && phUse / SCALE < (CFG.view.minPcH || 196)) SCALE--;
       LW = Math.ceil(pw / SCALE); LH = Math.ceil(phUse / SCALE);
