@@ -69,6 +69,8 @@
     </div>
     <div class="stageinfo" id="stageInfo"></div>
     <div class="bossbar" id="bossBar" hidden><span id="bossName">오크 족장</span><div class="bar"><em id="bHpLag"></em><i id="bHp"></i></div></div>
+    <!-- 중간보스 막대(2026-11-06): 보스 막대 자리에 작게. 「중간보스」 딱지 + 이름 -->
+    <div class="bossbar midbar" id="midBar" hidden><span><b>중간보스</b><em id="midName">고블린 대장</em></span><div class="bar"><em id="mHpLag"></em><i id="mHp"></i></div></div>
     <div class="go" id="goPrompt" hidden>GO →</div>
     <div class="banner" id="banner" hidden></div>
   </div>
@@ -84,6 +86,8 @@
   <div class="stagesel" id="stageSel" hidden>
     <div class="box">
       <h2>스테이지 선택</h2>
+      <!-- 난이도 탭(2026-11-06): 이지 / 노말 / 하드. main.js 가 CFG.modes 로 만듦(잠긴 난이도 = 자물쇠 + 여는 법) -->
+      <div class="mtabs" id="modeTabs"></div>
       <div class="slist" id="stageList"></div>
       <div class="rbtns stbtns"><button type="button" class="sub statopen" id="btnSelStat">능력치<b class="badge" hidden></b></button><button type="button" class="sub statopen skopen" id="btnSelSkill" hidden>기술<b class="badge" hidden></b></button></div>
       <p class="shint">←→ 고르기 · Enter / J 시작</p>

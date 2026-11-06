@@ -7,7 +7,11 @@
 //     skills = 기술 책 { clsLv, lv: { id: 올린 수 }, bar: [칸에 끼운 id] } (직업이 있을 때만)
 //     class = 전직한 직업('knight' / 'mage', 2026-11-06). 없으면 견습(맨손). 한 번 정하면 setClass 가 안 바꿈(새 저장칸에서 다른 직업)
 //     stats = 올린 능력치, pts = 안 쓴 점수. 예전 저장(능력치 없음, v1)은 지금 레벨만큼 점수를 한꺼번에 줌(3 × (Lv-1), 안 쓴 채로)
-//     지금은 1번 칸만 씀(저장칸 고르기 화면은 나중). 깬 판 목록(pixelBrawler.clearedIds)은 예전 그대로 따로 둠 → 예전 저장 안 깨짐
+//     지금은 1번 칸만 씀(저장칸 고르기 화면은 나중). 깬 판 목록은 예전엔 따로(pixelBrawler.clearedIds) → 2026-11-06 부터 저장칸의 modes(아래)
+//     난이도(2026-11-06, config modes): 저장칸의 modes = { cur: 지금 난이도('easy'·'normal'·'hard'), cleared: { easy: [깬 판 id], normal: [...], hard: [...] } }
+//       modes 가 없는 예전 저장 = 예전 깬 판 목록(pixelBrawler.clearedIds, 더 예전 pixelBrawler.cleared)을 이지로 옮김(예전 값은 그대로 둠)
+//       열림 = 앞 난이도에서 마지막 판(stages 맨 끝)을 깸. stagesAllOpen 이면 다 열림. 주소 ?diff=normal = 이번 창에서만 그 난이도(저장 안 함)
+//       main.js 가 쓰는 것: mode() / modeOpen(k) / setMode(k) / cleared() / isCleared(id) / markCleared(id) / M() (지금 난이도 config 값)
 //     저장이 막혀 있어도(사생활 보호 창 등) 게임은 됨: 이번에 연 동안만 기억
 //   시험: 주소 뒤 ?lv=N = 이번 창에서만 LvN(경험치 0, 능력치 0 + 그 레벨 점수)으로 시작, 저장 안 함(저장된 레벨·능력치는 그대로)
 (function () {
@@ -110,6 +114,42 @@
 
   var data = readSave();
   var cur = data.slots[data.slot] || {};
+
+  // ---------- 난이도 저장 (2026-11-06, config modes) ----------
+  //   MS = 저장되는 것 { cur, cleared: { 난이도: [판 id] } }. 예전 깬 판 목록(아래 legacyCleared)은 처음 한 번 이지로 옮김
+  var MO = CFG.modes || { order: ['easy'], easy: { name: '이지' } }, ORDER = MO.order;
+  function lastId() { return CFG.stages[CFG.stages.length - 1].id; }
+  // 예전 저장(난이도 전): 깬 판 id 목록 'pixelBrawler.clearedIds' JSON, 더 예전 = 깬 판 「수」 N 'pixelBrawler.cleared'(그때 판 순서 1 2 3 4 6 의 앞 N개)
+  function legacyCleared() {
+    var out = [];
+    try {
+      var raw = localStorage.getItem('pixelBrawler.clearedIds');
+      if (raw) JSON.parse(raw).forEach(function (id) { if (typeof id === 'number' && out.indexOf(id) < 0) out.push(id); });
+      else {
+        var n = parseInt(localStorage.getItem('pixelBrawler.cleared'), 10) || 0;
+        out = [1, 2, 3, 4, 6].slice(0, Math.max(0, n));
+      }
+    } catch (e) {}
+    return out.sort(function (a, b) { return a - b; });
+  }
+  var MSsaved = { cur: ORDER[0], cleared: {} }, cm = cur.modes;
+  ORDER.forEach(function (k) {
+    var L = cm && cm.cleared && Array.isArray(cm.cleared[k]) ? cm.cleared[k] : (!cm && k === ORDER[0] ? legacyCleared() : []);
+    MSsaved.cleared[k] = L.filter(function (id) { return typeof id === 'number'; });
+  });
+  if (cm && ORDER.indexOf(cm.cur) >= 0) MSsaved.cur = cm.cur;
+  // ?diff=normal (시험): 이번 창에서만 그 난이도, 잠금 무시. 그동안 깬 판은 이번 창에서만 기억(저장된 목록은 그대로)
+  var urlDiff = ORDER.indexOf(params.get('diff')) >= 0 ? params.get('diff') : null;
+  var MS = urlDiff ? JSON.parse(JSON.stringify(MSsaved)) : MSsaved;
+  if (!MO[MSsaved.cur] || (ORDER.indexOf(MSsaved.cur) > 0 && !CFG.stagesAllOpen && MSsaved.cleared[ORDER[ORDER.indexOf(MSsaved.cur) - 1]].indexOf(lastId()) < 0)) MSsaved.cur = ORDER[0];   // 잠긴 난이도에 있던 저장(시험 기간이 끝남) → 이지로
+  // 난이도만 저장: ?lv=N 시험 중(noSave)에도 깬 판은 예전처럼 저장(레벨·능력치는 저장된 그대로 둠). ?diff 시험 중이면 저장 안 함
+  function saveModes() {
+    if (MS !== MSsaved) return;
+    if (!G.noSave) { G.save(); return; }
+    var s = data.slots[data.slot] || (data.slots[data.slot] = cur);
+    s.modes = MSsaved;
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch (e) {}
+  }
   var G = {
     lv: clampLv(cur.lv || 1),
     xp: 0,
@@ -166,6 +206,7 @@
     },
     // 적 종류(config growth 위 설명): 'king' / 'boss' / 'elite' / 'tough' / 'mob'
     kindOf: function (type, T) {
+      if (T.midBoss) return 'mid';   // 중간보스(2026-11-06, main.js 가 잡몹 T 를 키워 만든 것)
       if (T.finalBoss) return 'king';
       if (T.boss) return 'boss';
       if (GR.kind && GR.kind[type]) return GR.kind[type];
@@ -221,8 +262,34 @@
     },
     save: function () {
       if (G.noSave) return;
-      data.slots[data.slot] = { lv: G.lv, xp: G.xp, 'class': G.cls, stats: G.stats, pts: G.pts, skills: G.cls ? G.sk : undefined };
+      data.slots[data.slot] = { lv: G.lv, xp: G.xp, 'class': G.cls, stats: G.stats, pts: G.pts, skills: G.cls ? G.sk : undefined, modes: MSsaved };
       try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch (e) {}
+    },
+    // ---------- 난이도 (2026-11-06, config modes) ----------
+    mode: function () { return urlDiff || MS.cur; },
+    M: function () { return MO[G.mode()] || MO.easy; },
+    // 열렸나: 첫 난이도는 늘, 나머지는 앞 난이도에서 마지막 판을 깸(시험 기간 stagesAllOpen 이면 다)
+    modeOpen: function (k) {
+      var i = ORDER.indexOf(k);
+      if (i < 0) return false;
+      if (i === 0 || CFG.stagesAllOpen) return true;
+      return MS.cleared[ORDER[i - 1]].indexOf(lastId()) >= 0;
+    },
+    setMode: function (k) {
+      if (!G.modeOpen(k)) return false;
+      if (urlDiff) { urlDiff = null; MS = MSsaved; }
+      MS.cur = k; saveModes();
+      return true;
+    },
+    // 지금 난이도에서 깬 판 { id: true }
+    cleared: function (k) { var o = {}; (MS.cleared[k || G.mode()] || []).forEach(function (id) { o[id] = true; }); return o; },
+    isCleared: function (id) { return (MS.cleared[G.mode()] || []).indexOf(id) >= 0; },
+    // 판을 깸 → 지금 난이도 목록에 저장. 다음 난이도가 새로 열렸으면 그 난이도 key 를 돌려줌(결과 화면 알림)
+    markCleared: function (id) {
+      var k = G.mode(), L = MS.cleared[k], i = ORDER.indexOf(k), nx = ORDER[i + 1], was = nx ? G.modeOpen(nx) : true;
+      if (L.indexOf(id) < 0) { L.push(id); L.sort(function (a, b) { return a - b; }); }
+      saveModes();
+      return nx && !was && G.modeOpen(nx) ? nx : null;
     },
     // 시험용: 지금 저장 내용 그대로
     saved: function () { try { return JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); } catch (e) { return null; } }

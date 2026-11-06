@@ -344,7 +344,10 @@
       this.recentHits = this.recentHits.filter(function (t) { return now - t <= R.juggleWindowMs; });
       // noJuggle = 달리며 공격의 밀고 가는 작은 타: 여러 번 맞아도 넘어지지 않음(밀려가야 하므로)
       if (!opts.noJuggle) this.recentHits.push(now);
-      if (this.hasAnim('knockdown') && (finisher || opts.heavy || (!opts.noJuggle && this.recentHits.length >= R.juggleHits))) {
+      // 중간보스(2026-11-06, T.poise): 연타로는 안 넘어지고(마무리·무거운 타만), 한 번 넘어지면 downCdMs 동안 다시 안 넘어짐
+      var PZ = T.poise, canDown = !PZ || now - (this.lastDownAt != null ? this.lastDownAt : -1e9) >= PZ.downCdMs;
+      if (this.hasAnim('knockdown') && canDown && (finisher || opts.heavy || (!PZ && !opts.noJuggle && this.recentHits.length >= R.juggleHits))) {
+        this.lastDownAt = now;
         this.state = 'down'; this.downT = 0; this.animT = 0; this.atk = null; this.vx = 0;
         this.downExtra = 0; this.otgHits = 0;   // 누운 채 맞은 횟수·늘어난 시간은 넘어질 때마다 새로
         this.dir = -dir; this.recentHits = [];

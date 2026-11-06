@@ -255,6 +255,13 @@ body.smooth #screen { image-rendering: auto; }
 }
 .bossbar .bar { height: 14px; box-shadow: 0 0 0 2px var(--gold2), 0 0 0 4px var(--ink); }
 .hud .bossbar .bar i { background: linear-gradient(#ff9a7a 0 2px, #d81a3a 2px 8px, #7a0820 8px); }
+/* 중간보스 막대(2026-11-06): 보스 막대보다 좁고 얇게. 「중간보스」 금색 딱지 + 이름(구릿빛 띠), 막대 = 주황 */
+.midbar { width: min(42%, 270px); }
+.midbar span { padding: 0 8px 0 0; background: linear-gradient(#6a3a12, #3e1e08); }
+.midbar span b { display: inline-block; margin-right: 6px; padding: 2px 5px; font: 700 10px/1 var(--ui); color: #3a1a04; text-shadow: none; background: linear-gradient(#ffe08a, #e0a020); }
+.midbar span em { font-style: normal; }
+.midbar .bar { height: 10px; }
+.hud .midbar .bar i { background: linear-gradient(#ffd09a 0 2px, #f07a1a 2px 6px, #8a3208 6px); }
 .go {
   position: absolute; right: max(18px, env(safe-area-inset-right)); top: 40%;
   font: 700 33px/1 var(--ui); color: var(--gold); text-shadow: 3px 3px 0 var(--ink), -2px 0 0 var(--ink), 0 -2px 0 var(--ink), 2px 0 0 var(--ink);
@@ -320,10 +327,28 @@ body.smooth #screen { image-rendering: auto; }
 .sbtn.locked b { color: #8a7a5a; text-shadow: none; }
 .sbtn.locked span { display: flex; align-items: center; gap: 2px; color: #a8987a; }
 .sbtn.locked span::before { content: ''; width: 12px; height: 12px; background: var(--ic-lock) center / 12px no-repeat; }
+/* 난이도 탭(2026-11-06): 이지 / 노말 / 하드. 고른 탭 = 금색, 잠긴 탭 = 어두운 나무 + 자물쇠 + 여는 법 */
+.mtabs { display: flex; gap: 6px; justify-content: center; margin: 0 0 8px; }
+.mtab {
+  position: relative; min-width: 82px; padding: 4px 8px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  color: #3a2410; background: var(--parch); border: 2px solid var(--ink); border-radius: 0; box-shadow: inset 0 -3px 0 #c9a86a, 0 0 0 2px var(--gold3);
+}
+.mtab b { font: 700 13px/1 var(--ui); }
+.mtab.on { background: linear-gradient(#fff0a0, #f2c14e); box-shadow: inset 0 2px 0 #fffbe0, inset 0 -3px 0 #c8902a, 0 0 0 2px var(--gold), 0 0 8px #ffd23f88; }
+.mtab.on b { color: #7a1408; }
+.mt-normal b { color: #1a4a8a; } .mt-hard b { color: #8a1010; }
+.mtab:active { transform: translateY(2px); }
+.mtab.locked { cursor: default; color: #a8987a; background: linear-gradient(#4a3828, #36281c); box-shadow: inset 0 0 0 2px #2a1c10, 0 0 0 2px var(--gold3); transform: none; }
+.mtab.locked b { display: flex; align-items: center; gap: 3px; color: #a8987a; }
+.mtab.locked b::before { content: ''; width: 12px; height: 12px; background: var(--ic-lock) center / 12px no-repeat; }
+.mtab small { font: 400 9px/1.1 var(--ui); color: #c8b890; white-space: nowrap; }
+.mtab:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 .shint { margin: 10px 0 0; font: 400 11px/1 var(--ui); color: #d8c08a; }
 @media (pointer: coarse) { .shint { display: none; } }
 @media (max-height: 420px) {
   .sbtn { width: 84px; min-height: 62px; }
+  .mtabs { margin-bottom: 6px; }
+  .mtab { padding: 3px 8px; }
   .shint { margin-top: 8px; }
 }
 
@@ -739,6 +764,7 @@ button.cpick { cursor: pointer; }
 .portrait .stageinfo { top: calc(100% + 84px); }
 .portrait .combo { top: 82px; }
 .portrait .bossbar { bottom: 6px; width: 70%; }
+.portrait .midbar { width: 56%; }
 .portrait .go { font-size: 22px; }
 .portrait .banner { font-size: 22px; }
 .portrait .banner.boss { font-size: 33px; }

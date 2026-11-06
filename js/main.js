@@ -18,34 +18,11 @@
   var STAGES = CFG.stages;
   function stageIndexOfId(id) { for (var i = 0; i < STAGES.length; i++) if (STAGES[i].id === id) return i + 1; return 0; }
   var urlStage = stageIndexOfId(parseInt(params.get('stage'), 10));
-  var SAVE_IDS = 'pixelBrawler.clearedIds';   // 지금 저장: 깬 판 id 목록 JSON, 예: [1,2,3,4,6]
-  var SAVE_OLD = 'pixelBrawler.cleared';      // 예전 저장: 깬 판 「수」 N(목록 순서 앞에서 N개를 깸) → 처음 한 번 id 목록으로 옮김
-  var OLD_ORDER = [1, 2, 3, 4, 6];            // 예전 저장을 쓰던 때(7단계 전)의 판 목록 순서(id). 예전 값 N = 이 목록 앞 N개
-  var clearedMem = {};                        // 저장이 막혀 있을 때도 이번에 깬 판은 기억
-  function loadCleared() {
-    var out = {}, k;
-    try {
-      var raw = localStorage.getItem(SAVE_IDS);
-      if (raw) JSON.parse(raw).forEach(function (id) { if (typeof id === 'number') out[id] = true; });
-      else {
-        var n = parseInt(localStorage.getItem(SAVE_OLD), 10) || 0;
-        if (n > 0) {
-          OLD_ORDER.slice(0, n).forEach(function (id) { out[id] = true; });
-          localStorage.setItem(SAVE_IDS, JSON.stringify(Object.keys(out).map(Number)));   // 옮긴 결과를 새 이름으로 저장(예전 값은 그대로 둠)
-        }
-      }
-    } catch (e) {}
-    for (k in clearedMem) out[k] = true;
-    return out;
-  }
-  function isCleared(id) { return !!loadCleared()[id]; }
-  function saveCleared(id) {
-    clearedMem[id] = true;
-    try {
-      var c = loadCleared(); c[id] = true;
-      localStorage.setItem(SAVE_IDS, JSON.stringify(Object.keys(c).map(Number).sort(function (a, b) { return a - b; })));
-    } catch (e) {}
-  }
+  // 깬 판 저장(2026-11-06 난이도): 저장칸에 난이도마다 따로(growth.js Growth.cleared · markCleared). 예전 깬 판 목록(pixelBrawler.clearedIds)은 growth.js 가 이지로 옮김
+  //   아래 세 이름은 예전 그대로 = 「지금 난이도」의 깬 판
+  function loadCleared() { return Growth.cleared(); }
+  function isCleared(id) { return Growth.isCleared(id); }
+  function saveCleared(id) { return Growth.markCleared(id); }   // 다음 난이도가 새로 열렸으면 그 key
   // 목록 n 번째(1부터) 판이 열렸나: 시험(?stage=N)·다 열어 둔 기간이면 다, 아니면 첫 판 + 바로 앞 판을 깬 판 + 이미 깬 판
   //   (이미 깬 판: 5단계를 6 앞에 끼우기 전에 6을 깬 저장 → 5를 아직 안 깼어도 6은 그대로 열려 있음)
   function isOpen(n) { return !!urlStage || !!CFG.stagesAllOpen || n <= 1 || isCleared(STAGES[n - 2].id) || isCleared(STAGES[n - 1].id); }
@@ -780,17 +757,23 @@
   function hordeMulOf(w, HD) { return (w && w.hordeMul) || (HD.stageMul && CFG.stage && HD.stageMul[CFG.stage.id]) || HD.mul || 1; }
   // 소수 배수: 잡몹마다 (배수 - 1) 을 쌓아서 정수가 넘을 때만 한 마리 더(1.5배 = 두 마리 중 하나만 더)
   function hordeExtra(acc, mul) { var a0 = acc.v; acc.v += mul - 1; return Math.floor(acc.v + 1e-6) - Math.floor(a0 + 1e-6); }
+  // 마리 수 배수(2026-11-06 난이도): 잡몹 = 몹 떼 배수 x 난이도 count, 단단한 잡몹 = 난이도 countTough, 나머지(보스·정예) = 1
+  //   몹 떼로 늘어난 만큼은 한 마리가 약해지지만(makeEnemy), 난이도로 늘어난 몹은 약해지지 않음
+  function countMul(type, w, HD) {
+    var T = CFG.enemies[type], M = Growth.M();
+    if (hordeMob(type)) return (HD ? hordeMulOf(w, HD) : 1) * (M.count || 1);
+    if (T && !T.boss && Growth.kindOf(type, T) === 'tough') return M.countTough || 1;
+    return 1;
+  }
   // 웨이브 spawn 목록 → 몹 떼(잡몹마다 mul 배). 늘어난 몹은 반대쪽 끝에서(bothSides) gapMs 씩 늦게, 화면 밖으로 조금씩 더 떨어져서(off)
   function hordeSpawn(w) {
     var list = (w.spawn || []).map(function (s) { return { type: s[0], side: s[1], at: s[2], opt: s[3], off: 0 }; }), HD = hordeOf(w);
-    if (!HD) return list;
-    var mul = hordeMulOf(w, HD), out = [], acc = { v: 0 };
+    var HS = HD || (CFG.hunt && CFG.hunt.horde) || {}, out = [], acc = { v: 0 };   // HS = 늘어난 몹 서는 법(몹 떼를 끈 판도 난이도로 늘면 같은 모양)
     list.forEach(function (q) {
       out.push(q);
-      if (!hordeMob(q.type)) return;
-      for (var k = 1, nx = hordeExtra(acc, mul); k <= nx; k++) {
-        var flip = HD.bothSides && k % 2 === 1;
-        out.push({ type: q.type, side: flip ? (q.side === 'L' ? 'R' : 'L') : q.side, at: q.at + k * (HD.gapMs || 0), opt: q.opt, off: flip ? Math.floor(k / 2) : k });
+      for (var k = 1, nx = hordeExtra(acc, countMul(q.type, w, HD)); k <= nx; k++) {
+        var flip = HS.bothSides && k % 2 === 1;
+        out.push({ type: q.type, side: flip ? (q.side === 'L' ? 'R' : 'L') : q.side, at: q.at + k * (HS.gapMs || 0), opt: q.opt, off: flip ? Math.floor(k / 2) : k });
       }
     });
     return out;
@@ -800,6 +783,8 @@
     var S = G.stage, w = CFG.stage.waves[i];
     S.locked = true; S.lockCam = waveAt(w); S.waveIdx = i; S.lastLock = S.lockCam; S.waveT = 0;
     S.queue = hordeSpawn(w);   // 사냥 손맛: 켠 판이면 잡몹이 떼로(config hunt.horde)
+    var MQ = midOf(CFG.stage);   // 중간보스(2026-11-06): 보스 바로 앞 웨이브에 하나
+    if (MQ && i === MQ.wave) S.queue.push({ type: MQ.type, side: CFG.midBoss.side || 'R', at: CFG.midBoss.delayMs || 0, opt: { mid: true }, off: 0 });
     // 미리 서 있는 적: 아직 안 나온 것도 지금 다 내놓고, 화면이 고정되면 전부 알아챔
     S.placedQ.forEach(spawnPlaced); S.placedQ = [];
     G.enemies.forEach(function (e) { if (e.asleep) wakeEnemy(e, Math.random() * (CFG.ai.wake.groupDelayMs || 0)); });
@@ -807,15 +792,24 @@
     snd('wave', w.boss ? { k: 0.75 } : null);
   }
 
-  // 적 하나 만들기: 판 배율(hpMul·dmgMul) + 변종(색·배율) 적용. opt = { variant }
+  // 난이도 배율(2026-11-06, config modes): 숫자 하나 = 모든 판 같음, [1판, 10판] = 판 순서대로 고르게
+  function modeVal(v) {
+    if (!Array.isArray(v)) return v != null ? v : 1;
+    var n = STAGES.length, u = n > 1 ? clamp((G.stageNo || 1) - 1, 0, n - 1) / (n - 1) : 0;
+    return v[0] + (v[v.length - 1] - v[0]) * u;
+  }
+  // 적 하나 만들기: 판 배율(hpMul·dmgMul) + 변종(색·배율) + 난이도 배율 적용. opt = { variant, mid(중간보스) }
   function makeEnemy(type, x, y, opt) {
-    var S = G.stage, T = CFG.enemies[type], st = CFG.stage;
-    var vk = (opt && opt.variant) || T.variant, V = vk && CFG.variants ? CFG.variants[vk] : null;   // T.variant = 늘 그 색으로 나오는 적(7단계 용암 골렘)
-    var e = new Enemy(type, CFG, V ? tintArt(type, vk) : G.assets.enemies[type], x, y);
-    var hm = (st.hpMul || 1) * (V && V.hpMul || 1), dm = (st.dmgMul || 1) * (V && V.dmgMul || 1);
+    var S = G.stage, T = CFG.enemies[type], st = CFG.stage, M = Growth.M();
+    var MQ = opt && opt.mid ? midOf(st) : null;   // 중간보스: 잡몹 T 를 키운 MQ.T + 물들인 그림(MQ.vk)
+    var vk = MQ ? MQ.baseVk : (opt && opt.variant) || T.variant, V = vk && CFG.variants ? CFG.variants[vk] : null;   // T.variant = 늘 그 색으로 나오는 적(7단계 용암 골렘)
+    var e = new Enemy(type, CFG, MQ ? tintArt(type, MQ.vk) : V ? tintArt(type, vk) : G.assets.enemies[type], x, y);
+    if (MQ) { T = e.T = MQ.T; e.hp = e.maxHp = T.hp; e.label = T.label; e.hoverD = T.hover[0] + Math.random() * (T.hover[1] - T.hover[0]); e.mid = true; S.mid = e; }
+    var hm = (st.hpMul || 1) * (V && V.hpMul || 1) * modeVal(M.hpMul), dm = (st.dmgMul || 1) * (V && V.dmgMul || 1) * modeVal(M.dmgMul);
+    if (MQ) dm *= CFG.midBoss.dmgMul || 1;
     if (hm !== 1) e.hp = e.maxHp = Math.round(e.maxHp * hm);
     e.dmgMul = dm;
-    if (V) { e.variant = vk; if (V.label) e.label = V.label + ' ' + e.label; }
+    if (V && !MQ) { e.variant = vk; if (V.label) e.label = V.label + ' ' + e.label; }
     // 몹 떼(사냥 손맛): 늘어난 만큼 한 마리는 약하게 + 경험치 xpMul 배. 쓰러지면 붕 날아가 펑(hunt.death, enemies.js)
     var HD = hordeOf(null);
     var hmul = HD ? hordeMulOf(null, HD) : 1;
@@ -824,7 +818,7 @@
       e.dmgMul *= HD.dmgMul || 1; e.xpMul = HD.hpExp ? 1 / hmul : (HD.xpMul || 1); e.horde = true;
     }
     var HDe = huntPart('death');
-    if (HDe && !T.boss) e.huntDeath = HDe;
+    if (HDe && !T.boss && !MQ) e.huntDeath = HDe;   // 중간보스는 보스처럼 그 자리에 쓰러짐(펑 없이)
     e.wave = S.waveIdx;
     G.enemies.push(e);
     if (T.boss) S.boss = e;
@@ -832,12 +826,88 @@
   }
   // off = 몹 떼로 늘어난 몹: 화면 밖으로 off x hunt.horde.xOff 도트 더 떨어져서 나옴(한 덩어리로 겹치지 않게)
   function spawnEnemy(type, side, opt, off) {
-    var S = G.stage, T = CFG.enemies[type], HD = off ? hordeOf(null) : null, ox = HD ? off * (HD.xOff || 0) * AS : 0;
+    var S = G.stage, T = CFG.enemies[type], HD = off ? hordeOf(null) || CFG.hunt.horde : null, ox = HD ? off * (HD.xOff || 0) * AS : 0;
     var x = side === 'L' ? S.lockCam - T.radius - 30 - ox : S.lockCam + LW + T.radius + 30 + ox;
     var y = world.laneTop + Math.random() * (world.laneBottom - world.laneTop);
     var e = makeEnemy(type, x, y, opt);
     e.dir = side === 'L' ? 1 : -1;
     return e;
+  }
+
+  // ---------- 중간보스 (2026-11-06, config midBoss) ----------
+  // 그 판 잡몹 T 를 복사해서 키움: 그림 배율(drawScale) + 몸·공격 판정·그림자(radius)·키·거리를 같은 배율로, 체력 = 그 판 보스 기본 체력 x hpBoss,
+  //   근접 공격은 무겁게(heavy) + 치켜든 그림(예고)을 windMs 더 길게 + 바닥 빨간 예고, 버티기(armor·staggerCdMs·poise), 띄우기 안 됨(noLaunch)
+  //   그림 = 그 판 변종 색 위에 더 어둡게(midBoss.tint) 구운 것 + 빛나는 테두리(rim). 판마다 한 번 만들어 둠
+  var midCache = {};
+  function midOf(st) {
+    var MB = CFG.midBoss, L = MB && MB.on && MB.list && MB.list[st.id];
+    if (!L || !CFG.enemies[L[0]]) return null;
+    if (midCache[st.id]) return midCache[st.id];
+    var B = CFG.enemies[L[0]], k = MB.scale || 1, wave = st.waves.length - (MB.wave || 2), boss = null;
+    if (wave < 0 || st.waves[wave].boss) return null;
+    st.waves.forEach(function (w) { (w.spawn || []).forEach(function (q) { var E = CFG.enemies[q[0]]; if (E && E.boss) boss = E; }); });
+    var tmp = Object.assign({}, B); delete tmp.anims;
+    var T = JSON.parse(JSON.stringify(tmp));
+    T.anims = Object.assign({}, B.anims);
+    function mul(o, keys, f) { if (o) keys.forEach(function (n) { if (typeof o[n] === 'number') o[n] *= f; }); }
+    function bx(r) { mul(r, ['x0', 'x1', 'yTop', 'yBot'], k); }
+    function arr(a) { return a ? a.map(function (v) { return v * k; }) : a; }
+    // 몸·그림자·키·거리
+    T.drawScale = (B.drawScale || 1) * k;
+    mul(T, ['radius', 'height', 'engage', 'deathKnock'], k); bx(T.hurtbox);
+    T.range = arr(T.range); T.hover = arr(T.hover);
+    mul(T, ['speedX', 'speedY'], MB.speed || 1);
+    var wa = T.walkAnim && B.anims[T.walkAnim];   // 걷기 그림: 커진 몸 + 느린 걸음에 맞춰 천천히(발이 미끄러지지 않게)
+    if (wa) T.anims[T.walkAnim] = Object.assign({}, wa, { fps: wa.fps * (MB.speed || 1) / k });
+    // 공격: 판정 크게 · 무겁게 · 예고 길게
+    var longer = {};
+    Object.keys(T.attacks).forEach(function (n) {
+      var a = T.attacks[n];
+      bx(a.reach); bx(a.bodyReach); mul(a.spawn, ['x', 'y'], k); mul(a, ['aimH'], k);
+      if (a.reachF) Object.keys(a.reachF).forEach(function (q) { bx(a.reachF[q]); });
+      mul(a, ['depth'], Math.sqrt(k)); mul(a.move, ['dist'], k); a.when = arr(a.when);
+      mul(a, ['knock'], MB.knock || 1);
+      var melee = !a.type && !a.grab;
+      if (melee && MB.heavy) a.heavy = true;
+      var first = a.active ? a.active[0] : a.spawnFrame, A = B.anims[a.anim];
+      if (!first || !A) return;
+      var wf = a.telegraph ? a.telegraph[a.telegraph.length - 1] : Math.max(1, first - 1);
+      if (melee) { a.telegraph = a.telegraph || [wf]; a.showTelegraph = true; }
+      if (!MB.windMs || longer[a.anim]) return;
+      longer[a.anim] = true;
+      var pb = (A.playback || A.frames.map(function (q, i) { return i + 1; })).slice(), fa = pb.indexOf(first), at = pb.lastIndexOf(wf, fa < 0 ? pb.length - 1 : fa);
+      if (at < 0) return;
+      var add = Math.round(MB.windMs * A.fps / 1000), ins = [];
+      for (var i = 0; i < add; i++) ins.push(wf);
+      pb.splice.apply(pb, [at + 1, 0].concat(ins));
+      T.anims[a.anim] = Object.assign({}, A, { playback: pb });
+    });
+    // 버티기 · 이름 · 보상
+    T.midBoss = true; T.label = L[1]; T.noLaunch = true;
+    T.superArmor = !!MB.armor; T.staggerCdMs = MB.staggerCdMs || 0;
+    T.poise = { downCdMs: MB.downCdMs || 0 };
+    T.knockResist = (B.knockResist != null ? B.knockResist : 1) * (MB.knockResist != null ? MB.knockResist : 1);
+    T.rim = MB.rim || null;
+    T.hp = Math.round((boss ? boss.hp : B.hp * 7) * (MB.hpBoss || 0.45));
+    // 그림 색: 그 판 변종(L[2]) 위에 tint 를 얹은 새 변종을 variants 에 넣어 둠(tintArt 가 한 번만 구움)
+    var V0 = L[2] && CFG.variants[L[2]], TN = MB.tint || {}, vk = 'mid' + st.id;
+    CFG.variants[vk] = V0 ? Object.assign({}, V0, { sat: (V0.sat != null ? V0.sat : 1) * (TN.sat != null ? TN.sat : 1), bright: (V0.bright != null ? V0.bright : 1) * (TN.bright != null ? TN.bright : 1) }) : TN;
+    return (midCache[st.id] = { type: L[0], T: T, vk: vk, baseVk: L[2] || null, wave: wave });
+  }
+  // 중간보스 등장: 이름 띠 + 으르렁(보스 소리를 높게) + 흔들림
+  function midIntro(e) {
+    banner(josa(e.label, '이', '가') + ' 나타났다!', 'boss');
+    snd('bossRoar', { k: 1.3, v: 0.8 });
+    FX.shake(J.shakePx * 1.6, 420);
+  }
+  // 중간보스 쓰러짐: 짧은 멈춤·슬로모션 + 보스 쓰러짐 소리(높게) + 물약 꼭 하나(config midBoss.potion). 경험치는 xpStep(growth xp.mid)
+  function midDown(e) {
+    G.hitstop = Math.max(G.hitstop, 140);
+    G.slowT = Math.max(G.slowT, 600);
+    FX.shake(J.shakePx * 2, 380);
+    snd('bossDown', { k: 1.35, v: 0.75 });
+    var dir = G.player.x >= e.x ? 1 : -1;
+    if (CFG.potions && CFG.midBoss.potion) Props.dropPotion(e.x + dir * (e.T.radius + 10 * AS), e.y, dir, CFG.midBoss.potion);
   }
 
   // ---------- 미리 서 있는 적 (웨이브의 placed) ----------
@@ -850,20 +920,18 @@
     var at = waveAt(w);
     S.placedQ = w.placed.map(function (q) { return { type: q[0], x: at + q[1], yk: q[2], opt: q[3] || {}, wave: i }; });
     // 몹 떼(사냥 손맛): 미리 서 있는 잡몹도 mul 배 — 옆(placedDx)·위아래(placedDy)로 비켜 서서 같은 무리. 무리가 없던 몹은 늘어난 몹과 한 무리
+    //   (2026-11-06 난이도) 마리 수 = countMul: 노말·하드는 단단한 잡몹도 늘어남
     var HD = hordeOf(w);
-    if (HD) {
-      var mul = hordeMulOf(w, HD), add = [], acc = { v: 0 };
-      S.placedQ.forEach(function (q, n) {
-        if (!hordeMob(q.type)) return;
-        var nx = hordeExtra(acc, mul); if (!nx) return;
-        if (!q.opt.group) q.opt = Object.assign({}, q.opt, { group: 'horde' + i + '_' + n });
-        for (var k = 1; k <= nx; k++) {
-          var sx = k % 2 ? 1 : -1, yk = q.yk + (q.yk > 0.5 ? -1 : 1) * (HD.placedDy || 0) * Math.ceil(k / 2);
-          add.push({ type: q.type, x: q.x + sx * (HD.placedDx || 0) * Math.ceil(k / 2), yk: clamp(yk, 0.04, 0.96), opt: q.opt, wave: i });
-        }
-      });
-      S.placedQ = S.placedQ.concat(add);
-    }
+    var HS = HD || (CFG.hunt && CFG.hunt.horde) || {}, add = [], acc = { v: 0 };
+    S.placedQ.forEach(function (q, n) {
+      var nx = hordeExtra(acc, countMul(q.type, w, HD)); if (!nx) return;
+      if (!q.opt.group) q.opt = Object.assign({}, q.opt, { group: 'horde' + i + '_' + n });
+      for (var k = 1; k <= nx; k++) {
+        var sx = k % 2 ? 1 : -1, yk = q.yk + (q.yk > 0.5 ? -1 : 1) * (HS.placedDy || 0) * Math.ceil(k / 2);
+        add.push({ type: q.type, x: q.x + sx * (HS.placedDx || 0) * Math.ceil(k / 2), yk: clamp(yk, 0.04, 0.96), opt: q.opt, wave: i });
+      }
+    });
+    S.placedQ = S.placedQ.concat(add);
   }
   function spawnPlaced(q) {
     var e = makeEnemy(q.type, q.x, laneY(q.yk), q.opt);
@@ -966,6 +1034,8 @@
   }
   // 판에 나오는 변종 그림을 판 시작할 때 미리 구움(게임 중 멈칫 없게). 보스가 화날 때 부르는 색 바꾼 졸개(5단계 얼음 늑대)도
   function bakeStageVariants() {
+    var MQ = midOf(CFG.stage);   // 중간보스(2026-11-06): 어둡게 물들인 그림
+    if (MQ) tintArt(MQ.type, MQ.vk);
     CFG.stage.waves.forEach(function (w) {
       (w.spawn || []).concat(w.placed || []).forEach(function (s) {
         if (s[3] && s[3].variant) tintArt(s[0], s[3].variant);
@@ -1332,8 +1402,8 @@
   // 잡몹이 쓰러질 때 가끔 물약(단단한 잡몹은 조금 더 자주). 보스·보스와 같이 쓰러진 졸개(noDrop)는 안 줌(보스는 bossPotion)
   function mobPotion(e) {
     var PO = CFG.potions;
-    if (!PO || e.T.boss || e.noDrop) return;
-    if (Math.random() < (e.T.hp >= PO.toughHp ? PO.tough : PO.mob)) Props.dropPotion(e.x, e.y, G.player.x > e.x ? -1 : 1, null);
+    if (!PO || e.T.boss || e.noDrop || e.mid) return;   // 중간보스는 midDown 이 꼭 하나. 난이도(2026-11-06): 확률 x modes.drop
+    if (Math.random() < (e.T.hp >= PO.toughHp ? PO.tough : PO.mob) * (Growth.M().drop || 1)) Props.dropPotion(e.x, e.y, G.player.x > e.x ? -1 : 1, null);
   }
   // 보스는 꼭 하나(config potions.bossAt: 'rage' = 화날 때 · 'death' = 쓰러질 때). 플레이어 쪽으로 튐
   function bossPotion(B, when) {
@@ -1694,16 +1764,19 @@
     G.enemies.forEach(function (e) {
       if (e.alive() || e.xpDone) return;
       e.xpDone = true;
-      if (!e.T.boss) snd('pop');   // 쓰러진 잡몹 「펑」(보스는 onBossDown 의 bossDown)
+      if (e.mid) midDown(e);   // 중간보스(2026-11-06): 쓰러짐 연출 + 물약 꼭 하나
+      else if (!e.T.boss) snd('pop');   // 쓰러진 잡몹 「펑」(보스는 onBossDown 의 bossDown)
       mobPotion(e);   // 물약(2026-11-06 밤)
       var n = Growth.enemyXp(e.type, e.T, idx);
       if (e.xpMul && n > 0) n = Math.max(1, Math.round(n * e.xpMul));   // 몹 떼(사냥 손맛): 한 마리 경험치 xpMul 배
+      var MX = Growth.M().xp;
+      if (MX && MX !== 1 && n > 0) n = Math.max(1, Math.round(n * MX));   // 난이도(2026-11-06): 노말·하드는 경험치 더
       if (!(n > 0) || Growth.isMax()) return;
       G.xpGot = (G.xpGot || 0) + n;
       // 경험치 구슬(사냥 손맛): 쓰러져 펑 할 때(hunt.death) 또는 지금 튀어나와 플레이어에게 빨려 듦. 그때는 「+5 XP」 글자 대신(hideXpText)
       var OB = huntPart('orbs');
       if (OB) { if (e.huntDeath && !e.T.boss) e.orbN = true; else spawnOrbs(e.x, e.y - e.T.height * 0.45 - (e.az || 0), OB); }
-      if (!OB || !OB.hideXpText || e.T.boss) FX.damage(e.x, e.y - e.T.height - 8, '+' + n + ' XP', false, J, null, 'xp', e.id + ':xp');
+      if (!OB || !OB.hideXpText || e.T.boss || e.mid) FX.damage(e.x, e.y - e.T.height - 8, '+' + n + ' XP', false, J, null, 'xp', e.id + ':xp');
       var up = Growth.gain(n);
       if (up > 0) onLevelUp(up);
     });
@@ -1781,6 +1854,7 @@
         if (S.queue[i].at <= S.waveT) {
           var ne = spawnEnemy(S.queue[i].type, S.queue[i].side, S.queue[i].opt, S.queue[i].off); S.queue.splice(i, 1);
           if (ne.T.boss && !S.introDone) { S.introDone = true; startIntro(ne); }   // 보스 등장 컷인(판마다 한 번)
+          if (ne.mid) midIntro(ne);   // 중간보스 등장(2026-11-06)
         }
       }
       rescueStuck(dt);
@@ -1852,7 +1926,7 @@
     G.enemies.forEach(function (e) {
       if (!e.alive() || e.state === 'down' || e.hidden || e.airborne() || e.faded()) return;   // 넘어진 적은 밟고 지나갈 수 있음, 땅속(전갈 왕)·공중(두꺼비 배치기)·옅어진 유령 기사도 지나감
       var charging = e.state === 'attack' && e.atk && e.atk.spec.type === 'charge';
-      list.push({ o: e, r: e.T.radius, m: charging ? 0 : (e.T.boss ? 0.08 : 1), boss: !!e.T.boss, out: !e.entered });
+      list.push({ o: e, r: e.T.radius, m: charging ? 0 : (e.T.boss ? 0.08 : e.mid ? 0.3 : 1), boss: !!e.T.boss, out: !e.entered });
     });
     for (var i = 0; i < list.length; i++) for (var j = i + 1; j < list.length; j++) {
       var a = list[i], b = list[j];
@@ -2227,7 +2301,7 @@
 
   // ---------- HUD (체력 막대, 보스 막대, GO, 알림) ----------
   var hud = {};
-  ['pHp', 'pHpLag', 'pHpNum', 'pMp', 'pMpNum', 'pFull', 'pRage', 'pRageNum', 'btnAwk', 'awkPct', 'awkChip', 'pLv', 'pXp', 'bossBar', 'bHp', 'bHpLag', 'bossName', 'goPrompt', 'banner', 'stageInfo'].forEach(function (k) { hud[k] = document.getElementById(k); });
+  ['pHp', 'pHpLag', 'pHpNum', 'pMp', 'pMpNum', 'pFull', 'pRage', 'pRageNum', 'btnAwk', 'awkPct', 'awkChip', 'pLv', 'pXp', 'bossBar', 'bHp', 'bHpLag', 'bossName', 'midBar', 'mHp', 'mHpLag', 'midName', 'goPrompt', 'banner', 'stageInfo'].forEach(function (k) { hud[k] = document.getElementById(k); });
   var lastHud = {};
   function setIf(key, val, fn) { if (lastHud[key] !== val) { lastHud[key] = val; fn(val); } }
   function updateHud() {
@@ -2267,11 +2341,19 @@
     setIf('bshow', showBoss, function (v) { hud.bossBar.hidden = !v; });
     if (B) setIf('bname', B.label, function (v) { hud.bossName.textContent = v; });
     if (B) setIf('bhp', B.hp / B.maxHp, function (v) { hud.bHp.style.width = (v * 100) + '%'; hud.bHpLag.style.width = (v * 100) + '%'; });
+    // 중간보스 막대(2026-11-06): 보스 막대 자리에 작게(보스와 같이 나오지 않음)
+    var MB = S.mid, showMid = !!(MB && (MB.alive() || MB.deadT < 800)) && !showBoss;
+    setIf('mshow', showMid, function (v) { if (hud.midBar) hud.midBar.hidden = !v; });
+    if (MB && hud.midBar) {
+      setIf('mname', MB.label, function (v) { hud.midName.textContent = v; });
+      setIf('mhp', MB.hp / MB.maxHp, function (v) { hud.mHp.style.width = (v * 100) + '%'; hud.mHpLag.style.width = (v * 100) + '%'; });
+    }
     var waves = CFG.stage.waves;
     var go = !S.locked && S.next > 0 && S.next < waves.length && G.camX < S.lastLock + 70 && p.state !== 'dead';
     setIf('go', go, function (v) { hud.goPrompt.hidden = !v; });
     var wi = Math.min(waves.length, S.locked ? S.waveIdx + 1 : S.next + (S.next < waves.length ? 0 : 0));
-    setIf('info', wi + '/' + waves.length, function () { hud.stageInfo.textContent = CFG.stage.name + '  ·  ' + Math.max(1, wi) + ' / ' + waves.length; });
+    // 판 이름 앞에 난이도(2026-11-06): 「노말 · STAGE 3  늪지대  ·  2 / 7」
+    setIf('info', Growth.mode() + wi + '/' + waves.length, function () { hud.stageInfo.textContent = Growth.M().name + ' · ' + CFG.stage.name + '  ·  ' + Math.max(1, wi) + ' / ' + waves.length; });
   }
   // 얼굴 액자(2026-11-06 UI A): 지금 옷 서 있는 그림 1장의 머리~가슴을 HUD 왼쪽 위 작은 캔버스(pFace)에 도트 그대로 크게
   var faceEl = document.getElementById('pFace');
@@ -2306,7 +2388,7 @@
     S.result = kind;
     Input.setOverride(null);
     var last = G.stageNo >= STAGES.length, clear = kind === 'clear', end = clear && !!S.ending;
-    if (clear) saveCleared(CFG.stage.id);   // 깬 판 id 저장
+    var opened = clear ? saveCleared(CFG.stage.id) : null;   // 깬 판 id 저장(지금 난이도). 마지막 판이면 다음 난이도가 열림(2026-11-06)
     if (clear && G.run) G.run.ms[CFG.stage.id] = S.time;
     var tot = 0, full = !!G.run && G.run.from === STAGES[0].id;
     if (end && full) STAGES.forEach(function (st) { if (G.run.ms[st.id] != null) tot += G.run.ms[st.id]; else full = false; });
@@ -2316,7 +2398,8 @@
       (end ? '<span class="endline">마왕을 쓰러뜨렸다!</span>' + (full ? '1단계부터 총 시간 <b>' + fmtTime(tot) + '</b><br>' : '') : clear && last ? '모든 스테이지를 깼다!<br>' : '') +
       '시간 <b>' + fmtTime(S.time) + '</b> · 맞힌 수 <b>' + G.hits + '</b> · 최대 콤보 <b>' + G.maxCombo + '</b>' +
       (clear ? ' · 남은 체력 <b>' + p.hp + '</b>' : '') +
-      '<br>얻은 경험치 <b>' + (G.xpGot || 0) + '</b> · <b>Lv ' + Growth.lv + '</b>';
+      '<br>얻은 경험치 <b>' + (G.xpGot || 0) + '</b> · <b>Lv ' + Growth.lv + '</b>' +
+      (opened ? '<br><span class="endline">' + CFG.modes[opened].name + ' 난이도가 열렸다!</span>' : '');
     var nx = document.getElementById('btnNext');
     nx.hidden = !(clear && !last && !end);
     var focus = clear && !last && !end ? nx : clear ? document.getElementById('btnSel') : document.getElementById('btnRetry');
@@ -2408,6 +2491,7 @@
   function openStageSelect() {
     if (needClassChange()) { G.paused = true; closeMenu(resultEl); openClassChange(openStageSelect); return; }   // 2단계를 깼는데 직업이 없음 → 전직 먼저
     var list = document.getElementById('stageList'), cleared = loadCleared(), focus = null;
+    focus = modeTabs();   // 난이도 탭(2026-11-06): 방금 탭을 눌렀으면 그 탭에 초점
     list.innerHTML = '';
     STAGES.forEach(function (st, i) {
       var n = i + 1, b = document.createElement('button'), open = isOpen(n), done = !!cleared[st.id];
@@ -2416,12 +2500,35 @@
       b.innerHTML = '<b>' + st.id + '</b><span>' + (open ? st.name.replace(/^STAGE\s*\d+\s*/, '') : '잠김') + '</span>' + (done ? '<i>클리어</i>' : '');
       b.addEventListener('click', function () { closeMenu(selEl); G.paused = false; goStage(n); });
       list.appendChild(b);
-      if (open && (n === G.stageNo || !focus)) focus = b;
+      if (open && !modeTabFocus && (n === G.stageNo || !focus)) focus = b;
     });
+    modeTabFocus = false;
     closeMenu(resultEl);
     G.paused = true;
     Input.setOverride(null);
     openMenu(selEl, focus);
+  }
+  // 난이도 탭(2026-11-06, config modes): 이지 / 노말 / 하드. 잠긴 난이도 = 자물쇠 + 「이지 10판 클리어 시 열림」(못 누름)
+  //   누르면 그 난이도로 바꾸고(저장) 판 목록을 그 난이도의 깬 판으로 다시 그림. 돌려주는 값 = 방금 누른 탭(초점 줄 곳)
+  var modeTabFocus = false;
+  function modeTabs() {
+    var box = document.getElementById('modeTabs'), O = CFG.modes, cur = Growth.mode(), out = null, last = STAGES[STAGES.length - 1].id;
+    if (!box || !O) return null;
+    box.innerHTML = '';
+    O.order.forEach(function (k, i) {
+      var b = document.createElement('button'), open = Growth.modeOpen(k), M = O[k];
+      b.type = 'button'; b.className = 'mtab mt-' + k + (k === cur ? ' on' : '') + (open ? '' : ' locked');
+      b.disabled = !open;
+      b.setAttribute('aria-pressed', k === cur ? 'true' : 'false');
+      b.innerHTML = '<b>' + M.name + '</b>' + (open ? '' : '<small>' + O[O.order[i - 1]].name + ' ' + last + '판 클리어 시 열림</small>');
+      b.addEventListener('click', function () {
+        if (k === Growth.mode() || !Growth.setMode(k)) return;
+        modeTabFocus = true; openStageSelect();
+      });
+      box.appendChild(b);
+      if (modeTabFocus && k === cur) out = b;
+    });
+    return out;
   }
   function makeEnemyCtx() {
     var E = {
