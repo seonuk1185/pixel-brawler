@@ -918,6 +918,17 @@
     ceil:   { img: 'assets/bg/dungeon/mine/ceil.png',   w: 250, h: 200, voidColor: '#07060b' },
     height: 240, floorY: 144, laneTop: 158, laneBottom: 230
   };
+  // ---------- 레이드 배경: 불의 화산굴 (art\dungeon-bg\fire 에서 복사, 2026-11-07) ----------
+  // 검은 현무암 전당 + 용암 폭포 · 사슬 기둥 · 화로, 가운데(mid) = 흑요석 제단 + 봉인된 뿔 달린 화염 마신 문. 바닥 = 금 간 현무암 + 빛나는 용암 줄
+  //   광산 배경과 같은 방식(arena: mid 는 싸움터 가운데 한 장, far · ground 이어 붙임, ceil = 키 큰 화면 위 천장). 바닥 선만 조금 낮음(floorY 156)
+  var BG_DG_FIRE = {
+    arena: true,
+    far:    { img: 'assets/bg/dungeon/fire/far.png',    w: 202, tile: true,  parallax: 0.5 },
+    mid:    { img: 'assets/bg/dungeon/fire/mid.png',    w: 228, tile: false, parallax: 1 },
+    ground: { img: 'assets/bg/dungeon/fire/ground.png', w: 202, tile: true,  parallax: 1.0 },
+    ceil:   { img: 'assets/bg/dungeon/fire/ceil.png',   w: 202, h: 200, voidColor: '#090404' },
+    height: 240, floorY: 156, laneTop: 158, laneBottom: 230
+  };
 
   window.CFG = {
     version: 'stage1-proto-2',
@@ -1129,7 +1140,7 @@
     //   공격·점프로 넘김. color = 얼굴판 색(보스 rageColor 가 있으면 그것), king = 10단계 마왕(길게·보라). titles = 보스 종류 → 칭호
     bossIntro: { on: true, ms: 1800, kingMs: 2600, color: '#c8361a', kingColor: '#7a2ad8',
                  titles: { orc: '숲의 폭군', golem: '동굴의 돌 수호자', toad: '늪의 탐식가', scorpion: '모래 속 독침의 왕', giant: '얼음 봉우리의 거인',
-                           captain: '검은 바다의 약탈자', wyvern: '화산을 나는 날개', vampire: '피에 굶주린 밤의 귀족', general: '마왕군 선봉장', demonking: '어둠의 왕좌' } },
+                           captain: '검은 바다의 약탈자', wyvern: '화산을 나는 날개', vampire: '피에 굶주린 밤의 귀족', general: '마왕군 선봉장', demonking: '어둠의 왕좌', ignis: '불의 화산굴의 주인' } },
 
     // ---------- 분노·각성 (2026-11-06 밤, 기획\성장시스템-설계안.md 「분노·각성」, 그림·계산 = main.js) ----------
     // 분노(rage, 0~100 %): 마나 밑 주황 막대. 평타 적중 +hit · 기술 적중 +skillHit(대상마다, 공중·누운 적 타도 셈) · 맞음 +hurt. 소품은 안 셈
@@ -2954,7 +2965,7 @@
     //       ms 동안 turns 바퀴 빙글 돌며 다가가고 shrink 배까지 작아짐 → 들어가는 순간 작은 반짝. 판(스테이지)은 그대로 밟아서 주움
     //       레이드 보스처럼 한꺼번에 빨아들일 땐 r · depth 를 크게(9999). 다 끝나면 남은 것은 저절로 주움
     dungeons: {
-      order: ['mine'],
+      order: ['mine', 'fire'],
       // ===== 강화석 광산: 90초 버티기(rule 'timeAttack') =====
       //   양옆에서 몹이 끝없이 나옴(시간이 갈수록 더 자주 · 더 많이). 30초 = 「대장 출현!」 중간보스 2, 60초 = 중간보스 5 + 몹 몰려옴
       //   쓰러지면 끝(그때까지 모은 강화석은 남음), 0초까지 버티면 「버텼다!」 + 덤 강화석. 경험치는 보통처럼(적마다)
@@ -2993,6 +3004,91 @@
         // 난이도별: stones = 강화석(떨어지는 확률·개수·덤) 배율, spawn = 나오는 빠르기 배율, alive = 살아 있는 몹 최대 배율(cap 은 그대로)
         modes: { easy: { stones: 1, spawn: 1, alive: 1 }, normal: { stones: 1.5, spawn: 1.15, alive: 1.2 }, hard: { stones: 2, spawn: 1.3, alive: 1.4 } },
         magnet: { r: 48, depth: 28, delayMs: 400, ms: 520, turns: 1.25, shrink: 0.5 }
+      },
+      // ===== 불의 화산굴: 레이드(rule 'raid', 2026-11-07 형님 승인) =====
+      //   들어가면 웨이브 1~5 = 불 속성 몹 큰 무리(도깨비 · 도마뱀 · 박쥐 · 늑대 · 용암 골렘 정예) + 사이사이 중간보스
+      //   → 다 잡으면 레이드 보스 「화염룡 이그니스」 등장(화면 흔들림 · 착지 · 포효 · 이름 컷인 · 여러 줄 체력 막대 + 파란 그로기 막대)
+      //   보스 = 싸움터 오른쪽에 박힌 거대한 그림(안 걸음 · 안 밀림 · 안 뜸, 카메라 고정). 부위마다 데미지가 다름(머리 · 발톱 = 그대로, 몸 = 줄어듦, 약점 = 더)
+      //   쓰러뜨리면 불 결정 · 강화석이 와르르 → 전부 빨려 들어옴(끌어당김 아주 크게) → 결과 + 난이도별 최고 클리어 시간. 쓰러지면 끝(모은 것은 남음)
+      //   그림 · 부위 상자 · 입 위치 = assets/raid/fire/dragon.json(art\raid-dragon\fire 에서 복사, 1배 그림 점 → actorScale 0.55 배). 그리는 · 규칙 = js/raid.js
+      fire: {
+        name: '불의 화산굴', desc: '레이드 · 화염룡 이그니스', rule: 'raid',
+        unlock: 'class', lockHint: '전직 후 열림',
+        tier: 5, hpMul: 1.1, dmgMul: 1.1,      // 몹 세기 = 5판(설산)쯤. 난이도 배율은 modes(이지 · 노말 · 하드, 5판 값)
+        arenaMin: 560,
+        bg: BG_DG_FIRE, bgTop: '#090404',
+        startMs: 1200,
+        // 웨이브 몹 종류 전체(그림 불러오기용). 웨이브마다 뽑는 무게는 아래 waves[].mobs
+        mobs: [['imp', 4, 0], ['lizard', 3, 0], ['bat', 2, 0], ['wolf', 2, 0], ['lavagolem', 1, 0]],
+        // 살아 있는 몹 수 한도: maxAlive = 웨이브 1 → 5 로 고르게 [처음, 끝](난이도 alive 배율), cap = 어떤 경우에도(중간보스 포함, 성능)
+        spawn: { maxAlive: [9, 13], cap: 30, firstMs: 300 },
+        // 몹 떼(광산과 같은 모양): every = 무리 사이 ms [웨이브 1, 웨이브 5], size = 무리 마리 수 [처음, 끝]
+        pack: { every: [1700, 1100], size: [4, 6], sizeJit: 1, minRoom: 3, dx: [10, 40], gapMs: 90,
+                mix: { side: [4, 0], pincer: [3, 0], drop: [3, 0], front: [1, 0] }, dropH: 90, dropBack: 0.3, frontH: 34, avoid: 46 },
+        // 웨이브: n = 잡몹 수(다 나오고 다 쓰러지면 다음 웨이브), mobs = [종류, 무게], mids = [[이 마리 수만큼 나온 뒤, 중간보스 번호(아래 mids.list)]]
+        //   restMs = 웨이브를 깨고 다음 웨이브까지 쉬는 시간
+        waves: [
+          { n: 16, mobs: [['imp', 4], ['bat', 3], ['wolf', 2]], mids: [] },
+          { n: 20, mobs: [['imp', 4], ['lizard', 3], ['bat', 2]], mids: [[10, 0]] },
+          { n: 22, mobs: [['imp', 4], ['lizard', 3], ['wolf', 2], ['lavagolem', 1]], mids: [[6, 1]] },
+          { n: 24, mobs: [['imp', 4], ['lizard', 3], ['bat', 2], ['lavagolem', 1]], mids: [[4, 2], [16, 0]] },
+          { n: 28, mobs: [['imp', 5], ['lizard', 3], ['wolf', 2], ['lavagolem', 2]], mids: [[3, 1], [12, 2], [20, 0]] }
+        ],
+        restMs: 1500,
+        // 중간보스(광산과 같은 방식): hp = 체력(판 배율 · 난이도 곱하기 전)
+        mids: { hp: 560, list: [['imp', '불꽃 도깨비 대장', null], ['lizard', '용암 도마뱀 대장', 'lava'], ['lavagolem', '용암 골렘 대장', 'lava']] },
+        // 강화석(웨이브 몹): 광산보다 조금 적게(보스가 와르르 줌)
+        drop: { mob: 0.05, tough: 0.1, mid: [3, 5] },
+        // 난이도별: stones · crys = 보스 보상 배율, spawn = 무리 빠르기, alive = 살아 있는 몹 한도, boss = 보스 체력 배율(난이도 hpMul 위에 더)
+        modes: { easy: { stones: 1, crys: 1, spawn: 1, alive: 1, boss: 1 }, normal: { stones: 1.5, crys: 1.5, spawn: 1.15, alive: 1.15, boss: 1.1 }, hard: { stones: 2, crys: 2, spawn: 1.3, alive: 1.3, boss: 1.2 } },
+        magnet: { r: 48, depth: 28, delayMs: 400, ms: 520, turns: 1.25, shrink: 0.5 },
+        // ----- 레이드 보스: 화염룡 이그니스 (js/raid.js) -----
+        //   거리 값은 화면 도트(actorScale 로 안 줄임). 부위 상자 · 공격 상자 · 입 위치는 dragon.json(1배 그림 점 x actorScale)
+        boss: {
+          type: 'ignis', name: '화염룡 이그니스', title: '불의 화산굴의 주인',
+          json: 'assets/raid/fire/dragon.json', dir: 'assets/raid/fire/',   // 그림 = dir + 장 이름.png, 효과 = dir + fx/이름.png (HD = assets/hd/raid/fire/…webp)
+          hp: 6800,             // 체력(판 배율 hpMul · 난이도 hpMul · modes.boss 곱하기 전)
+          lineHp: 200,          // 체력 막대 한 줄 = 이만큼(줄 수 = 체력 / lineHp, 「x34」)
+          dmgMul: 1,            // 보스 공격력 배율(판 dmgMul · 난이도 dmgMul 위에)
+          groundY: 212,         // 발 밑 바닥 줄(배경 240 줄 기준). 그림은 이 줄에 섬(깊이 순서도)
+          viewK: 0.7, fromRight: 170,   // 서는 자리: 보이는 화면 왼쪽 끝 + max(화면 폭 x viewK, 화면 폭 - fromRight) (꼬리는 오른쪽 밖으로 조금)
+          wall: 285,            // 플레이어 · 몹이 기준점(몸 가운데 아래)에서 이만큼(1배 그림 점, dragon.json 상자와 같은 단위) 앞까지만 = 앞발 가운데쯤(평타가 발톱에 닿음)
+          // 부위 데미지 배율: 머리 · 발톱 = 그대로, 몸 = 줄어듦, 약점(예고 중 빛나는 가슴 · 박힌 머리 · 그로기 머리) = 더
+          parts: { head: 1, claw: 1, body: 0.5, weak: 2 },
+          // 그로기(파란 막대): 머리 맞으면 head, 약점 맞으면 weak 만큼 참(타 하나마다), 초당 decay 씩 줆. 다 차면 쓰러져 ms 동안 그로기(머리 전체 = 약점)
+          groggy: { max: 100, head: 6, weak: 9, decay: 1, ms: 5000 },
+          gap: [1000, 1600],    // 공격 사이 쉬는 시간 ms [최소, 최대]
+          // 단계: 체력 비율이 skyAt 아래 = 포효 → 날아올라 운석 비 시작 + 도깨비 부름, rageAt 아래 = 격노(예고 x warnK · 쉬는 시간 x gapK · 불길이 쓸고 지나감)
+          skyAt: 0.5, rageAt: 0.25, rage: { warnK: 0.8, gapK: 0.65, color: '#ff3a1a' },
+          summon: { type: 'imp', n: 4 },
+          // 포효(단계 바뀜): 머리에서 r 도트 안 플레이어를 밀어냄(데미지 없음)
+          roar: { warnMs: 700, r: 260, push: 120 },
+          // 공격(weight = 뽑힐 무게, near = 플레이어가 앞발 앞 near 도트 안이면 무게 x nearK, from = 체력 비율이 이 값 아래부터)
+          //   dmg = [최소, 최대](보스 공격력 배율 곱함), heavy = 맞으면 넘어짐, warnMs = 예고(바닥 빨간 표시) 시간
+          pats: {
+            // 불 뿜기: 목 · 가슴이 달아오름(예고) → 걷는 길 앞쪽 반 또는 뒤쪽 반에 불길(위아래로 비켜서 피함, 점프로는 못 피함). 격노 = 뒤 → 앞으로 쓸고 지나감
+            //   tickMs 마다 그 반 안이면 맞음(맞은 뒤 깜빡임 동안은 안 맞음), poolMs = 남는 불바다 그림(데미지 없음)
+            breath: { weight: 3, warnMs: 700, fireMs: 1300, tickMs: 160, dmg: [12, 16], flinchMs: 260, knock: 10, poolMs: 2200, segK: 0.8 },
+            // 발톱 내려찍기: 앞발 치켜듦(예고, 바닥 빨간 상자 = slam_03 reach) → 쾅(heavy) + 충격파 고리(점프로 피함) → 앞발이 박힌 채 plantMs(때릴 기회)
+            slam:   { weight: 3, near: 150, nearK: 2, warnMs: 800, dmg: [24, 30], heavy: true, plantMs: 1500,
+                      shock: { speed: 230, band: 9, ry: 0.4, maxR: 520, dmg: [12, 16], dodgeZ: 12, knock: 14 } },
+            // 꼬리 쓸기: 오른쪽 끝에서 먼지(예고) → 바닥 낮게 앞으로 크게 쓸음(tail_03 reach, 걷는 길 전체) → 점프(dodgeZ 넘게) 또는 회피 무적으로 피함
+            tail:   { weight: 2, near: 260, nearK: 1.5, warnMs: 750, activeMs: 260, dmg: [18, 24], heavy: true, dodgeZ: 14 },
+            // 머리 돌진: 플레이어가 선 줄(깊이)을 겨눔(예고 = 그 줄 빨간 띠) → 내리꽂음(bite_02 reach, 위아래 depth) → 빗나가면 stuckMs 동안 머리가 바닥에 박힘(약점),
+            //   맞혔으면 hitStuckMs 만. 줄을 바꾸거나 물러나면 피함
+            bite:   { weight: 3, near: 220, nearK: 1.5, warnMs: 650, lungeMs: 140, stuckMs: 2000, hitStuckMs: 900, depth: 14, dmg: [28, 34], heavy: true },
+            // 용암 바닥: 걷는 길 앞쪽 반 · 뒤쪽 반이 번갈아 끓어오름(예고 warnMs → 분출 eruptMs, tickMs 마다), cycles 번. 낮게 웅크린 머리 = 때릴 기회
+            lava:   { weight: 2, from: 0.8, warnMs: 900, eruptMs: 800, cycles: 3, tickMs: 220, dmg: [9, 12], flinchMs: 200 },
+            // 날아올라 운석 비(체력 skyAt 아래부터): 날갯짓 돌풍(밀어냄 + 작은 데미지) → 화면 위로 → 운석 n 개(everyMs 마다, 떨어질 자리 빨간 원 warnMs,
+            //   절반은 플레이어 자리) → 내려앉음(먼지 · 흔들림). 날아 있는 동안은 안 맞음
+            sky:    { weight: 4, from: 0.5, gustMs: 500, gust: { dmg: [6, 8], push: 90, knock: 20 }, riseMs: 600, n: 9, everyMs: 380, warnMs: 950,
+                      radius: 30, depth: 15, dmg: [20, 26], heavy: true, dodgeZ: 99, landMs: 700, aimK: 0.5 }
+          },
+          // 보상: 쓰러지면 불 결정 crys · 강화석 stones 개 [최소, 최대](x 난이도 modes 배율)를 머리 쪽에서 와르르. 바로 빨려 듦(magnet)
+          drop: { el: 'fire', crys: [16, 22], stones: [10, 14], burstMs: 900 },
+          magnet: { r: 9999, depth: 9999, delayMs: 700, ms: 800, turns: 1.4, shrink: 0.45 },
+          deathMs: 2600         // 쓰러지는 그림 뒤 결과까지
+        }
       }
     },
 

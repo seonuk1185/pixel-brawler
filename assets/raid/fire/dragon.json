@@ -1,0 +1,1595 @@
+{
+ "name": "화염룡 이그니스 (fire raid dragon)",
+ "version": "2026-11-07",
+ "note": "ONE giant stationary sprite. Art faces LEFT. All frames share ONE 1x canvas and ONE pivot (ground point under the body). Box coords (1x px, same convention as config wyvern hurtbox/reach): x = distance IN FRONT of the pivot (positive = facing side, art-left), yTop/yBot = height relative to the ground (negative = up). Box = [x0, x1, yTop, yBot]. Multiply by actorScale (0.55) for world units.",
+ "actorScale": 0.55,
+ "hdScale": 1.1,
+ "canvas1x": [
+  895,
+  450
+ ],
+ "pivot1x": [
+  485,
+  443
+ ],
+ "worldHeight": 195,
+ "knightWorldHeight": 57.5,
+ "files": {
+  "frames1x": "frames/<anim>_NN.png (full 1x canvas, hard alpha, one 96-colour palette for all frames)",
+  "framesHD": "hd/<anim>_NN.webp (tight crop, q88)",
+  "fx1x": "fx/<name>.png",
+  "fxHD": "fx/hd/<name>.webp",
+  "raw": "sheets_raw/*.png (11 untouched AI sheets)"
+ },
+ "hdEntry": "hd = [w, h, ox, oy, f, fullW, fullH] exactly like assets/hd/manifest.json: crop size, crop offset inside the full HD canvas (1x canvas x 1.1), f = 1.1",
+ "hurtKinds": {
+  "head": "full damage",
+  "claw": "full damage (front claws / feet)",
+  "body": "reduced damage (suggest x0.5)",
+  "weak": "weak spot, bonus damage (glowing chest during wind-ups, the stuck head in bite_03, the head while groggy)"
+ },
+ "anims": {
+  "idle": {
+   "n": 4,
+   "fps": 4,
+   "loop": true,
+   "playback": [
+    1,
+    2,
+    3,
+    4
+   ],
+   "note": "breathing; code adds bob 1-2px + glow pulse",
+   "frames": [
+    "idle_01",
+    "idle_02",
+    "idle_03",
+    "idle_04"
+   ]
+  },
+  "breath": {
+   "n": 4,
+   "fps": 8,
+   "loop": false,
+   "playback": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    2,
+    2,
+    3,
+    3,
+    3,
+    4,
+    4,
+    4,
+    4
+   ],
+   "telegraph": [
+    1
+   ],
+   "active": [
+    2,
+    3,
+    4
+   ],
+   "note": "1 = wind-up, throat/chest glow (telegraph ~700ms). 2->3->4 = sweep from high-forward to the floor; stream art = fx breath_seg (tiled from mouth) + breath_tip at the floor end, lava_pool decals left behind. weak spot open on frame 1",
+   "frames": [
+    "breath_01",
+    "breath_02",
+    "breath_03",
+    "breath_04"
+   ]
+  },
+  "slam": {
+   "n": 4,
+   "fps": 8,
+   "loop": false,
+   "playback": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    2,
+    3,
+    3,
+    3,
+    4,
+    4
+   ],
+   "telegraph": [
+    1
+   ],
+   "active": [
+    3
+   ],
+   "note": "1 = claw raised (telegraph ~600ms, floor warning at reach of frame 3). 2 = swing (optional early hit). 3 = impact: shock_ring + dust + meteor_impact at fxAt, big shake",
+   "frames": [
+    "slam_01",
+    "slam_02",
+    "slam_03",
+    "slam_04"
+   ]
+  },
+  "tail": {
+   "n": 4,
+   "fps": 9,
+   "loop": false,
+   "playback": [
+    1,
+    1,
+    1,
+    1,
+    2,
+    3,
+    3,
+    3,
+    4,
+    4
+   ],
+   "telegraph": [
+    1
+   ],
+   "active": [
+    3
+   ],
+   "note": "low floor sweep in FRONT (reach x 60..485, height 85) -> jump to dodge. dust puffs along the tail",
+   "frames": [
+    "tail_01",
+    "tail_02",
+    "tail_03",
+    "tail_04"
+   ]
+  },
+  "bite": {
+   "n": 4,
+   "fps": 8,
+   "loop": false,
+   "playback": [
+    1,
+    1,
+    1,
+    1,
+    2,
+    3,
+    3,
+    3,
+    3,
+    3,
+    3,
+    3,
+    3,
+    3,
+    3,
+    3,
+    4,
+    4
+   ],
+   "telegraph": [
+    1
+   ],
+   "active": [
+    2,
+    3
+   ],
+   "note": "2 = lunge (hit), 3 = head stuck in the floor: first ~120ms hits, then a punish window (~1.2-1.5s) where the head box is the weak spot",
+   "frames": [
+    "bite_01",
+    "bite_02",
+    "bite_03",
+    "bite_04"
+   ]
+  },
+  "roar": {
+   "n": 4,
+   "fps": 7,
+   "loop": false,
+   "playback": [
+    1,
+    1,
+    1,
+    2,
+    2,
+    3,
+    3,
+    3,
+    3,
+    4,
+    4,
+    4
+   ],
+   "telegraph": [
+    1,
+    2
+   ],
+   "active": [
+    3
+   ],
+   "note": "3 = roar: radial knockback/stun, no damage box (use a radius from the head). 4 = enraged stance; can loop 3-4 or hold 4 then return to idle. phase-change animation",
+   "frames": [
+    "roar_01",
+    "roar_02",
+    "roar_03",
+    "roar_04"
+   ]
+  },
+  "takeoff": {
+   "n": 4,
+   "fps": 9,
+   "loop": false,
+   "playback": [
+    1,
+    1,
+    1,
+    2,
+    2,
+    3,
+    4,
+    3,
+    4
+   ],
+   "telegraph": [
+    1
+   ],
+   "active": [
+    2
+   ],
+   "note": "2 = wing gust (push back, small dmg). 3/4 = airborne: code raises the sprite (lift) off the top of the screen, then meteors (fx meteor/meteor_impact/shock_ring) with floor telegraph circles; land = reverse 4,3,2 + shake",
+   "frames": [
+    "takeoff_01",
+    "takeoff_02",
+    "takeoff_03",
+    "takeoff_04"
+   ]
+  },
+  "hurt": {
+   "n": 2,
+   "fps": 10,
+   "loop": false,
+   "playback": [
+    1,
+    2,
+    2,
+    1
+   ],
+   "note": "flinch (only on big hits/break; super armour otherwise). code: white flash",
+   "frames": [
+    "hurt_01",
+    "hurt_02"
+   ]
+  },
+  "groggy": {
+   "n": 2,
+   "fps": 3,
+   "loop": true,
+   "playback": [
+    1,
+    2
+   ],
+   "note": "break/groggy: head lies on the floor -> whole head = weak spot (bonus dmg). enter via hurt 2",
+   "frames": [
+    "groggy_01",
+    "groggy_02"
+   ]
+  },
+  "death": {
+   "n": 4,
+   "fps": 5,
+   "loop": false,
+   "playback": [
+    1,
+    1,
+    2,
+    3,
+    3,
+    4
+   ],
+   "note": "hold last frame; frame 4 = cooled/ashen. no hurtboxes",
+   "frames": [
+    "death_01",
+    "death_02",
+    "death_03",
+    "death_04"
+   ]
+  }
+ },
+ "frames": {
+  "idle_01": {
+   "hd": [
+    740,
+    394,
+    177,
+    95,
+    1.1,
+    985,
+    495
+   ],
+   "head": [
+    180,
+    295,
+    -345,
+    -260
+   ],
+   "claw": [
+    200,
+    325,
+    -55,
+    0
+   ],
+   "body": [
+    -140,
+    230,
+    -255,
+    0
+   ],
+   "weak": [
+    150,
+    230,
+    -235,
+    -80
+   ]
+  },
+  "idle_02": {
+   "hd": [
+    753,
+    409,
+    172,
+    80,
+    1.1,
+    985,
+    495
+   ],
+   "head": [
+    180,
+    295,
+    -345,
+    -260
+   ],
+   "claw": [
+    200,
+    325,
+    -55,
+    0
+   ],
+   "body": [
+    -140,
+    230,
+    -255,
+    0
+   ],
+   "weak": [
+    150,
+    230,
+    -235,
+    -80
+   ]
+  },
+  "idle_03": {
+   "hd": [
+    765,
+    422,
+    162,
+    67,
+    1.1,
+    985,
+    495
+   ],
+   "head": [
+    180,
+    295,
+    -345,
+    -260
+   ],
+   "claw": [
+    200,
+    325,
+    -55,
+    0
+   ],
+   "body": [
+    -140,
+    230,
+    -255,
+    0
+   ],
+   "weak": [
+    150,
+    230,
+    -235,
+    -80
+   ]
+  },
+  "idle_04": {
+   "hd": [
+    745,
+    389,
+    171,
+    100,
+    1.1,
+    985,
+    495
+   ],
+   "head": [
+    180,
+    295,
+    -345,
+    -260
+   ],
+   "claw": [
+    200,
+    325,
+    -55,
+    0
+   ],
+   "body": [
+    -140,
+    230,
+    -255,
+    0
+   ],
+   "weak": [
+    150,
+    230,
+    -235,
+    -80
+   ]
+  },
+  "breath_01": {
+   "hd": [
+    737,
+    409,
+    167,
+    80,
+    1.1,
+    985,
+    495
+   ],
+   "head": [
+    135,
+    250,
+    -370,
+    -300
+   ],
+   "claw": [
+    200,
+    325,
+    -55,
+    0
+   ],
+   "body": [
+    -140,
+    230,
+    -255,
+    0
+   ],
+   "weak": [
+    150,
+    235,
+    -290,
+    -110
+   ]
+  },
+  "breath_02": {
+   "hd": [
+    740,
+    378,
+    177,
+    111,
+    1.1,
+    985,
+    495
+   ],
+   "head": [
+    215,
+    325,
+    -265,
+    -135
+   ],
+   "claw": [
+    200,
+    325,
+    -55,
+    0
+   ],
+   "body": [
+    -140,
+    230,
+    -255,
+    0
+   ],
+   "weak": [
+    155,
+    225,
+    -160,
+    -60
+   ],
+   "mouth": [
+    300,
+    -175
+   ]
+  },
+  "breath_03": {
+   "hd": [
+    721,
+    376,
+    173,
+    113,
+    1.1,
+    985,
+    495
+   ],
+   "head": [
+    210,
+    325,
+    -215,
+    -75
+   ],
+   "claw": [
+    180,
+    320,
+    -50,
+    0
+   ],
+   "body": [
+    -140,
+    220,
+    -240,
+    0
+   ],
+   "weak": [
+    85,
+    160,
+    -200,
+    -80
+   ],
+   "mouth": [
+    290,
+    -100
+   ]
+  },
+  "breath_04": {
+   "hd": [
+    756,
+    376,
+    140,
+    113,
+    1.1,
+    985,
+    495
+   ],
+   "head": [
+    210,
+    355,
+    -170,
+    0
+   ],
+   "claw": [
+    180,
+    320,
+    -50,
+    0
+   ],
+   "body": [
+    -140,
+    210,
+    -230,
+    0
+   ],
+   "weak": [
+    90,
+    170,
+    -190,
+    -70
+   ],
+   "mouth": [
+    310,
+    -45
+   ]
+  },
+  "slam_01": {
+   "hd": [
+    683,
+    445,
+    203,
+    44,
+    1.1,
+    985,
+    495
+   ],
+   "head": [
+    100,
+    200,
+    -360,
+    -255
+   ],
+   "claw": [
+    210,
+    300,
+    -400,
+    -290
+   ],
+   "body": [
+    -140,
+    200,
+    -260,
+    0
+   ],
+   "weak": [
+    105,
+    190,
+    -250,
+    -110
+   ]
+  },
+  "slam_02": {
+   "hd": [
+    829,
+    380,
+    116,
+    109,
+    1.1,
+    985,
+    495
+   ],
+   "head": [
+    150,
+    275,
+    -250,
+    -155
+   ],
+   "claw": [
+    210,
+    380,
+    -120,
+    0
+   ],
+   "body": [
+    -140,
+    210,
+    -230,
+    0
+   ],
+   "weak": [
+    110,
+    200,
+    -180,
+    -70
+   ],
+   "reach": [
+    220,
+    390,
+    -110,
+    0
+   ]
+  },
+  "slam_03": {
+   "hd": [
+    786,
+    363,
+    82,
+    126,
+    1.1,
+    985,
+    495
+   ],
+   "head": [
+    215,
+    325,
+    -215,
+    -70
+   ],
+   "claw": [
+    290,
+    415,
+    -50,
+    0
+   ],
+   "body": [
+    -140,
+    220,
+    -230,
+    0
+   ],
+   "reach": [
+    230,
+    440,
+    -60,
+    0
+   ],
+   "fxAt": [
+    350,
+    0
+   ]
+  },
+  "slam_04": {
+   "hd": [
+    689,
+    372,
+    225,
+    117,
+    1.1,
+    985,
+    495
+   ],
+   "head": [
+    155,
+    265,
+    -330,
+    -230
+   ],
+   "claw": [
+    210,
+    285,
+    -165,
+    -60
+   ],
+   "body": [
+    -140,
+    230,
+    -255,
+    0
+   ],
+   "weak": [
+    130,
+    215,
+    -245,
+    -90
+   ]
+  },
+  "tail_01": {
+   "hd": [
+    712,
+    421,
+    201,
+    69,
+    1.1,
+    985,
+    495
+   ],
+   "head": [
+    165,
+    270,
+    -350,
+    -255
+   ],
+   "claw": [
+    180,
+    320,
+    -55,
+    0
+   ],
+   "body": [
+    -140,
+    230,
+    -255,
+    0
+   ],
+   "weak": [
+    105,
+    215,
+    -245,
+    -80
+   ]
+  },
+  "tail_02": {
+   "hd": [
+    710,
+    402,
+    212,
+    87,
+    1.1,
+    985,
+    495
+   ],
+   "head": [
+    180,
+    265,
+    -345,
+    -255
+   ],
+   "claw": [
+    180,
+    320,
+    -55,
+    0
+   ],
+   "body": [
+    -140,
+    230,
+    -255,
+    0
+   ],
+   "weak": [
+    130,
+    225,
+    -240,
+    -80
+   ]
+  },
+  "tail_03": {
+   "hd": [
+    766,
+    399,
+    5,
+    90,
+    1.1,
+    985,
+    495
+   ],
+   "head": [
+    60,
+    200,
+    -330,
+    -250
+   ],
+   "claw": [
+    60,
+    145,
+    -50,
+    0
+   ],
+   "body": [
+    -120,
+    240,
+    -280,
+    0
+   ],
+   "weak": [
+    130,
+    215,
+    -265,
+    -120
+   ],
+   "reach": [
+    60,
+    485,
+    -85,
+    0
+   ]
+  },
+  "tail_04": {
+   "hd": [
+    727,
+    390,
+    202,
+    99,
+    1.1,
+    985,
+    495
+   ],
+   "head": [
+    185,
+    270,
+    -330,
+    -260
+   ],
+   "claw": [
+    200,
+    325,
+    -55,
+    0
+   ],
+   "body": [
+    -140,
+    230,
+    -255,
+    0
+   ],
+   "weak": [
+    150,
+    230,
+    -235,
+    -80
+   ]
+  },
+  "bite_01": {
+   "hd": [
+    770,
+    428,
+    171,
+    61,
+    1.1,
+    985,
+    495
+   ],
+   "head": [
+    160,
+    285,
+    -385,
+    -270
+   ],
+   "claw": [
+    200,
+    330,
+    -55,
+    0
+   ],
+   "body": [
+    -140,
+    230,
+    -255,
+    0
+   ],
+   "weak": [
+    120,
+    220,
+    -260,
+    -95
+   ]
+  },
+  "bite_02": {
+   "hd": [
+    872,
+    373,
+    53,
+    116,
+    1.1,
+    985,
+    495
+   ],
+   "head": [
+    270,
+    440,
+    -190,
+    -10
+   ],
+   "claw": [
+    200,
+    330,
+    -55,
+    0
+   ],
+   "body": [
+    -140,
+    240,
+    -230,
+    0
+   ],
+   "reach": [
+    300,
+    445,
+    -160,
+    -10
+   ]
+  },
+  "bite_03": {
+   "hd": [
+    840,
+    356,
+    80,
+    133,
+    1.1,
+    985,
+    495
+   ],
+   "head": [
+    250,
+    410,
+    -90,
+    0
+   ],
+   "claw": [
+    180,
+    320,
+    -50,
+    0
+   ],
+   "body": [
+    -140,
+    240,
+    -210,
+    0
+   ],
+   "weak": [
+    250,
+    410,
+    -90,
+    0
+   ],
+   "reach": [
+    260,
+    420,
+    -80,
+    0
+   ]
+  },
+  "bite_04": {
+   "hd": [
+    805,
+    408,
+    174,
+    81,
+    1.1,
+    985,
+    495
+   ],
+   "head": [
+    200,
+    310,
+    -365,
+    -275
+   ],
+   "claw": [
+    200,
+    325,
+    -55,
+    0
+   ],
+   "body": [
+    -140,
+    230,
+    -255,
+    0
+   ],
+   "weak": [
+    140,
+    225,
+    -250,
+    -90
+   ]
+  },
+  "roar_01": {
+   "hd": [
+    719,
+    344,
+    188,
+    145,
+    1.1,
+    985,
+    495
+   ],
+   "head": [
+    180,
+    305,
+    -110,
+    -35
+   ],
+   "claw": [
+    190,
+    330,
+    -50,
+    0
+   ],
+   "body": [
+    -140,
+    230,
+    -220,
+    0
+   ]
+  },
+  "roar_02": {
+   "hd": [
+    730,
+    404,
+    200,
+    85,
+    1.1,
+    985,
+    495
+   ],
+   "head": [
+    130,
+    245,
+    -365,
+    -260
+   ],
+   "claw": [
+    200,
+    320,
+    -55,
+    0
+   ],
+   "body": [
+    -140,
+    230,
+    -255,
+    0
+   ],
+   "weak": [
+    120,
+    215,
+    -245,
+    -95
+   ]
+  },
+  "roar_03": {
+   "hd": [
+    806,
+    421,
+    67,
+    68,
+    1.1,
+    985,
+    495
+   ],
+   "head": [
+    150,
+    230,
+    -380,
+    -270
+   ],
+   "claw": [
+    190,
+    330,
+    -55,
+    0
+   ],
+   "body": [
+    -160,
+    250,
+    -280,
+    0
+   ],
+   "weak": [
+    140,
+    190,
+    -225,
+    -130
+   ]
+  },
+  "roar_04": {
+   "hd": [
+    797,
+    429,
+    96,
+    60,
+    1.1,
+    985,
+    495
+   ],
+   "head": [
+    150,
+    240,
+    -380,
+    -270
+   ],
+   "claw": [
+    190,
+    330,
+    -55,
+    0
+   ],
+   "body": [
+    -160,
+    250,
+    -280,
+    0
+   ],
+   "weak": [
+    140,
+    190,
+    -225,
+    -130
+   ]
+  },
+  "takeoff_01": {
+   "hd": [
+    697,
+    444,
+    220,
+    45,
+    1.1,
+    985,
+    495
+   ],
+   "head": [
+    165,
+    285,
+    -265,
+    -165
+   ],
+   "claw": [
+    190,
+    320,
+    -55,
+    0
+   ],
+   "body": [
+    -140,
+    230,
+    -255,
+    0
+   ]
+  },
+  "takeoff_02": {
+   "hd": [
+    770,
+    386,
+    130,
+    103,
+    1.1,
+    985,
+    495
+   ],
+   "head": [
+    210,
+    305,
+    -290,
+    -215
+   ],
+   "claw": [
+    170,
+    330,
+    -60,
+    0
+   ],
+   "body": [
+    -140,
+    230,
+    -250,
+    0
+   ],
+   "reach": [
+    150,
+    460,
+    -140,
+    0
+   ]
+  },
+  "takeoff_03": {
+   "hd": [
+    651,
+    442,
+    246,
+    6,
+    1.1,
+    985,
+    495
+   ],
+   "head": [
+    170,
+    265,
+    -390,
+    -305
+   ],
+   "body": [
+    -160,
+    210,
+    -330,
+    -40
+   ]
+  },
+  "takeoff_04": {
+   "hd": [
+    730,
+    369,
+    126,
+    34,
+    1.1,
+    985,
+    495
+   ],
+   "head": [
+    200,
+    300,
+    -390,
+    -305
+   ],
+   "body": [
+    -150,
+    225,
+    -335,
+    -80
+   ]
+  },
+  "hurt_01": {
+   "hd": [
+    727,
+    420,
+    174,
+    69,
+    1.1,
+    985,
+    495
+   ],
+   "head": [
+    190,
+    290,
+    -380,
+    -260
+   ],
+   "claw": [
+    200,
+    325,
+    -55,
+    0
+   ],
+   "body": [
+    -140,
+    230,
+    -255,
+    0
+   ],
+   "weak": [
+    125,
+    215,
+    -245,
+    -90
+   ]
+  },
+  "hurt_02": {
+   "hd": [
+    731,
+    386,
+    211,
+    104,
+    1.1,
+    985,
+    495
+   ],
+   "head": [
+    200,
+    295,
+    -285,
+    -160
+   ],
+   "claw": [
+    190,
+    320,
+    -55,
+    0
+   ],
+   "body": [
+    -140,
+    230,
+    -255,
+    0
+   ],
+   "weak": [
+    130,
+    215,
+    -200,
+    -70
+   ]
+  },
+  "groggy_01": {
+   "hd": [
+    751,
+    309,
+    150,
+    180,
+    1.1,
+    985,
+    495
+   ],
+   "head": [
+    190,
+    350,
+    -125,
+    0
+   ],
+   "body": [
+    -150,
+    200,
+    -200,
+    0
+   ],
+   "weak": [
+    190,
+    350,
+    -125,
+    0
+   ]
+  },
+  "groggy_02": {
+   "hd": [
+    754,
+    312,
+    149,
+    177,
+    1.1,
+    985,
+    495
+   ],
+   "head": [
+    190,
+    350,
+    -125,
+    0
+   ],
+   "body": [
+    -150,
+    200,
+    -200,
+    0
+   ],
+   "weak": [
+    190,
+    350,
+    -125,
+    0
+   ]
+  },
+  "death_01": {
+   "hd": [
+    721,
+    423,
+    179,
+    66,
+    1.1,
+    985,
+    495
+   ]
+  },
+  "death_02": {
+   "hd": [
+    761,
+    351,
+    162,
+    139,
+    1.1,
+    985,
+    495
+   ]
+  },
+  "death_03": {
+   "hd": [
+    795,
+    269,
+    90,
+    220,
+    1.1,
+    985,
+    495
+   ]
+  },
+  "death_04": {
+   "hd": [
+    795,
+    269,
+    91,
+    220,
+    1.1,
+    985,
+    495
+   ]
+  }
+ },
+ "fx": {
+  "breath_seg_01": {
+   "size": [
+    411,
+    158
+   ],
+   "pivot": [
+    410.8,
+    92.3
+   ],
+   "hd": [
+    452,
+    174,
+    1.1
+   ],
+   "fps": 12,
+   "anim": "breath_seg",
+   "note": "stream segment, flame head toward the LEFT, pivot = right cut edge at band centre. tile leftwards from the mouth (segW = width - ~4px overlap), alternate 01/02 for flicker, rotate around the mouth by the aim angle"
+  },
+  "breath_seg_02": {
+   "size": [
+    410,
+    159
+   ],
+   "pivot": [
+    410.4,
+    91.9
+   ],
+   "hd": [
+    451,
+    175,
+    1.1
+   ],
+   "fps": 12,
+   "anim": "breath_seg"
+  },
+  "breath_tip_01": {
+   "size": [
+    368,
+    223
+   ],
+   "pivot": [
+    367.9,
+    222.8
+   ],
+   "hd": [
+    405,
+    245,
+    1.1
+   ],
+   "note": "floor splash at the far end of the stream; pivot = bottom-right (right edge joins the stream)"
+  },
+  "lava_pool_01": {
+   "size": [
+    260,
+    86
+   ],
+   "pivot": [
+    130.1,
+    42.8
+   ],
+   "hd": [
+    286,
+    94,
+    1.1
+   ],
+   "note": "floor decal (burning ground) left by the sweep; pivot = centre of the ellipse; draw under actors"
+  },
+  "meteor_01": {
+   "size": [
+    292,
+    255
+   ],
+   "pivot": [
+    94.2,
+    161.1
+   ],
+   "hd": [
+    321,
+    281,
+    1.1
+   ],
+   "note": "falling meteor, travels from upper-right to lower-left; pivot = rock centre"
+  },
+  "meteor_impact_01": {
+   "size": [
+    311,
+    174
+   ],
+   "pivot": [
+    155.5,
+    173.6
+   ],
+   "hd": [
+    342,
+    191,
+    1.1
+   ],
+   "note": "impact burst, pivot = bottom centre (ground). also reused small for the claw slam"
+  },
+  "shock_ring_01": {
+   "size": [
+    331,
+    85
+   ],
+   "pivot": [
+    165.4,
+    42.7
+   ],
+   "hd": [
+    364,
+    94,
+    1.1
+   ],
+   "note": "floor shock ring, pivot = ellipse centre; scale up 0.4 -> 1.6 + fade for an expanding wave"
+  },
+  "dust_01": {
+   "size": [
+    236,
+    73
+   ],
+   "pivot": [
+    118.2,
+    72.6
+   ],
+   "hd": [
+    260,
+    80,
+    1.1
+   ],
+   "note": "dust puff, pivot = bottom centre; slam / tail / bite / landing"
+  }
+ },
+ "fxNote": "fx size/pivot are 1x px (draw at actorScale like the dragon). Suggested in-game scale 0.7-1.0 for the stream; the previews used 0.7 (stream) and 0.55 (meteor/impact)",
+ "preview": {
+  "arenaGroundY": 212,
+  "dragonPivotX": 389,
+  "logical": [
+   559,
+   240
+  ],
+  "note": "preview placement on the 904x388 (559x240 logical) arena: pivot at x 389, ground y 212 -> claws reach x ~210, tail tip slightly off the right edge"
+ }
+}

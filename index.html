@@ -74,6 +74,8 @@
     <div class="bossbar" id="bossBar" hidden><span id="bossName">오크 족장</span><div class="bar"><em id="bHpLag"></em><i id="bHp"></i></div></div>
     <!-- 중간보스 막대(2026-11-06): 보스 막대 자리에 작게. 「중간보스」 딱지 + 이름 -->
     <div class="bossbar midbar" id="midBar" hidden><span><b>중간보스</b><em id="midName">고블린 대장</em></span><div class="bar"><em id="mHpLag"></em><i id="mHp"></i></div></div>
+    <!-- 레이드 체력 막대(2026-11-07, js/raid.js · main.js raidHud): 이름 + RAID + 격노 · 줄 수(x34) · 지금 줄(색) 아래 다음 줄 색(rbNext) · 늦게 따라오는 막대 · 파란 그로기 막대 -->
+    <div class="raidbar" id="raidBar" hidden><div class="rbtop"><b id="raidName">화염룡 이그니스</b><i class="rbtag">RAID</i><i class="rbrage">격노</i><span class="rblines" id="rbLines">x1</span></div><div class="rbhp"><s id="rbNext"></s><em id="rbLag"></em><i id="rbHp"></i></div><div class="rbgr"><i id="rbGr"></i><span>그로기</span></div></div>
     <div class="go" id="goPrompt" hidden>GO →</div>
     <div class="banner" id="banner" hidden></div>
   </div>
@@ -309,6 +311,7 @@
 <script src="js/icons.js"></script>
 <script src="js/skills.js"></script>
 <script src="js/enemies.js"></script>
+<script src="js/raid.js"></script>
 <script src="js/props.js"></script>
 <script src="js/mythicfx.js"></script>
 <script src="js/enchant.js"></script>

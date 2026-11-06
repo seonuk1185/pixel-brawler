@@ -273,6 +273,27 @@ body.smooth #screen { image-rendering: auto; }
 .midbar span { padding: 0 8px 0 0; background: linear-gradient(#6a3a12, #3e1e08); }
 .midbar span b { display: inline-block; margin-right: 6px; padding: 2px 5px; font: 700 10px/1 var(--ui); color: #3a1a04; text-shadow: none; background: linear-gradient(#ffe08a, #e0a020); }
 .midbar span em { font-style: normal; }
+/* 레이드 체력 막대(2026-11-07, main.js raidHud 가 자리 · 폭을 잡음): 위 가운데 큰 막대. 이름(금) + RAID 딱지 + 줄 수 「x34」(오른쪽),
+   막대 = 지금 줄 색(rbHp) · 그 밑 다음 줄 색(rbNext) · 늦게 따라오는 흰 막대(rbLag). 아래 얇은 파란 그로기 막대(그로기 중 = 빛남), 격노 = 붉은 테두리 깜빡 */
+.raidbar { position: absolute; left: 50%; top: 8px; width: min(56%, 640px); pointer-events: none; z-index: 2; }
+.raidbar .rbtop { display: flex; align-items: flex-end; gap: 6px; margin: 0 2px 3px; font: 700 12px/1 var(--ui); color: #ffe9a8; text-shadow: 1px 1px 0 #3a0a06, -1px 0 0 #1a0604, 0 -1px 0 #1a0604, 1px 0 0 #1a0604; }
+.raidbar .rbtop b { font-weight: 700; letter-spacing: .5px; }
+.raidbar .rbtag { font-style: normal; font: 700 9px/1 var(--ui); padding: 2px 4px 1px; color: #3a0a04; text-shadow: none; background: linear-gradient(#ffd27a, #e8782a); box-shadow: 0 0 0 1px var(--ink); }
+.raidbar .rbrage { display: none; font-style: normal; font: 700 9px/1 var(--ui); padding: 2px 4px 1px; color: #fff; text-shadow: none; background: linear-gradient(#ff5a3a, #a01010); box-shadow: 0 0 0 1px var(--ink); animation: rbblink .5s steps(2) infinite; }
+.raidbar.rage .rbrage { display: inline-block; }
+.raidbar .rblines { margin-left: auto; font: 700 14px/1 var(--ui); color: #fff; }
+.raidbar .rbhp { position: relative; height: 16px; overflow: hidden; background: #2a0a10; border: 2px solid var(--ink); box-shadow: 0 0 0 2px var(--gold2), 0 0 0 4px var(--ink); }
+.raidbar .rbhp s, .raidbar .rbhp em, .raidbar .rbhp i { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; text-decoration: none; }
+.raidbar .rbhp em { background: #fff0d0; width: 0; }
+.raidbar .rbhp i { transition: width .08s; }
+.raidbar .rbhp::after { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0 19px, #0004 19px 20px); }
+.raidbar.rage .rbhp { animation: rbrage .6s steps(2) infinite; }
+.raidbar .rbgr { position: relative; height: 5px; margin-top: 5px; background: #0a1220; border: 1px solid var(--ink); box-shadow: 0 0 0 1px #4a6a8a; }
+.raidbar .rbgr i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: linear-gradient(#bfe8ff 0 1px, #3aa0ff 1px); transition: width .12s; }
+.raidbar .rbgr span { position: absolute; right: 0; top: 7px; font: 400 9px/1 var(--ui); color: #9fd4ff; text-shadow: 1px 1px 0 var(--ink); }
+.raidbar.groggy .rbgr i { background: linear-gradient(#ffffff 0 1px, #7fd0ff 1px); box-shadow: 0 0 6px #7fd0ff; }
+@keyframes rbblink { 50% { opacity: .35; } }
+@keyframes rbrage { 50% { box-shadow: 0 0 0 2px #ff4a2a, 0 0 0 4px var(--ink), 0 0 8px #ff3a1a; } }
 .midbar .bar { height: 10px; }
 .hud .midbar .bar i { background: linear-gradient(#ffd09a 0 2px, #f07a1a 2px 6px, #8a3208 6px); }
 .go {

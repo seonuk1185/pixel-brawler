@@ -301,6 +301,14 @@
       if (target.tryGuard(dir, breaker)) { blockFx(target, dir); return; }
     }
     // 나는 적(박쥐) + 점프 공격: 데미지 더 세게 + 늘 땅으로 떨어짐(넘어짐)
+    // 레이드 보스(2026-11-07, js/raid.js): 맞은 곳(x, 땅에서 높이) → 부위(머리 · 발톱 · 몸 · 약점) 배율. 숫자 · 그로기 막대도 이 값으로
+    var rpt = null;
+    if (target.raid) {
+      var rhb = target.hurtbox(), rx = src ? src.x : p.x + p.dir * 30 * AS, rh = src ? p.y - src.y : (p.z || 0) - (st.hitY != null ? st.hitY : -52 * AS);
+      rpt = Raid.part(target, clamp(rx, rhb.x0, rhb.x1), Math.max(0, rh));
+      dmg = Math.max(1, Math.round(dmg * rpt.mul));
+      if (rpt.part === 'weak') crit = true;
+    }
     var airHit = jumpHit && target.T && target.T.flying;
     if (airHit) dmg = Math.round(dmg * (target.T.flying.jumpDmgMul || 1));
     // 손맛(2026-11-06 밤, config juice.impact): 무거운 타(마무리·기술·넘어뜨림·띄우기)는 더 오래 멈추고 더 흔들림
@@ -324,7 +332,7 @@
       var otg = target.state === 'down' && !!st.hitsDown;
       var wasAir = target.state === 'air';   // 띄워진 잡몹을 침(콤보 글자 「AIR」)
       if (otg) dmg = Math.max(1, Math.round(dmg * (CFG.ai.otg.dmgMul != null ? CFG.ai.otg.dmgMul : 1)));
-      var res = target.takeHit(dmg, dir, knock, !!st.finisher && !st.noKnockdown, { heavy: heavy, stunMs: st.stunMs, noJuggle: !!st.noJuggle, flashK: st.flashK != null ? st.flashK : (heavyHit ? IM.flashHeavy || 1 : 1), otg: otg, launch: st.launch || 0 });   // stunMs = 번개 기술, launch = 띄우기(ai.air)
+      var res = target.takeHit(dmg, dir, knock, !!st.finisher && !st.noKnockdown, { heavy: heavy, stunMs: st.stunMs, noJuggle: !!st.noJuggle, flashK: st.flashK != null ? st.flashK : (heavyHit ? IM.flashHeavy || 1 : 1), otg: otg, launch: st.launch || 0, part: rpt && rpt.part });   // part = 레이드 보스 맞은 부위,  stunMs = 번개 기술, launch = 띄우기(ai.air)
       // 콤보 기록·글자(2026-11-06 밤): 띄움 / 공중 타 / 누운 적 타
       var CS = G.cstats;
       if (res === 'launch') { CS.launch++; comboTag('LAUNCH'); }
@@ -336,6 +344,7 @@
       if (src) hx = clamp(src.x, hb.x0 + 4, hb.x1 - 4);
       else hx = p.dir > 0 ? Math.max(hb.x0 + 4, Math.min(hb.x1 - 4, p.x + 30 * AS)) : Math.min(hb.x1 - 4, Math.max(hb.x0 + 4, p.x - 30 * AS));
       topY = target.y - target.T.height - 8;
+      if (rpt) topY = p.y - Math.max(30 * AS, Math.min(110 * AS, (p.z || 0) + 40 * AS));   // 레이드 보스: 숫자 = 맞은 곳 위(거대한 몸 꼭대기 말고)
       if (target.guardBroken) {   // 방패 깨짐: 쨍 하고 방패가 튕겨 나가는 불똥(크게)
         target.guardBroken = false;
         FX.impact(target.x + target.dir * 14 * AS, target.y - 54 * AS, -dir, '#fff4c8', J.sparkCount, true, G.assets.fx && G.assets.fx.impact, 1.1);
@@ -360,7 +369,7 @@
     if (heavyHit && !otg && IM.glow && Skills.glow) Skills.glow(hx, hy, (IM.glowR || 30) * AS * Math.max(0.8, sc), W.sparkColor || '#fff2c8', 170, IM.glow);   // 무거운 타: 맞은 곳 둥근 빛
     // 숫자: crit = 마무리 모양(「22!」), numStyle = 숫자 모양만 따로(달리며 공격 작은 타 = push). 마지막 = 대상(같은 대상 숫자는 위로 쌓임)
     //   각성 중(2026-11-06 밤) = 숫자 크게 직업 색(damageText.awk_직업)
-    FX.damage(target.x, topY, dmg, crit || !!(st.finisher || st.crit || (st.damageStyle && st.knockdown)), J, null, G.awk ? 'awk_' + G.awk.cls : crit ? 'agicrit' : st.numStyle || st.damageStyle, target.id || 'dummy', !!st.mergeNum && !crit);
+    FX.damage(rpt ? hx : target.x, topY, dmg, crit || !!(st.finisher || st.crit || (st.damageStyle && st.knockdown)), J, null, G.awk ? 'awk_' + G.awk.cls : crit ? 'agicrit' : st.numStyle || st.damageStyle, target.id || 'dummy', !!st.mergeNum && !crit);
     if (crit) G.crits = (G.crits || 0) + 1;
     // 무기 속성 효과(2026-11-06, js/enchant.js): 화상 · 독 · 느려짐 · 튀는 번개 · 흡혈 + 속성 색 불티. 법사 평타는 약하게(mageBasic)
     if (WP && target !== G.dummy && res) {
@@ -990,10 +999,13 @@
     S.locked = true;   // 웨이브 판의 「화면 고정」과 같은 뜻(자동 조종이 오른쪽으로 걸어가지 않게)
     S.dg = { rule: D.rule, t: 0, wait: D.startMs || 0, acc: 0, queue: [], ev: 0, side: Math.random() < 0.5 ? 0 : 1, midN: 0,
              kills: 0, midKills: 0, end: null, endT: 0, bonus: 0, rec: null, best: null, maxAlive: 0 };
+    if (D.rule === 'raid') { Object.assign(S.dg, { phase: 'rest', restT: 0, wi: -1, wsp: 0, wmid: [], mobs: null, camLock: null, boss: null, bossT: 0, lootT: -1 }); Raid.reset(); return; }   // 레이드(2026-11-07): 웨이브 → 보스
     if (D.spawn) S.dg.acc = (D.pack ? D.pack.every[0] : D.spawn.every[0]) - (D.spawn.firstMs || 0);   // 첫 몹(무리) = 시작하고 firstMs 뒤
   }
   // 몹 하나 뽑기: config mobs [종류, 무게, 이 초부터]
   function dgPick(D, sec) {
+    var RM = G.stage && G.stage.dg && G.stage.dg.mobs;   // 레이드 웨이브: 그 웨이브 mobs [종류, 무게]
+    if (RM) { var t0 = 0, r0; RM.forEach(function (m) { t0 += m[1]; }); r0 = Math.random() * t0; for (var q = 0; q < RM.length; q++) { r0 -= RM[q][1]; if (r0 < 0) return RM[q][0]; } return RM[0][0]; }
     var L = D.mobs.filter(function (m) { return sec >= (m[2] || 0); }), tot = 0, r;
     L.forEach(function (m) { tot += m[1]; });
     r = Math.random() * tot;
@@ -1062,6 +1074,7 @@
     var S = G.stage, R = S.dg, D = DG(), p = G.player;
     // 카메라: 싸움터 안에서 플레이어를 가운데에(싸움터 = 화면 폭이면 고정)
     var camMax = Math.max(0, world.width - LW), target = clamp(p.x - (LW - controlPad) / 2, 0, camMax);
+    if (R.camLock != null) target = R.camLock;   // 레이드 보스: 싸움터 오른쪽 끝에 고정
     G.camX += (target - G.camX) * Math.min(1, dt / 120);
     if (Math.abs(target - G.camX) < 0.5) G.camX = target;
     G.camX = clamp(G.camX, 0, camMax);
@@ -1072,18 +1085,11 @@
     if (R.wait > 0) { R.wait -= dt; if (R.wait <= 0) { banner('시작!', 'small'); snd('wave'); } return; }
     S.time += dt; R.t += dt;
     rescueStuck(dt);
+    if (D.rule === 'raid') { dgRaid(dt, R, D); return; }
     // ---- 규칙: timeAttack(시간 버티기) ----
     var sec = R.t / 1000, SP = D.spawn, EV = D.events || [], u = clamp(sec / (SP.rampSec || D.timeSec || 60), 0, 1);
     while (R.ev < EV.length && sec >= EV[R.ev].at) { dgEvent(EV[R.ev], R, D); R.ev++; }
-    var alive = 0, mobs = 0;
-    G.enemies.forEach(function (e) { if (e.alive()) { alive++; if (!e.mid) mobs++; } });
-    // 줄 선 것(대장 · 몰려옴): 대장은 늘, 몹은 cap 안에서
-    for (var i = 0; i < R.queue.length; i++) {
-      var q = R.queue[i];
-      if (q.at > R.t || (!q.mid && alive >= SP.cap)) continue;
-      if (q.mid) dgSpawnMid(q.idx, q.side); else { if (q.x != null) dgPlace(q); else dgSpawnMob(q.type, q.side, q.off); mobs++; }
-      alive++; R.queue.splice(i--, 1);
-    }
+    var cnt = dgFlush(R, SP), alive = cnt.alive, mobs = cnt.mobs;
     // 늘 나오는 몹: every ms 마다 batch 마리(양옆 번갈아), 살아 있는 몹이 maxAlive 보다 적을 때만
     //   몹 떼(config pack, 2026-11-07): pack.every ms 마다 size 마리 무리 하나(dgPack). 자리가 minRoom 마리보다 적으면 자리가 날 때까지 기다림
     R.acc += dt * dgModeK('spawn');
@@ -1104,6 +1110,94 @@
     R.maxAlive = Math.max(R.maxAlive, alive);
     if (D.timeSec && R.t >= D.timeSec * 1000) dgFinish('clear');
   }
+  // 줄 선 것(대장 · 몰려옴) 내보내기: 대장은 늘, 몹은 cap 안에서. 돌려주는 값 = 살아 있는 { alive(전부), mobs(대장 빼고) }
+  function dgFlush(R, SP) {
+    var alive = 0, mobs = 0;
+    G.enemies.forEach(function (e) { if (e.alive() && !e.raid) { alive++; if (!e.mid) mobs++; } });
+    for (var i = 0; i < R.queue.length; i++) {
+      var q = R.queue[i];
+      if (q.at > R.t || (!q.mid && alive >= SP.cap)) continue;
+      if (q.mid) { var me = dgSpawnMid(q.idx, q.side); if (q.intro) midIntro(me); } else { if (q.x != null) dgPlace(q); else dgSpawnMob(q.type, q.side, q.off); mobs++; }
+      alive++; R.queue.splice(i--, 1);
+    }
+    return { alive: alive, mobs: mobs };
+  }
+  // ---- 규칙: raid(레이드, 2026-11-07 config dungeons.fire) ----
+  //   rest(쉼) → 웨이브 i(config waves[i]: n 마리를 몹 떼로, mids = 그만큼 나온 뒤 중간보스) → 다 쓰러지면 「WAVE CLEAR」 → … → 웨이브 5 뒤 보스(js/raid.js)
+  //   보스: 카메라를 싸움터 오른쪽 끝에 고정 · 플레이어는 보스 앞(벽)까지. 쓰러지면 쓰러지는 그림 뒤 보상이 와르르(dgRaidLoot) → 다 빨려 들면 끝(clear)
+  function dgRaid(dt, R, D) {
+    var SP = D.spawn, NW = D.waves.length, cnt = dgFlush(R, SP);
+    if (R.phase === 'rest') {
+      R.restT -= dt;
+      if (R.restT > 0) return;
+      if (R.wi + 1 >= NW) {   // 웨이브 다 깸 → 보스(그림이 아직이면 다 받을 때까지 기다림)
+        if (!Raid.ready()) return;
+        R.phase = 'boss'; R.mobs = null; R.camLock = Math.max(0, world.width - LW);
+        var e = Raid.spawn(R.camLock); e.maxHp = e.hp = Math.round(D.boss.hp * (CFG.stage.hpMul || 1) * modeVal(Growth.M().hpMul) * dgModeK('boss'));
+        e.dmgMul = (CFG.stage.dmgMul || 1) * modeVal(Growth.M().dmgMul) * (D.boss.dmgMul || 1);
+        G.enemies.push(e); R.boss = e; R.bossAt = R.t;
+        banner('WARNING', 'boss'); snd('bossIntro', { k: 0.7 });
+        return;
+      }
+      R.wi++; R.wsp = 0; R.wmid = []; R.acc = 0; R.mobs = D.waves[R.wi].mobs; R.phase = 'wave';
+      banner(R.wi === NW - 1 ? 'FINAL WAVE' : 'WAVE ' + (R.wi + 1) + ' / ' + NW, R.wi === NW - 1 ? 'boss' : ''); snd('wave', R.wi === NW - 1 ? { k: 0.8 } : null);
+      return;
+    }
+    if (R.phase === 'wave') {
+      var W = D.waves[R.wi], u = NW > 1 ? R.wi / (NW - 1) : 0, PK = D.pack;
+      var maxA = Math.round(lerp(SP.maxAlive[0], SP.maxAlive[1], u) * dgModeK('alive')), qm = R.queue.filter(function (q) { return !q.mid; }).length;
+      var room = Math.min(maxA - cnt.mobs - qm, SP.cap - cnt.alive - qm, W.n - R.wsp);
+      R.acc += dt * dgModeK('spawn');
+      var pe = lerp(PK.every[0], PK.every[1], u);
+      if (R.wsp < W.n && R.acc >= pe) {
+        var want = clamp(Math.round(lerp(PK.size[0], PK.size[1], u) + (Math.random() * 2 - 1) * (PK.sizeJit || 0)), PK.size[0], PK.size[1]);
+        if (room >= Math.min(want, PK.minRoom || 3, W.n - R.wsp)) { R.acc = 0; var nn = Math.min(want, room); dgPack(D, 0, nn, R.t, R.wsp === 0 ? 'pincer' : null); R.wsp += nn; }
+        else R.acc = pe;
+      }
+      (W.mids || []).forEach(function (m, j) {
+        if (R.wmid[j] || R.wsp < m[0]) return;
+        R.wmid[j] = true; banner('대장 출현!', 'boss');
+        dgQueue({ mid: true, idx: m[1], side: R.midN++ % 2 ? 'L' : 'R', at: R.t + 500, intro: true });
+      });
+      R.maxAlive = Math.max(R.maxAlive, cnt.alive);
+      var midsDone = (W.mids || []).every(function (m, j) { return R.wmid[j]; });
+      if (R.wsp >= W.n && midsDone && !R.queue.length && cnt.alive === 0) {
+        R.phase = 'rest'; R.restT = D.restMs || 1500;
+        banner(R.wi === NW - 1 ? '보스가 깨어난다…' : 'WAVE ' + (R.wi + 1) + ' CLEAR', R.wi === NW - 1 ? 'boss' : 'small'); snd('waveClear');
+      }
+      return;
+    }
+    // 보스
+    var B = R.boss; if (!B) return;
+    R.bossT += dt;
+    if (!B.alive() && R.deadAt == null) R.deadAt = R.t;   // 클리어 시간 = 보스가 쓰러진 때
+    if (!B.alive() && R.lootT >= 0) { R.lootT += dt; dgRaidDrops(R, D); if (R.lootT > (D.boss.drop.burstMs || 900) + 600 && (!Enchant.items.length || R.lootT > 6000)) dgFinish('clear'); }
+  }
+  // 레이드 보스 보상(js/raid.js 가 쓰러지는 그림 끝에 부름): 불 결정 · 강화석이 머리 쪽에서 와르르(burstMs 동안) + 아주 큰 끌어당김 → 전부 빨려 듦
+  function dgRaidLoot(e, x, y) {
+    var D = DG(), R = G.stage.dg, DR = D.boss.drop;
+    function rr(a) { return a[0] + Math.random() * (a[1] - a[0]); }
+    var nc = sround(rr(DR.crys) * dgModeK('crys')), ns = sround(rr(DR.stones) * dgModeK('stones')), tot = nc + ns, ms = DR.burstMs || 900;
+    Enchant.setMagnet(D.boss.magnet);
+    R.drops = [];
+    for (var i = 0; i < tot; i++) R.drops.push({ at: Math.round(i / tot * ms), kind: i % 3 === 2 && ns > 0 ? 'stone' : 'crys' });
+    var kc = 0, ks = 0;   // 결정 · 강화석을 섞어서(3개 중 하나 강화석), 개수는 정확히
+    R.drops.forEach(function (q) { if (q.kind === 'crys' && kc >= nc) q.kind = 'stone'; else if (q.kind === 'stone' && ks >= ns) q.kind = 'crys'; if (q.kind === 'crys') kc++; else ks++; });
+    R.dropAt = { x: x, y: y };
+    G.lootDrops = (G.lootDrops || 0) + ns;
+    R.lootT = 0; R.lootN = { crys: nc, stones: ns };
+    Skills.flash({ color: '#ffe8a0', alpha: 0.4, ms: 360 });
+    if (Skills.glow) Skills.glow(x, y - 40 * AS, 120 * AS, '#ffb43a', 600, 0.7);
+    snd('levelUp', { k: 0.8 });
+  }
+  // 와르르 떨어뜨리기(장면 시간으로, 멈춤 · 슬로모션과 같이): dgRaid 가 R.lootT 로
+  function dgRaidDrops(R, D) {
+    if (!R.drops || !R.drops.length) return;
+    while (R.drops.length && R.drops[0].at <= R.lootT) {
+      var q = R.drops.shift(), dir = Math.random() < 0.75 ? -1 : 1, yy = clamp(R.dropAt.y + (Math.random() * 2 - 1) * 34, world.laneTop, world.laneBottom);
+      Enchant.drop(q.kind, q.kind === 'crys' ? D.boss.drop.el : null, R.dropAt.x + (Math.random() * 2 - 1) * 34, yy, dir);
+    }
+  }
   // 끝남: 'clear' = 0초까지 버팀(남은 적은 같이 쓰러짐 · 덤 강화석), 'over' = 쓰러짐. 잠깐 뒤 dgResult
   function dgFinish(kind) {
     var S = G.stage, R = S.dg, D = DG();
@@ -1111,7 +1205,7 @@
     R.end = kind; R.endT = 0; R.queue = [];
     if (kind === 'clear') {
       R.bonus = Math.max(0, Math.round((D.bonus || 0) * dgModeK('stones')));
-      banner('버텼다!', 'boss');
+      banner(D.rule === 'raid' ? '토벌 성공!' : '버텼다!', 'boss');
       snd('waveClear');
       G.hitstop = Math.max(G.hitstop, 220); G.slowT = Math.max(G.slowT, 1400);
       Skills.flash({ color: '#fff2c0', alpha: 0.45, ms: 420 });
@@ -1128,9 +1222,10 @@
     if (window.Enchant) Enchant.collectAll(G.player);
     if (R.bonus) Growth.gainStone(R.bonus);
     var got = G.loot ? G.loot.stones : 0, stones = got + R.bonus, md = Growth.mode();
-    R.rec = Growth.dgRecord(CFG.stage.dgId, md, { kills: R.kills, stones: stones, clear: clear });
+    R.rec = Growth.dgRecord(CFG.stage.dgId, md, { kills: R.kills, stones: stones, clear: clear, time: D.rule === 'raid' && clear ? Math.round(R.deadAt || R.t) : 0 });
     R.best = Growth.dgBest(CFG.stage.dgId, md);
     var NEW = '<i class="newrec">NEW</i>';
+    if (D.rule === 'raid') { dgRaidResult(R, D, clear, got, stones, NEW); return; }
     document.getElementById('resTitle').textContent = clear ? '버텼다!' : '쓰러졌다';
     resultEl.className = 'result ' + (clear ? 'clear' : 'over') + ' dgres';
     document.getElementById('resStats').innerHTML =
@@ -1140,6 +1235,23 @@
       '얻은 강화석 <b>' + got + '</b>' + (R.bonus ? ' + 버틴 덤 <b>' + R.bonus + '</b> = <b>' + stones + '</b>' : '') + (R.rec.stones ? NEW : '') +
       '<br>얻은 경험치 <b>' + (G.xpGot || 0) + '</b> · <b>Lv ' + Growth.lv + '</b>' +
       '<span class="dgbest">최고 기록(' + Growth.M().name + ') · 처치 <b>' + R.best.kills + '</b> · 강화석 <b>' + R.best.stones + '</b></span>';
+    encBadges();
+    document.getElementById('btnNext').hidden = true;
+    document.getElementById('btnSel').textContent = '던전 선택';
+    snd(clear ? 'stageClear' : 'fail');
+    openMenu(resultEl, document.getElementById('btnRetry'));
+  }
+  // 레이드 결과: 클리어 시간(최고 기록) · 어디까지 갔나(웨이브 / 보스 체력) · 처치 · 얻은 것(강화석 · 불 결정) · 경험치
+  function dgRaidResult(R, D, clear, got, stones, NEW) {
+    var B = R.boss, where = clear ? '클리어 시간 <b>' + fmtTime(R.deadAt || R.t) + '</b>' + (R.rec.time ? NEW : '')
+      : B ? '보스 체력 <b>' + Math.ceil(B.hp / B.maxHp * 100) + '%</b> 남음 · ' + Math.max(0, Math.ceil(B.hp / D.boss.lineHp)) + '줄' : '웨이브 <b>' + Math.max(1, R.wi + 1) + '</b> / ' + D.waves.length;
+    document.getElementById('resTitle').textContent = clear ? '토벌 성공!' : '쓰러졌다';
+    resultEl.className = 'result ' + (clear ? 'clear' : 'over') + ' dgres';
+    document.getElementById('resStats').innerHTML =
+      '<span class="dgname">' + D.name + ' · ' + Growth.M().name + '</span>' + where + '<br>' +
+      '처치 <b>' + R.kills + '</b> · 대장 처치 <b>' + R.midKills + '</b>' + (clear ? ' · <b>' + D.boss.name + '</b> 토벌' : '') + lootLine() +
+      '<br>얻은 경험치 <b>' + (G.xpGot || 0) + '</b> · <b>Lv ' + Growth.lv + '</b>' +
+      '<span class="dgbest">최고 기록(' + Growth.M().name + ') · ' + (R.best && R.best.time ? '클리어 <b>' + fmtTime(R.best.time) + '</b> · 토벌 <b>' + R.best.clears + '</b>번' : '아직 토벌 못 함') + '</span>';
     encBadges();
     document.getElementById('btnNext').hidden = true;
     document.getElementById('btnSel').textContent = '던전 선택';
@@ -1185,6 +1297,7 @@
   // 던전 들어가기: 배경 · 소품 · 적 그림을 불러온 뒤 처음부터(G.stageNo = 마지막으로 고른 판 그대로)
   function goDungeon(id) {
     var st = dgStage(id); if (!st) return Promise.resolve(null);
+    if (!st.dg.boss) Raid.free(); else Raid.load(st.dg.boss);   // 레이드 보스 그림: 레이드에 들어갈 때만(다른 곳이면 놓아줌)
     loading(true);
     return Promise.all([Assets.ensureBg(st.bg), Props.load(st), Assets.ensureEnemies(stageEnemies(st))]).then(function (r) {
       loading(false);
@@ -1354,7 +1467,7 @@
       if (E && E.summon) E.summon.forEach(function (q) { add(summonOf(q).type); });
     }
     (st.waves || []).forEach(function (w) { (w.spawn || []).concat(w.placed || []).forEach(function (s) { add(s[0]); }); });
-    if (st.dg) { (st.dg.mobs || []).forEach(function (m) { add(m[0]); }); ((st.dg.mids && st.dg.mids.list) || []).forEach(function (L) { add(L[0]); }); }   // 던전(2026-11-07)
+    if (st.dg) { (st.dg.mobs || []).forEach(function (m) { add(m[0]); }); ((st.dg.mids && st.dg.mids.list) || []).forEach(function (L) { add(L[0]); }); (st.dg.waves || []).forEach(function (w) { (w.mobs || []).forEach(function (m) { add(m[0]); }); }); if (st.dg.boss) add(st.dg.boss.summon.type); }   // 던전(2026-11-07) · 레이드 웨이브 · 부르는 졸개
     return out;
   }
 
@@ -1670,6 +1783,20 @@
     got: gotLoot,
     view: function () { var a = CFG.stage && CFG.stage.dg; return { laneTop: world.laneTop, laneBottom: world.laneBottom, x0: (a ? 0 : G.camX) + 14, x1: (a ? world.width : G.camX + LW) - 14 - controlPad }; }   // 던전 = 싸움터 전체
   });
+  // 레이드 보스(2026-11-07, js/raid.js): 쓰는 도구
+  Raid.init({
+    G: function () { return G; }, world: world, LW: function () { return LW; },
+    hit: onPlayerHit, banner: banner, snd: snd, josa: josa, Skills: Skills,
+    shake: function (m, ms) { FX.shake(J.shakePx * m, ms); }, flash: function (o) { Skills.flash(o); },
+    intro: function (e) { startIntro(e); },
+    loot: function (e, x, y) { dgRaidLoot(e, x, y); },
+    // 졸개 부르기(포효): 보이는 싸움터(보스 앞) 뒤쪽에서 뛰어내림
+    summon: function (type, n, e) {
+      var R = G.stage.dg; if (!R) return;
+      var x0 = G.camX + 30 * AS, x1 = Math.max(x0 + 20, (Raid.wallX() || x0 + 200) - 20);
+      for (var i = 0; i < n; i++) dgQueue({ type: type, x: x0 + (i + 0.5) / n * (x1 - x0), y: world.laneTop + Math.random() * (world.laneBottom - world.laneTop) * 0.4, drop: 90, at: R.t + 300 + i * 160 });
+    }
+  });
   Props.init(CFG, {
     laneY: laneY,
     fx: function () { return G.assets && G.assets.fx; },
@@ -1792,7 +1919,7 @@
   // 보스는 꼭 하나(config potions.bossAt: 'rage' = 화날 때 · 'death' = 쓰러질 때). 플레이어 쪽으로 튐
   function bossPotion(B, when) {
     var PO = CFG.potions;
-    if (!PO || B.potionDone || (PO.bossAt || 'rage') !== when) return;
+    if (!PO || B.potionDone || B.raid || (PO.bossAt || 'rage') !== when) return;   // 레이드 보스(몸 뒤 = 못 주움)는 없음
     B.potionDone = true;
     var dir = G.player.x >= B.x ? 1 : -1;
     Props.dropPotion(B.x + dir * (B.T.radius + 10 * AS), B.y, dir, PO.boss);
@@ -2113,7 +2240,7 @@
       // 8단계: 흡혈 백작이 안개로 숨어 순간이동하는 동안(hidden, state 'attack')·유령 기사가 옅어져 돌진하는 동안도 공격 중 = 안 셈
       //   10단계: 마왕이 어둠 순간이동으로 숨은 동안(hidden, state 'attack')·각성 중(awaken)도 안 셈
       var busy = e.state === 'attack' || e.state === 'hit' || e.state === 'down' || e.state === 'air' || e.state === 'stagger' || e.state === 'guard' || e.state === 'awaken' || e.hidden;
-      if (!e.alive() || e.asleep || e.alertT > 0 || busy || p.state === 'dead' || p.state === 'held') { e.lostT = 0; e.lostX = null; return; }
+      if (!e.alive() || e.raid || e.asleep || e.alertT > 0 || busy || p.state === 'dead' || p.state === 'held') { e.lostT = 0; e.lostX = null; return; }
       var on = e.x >= V.x0 && e.x <= V.x1;
       if (on && Math.abs(e.x - p.x) <= far) { e.lostT = 0; e.lostX = null; return; }
       if (on && (e.lostX == null || Math.abs(e.x - e.lostX) > mv || Math.abs(e.y - e.lostY) > mv)) { e.lostX = e.x; e.lostY = e.y; e.lostT = 0; return; }   // 움직이는 중 = 다가오는 중
@@ -2361,8 +2488,35 @@
     else pick = up[0];
     if (pick) Input.pressSkill(pick.slot);
   }
+  // 레이드 보스 자동 조종(2026-11-07, 균형 시험): Raid.bot 이 정한 자리로(예고를 보고 피함 · 점프 · 회피), 가까운 졸개가 있으면 먼저. 머리가 낮을 때는 점프 공격도
+  function botRaid(dt, p) {
+    var RB = Raid.bot(p), ax = { x: 0, y: 0 };
+    if (!RB) { Input.setOverride(ax); return; }
+    var add = null, ad = 1e9;
+    G.enemies.forEach(function (e) { if (!e.alive() || e.raid || !e.entered) return; var d = Math.abs(e.x - p.x) + Math.abs(e.y - p.y) * 2; if (d < ad) { ad = d; add = e; } });
+    var tx = RB.x, ty = RB.y, fight = null;
+    if (add && !RB.threat && ad < 150 * AS) { var sd = add.x > p.x ? 1 : -1; tx = add.x - sd * 46 * AS; ty = add.y; fight = add; }
+    var ex = tx - p.x, ey = ty - p.y;
+    if (Math.abs(ex) > 4) ax.x = Math.sign(ex);
+    if (Math.abs(ey) > 3) ax.y = Math.sign(ey);
+    if (RB.dodge && !(p.dodgeCd > 0)) { Input.setOverride({ x: RB.dodge.x, y: RB.dodge.y }); Input.pressDodge(); return; }
+    Input.setOverride(ax);
+    if (RB.jump && p.state !== 'jump') Input.pressJump();
+    if ((G.rage || 0) >= 100 && !G.awk && !RB.threat) Input.pressAwaken();
+    botAtkT -= dt;
+    if (botAtkT > 0 || (RB.threat && !fight)) return;
+    var inPlace = fight ? Math.abs(ey) <= 6 && Math.abs(ex) <= 22 * AS : Math.abs(ex) <= 14;
+    if (!inPlace) return;
+    if (p.state !== 'attack') p.dir = fight ? (fight.x > p.x ? 1 : -1) : 1;
+    if (!fight && RB.jumpAtk && p.state !== 'jump' && Math.random() < 0.3) Input.pressJump();
+    Input.pressAttack(); botAtkT = 140;
+    if (G.botEager) botSkill(p, fight || Raid.boss());
+    else if (Math.random() < 0.12) Input.pressSkill(botSlot());
+  }
   function botThink(dt) {
     var p = G.player, best = null, bd = 1e9;
+    var RBs = window.Raid && Raid.boss();
+    if (RBs && RBs.alive() && G.stage.dg && G.stage.dg.phase === 'boss') { botRaid(dt, p); return; }
     G.enemies.forEach(function (e) {
       if (!e.alive() || !e.entered) return;
       var d = Math.abs(e.x - p.x) + Math.abs(e.y - p.y) * 2 + (e.canBeHit() ? 0 : 400);   // 넘어진 적은 나중에
@@ -2512,7 +2666,7 @@
     if (G.awk && G.awk.A.atkSpd) p.atkSpd = Math.min(G.awk.A.spdCap, p.atkSpd + G.awk.A.atkSpd);   // 각성 광전사: 더 빠르게(상한 있음)
     wpnApply(p);   // 무기 강화 · 속성(2026-11-06): 그림 · 오라 · 빠르기(+6 · 바람) · 범위 · 쿨타임 · 마나
     // 플레이어는 화면 끝까지(2026-11-06 형님 폰 접은 화면: 버튼 앞이 벽처럼 막힘). 버튼 밑 비우기는 적·물약만
-    if (MODE === 'stage') { if (CFG.stage.dg) { world.minX = 14; world.maxX = world.width - 14; } else { world.minX = G.camX + 14; world.maxX = G.camX + LW - 14; } }   // 던전 = 싸움터 끝까지
+    if (MODE === 'stage') { if (CFG.stage.dg) { world.minX = 14; world.maxX = world.width - 14; var rw = Raid.wallX(); if (rw != null) { world.minX = G.camX + 14; world.maxX = Math.min(world.maxX, rw); } } else { world.minX = G.camX + 14; world.maxX = G.camX + LW - 14; } }   // 던전 = 싸움터 끝까지
     if (G.bot && MODE === 'stage' && !G.stage.result) botThink(dt);
     awkStep(dt, realMs);   // 각성 시간·불꽃·잔상·끝 폭발
     var pst0 = p.state;
@@ -2564,7 +2718,7 @@
     if (MODE === 'stage') {
       var E = G.ectx;
       E.now += dt; E.view.x0 = G.camX; E.view.x1 = G.camX + LW - (controlPad ? controlPad + 14 : 0);   // 적은 몸이 넓어서 버튼 쪽으로 조금 더 띄움
-      if (CFG.stage.dg) { E.view.x0 = 0; E.view.x1 = world.width - (controlPad ? controlPad + 14 : 0); }   // 던전 = 싸움터 전체(카메라가 움직여도 적은 싸움터 안)
+      if (CFG.stage.dg) { E.view.x0 = 0; E.view.x1 = world.width - (controlPad ? controlPad + 14 : 0); var rw2 = Raid.wallX(); if (rw2 != null) { E.view.x0 = G.camX; E.view.x1 = Math.min(E.view.x1, rw2 + 10); } }   // 던전 = 싸움터 전체(카메라가 움직여도 적은 싸움터 안) · 레이드 보스 = 보스 앞까지
       G.enemies.forEach(function (e) {
         e.update(dt, E);
         if (e.state === 'air') { G.cstats.maxAirMs = Math.max(G.cstats.maxAirMs, e.airT); G.cstats.maxAirHits = Math.max(G.cstats.maxAirHits, e.airHits); }   // 콤보 기록
@@ -2648,6 +2802,7 @@
     if (MODE === 'stage') Enchant.addDraw(ents, ctx, camX);   // 바닥 강화석 · 결정(2026-11-06)
     if (spikes.length) addSpikeDraw(ents, camX);   // 얼음 가시(땅에서 솟음 = 캐릭터와 깊이 순서)
     if (rings.length) addRingDraw(ents, camX);     // 화염 충격파 고리(바닥을 따라 퍼짐 = 캐릭터와 깊이 순서)
+    if (window.Raid) Raid.addDraw(ents, ctx, camX);   // 레이드 보스 불길(띠 앞 끝 깊이, 2026-11-07)
     Skills.addEnts(ents, ctx, camX);               // 땅 융기 돌기둥(땅에서 솟음 = 캐릭터와 깊이 순서, 2026-11-06 밤)
     ents.sort(function (a, b) { return a.y - b.y; });
     ents.forEach(function (e) { e.d(); });
@@ -2657,6 +2812,7 @@
     if (shots.length) drawShots(camX, false);     // 날아가는 총알
     if (cannons.length) drawCannons(camX);        // 떨어지는 대포알
     Skills.drawOver(ctx, camX);                   // 번개 기둥·회전 원
+    if (window.Raid) Raid.drawOver(ctx, camX);    // 레이드 보스: 떨어지는 운석 · 터짐 · 먼지(2026-11-07)
     FX.draw(ctx, camX, false);
     drawOrbs(camX);                               // 경험치 구슬(사냥 손맛)
     if (Enchant.drawTwinkles) Enchant.drawTwinkles(ctx, camX);   // 끌어당긴 강화석이 들어간 반짝(던전)
@@ -2767,6 +2923,12 @@
     setIf('dgp', !!(S.dg && !S.result && !S.dg.end), function (v) { if (phSetEl) { phSetEl.classList.toggle('dg', v); phSetEl.title = v ? '멈춤 · 설정' : '설정 (멈춤)'; phSetEl.setAttribute('aria-label', phSetEl.title); } });   // 폰 톱니 버튼: 던전 도전 중 = 멈춤 · 나가기
     if (S.dg) {   // 던전(2026-11-07): 「노말 · 강화석 광산  ·  처치 12 · 강화석 3」
       setIf('go', false, function (v) { hud.goPrompt.hidden = !v; });
+      raidHud(S);
+      if (S.dg.rule === 'raid') {   // 레이드: 「이지 · 불의 화산굴  ·  WAVE 2/5 · 처치 12 · 강화석 3」 / 보스 = 「레이드 보스」
+        var RS0 = S.dg, wtxt = RS0.phase === 'boss' ? '레이드 보스' : 'WAVE ' + Math.max(1, RS0.wi + 1) + '/' + CFG.stage.dg.waves.length;
+        setIf('info', 'rd' + Growth.mode() + wtxt + RS0.kills + ':' + (G.loot ? G.loot.stones : 0), function () { hud.stageInfo.textContent = Growth.M().name + ' · ' + CFG.stage.name + '  ·  ' + wtxt + ' · 처치 ' + RS0.kills + ' · 강화석 ' + (G.loot ? G.loot.stones : 0); });
+        return;
+      }
       setIf('info', 'dg' + Growth.mode() + S.dg.kills + ':' + (G.loot ? G.loot.stones : 0), function () { hud.stageInfo.textContent = Growth.M().name + ' · ' + CFG.stage.name + '  ·  처치 ' + S.dg.kills + ' · 강화석 ' + (G.loot ? G.loot.stones : 0); });
       return;
     }
@@ -2776,6 +2938,38 @@
     var wi = Math.min(waves.length, S.locked ? S.waveIdx + 1 : S.next + (S.next < waves.length ? 0 : 0));
     // 판 이름 앞에 난이도(2026-11-06): 「노말 · STAGE 3  늪지대  ·  2 / 7」
     setIf('info', Growth.mode() + wi + '/' + waves.length, function () { hud.stageInfo.textContent = Growth.M().name + ' · ' + CFG.stage.name + '  ·  ' + Math.max(1, wi) + ' / ' + waves.length; });
+  }
+  // 레이드 체력 막대(2026-11-07, index.html #raidBar): 이름 · RAID · 줄 수 「x34」 · 지금 줄(색) 위에 다음 줄 색 바탕 · 늦게 따라오는 막대 · 파란 그로기 막대 · 격노
+  //   자리: 위 가운데. 왼쪽 위 플레이어 판 · 오른쪽 위 버튼과 겹치면 그 사이(좁으면 플레이어 판 밑으로), 0.5초마다만 잼
+  var rbEl = null, rbPosT = 0;
+  function raidHud(S) {
+    if (!rbEl) rbEl = { box: document.getElementById('raidBar'), hp: document.getElementById('rbHp'), lag: document.getElementById('rbLag'), bg: document.getElementById('rbNext'),
+                        lines: document.getElementById('rbLines'), gr: document.getElementById('rbGr'), name: document.getElementById('raidName') };
+    if (!rbEl.box) return;
+    var RB = window.Raid && Raid.bar(), show = !!RB && !S.result;
+    setIf('rbshow', show, function (v) { rbEl.box.hidden = !v; rbPosT = 0; });
+    if (!show) return;
+    setIf('rbname', RB.name, function (v) { rbEl.name.textContent = v; });
+    setIf('rbl', RB.lines, function (v) { rbEl.lines.textContent = 'x' + v; });
+    setIf('rbf', Math.round(RB.frac * 1000), function (v) { rbEl.hp.style.width = v / 10 + '%'; });
+    setIf('rblag', Math.round(RB.lag * 1000), function (v) { rbEl.lag.style.width = v / 10 + '%'; });
+    setIf('rbc', RB.col + RB.next, function () { rbEl.hp.style.background = 'linear-gradient(rgba(255,255,255,0.45) 0 2px, ' + RB.col + ' 2px 70%, rgba(0,0,0,0.25) 70%), ' + RB.col; rbEl.bg.style.background = RB.next; });
+    setIf('rbg', Math.round(RB.gauge * 200), function (v) { rbEl.gr.style.width = v / 2 + '%'; });
+    setIf('rbst', (RB.groggy ? 'g' : '') + (RB.rage ? 'r' : ''), function () { rbEl.box.classList.toggle('groggy', RB.groggy); rbEl.box.classList.toggle('rage', RB.rage); });
+    var now = performance.now();
+    if (now - rbPosT > 500) { rbPosT = now; raidBarPos(); }
+  }
+  function raidBarPos() {
+    var box = rbEl.box, hr = hudEl.getBoundingClientRect(), ps = document.querySelector('.hud .pstat'), L = hr.left + 8, R = hr.right - 8, T = 8;
+    var pr = null;   // 플레이어 판(.pstat 자체는 폭 0 = 안의 막대 · 버튼으로 잼)
+    if (ps) Array.prototype.forEach.call(ps.querySelectorAll('*'), function (c) { if (!c.offsetParent) return; var cr = c.getBoundingClientRect(); if (!cr.width || cr.top > 80) return; L = Math.max(L, cr.right + 12); pr = { bottom: Math.max(pr ? pr.bottom : 0, cr.bottom) }; });
+    ['#btnSnd', '#btnPhSet', 'details > summary', '#combo'].forEach(function (sel) {
+      var el = document.querySelector(sel); if (!el || !el.offsetParent) return;
+      var r = el.getBoundingClientRect(); if (r.width && r.top < 60 && r.left > hr.left + hr.width / 2) R = Math.min(R, r.left - 10);
+    });
+    var w = R - L;
+    if (w >= 300) { w = Math.min(w, 640); box.style.left = Math.round(L + (R - L - w) / 2 - hr.left) + 'px'; box.style.top = T + 'px'; box.style.width = Math.round(w) + 'px'; }
+    else { var bt = pr ? pr.bottom - hr.top + 22 : 70, w2 = Math.min(hr.width - 40, Math.max(300, hr.width * 0.56)); box.style.left = Math.round((hr.width - w2) / 2) + 'px'; box.style.top = Math.round(bt) + 'px'; box.style.width = Math.round(w2) + 'px'; }
   }
   // 얼굴 액자(2026-11-06 UI A): 지금 옷 서 있는 그림 1장의 머리~가슴을 HUD 왼쪽 위 작은 캔버스(pFace)에 도트 그대로 크게
   var faceEl = document.getElementById('pFace');
@@ -2874,6 +3068,8 @@
     G.keepRun = false;
     G.enemies = [];
     G.stage = newStage();
+    if (!(CFG.stage.dg && CFG.stage.dg.boss)) Raid.free();   // 레이드 보스 그림(2026-11-07): 레이드가 아니면 놓아줌(메모리)
+    else Raid.reset();
     if (CFG.stage.dg) dgStart();   // 던전(2026-11-07)
     if (Enchant.setMagnet) Enchant.setMagnet(CFG.stage.dg ? CFG.stage.magnet : null);   // 끌어당김 = 던전에서만(판은 밟아서 주움)
     G.ectx = makeEnemyCtx();
@@ -2953,7 +3149,8 @@
       b.type = 'button'; b.className = 'sbtn dbtn' + (open ? '' : ' locked');
       b.disabled = !open;
       b.innerHTML = '<b>' + D.name + '</b><span>' + (open ? D.desc : D.lockHint || '잠김') + '</span>' +
-        (open ? '<small>' + (best ? '최고 · 처치 ' + best.kills + ' · 강화석 ' + best.stones : '기록 없음') + '</small>' : '');
+        (open ? '<small>' + (D.rule === 'raid' ? (best && best.time ? '최고 · 클리어 ' + fmtTime(best.time) + ' · 토벌 ' + best.clears + '번' : best ? '토벌 기록 없음 · 처치 ' + best.kills : '기록 없음')
+                                   : best ? '최고 · 처치 ' + best.kills + ' · 강화석 ' + best.stones : '기록 없음') + '</small>' : '');
       b.addEventListener('click', function () { closeMenu(selEl); G.paused = false; goDungeon(id); });
       list.appendChild(b);
       if (open && !tabbed && !focus) focus = b;
@@ -4054,7 +4251,7 @@
 
   // ---------- 시험용 (콘솔에서 GAME.test.xxx) ----------
   G.test = {
-    killAll: function () { G.enemies.forEach(function (e) { if (e.alive()) { if (e.T.boss) { e.takeHit(99999, 1, 10, true); onBossDown(e); } else e.takeHit(9999, 1, 10, true, { force: true }); } }); },
+    killAll: function () { G.enemies.forEach(function (e) { if (e.alive()) { if (e.T.boss) { if (e.takeHit(99999, 1, 10, true, e.raid ? { force: true } : null) === 'dead' || !e.raid) onBossDown(e); } else e.takeHit(9999, 1, 10, true, { force: true }); } }); },
     // 적 하나 바로 세우기(기술 시험, 2026-11-06): 플레이어 앞 dx, 위아래 dy 도트. 돌려주는 값 = 그 적
     spawn: function (type, dx, dy) {
       var p = G.player, e = makeEnemy(type, p.x + (dx || 60), clamp(p.y + (dy || 0), world.laneTop, world.laneBottom));
@@ -4136,6 +4333,14 @@
         types: alive.map(function (e) { return e.type + (e.mid ? '*' : ''); }).join(',') };
     },
     dgQuit: function () { dgQuit(); },
+    // 레이드 시험(2026-11-07): raidBoss() = 남은 웨이브 건너뛰고 바로 보스, raid() = 보스 상태(js/raid.js Raid.test.state), raidPat('slam') = 그 공격 바로
+    raidBoss: function () { var R = G.stage.dg, D = DG(); if (!R || D.rule !== 'raid') return false; G.enemies.forEach(function (e) { if (e.alive()) { e.noDrop = true; e.dgSkip = true; e.takeHit(9999, 1, 10, true, { force: true }); } }); R.queue = []; R.wait = 0; R.wi = D.waves.length - 1; R.phase = 'rest'; R.restT = 0; return true; },
+    raidWave: function (i) { var R = G.stage.dg, D = DG(); if (!R || D.rule !== 'raid') return false; G.enemies.forEach(function (e) { if (e.alive()) { e.noDrop = true; e.dgSkip = true; e.takeHit(9999, 1, 10, true, { force: true }); } }); R.queue = []; R.wait = 0; R.wi = i - 1; R.phase = 'rest'; R.restT = 0; return true; },
+    raid: function () { var R = G.stage.dg; var s = Raid.test.state(); if (s && R) { s.phase = R.phase; s.wi = R.wi; s.bossT = Math.round(R.bossT); s.t = Math.round(R.t); s.deadAt = R.deadAt; s.lootN = R.lootN; s.end = R.end; } else if (R) s = { phase: R.phase, wi: R.wi, wsp: R.wsp, t: Math.round(R.t), kills: R.kills }; return s; },
+    raidPat: function (n) { Raid.test.pat(n); return true; },
+    raidHp: function (k) { Raid.test.hp(k); return true; },
+    raidGroggy: function () { Raid.test.groggy(); return true; },
+    raidDebug: function (on) { Raid.debug = on !== false; return true; },
     dgOpen: function (id) { return dgOpen(id || 'mine'); },
     // 판 바로 가기: GAME.test.stage(2) (판 번호 = id, ?stage= 와 같음) / 고르기 화면 열기: GAME.test.select()
     stage: function (n) { return goStage(stageIndexOfId(n) || n); },   // n = 판 번호(id)

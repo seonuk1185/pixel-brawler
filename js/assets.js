@@ -302,8 +302,15 @@
     return setJobs[key];
   }
 
+  // 놓아주기(2026-11-07 레이드 보스: 큰 그림 36장 ≈ 42MB): 이 경로들을 기억에서 지움 → 다른 곳에서 안 쓰면 브라우저가 메모리를 돌려받음. 다시 쓰면 새로 받음
+  function forget(list) {
+    var set = {};
+    (list || []).forEach(function (src) { set[src] = true; delete cache[src]; });
+    Object.keys(setJobs).forEach(function (key) { if (key.split('|').some(function (s) { return set[s]; })) delete setJobs[key]; });
+  }
+
   window.Assets = {
-    shrink: shrink, blit: blit, centerOf: centerOf, copyMeta: copyMeta, ensureChar: ensureChar, ensureBg: ensureBg, loadSet: loadSet,
+    shrink: shrink, blit: blit, centerOf: centerOf, copyMeta: copyMeta, ensureChar: ensureChar, ensureBg: ensureBg, loadSet: loadSet, forget: forget,
     ensureEnemies: ensureEnemies,
     progress: prog,
     isHD: function () { return !!hd; },
