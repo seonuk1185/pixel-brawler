@@ -84,7 +84,7 @@
       LW = Math.ceil(pw / SCALE); LH = CFG.view.targetH;
       topCss = 52;
     } else {
-      SCALE = Math.max(1, Math.floor(ph / CFG.view.targetH));
+      SCALE = Math.max(1, Math.min(Math.floor(ph / CFG.view.targetH), Math.floor(pw / (CFG.view.minLandW || 1))));
       LW = Math.ceil(pw / SCALE); LH = Math.ceil(ph / SCALE);
     }
     canvas.width = Math.round(LW * RS); canvas.height = Math.round(LH * RS);
@@ -1842,7 +1842,8 @@
     p.classKey = G.classKey; p.gender = G.charKey;   // 기술 고르기용
     p.atkSpd = Growth.atkSpd(); p.moveMul = Growth.moveMul();   // 민첩(성장 능력치): 휘두르기·이동 빠르기
     if (G.awk && G.awk.A.atkSpd) p.atkSpd = Math.min(G.awk.A.spdCap, p.atkSpd + G.awk.A.atkSpd);   // 각성 광전사: 더 빠르게(상한 있음)
-    if (MODE === 'stage') { world.minX = G.camX + 14; world.maxX = G.camX + LW - 14 - controlPad; }
+    // 플레이어는 화면 끝까지(2026-11-06 형님 폰 접은 화면: 버튼 앞이 벽처럼 막힘). 버튼 밑 비우기는 적·물약만
+    if (MODE === 'stage') { world.minX = G.camX + 14; world.maxX = G.camX + LW - 14; }
     if (G.bot && MODE === 'stage' && !G.stage.result) botThink(dt);
     awkStep(dt, realMs);   // 각성 시간·불꽃·잔상·끝 폭발
     var ev = p.update(dt, world);
