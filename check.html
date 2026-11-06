@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>화면 크기 확인</title>
+<!-- 폰 화면 재기(2026-11-07): 폴더블 접음/펼침 · 가로/세로마다 게임이 받는 화면 크기를 숫자로 보여 줌. 형님이 캡처해서 보내 주시면 맞춤에 씀 -->
+<style>
+  body { margin: 0; background: #1b1410; color: #fff3dc; font: 18px/1.5 system-ui, sans-serif; }
+  #box { position: fixed; inset: 0; border: 4px solid #e8b04a; box-sizing: border-box;
+         padding: calc(16px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right))
+                  calc(16px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left)); overflow: auto; }
+  h1 { font-size: 22px; margin: 0 0 8px; color: #ffd27a; }
+  b { color: #8fe0ff; }
+  .hint { margin-top: 12px; color: #c9b08a; font-size: 15px; }
+  #sa { position: fixed; top: 0; left: 0; width: 0; height: 0;
+        padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+</style>
+</head>
+<body>
+<div id="sa"></div>
+<div id="box"><h1>화면 크기 확인</h1><div id="out"></div>
+<div class="hint">접은 화면 · 펼친 화면에서 각각 가로·세로로 돌려 가며 캡처해서 보내 주세요(4장). 숫자는 돌리면 바로 바뀝니다.</div></div>
+<script>
+  function show() {
+    var sa = getComputedStyle(document.getElementById('sa')), vv = window.visualViewport;
+    var w = innerWidth, h = innerHeight, d = devicePixelRatio || 1;
+    var rows = [
+      ['보이는 화면(게임이 받는 크기)', w + ' x ' + h],
+      ['실제 화소', Math.round(w * d) + ' x ' + Math.round(h * d)],
+      ['화소 배율(DPR)', d],
+      ['가로:세로', (w / h).toFixed(2) + ' (' + (w > h ? '가로' : '세로') + ')'],
+      ['화면 전체(screen)', screen.width + ' x ' + screen.height],
+      ['visualViewport', vv ? Math.round(vv.width) + ' x ' + Math.round(vv.height) : '없음'],
+      ['카메라 구멍 등 여백(위·오른·아래·왼)', [sa.paddingTop, sa.paddingRight, sa.paddingBottom, sa.paddingLeft].join(' · ')],
+      ['손가락 입력', ('ontouchstart' in window) ? '있음' : '없음'],
+      ['브라우저', navigator.userAgent.replace(/^Mozilla\/5.0 /, '')]
+    ];
+    document.getElementById('out').innerHTML = rows.map(function (r) { return r[0] + ': <b>' + r[1] + '</b>'; }).join('<br>');
+  }
+  show(); addEventListener('resize', show); if (window.visualViewport) visualViewport.addEventListener('resize', show);
+</script>
+</body>
+</html>
