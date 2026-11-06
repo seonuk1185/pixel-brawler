@@ -235,7 +235,7 @@
   // ---------- 상태 ----------
   var G = window.GAME = {
     cfg: CFG, assets: null, player: null, dummy: null, enemies: [], mode: MODE,
-    hitstop: 0, hits: 0, comboHits: 0, comboT: 0, maxCombo: 0, totalDmg: 0, camX: 0, slowT: 0,
+    hitstop: 0, hits: 0, mh: { n: 0, shake: 0, skill: null, x: 0, y: 0 }, mk: { n: 0, t: 0 }, callout: null, comboHits: 0, comboT: 0, maxCombo: 0, totalDmg: 0, camX: 0, slowT: 0,
     // 콤보 기록(2026-11-06 밤, 시험·결과용): launch = 띄움, air = 공중 타, otg = 누운 적 타, cancel = 캔슬(평타→기술 / 기술→기술), maxAirMs = 가장 오래 뜬 시간
     cstats: { launch: 0, air: 0, otg: 0, cancel: 0, maxAirMs: 0, maxAirHits: 0 }, comboTagTxt: '', comboTagT: 0,
     charKey: 'male', classKey: CFG.defaultClass || 'knight', weaponKey: 'sword', moveSet: 'sword', debug: DEBUG,
@@ -292,7 +292,9 @@
     // 손맛(2026-11-06 밤, config juice.impact): 무거운 타(마무리·기술·넘어뜨림·띄우기)는 더 오래 멈추고 더 흔들림
     var IM = J.impact || {}, heavyHit = !!(st.finisher || st.damageStyle || st.knockdown || st.launch);
     G.hitstop = Math.max(G.hitstop, J.hitstopMs * W.hitstopMul * st.hitstop * (heavyHit ? IM.heavyStop || 1 : 1));
-    FX.shake(J.shakePx * W.shakeMul * st.shake * (heavyHit ? IM.heavyShake || 1 : IM.lightShake || 1), J.shakeMs * (st.finisher ? 1.5 : 1));
+    var shk = J.shakePx * W.shakeMul * st.shake * (heavyHit ? IM.heavyShake || 1 : IM.lightShake || 1);
+    FX.shake(shk, J.shakeMs * (st.finisher ? 1.5 : 1));
+    if (target !== G.dummy) { var MH = G.mh; MH.n++; MH.shake = Math.max(MH.shake, shk); if (st.damageStyle) MH.skill = st.damageStyle; MH.x += target.x; MH.y += target.y - target.T.height * 0.45; }   // 여러 마리 한꺼번에(사냥 손맛, 장면 끝에 multiHitFx)
     // 콤보 마무리 타: 짧은 화면 번쩍(2026-11-03 HD). 기술은 자기 flash 를 따로 씀
     if (st.finisher && !st.damageStyle && CFG.view.renderScale > 1) Skills.flash({ color: '#fff8e8', alpha: 0.2, ms: 90 });
     var knock = J.knockback * AS * W.knockMul * st.knock;
@@ -326,7 +328,7 @@
       }
       if (res && res !== 'dead') Skills.brandMark(p, target, st);   // 원소 낙인(2차): 기술 마법에 맞은 적에게 낙인
       if (res === 'dead' && target.T.boss) onBossDown(target);
-      else if (res === 'dead') G.hitstop = Math.max(G.hitstop, J.hitstopMs * 1.6);
+      else if (res === 'dead') { G.hitstop = Math.max(G.hitstop, J.hitstopMs * 1.6); onKill(target); }
     }
     // hitY = 주먹·발이 닿는 높이(맨손 콤보), spark = 불똥 그림 크기(맨손은 작게)
     var hy = p.y - (p.z || 0) + (st.hitY != null ? st.hitY : -52 * AS), sc = st.spark || 1;   // 공중이면 그만큼 위
@@ -363,6 +365,96 @@
   }
 
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+  // ---------- 사냥 손맛 연출 (2026-11-07, config hunt) ----------
+  // 여러 마리 한꺼번에(multiHit): onHit 이 한 장면 동안 맞은 적 수(G.mh)를 모음 → 장면 끝에 마리 수만큼 더 흔들림·멈춤, 기술이면 무리 가운데 큰 빛
+  function newMh() { return { n: 0, shake: 0, skill: null, x: 0, y: 0 }; }
+  function multiHitFx() {
+    var MH = G.mh, M = huntPart('multiHit');
+    G.mh = newMh();
+    if (!M || MH.n < (M.from || 2)) return;
+    var k = Math.min(M.shakeCap || 2, 1 + (M.shake || 0) * (MH.n - 1));
+    FX.shake(MH.shake * k, J.shakeMs * 1.4);
+    G.hitstop += Math.min(M.stopCap || 0, (M.stopMs || 0) * (MH.n - 1));
+    if (MH.skill && MH.n >= (M.bloomAt || 3)) {
+      var cx = MH.x / MH.n, cy = MH.y / MH.n, FC = (J.flashy && J.flashy.cols[MH.skill]) || ['#ffffff', '#fff2c0'];
+      if (Skills.glow) Skills.glow(cx, cy, (M.bloomR || 80) * AS * Math.min(1.6, 0.8 + MH.n * 0.1), FC[1] || FC[0], M.bloomMs || 240, M.bloomA || 0.5);
+      if (M.flash) Skills.flash(M.flash);
+    }
+  }
+  // 몇 마리 잡기(multiKill): 마지막으로 잡은 뒤 windowMs 안에 또 잡으면 이어서 셈 → 「5 KILL!」 + 마리 문턱마다 짧은 슬로모션
+  function onKill(e) {
+    var MK = huntPart('multiKill'); if (!MK) return;
+    var K = G.mk;
+    K.n = K.t > 0 ? K.n + 1 : 1; K.t = MK.windowMs || 600;
+    G.kills = (G.kills || 0) + 1;
+    if (K.n < (MK.min || 3)) return;
+    G.callout = { txt: K.n + ' KILL!', t: 0, life: MK.showMs || 900, n: K.n };
+    G.bestKill = Math.max(G.bestKill || 0, K.n);
+    (MK.slow || []).forEach(function (q) { if (K.n === q[0]) { G.slowT = Math.max(G.slowT, q[1]); FX.shake(J.shakePx * (MK.shake || 1), 220); } });
+  }
+  // 「5 KILL!」 글자: 화면 위 가운데(진짜 시간). 처음에 크게 튀어나왔다가 줄어들고, 끝에서 흐려짐
+  function drawCallout() {
+    var C = G.callout; if (!C) return;
+    var st = CFG.damageText.multikill, k = C.t / C.life, pk = 0.14;
+    if (k >= 1) { G.callout = null; return; }
+    if (k < pk && st.pop) { var s2 = {}, kk; for (kk in st) if (kk !== 'pop') s2[kk] = st[kk]; for (kk in st.pop) s2[kk] = st.pop[kk]; st = s2; }
+    var z = (st.zoom || 1) * (1 + Math.min(0.4, (C.n - 3) * 0.04)) * (k < pk ? 1 + 0.5 * (1 - k / pk) : 1);
+    var x = LW / 2, y = Math.round(LH * 0.32);
+    ctx.save(); ctx.globalAlpha = k > 0.72 ? Math.max(0, 1 - (k - 0.72) / 0.28) : 1;
+    ctx.translate(x, y); ctx.scale(z, z); ctx.translate(-x, -y);
+    FX.drawPixelText(ctx, C.txt, x, y - 8, st);
+    ctx.restore();
+  }
+  // 경험치 구슬(orbs): 튀어나옴 → delayMs 뒤 플레이어 쪽으로 점점 빨라지며 빨려 듦. 닿으면 작은 반짝임. 최대 max 개
+  var orbs = [];
+  function spawnOrbs(x, y, OB) {
+    var n = OB.n[0] + Math.floor(Math.random() * (OB.n[1] - OB.n[0] + 1));
+    n = Math.min(n, (OB.max || 60) - orbs.length);
+    for (var i = 0; i < n; i++) {
+      var a = -Math.PI / 2 + (Math.random() * 2 - 1) * 1.3, sp = OB.spd * AS / 0.55 * (0.6 + Math.random() * 0.7);
+      orbs.push({ x: x, y: y, px: x, py: y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, t: 0, d: OB.delayMs * (0.8 + Math.random() * 0.5), col: OB.cols[i % OB.cols.length] });
+    }
+  }
+  function orbsStep(dt) {
+    if (G.orbGlowT > 0) G.orbGlowT -= dt;
+    if (!orbs.length) return;
+    var OB = CFG.hunt.orbs, p = G.player, s = dt / 1000, tx = p.x, ty = p.y - (p.z || 0) - 46 * AS, got = 0;
+    for (var i = orbs.length - 1; i >= 0; i--) {
+      var o = orbs[i]; o.t += dt; o.px = o.x; o.py = o.y;
+      if (o.t < o.d) { o.vy += 260 * AS * s; o.vx *= Math.exp(-s * 3); o.vy *= Math.exp(-s * 3); }
+      else {
+        var dx = tx - o.x, dy = ty - o.y, d = Math.hypot(dx, dy) || 1, mx = (120 + (o.t - o.d) / 1000 * OB.pull) * AS;
+        o.vx += (dx / d * mx - o.vx) * Math.min(1, s * 9); o.vy += (dy / d * mx - o.vy) * Math.min(1, s * 9);
+        if (d < 8 * AS + mx * s || o.t > 2600) { orbs.splice(i, 1); got++; continue; }
+      }
+      o.x += o.vx * s; o.y += o.vy * s;
+    }
+    if (got && Skills.glow && !(G.orbGlowT > 0)) { Skills.glow(tx, ty, 16 * AS / 0.55, '#fff2a0', 160, 0.45); G.orbGlowT = 70; }
+  }
+  function drawOrbs(camX) {
+    if (!orbs.length) return;
+    var OB = CFG.hunt.orbs, r = (OB.size || 2) * AS / 0.55;
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    orbs.forEach(function (o) {
+      var x = o.x - camX, y = o.y;
+      ctx.globalAlpha = 0.35; ctx.strokeStyle = o.col; ctx.lineWidth = r * 1.1; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(o.px - camX, o.py); ctx.lineTo(x, y); ctx.stroke();
+      ctx.globalAlpha = 0.45; ctx.fillStyle = o.col; ctx.fillRect(x - r, y - r, r * 2, r * 2);
+      ctx.globalAlpha = 1; ctx.fillStyle = '#ffffff'; ctx.fillRect(x - r * 0.5, y - r * 0.5, r, r);
+    });
+    ctx.restore();
+  }
+  // 쓰러진 잡몹이 펑(hunt.death, enemies.js 가 부름): 코드로 그린 작은 터짐 = 파편 + 납작한 고리 + 빛 → 그 자리에서 경험치 구슬
+  function deathPop(e) {
+    var D = e.huntDeath, y = e.y - (e.az || 0) - e.T.height * 0.3;
+    if (Skills.debris) Skills.debris(e.x, y, e.y, D.bits || 8, { cols: D.cols, glow: true, sp: 170, size: 1.8, ms: 380, spread: 1.6 });
+    if (Skills.wave) Skills.wave(e.x, e.y - 2 * AS, (D.ringR || 24) * AS / 0.55, { flat: 0.32, w: 2, ms: 240, color: '#ffffff', glow: '#ffe8a0', ground: true, noMax: true });
+    if (Skills.glow) Skills.glow(e.x, y, 20 * AS / 0.55, '#fff2c0', 200, 0.55);
+    var OB = huntPart('orbs');
+    if (OB && e.orbN) spawnOrbs(e.x, y, OB);
+  }
+
   // 방패로 막음: 방패 자리에 하얀·노란 쨍 불똥 + 쇳조각 반짝임, 짧은 멈춤·작은 흔들림(데미지 숫자·콤보 수 없음)
   function blockFx(e, dir) {
     var x = e.x + e.dir * 30 * AS, y = e.y - 56 * AS;
@@ -556,7 +648,11 @@
   var comboEl = document.getElementById('combo');
   function showCombo() {
     comboEl.innerHTML = '<b>' + G.comboHits + '</b> HIT' + (G.comboTagT > 0 ? '<i class="ctag ctag-' + G.comboTagTxt.toLowerCase() + '">' + G.comboTagTxt + '</i>' : '');
-    comboEl.classList.remove('pop'); void comboEl.offsetWidth; comboEl.classList.add('pop');
+    // 사냥 손맛(hunt.combo): 콤보 수 크게 + 50 · 100 … 마다 번쩍(글자 커졌다 돌아옴 + 짧은 화면 번쩍)
+    var HC = huntPart('combo'), mile = !!(HC && HC.every && G.comboHits % HC.every === 0);
+    comboEl.classList.toggle('big', !!(HC && HC.big));
+    comboEl.classList.remove('pop'); comboEl.classList.remove('mile'); void comboEl.offsetWidth; comboEl.classList.add(mile ? 'mile' : 'pop');
+    if (mile) Skills.flash({ color: '#fff2c0', alpha: 0.3, ms: 180 });
     comboEl.hidden = false;
   }
 
@@ -663,10 +759,33 @@
   }
   function waveAt(w) { return w.at === 'end' ? world.width - LW : Math.min(w.at, world.width - LW); }
 
+  // ---------- 사냥 손맛 (2026-11-07, config hunt): 켠 판(hunt.stages)에서만 ----------
+  // HUNT() = 지금 판에서 켜져 있으면 config hunt, 아니면 null. huntPart('horde') = 그 묶음(꺼져 있으면 null)
+  function HUNT() { var h = CFG.hunt; return h && h.on && MODE === 'stage' && CFG.stage && (h.stages || []).indexOf(CFG.stage.id) >= 0 ? h : null; }
+  function huntPart(k) { var h = HUNT(), q = h && h[k]; return q && q.on !== false ? q : null; }
+  // 몹 떼로 늘릴 적 = 성장 경험치 종류 'mob'(고블린·늑대·박쥐 …). 보스·단단한 잡몹·정예는 그대로
+  function hordeMob(type) { var T = CFG.enemies[type]; return !!T && !T.boss && Growth.kindOf(type, T) === 'mob'; }
+  function hordeOf(w) { var HD = huntPart('horde'); return HD && !(w && w.horde === false) ? HD : null; }
+  // 웨이브 spawn 목록 → 몹 떼(잡몹마다 mul 배). 늘어난 몹은 반대쪽 끝에서(bothSides) gapMs 씩 늦게, 화면 밖으로 조금씩 더 떨어져서(off)
+  function hordeSpawn(w) {
+    var list = (w.spawn || []).map(function (s) { return { type: s[0], side: s[1], at: s[2], opt: s[3], off: 0 }; }), HD = hordeOf(w);
+    if (!HD) return list;
+    var mul = w.hordeMul || HD.mul || 1, out = [];
+    list.forEach(function (q) {
+      out.push(q);
+      if (!hordeMob(q.type)) return;
+      for (var k = 1; k < mul; k++) {
+        var flip = HD.bothSides && k % 2 === 1;
+        out.push({ type: q.type, side: flip ? (q.side === 'L' ? 'R' : 'L') : q.side, at: q.at + k * (HD.gapMs || 0), opt: q.opt, off: flip ? Math.floor(k / 2) : k });
+      }
+    });
+    return out;
+  }
+
   function startWave(i) {
     var S = G.stage, w = CFG.stage.waves[i];
     S.locked = true; S.lockCam = waveAt(w); S.waveIdx = i; S.lastLock = S.lockCam; S.waveT = 0;
-    S.queue = (w.spawn || []).map(function (s) { return { type: s[0], side: s[1], at: s[2], opt: s[3] }; });
+    S.queue = hordeSpawn(w);   // 사냥 손맛: 켠 판이면 잡몹이 떼로(config hunt.horde)
     // 미리 서 있는 적: 아직 안 나온 것도 지금 다 내놓고, 화면이 고정되면 전부 알아챔
     S.placedQ.forEach(spawnPlaced); S.placedQ = [];
     G.enemies.forEach(function (e) { if (e.asleep) wakeEnemy(e, Math.random() * (CFG.ai.wake.groupDelayMs || 0)); });
@@ -682,14 +801,23 @@
     if (hm !== 1) e.hp = e.maxHp = Math.round(e.maxHp * hm);
     e.dmgMul = dm;
     if (V) { e.variant = vk; if (V.label) e.label = V.label + ' ' + e.label; }
+    // 몹 떼(사냥 손맛): 늘어난 만큼 한 마리는 약하게 + 경험치 xpMul 배. 쓰러지면 붕 날아가 펑(hunt.death, enemies.js)
+    var HD = hordeOf(null);
+    if (HD && hordeMob(type)) {
+      e.hp = e.maxHp = Math.max(1, Math.round(e.maxHp * (HD.hpMul || 1)));
+      e.dmgMul *= HD.dmgMul || 1; e.xpMul = HD.xpMul || 1; e.horde = true;
+    }
+    var HDe = huntPart('death');
+    if (HDe && !T.boss) e.huntDeath = HDe;
     e.wave = S.waveIdx;
     G.enemies.push(e);
     if (T.boss) S.boss = e;
     return e;
   }
-  function spawnEnemy(type, side, opt) {
-    var S = G.stage, T = CFG.enemies[type];
-    var x = side === 'L' ? S.lockCam - T.radius - 30 : S.lockCam + LW + T.radius + 30;
+  // off = 몹 떼로 늘어난 몹: 화면 밖으로 off x hunt.horde.xOff 도트 더 떨어져서 나옴(한 덩어리로 겹치지 않게)
+  function spawnEnemy(type, side, opt, off) {
+    var S = G.stage, T = CFG.enemies[type], HD = off ? hordeOf(null) : null, ox = HD ? off * (HD.xOff || 0) * AS : 0;
+    var x = side === 'L' ? S.lockCam - T.radius - 30 - ox : S.lockCam + LW + T.radius + 30 + ox;
     var y = world.laneTop + Math.random() * (world.laneBottom - world.laneTop);
     var e = makeEnemy(type, x, y, opt);
     e.dir = side === 'L' ? 1 : -1;
@@ -705,6 +833,20 @@
     if (!w || !w.placed) return;
     var at = waveAt(w);
     S.placedQ = w.placed.map(function (q) { return { type: q[0], x: at + q[1], yk: q[2], opt: q[3] || {}, wave: i }; });
+    // 몹 떼(사냥 손맛): 미리 서 있는 잡몹도 mul 배 — 옆(placedDx)·위아래(placedDy)로 비켜 서서 같은 무리. 무리가 없던 몹은 늘어난 몹과 한 무리
+    var HD = hordeOf(w);
+    if (HD) {
+      var mul = w.hordeMul || HD.mul || 1, add = [];
+      S.placedQ.forEach(function (q, n) {
+        if (!hordeMob(q.type)) return;
+        if (!q.opt.group) q.opt = Object.assign({}, q.opt, { group: 'horde' + i + '_' + n });
+        for (var k = 1; k < mul; k++) {
+          var sx = k % 2 ? 1 : -1, yk = q.yk + (q.yk > 0.5 ? -1 : 1) * (HD.placedDy || 0) * Math.ceil(k / 2);
+          add.push({ type: q.type, x: q.x + sx * (HD.placedDx || 0) * Math.ceil(k / 2), yk: clamp(yk, 0.04, 0.96), opt: q.opt, wave: i });
+        }
+      });
+      S.placedQ = S.placedQ.concat(add);
+    }
   }
   function spawnPlaced(q) {
     var e = makeEnemy(q.type, q.x, laneY(q.yk), q.opt);
@@ -1533,9 +1675,13 @@
       e.xpDone = true;
       mobPotion(e);   // 물약(2026-11-06 밤)
       var n = Growth.enemyXp(e.type, e.T, idx);
+      if (e.xpMul && n > 0) n = Math.max(1, Math.round(n * e.xpMul));   // 몹 떼(사냥 손맛): 한 마리 경험치 xpMul 배
       if (!(n > 0) || Growth.isMax()) return;
       G.xpGot = (G.xpGot || 0) + n;
-      FX.damage(e.x, e.y - e.T.height - 8, '+' + n + ' XP', false, J, null, 'xp', e.id + ':xp');
+      // 경험치 구슬(사냥 손맛): 쓰러져 펑 할 때(hunt.death) 또는 지금 튀어나와 플레이어에게 빨려 듦. 그때는 「+5 XP」 글자 대신(hideXpText)
+      var OB = huntPart('orbs');
+      if (OB) { if (e.huntDeath && !e.T.boss) e.orbN = true; else spawnOrbs(e.x, e.y - e.T.height * 0.45 - (e.az || 0), OB); }
+      if (!OB || !OB.hideXpText || e.T.boss) FX.damage(e.x, e.y - e.T.height - 8, '+' + n + ' XP', false, J, null, 'xp', e.id + ':xp');
       var up = Growth.gain(n);
       if (up > 0) onLevelUp(up);
     });
@@ -1609,7 +1755,7 @@
       S.waveT += dt;
       for (var i = S.queue.length - 1; i >= 0; i--) {
         if (S.queue[i].at <= S.waveT) {
-          var ne = spawnEnemy(S.queue[i].type, S.queue[i].side, S.queue[i].opt); S.queue.splice(i, 1);
+          var ne = spawnEnemy(S.queue[i].type, S.queue[i].side, S.queue[i].opt, S.queue[i].off); S.queue.splice(i, 1);
           if (ne.T.boss && !S.introDone) { S.introDone = true; startIntro(ne); }   // 보스 등장 컷인(판마다 한 번)
         }
       }
@@ -1837,6 +1983,7 @@
     if (G.paused) return;   // 스테이지 고르기 화면: 멈춤
     FX.updateShake(realMs);
     Skills.tickReal(realMs);
+    if (G.callout) G.callout.t += realMs;     // 「5 KILL!」 글자(진짜 시간)
     if (intro) { introStep(realMs); return; }               // 보스 등장 컷인 동안: 게임 멈춤(2026-11-06 밤)
     if (G.vig > 0) G.vig = Math.max(0, G.vig - realMs / ((J.hurt && J.hurt.vigMs) || 600));   // 가장자리 빨강 줄어듦(진짜 시간)
     // 각성(2026-11-06 밤): 분노 100% 에 버튼·L·F → 변신. 맞는 순간 멈춤 중에 눌러도 바로(움찔·넘어짐·잡힘 중에는 눌러 둔 것을 잠깐 기억했다가)
@@ -1844,6 +1991,7 @@
     if (G.hitstop > 0) { G.hitstop -= realMs; return; }   // 멈춤: 아무것도 안 움직임
     var dt = realMs * J.timeScale;
     if (G.slowT > 0) { G.slowT -= realMs; dt *= 0.3; }
+    if (G.mk.t > 0) G.mk.t -= dt;              // 몇 마리 잡기 이어서 세는 시간(사냥 손맛)
     if (G.comboT > 0) { G.comboT -= dt; if (G.comboT <= 0) comboEl.hidden = true; }
     if (G.zoom) { G.zoom.t += realMs; if (G.zoom.t >= G.zoom.ms) G.zoom = null; }
     if (G.comboTagT > 0) G.comboTagT -= dt;
@@ -1935,6 +2083,8 @@
     }
     FX.update(dt);
     Skills.update(dt);
+    orbsStep(dt);          // 경험치 구슬(사냥 손맛)
+    multiHitFx();          // 이 장면에 여러 마리 맞았으면 더 흔들림·멈춤·빛(사냥 손맛)
   }
 
   // ---------- 그리기 ----------
@@ -1987,7 +2137,9 @@
     if (cannons.length) drawCannons(camX);        // 떨어지는 대포알
     Skills.drawOver(ctx, camX);                   // 번개 기둥·회전 원
     FX.draw(ctx, camX, false);
-    Skills.drawFlash(ctx, LW, LH);                // 기술 맞는 순간 화면 번쩍
+    drawOrbs(camX);                               // 경험치 구슬(사냥 손맛)
+    Skills.drawFlash(ctx, LW, LH);
+    drawCallout();                                // 「5 KILL!」(사냥 손맛)                // 기술 맞는 순간 화면 번쩍
     if (G.vig > 0.01) {                           // 플레이어가 맞음: 화면 가장자리 빨갛게(2026-11-06 밤)
       var vg = ctx.createRadialGradient(LW / 2, LH / 2, Math.min(LW, LH) * 0.35, LW / 2, LH / 2, Math.max(LW, LH) * 0.62);
       vg.addColorStop(0, 'rgba(200,0,20,0)'); vg.addColorStop(1, 'rgba(200,0,20,' + (0.55 * G.vig).toFixed(3) + ')');
@@ -2155,6 +2307,8 @@
     G.xpGot = 0;   // 이 판에서 얻은 경험치(결과 화면)
     G.full = CFG.fullness ? CFG.fullness.start : 0; G.fullAcc = 0; G.potGot = 0;   // 포만감·물약(2026-11-06 밤): 판마다 처음부터
     G.rage = 0; G.combatT = 0; G.awk = null; G.awkCount = 0; awkPush.length = 0;   // 분노·각성(2026-11-06 밤): 판 시작 = 0
+    G.mh = newMh(); G.mk = { n: 0, t: 0 }; G.callout = null; G.kills = 0; G.bestKill = 0; orbs.length = 0;   // 사냥 손맛
+    FX.setHunt && FX.setHunt(huntPart('dmgNum'));
     G.hits = 0; G.totalDmg = 0; G.maxCombo = 0; G.comboT = 0; G.cstats = { launch: 0, air: 0, otg: 0, cancel: 0, maxAirMs: 0, maxAirHits: 0 }; G.comboTagT = 0; G.hitstop = 0; G.slowT = 0; comboEl.hidden = true;
     var god = G.player && G.player.god;
     G.player = new Player(CFG);
@@ -2232,8 +2386,11 @@
       burnPlayer: burnPlayer,                                                  // 7단계 와이번 불 뿜기에 계속 서 있음
       drainPlayer: drainPlayer, mist: mistPuff,                                // 8단계 흡혈 백작 피 빨기 · 안개
       shockwave: shockwave,                                                    // 9단계 마왕군 장군 화염 충격파 고리
-      pushPlayer: pushPlayer                                                   // 10단계 마왕 각성 포효(밀어냄)
+      pushPlayer: pushPlayer,                                                  // 10단계 마왕 각성 포효(밀어냄)
+      deathPop: deathPop                                                       // 사냥 손맛: 쓰러진 잡몹 펑 + 경험치 구슬
     };
+    var HD = hordeOf(null);   // 몹 떼(사냥 손맛): 동시에 때리러 오는 잡몹 수·공격 시작 간격을 따로
+    if (HD) { E.maxAttackers = HD.maxAttackers; E.attackGapMs = HD.attackGapMs; }
     Object.defineProperty(E, 'player', { get: function () { return G.player; } });
     return E;
   }
@@ -2767,6 +2924,7 @@
         props: Props.list.map(function (pr) { return pr.type + ':' + (pr.state === 'idle' ? pr.hitsLeft : pr.state) + '@' + Math.round(pr.x) + ',' + Math.round(pr.y); }),
         food: Props.food.map(function (f) { return f.kind + '@' + Math.round(f.x) + ',' + Math.round(f.y); }),
         potions: Props.potions.map(function (f) { return f.kind + '@' + Math.round(f.x) + ',' + Math.round(f.y); }), full: Math.round((G.full || 0) * 10) / 10, potGot: G.potGot || 0,
+        kills: G.kills || 0, bestKill: G.bestKill || 0, orbs: orbs.length, hunt: !!HUNT(),
         rage: Math.round(G.rage || 0), awk: G.awk ? { cls: G.awk.cls, t: Math.round(G.awk.t) } : null, awkCount: G.awkCount || 0 };
     }
   };
@@ -2823,6 +2981,7 @@
       noMp: noMp,            // 마나가 모자라 기술이 안 나감(2026-11-06)
       player: function () { return G.player; },   // 늘 켜진 기술 「투지」 표시(2차, 2026-11-06)
       comboTag: comboTag,    // 캔슬로 기술이 나감 → 콤보 글자 「CANCEL」(2026-11-06 밤)
+      areaMul: function (d) { var A = huntPart('aoe'); return (A && A[d.id]) || 1; },   // 사냥 손맛: 넓은 범위(회전베기·대지 내려찍기·메테오·불기둥)
       onCast: onCast         // 기술을 씀 → 포만감이 조금 더 줆(2026-11-06 밤)
     });
     Object.keys(assets.characters).forEach(function (k) { bakeFilter(assets.characters[k]); });

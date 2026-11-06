@@ -1066,6 +1066,43 @@
                         skill_holy: ['#ffffff', '#fff6c8', '#ffd23f'], skill_arcane: ['#ffffff', '#e8d0ff', '#8ff0ff'] } }
     },
 
+    // ---------- 사냥 손맛 (2026-11-07, 형님 「우리 게임 = 사냥 중심, 몹 떼를 화려하게 쓸어버리는 맛, 던파처럼 화려한 연출」) ----------
+    // 시험으로 1판에만 켬(stages = 켤 판 id 목록). 다른 판도 켜려면 stages 에 id 를 넣으면 끝(웨이브마다 horde: false 로 그 웨이브만 끔)
+    // 아래 묶음마다 on: false 로 따로 끌 수 있음. 거리 값(도트)은 원래 그림 크기 기준(쓸 때 actorScale 곱함)
+    hunt: {
+      on: true,
+      stages: [1],
+      // 몹 떼: 잡몹(성장 경험치 종류 'mob' = 고블린·늑대·박쥐 …, 보스·단단한 잡몹은 그대로)을 mul 배로. 대신 한 마리는 약하게(hpMul),
+      //   경험치는 xpMul 배(마리 수 x 배율 = 판 전체 경험치는 그대로 → 레벨 오르는 빠르기 그대로)
+      //   늘어난 몹은 반대쪽 끝에서 같이 나옴(양옆에서 떼로) + gapMs 씩 조금 늦게, 화면 밖으로 xOff 도트씩 더 떨어져서(한 덩어리로 겹치지 않게)
+      //   미리 서 있는 무리(placed)도 mul 배: 옆으로 placedDx 도트, 위아래 placedDy(길 폭 비율) 비켜 서서 같은 무리로
+      //   동시에 때리러 오는 잡몹 수(maxAttackers)·공격 시작 간격(attackGapMs)은 따로 정함(몹이 많아도 한꺼번에 몰매 맞지 않게)
+      //   웨이브에 hordeMul: 3 처럼 적으면 그 웨이브만 배수를 바꿈
+      horde: { on: true, mul: 2, hpMul: 0.4, dmgMul: 1.0, xpMul: 0.5, bothSides: true, gapMs: 180, xOff: 34, placedDx: 30, placedDy: 0.2,
+               maxAttackers: 2, attackGapMs: 520 },
+      // 넓은 범위: 기술 판정·효과 크기 배율(기술 Lv 크기 area 에 곱함). 회전베기 · 대지 내려찍기 · 메테오 · 불기둥
+      aoe: { on: true, spin: 1.25, slam: 1.25, meteor: 1.25, pillar: 1.25 },
+      // 여러 마리 한꺼번에: 한 장면(한 번의 공격)에 맞은 적이 from 마리 이상이면 화면 흔들림 1 + shake x (마리 - 1) 배(최대 shakeCap 배)
+      //   + 멈춤 stopMs x (마리 - 1) 더함(최대 stopCap ms). 기술로 bloomAt 마리 이상 맞히면 맞은 무리 가운데 큰 빛(bloom) + 짧은 화면 번쩍
+      multiHit: { on: true, from: 2, shake: 0.22, shakeCap: 2.4, stopMs: 7, stopCap: 45,
+                  bloomAt: 3, bloomR: 90, bloomA: 0.55, bloomMs: 260, flash: { color: '#fff6e0', alpha: 0.22, ms: 110 } },
+      // 데미지 숫자 「파파박」: spread = 새 숫자 좌우·위아래로 흩어짐(도트), size = 데미지가 ref[0] 이하면 min 배 ~ ref[1] 이상이면 max 배 크기,
+      //   pop = 처음 튀어나오는 크기(보통 숫자), critPop = 치명타·마무리 숫자, critGlow = 치명타 숫자 뒤 주황 번쩍(더하기) 세기, max = 화면에 숫자 최대 수(넘으면 오래된 것부터 지움)
+      dmgNum: { on: true, spread: 7, size: { min: 0.9, max: 1.3, ref: [8, 60] }, pop: 1.3, critPop: 1.7, critGlow: 0.7, critGlowR: 22, critGlowMs: 160, max: 36 },
+      // 몇 마리 잡기(멀티킬): 마지막으로 잡은 뒤 windowMs 안에 또 잡으면 이어서 셈 → min 마리부터 화면 위 「3 KILL!」(모양 = damageText.multikill).
+      //   slow = [마리, 느려지는 ms(진짜 시간)] 그 마리 수를 처음 넘을 때 짧은 슬로모션. showMs = 글자 보이는 시간
+      multiKill: { on: true, windowMs: 650, min: 3, showMs: 900, slow: [[5, 170], [8, 230], [12, 260]], shake: 1.4 },
+      // 쓰러짐: 잡몹이 붕 떠서 날아감(up = 뜨는 빠르기 도트/초, vx = 옆으로 deathKnock 배) → popMs 뒤 코드로 그린 작은 펑(파편 bits 개 + 고리)으로 사라짐
+      death: { on: true, up: 420, vx: 1.15, popMs: 620, bits: 9, ringR: 26, cols: ['#ffffff', '#fff2c0', '#ffd27a', '#c8b8a8'] },
+      // 경험치 구슬: 잡은 몹에서 n 개 튀어나와(spd) → delayMs 뒤 플레이어에게 빨려 들어감(pull = 끌어당기는 힘). 경험치는 잡는 순간 그대로 줌(보이기만).
+      //   max = 화면에 구슬 최대 수. hideXpText = 몹마다 「+5 XP」 글자 숨김(구슬이 대신 보여 줌)
+      orbs: { on: true, n: [3, 5], spd: 150, delayMs: 220, pull: 2400, max: 70, size: 2.2, hideXpText: true, cols: ['#fff6a0', '#ffd23f', '#9fffb0'] },
+      // 콤보 수: 크게(big) + milestones 마다(50 · 100 · 150 …) 번쩍
+      combo: { on: true, big: true, every: 50 },
+      // 성능: 효과가 한꺼번에 너무 많아지지 않게(파편·둥근 빛 최대 수, skills.js)
+      caps: { parts: 260, glows: 44 }
+    },
+
     // ---------- 데미지 숫자 모양 (그리는 곳·글꼴 모양: fx.js 의 FONTS) ----------
     // font = 'small'(4x6) / 'big'(5x7) / 'large'(6x8) / 'mid'(6x10) / 'huge'(6x12) 둥근 숫자(large·mid·huge 는 획이 2도트로 두꺼움),
     // scale = 정수 배율(1 = 1도트), bold = 굵게(옆으로 1도트 더)
@@ -1133,6 +1170,9 @@
             pop: { top: '#ffffff', bottom: '#fff6c0' } },
       levelup: { font: 'huge', scale: 1, bold: true, top: '#fff6a0', bottom: '#ffb52e', outline: '#5a2a08', shadow: 'rgba(30,12,4,0.45)',
                  pop: { top: '#ffffff', bottom: '#ffe066' } },
+      // 몇 마리 잡기 「5 KILL!」(2026-11-07 사냥 손맛, 화면 위 가운데, hunt.multiKill): 큰 금색 → 빨강
+      multikill: { font: 'giant', scale: 1, bold: true, zoom: 1.3, top: '#fffbe0', bottom: '#ff7a1a', outline: '#4a0e04', shadow: 'rgba(30,6,4,0.5)',
+                   pop: { top: '#ffffff', bottom: '#ffe066' } },
       // 치명타(2026-11-06, 민첩 AGI 로 확률이 오름, 데미지 x growth.stats.critMul): 기술 숫자만큼 큰 giant + 주황·빨강 → 마무리 「22!」(노랑)와 구분
       agicrit: { font: 'giant', scale: 1, bold: true, top: '#fff27a', bottom: '#ff5a1a', outline: '#5a0a08', shadow: 'rgba(40,6,4,0.5)',
                  pop: { top: '#ffffff', bottom: '#ffd040' } },

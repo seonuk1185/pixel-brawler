@@ -323,6 +323,9 @@
       this.state = 'dead'; this.animT = 0; this.deadT = 0; this.atk = null;
       this.vx = dir * T.deathKnock;
       this.dir = -dir;
+      // 사냥 손맛(config hunt.death, main.js 가 huntDeath 를 넣음): 잡몹이 붕 떠서 멀리 날아감 → 떨어지면 펑(update)
+      var HD = this.huntDeath;
+      if (HD) { this.flyDead = true; this.az = Math.max(this.az || 0, 0.5); this.avz = HD.up * AS(); this.vx = dir * T.deathKnock * (HD.vx || 1); }
       return 'dead';
     }
     if (T.boss) {
@@ -390,16 +393,24 @@
     // 밀려남(감속)
     if (this.vx) {
       this.x += this.vx * dt;
-      this.vx *= Math.exp(-dt * 10);
+      this.vx *= Math.exp(-dt * (this.flyDead && this.az > 0 ? 2.5 : 10));   // 날아가며 쓰러짐(사냥 손맛): 공중에서는 덜 줄어듦
       if (Math.abs(this.vx) < 2) this.vx = 0;
     }
 
     if (this.state === 'dead') {
-      if (this.az > 0) {   // 공중에서 쓰러짐: 땅까지 떨어짐(콤보)
-        this.avz = Math.min(this.avz || 0, 0) - this.cfg.ai.air.g * AS() * 1.5 * dt;
+      if (this.az > 0) {   // 공중에서 쓰러짐: 땅까지 떨어짐(콤보). 날아가며 쓰러짐(사냥 손맛 flyDead)은 위로 솟았다가 떨어짐
+        this.avz = (this.flyDead ? this.avz || 0 : Math.min(this.avz || 0, 0)) - this.cfg.ai.air.g * AS() * 1.5 * dt;
         this.az = Math.max(0, this.az + this.avz * dt);
+        if (this.az <= 0) this.landedAt = this.deadT;
       }
       this.deadT += dtMs;
+      // 사냥 손맛(hunt.death): 땅에 떨어지면(날아간 적) 또는 popMs 가 지나면 코드로 그린 작은 펑과 함께 사라짐(main.js deathPop → 경험치 구슬)
+      var HD = this.huntDeath;
+      if (HD && !this.popped && !T.boss && ((this.flyDead && this.landedAt != null && this.deadT >= this.landedAt + 60) || this.deadT >= HD.popMs)) {
+        this.popped = true; this.remove = true;
+        if (ctx.deathPop) ctx.deathPop(this);
+        return;
+      }
       var fr = this.frameAt('death', this.deadT);
       var AI = this.cfg.ai;
       if (this.deadT > fr.len + AI.deathHoldMs + AI.deathFadeMs && !T.finalBoss) this.remove = true;   // 마지막 보스(마왕)는 재 + 왕관 + 대검이 남음
@@ -585,7 +596,8 @@
   Enemy.prototype.mayAttack = function (ctx) {
     var AI = this.cfg.ai, n = 0;
     ctx.enemies.forEach(function (e) { if (e.state === 'attack' && !e.T.boss) n++; });
-    return n < AI.maxAttackers && ctx.now - (ctx.lastAttackAt || -1e9) > AI.attackGapMs;
+    // 몹 떼(사냥 손맛, main.js makeEnemyCtx): 그 판만 따로 정한 수·간격(ctx.maxAttackers / attackGapMs)이 있으면 그것
+    return n < (ctx.maxAttackers || AI.maxAttackers) && ctx.now - (ctx.lastAttackAt || -1e9) > (ctx.attackGapMs || AI.attackGapMs);
   };
 
   Enemy.prototype.chooseAttack = function (adx, ady, ctx) {

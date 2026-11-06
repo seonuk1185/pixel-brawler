@@ -539,10 +539,16 @@ button.cpick { cursor: pointer; }
 .ccard.soon .d { color: #6a5a40; }
 #btnClassOk { min-width: 220px; min-height: 44px; }
 @media (max-height: 420px) {
-  .chint { margin-bottom: 4px; }
-  .clist { margin-bottom: 8px; }
-  .ccard { width: 150px; padding: 6px 6px 7px; }
-  .ccard canvas { width: 92px; height: 92px; }
+  /* 2026-11-06 형님 폴드 접은 화면(높이 388): 카드 설명 끝줄이 잘림 → 제목·그림·여백 줄임 */
+  .classsel { padding: 8px 10px; }
+  .classsel .box { padding: 8px 14px 10px; }
+  .classsel h2 { font-size: 18px; }
+  .chint { margin-bottom: 2px; }
+  .clist { margin-bottom: 6px; padding-top: 10px; }
+  .ccard { width: 160px; padding: 5px 6px 6px; gap: 2px; }
+  .ccard canvas { width: 72px; height: 72px; }
+  .ccard b { font-size: 18px; }
+  #btnClassOk { min-height: 36px; }
   .ccard.soon { width: 92px; }
   .ccard.soon .ph { width: 46px; height: 46px; margin: 4px 0; }
 }
@@ -570,6 +576,12 @@ button.cpick { cursor: pointer; }
 .combo .ctag-otg { color: #ff8a8a; }
 .combo .ctag-cancel { color: #d8b0ff; }
 @keyframes pop { from { transform: scale(1.5); } to { transform: scale(1); } }
+/* 사냥 손맛(2026-11-07, config hunt.combo, 켠 판만): 콤보 수 크게 + 50 · 100 … 마다 번쩍(크게 튀어나오며 흰 빛) */
+.combo.big { font-size: 17px; transform-origin: 100% 0; }
+.combo.big b { font-size: 46px; }
+.combo.mile { animation: mile .5s ease-out; transform-origin: 100% 0; }
+.combo.mile b { color: #fff; text-shadow: 2px 2px 0 var(--ink), -1px 0 0 var(--ink), 0 -1px 0 var(--ink), 1px 0 0 var(--ink), 0 0 12px #ffd23f, 0 0 22px #ff8a2a; }
+@keyframes mile { 0% { transform: scale(2.1); filter: brightness(1.8); } 60% { transform: scale(0.95); } 100% { transform: scale(1); filter: none; } }
 
 /* ---------- PC: 아래 조작 글자 (나무 띠) ---------- */
 .keyhint {

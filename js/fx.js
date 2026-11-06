@@ -200,6 +200,14 @@
   //   groups = 숫자 묶음 { key(대상), x, y(처음 높이), dy(비켜 선 양), t(나이), n(줄 수), top(다음 줄 높이), rise, riseMs, open }
   //   줄(list 의 'dmg') = { g, off(묶음 바닥에서 위로), jx(좌우 어긋남), w, h(글자 상자 도트) }
   var groups = [], dmgUid = 0;
+  // 사냥 손맛 숫자(2026-11-07, config hunt.dmgNum, main.js 가 판마다 FX.setHunt 로 넣음 · 끈 판 = null):
+  //   데미지가 클수록 숫자 크게(zoom) · 새 숫자 살짝 흩어짐(spread) · 모든 숫자 튀어나옴(pop, 치명타·마무리는 critPop + 뒤 주황 번쩍) · 화면 숫자 최대 max
+  var HN = null;
+  function numZoom(n) {
+    if (!HN || !HN.size || typeof n !== 'number') return 1;
+    var Z = HN.size, u = (n - Z.ref[0]) / Math.max(1, Z.ref[1] - Z.ref[0]);
+    return Z.min + (Z.max - Z.min) * Math.max(0, Math.min(1, u));
+  }
   function stackCfg() {
     var D = (window.CFG && CFG.damageText) || {};
     return D.stack || { windowMs: 480, cap: 5, gap: 1, jitter: [0] };
@@ -211,7 +219,7 @@
   }
   // 글자 상자 크기(도트): 튀어나올 때(pop, 굵게) 기준으로 넉넉하게
   function lineSize(f) {
-    var st = dmgStyle(f), h = (FONT_H[st.font] || 8) * Math.max(1, st.scale || 1) * (st.zoom || 1);   // zoom = 각성 숫자 크게(2026-11-06 밤)
+    var st = dmgStyle(f), h = (FONT_H[st.font] || 8) * Math.max(1, st.scale || 1) * (st.zoom || 1) * (f.zoom || 1);   // zoom = 각성 숫자 크게(2026-11-06 밤) · f.zoom = 사냥 손맛 데미지 크기
     var cw = h * 0.62 * (st.bold || (st.pop && st.pop.bold) ? 1.12 : 1);
     return { w: f.str.length * cw + 2.5, h: h + 1.6 };
   }
@@ -300,7 +308,7 @@
           return;
         }
       }
-      var now = { str: String(n) + (crit ? '!' : ''), crit: crit, color: color || null, style: style || null };
+      var now = { str: String(n) + (crit ? '!' : ''), crit: crit, color: color || null, style: style || null, zoom: color ? 1 : numZoom(n) };
       var life = J.dmgMs * (style && style !== 'push' ? 1.25 : 1);
       var sz = lineSize(now);
       // 같은 대상의 열린 묶음(최근 + 줄 수가 cap 미만)
@@ -314,11 +322,12 @@
         if (q.n >= SC.cap) list.forEach(function (f) { if (f.type === 'dmg' && f.g === q) f.t = Math.max(f.t, f.life * 0.62); });
       }
       var line = { type: 'dmg', n: now.str, crit: crit, t: 0, life: life, color: now.color, style: now.style, w: sz.w, h: sz.h,
-                   merge: !!merge, val: +n };
+                   merge: !!merge, val: +n, zoom: now.zoom };
+      var sp = HN && !color ? (HN.spread || 0) : 0;   // 사냥 손맛: 살짝 흩어짐(플레이어가 맞은 숫자는 그대로)
       var jit = SC.jitter || [0];
       if (g) {
         // 쌓기: 묶음 맨 위에 한 줄. 다른 묶음 숫자와 겹치면 조금씩 더 위로
-        line.g = g; line.jx = jit[g.n % jit.length]; line.off = g.top;
+        line.g = g; line.jx = jit[g.n % jit.length] + (Math.random() * 2 - 1) * sp * 0.6; line.off = g.top;
         g.x = x + g.dx;   // 묶음은 대상을 따라감(밀려가는 적 위에 계속)
         var off0 = line.off, jx0 = line.jx, bestC = null;
         search: for (var k = 0; k <= 10; k++) for (var s2 = 0; s2 < 3; s2++) {
@@ -333,6 +342,7 @@
               rise: J.dmgRise * AS() * (style && style !== 'push' ? 1.2 : 1), riseMs: life / 1.6 };
         groups.push(g);
         line.g = g; line.jx = 0; line.off = 0;
+        if (sp) { x += (Math.random() * 2 - 1) * sp; y -= Math.random() * sp * 0.6; g.y = y; }
         // 새 묶음 자리: 그대로 → 위로 조금씩 → 옆으로 비켜 보기. 다 겹치면 처음 자리(가장 덜 겹치는 곳)
         var tries = [[0, 0], [0, -7], [0, -14], [9, -4], [-9, -4], [0, -21], [12, -12], [-12, -12], [0, -28], [14, -20], [-14, -20], [0, -35], [0, -42]], best = null;
         for (var a = 0; a < tries.length; a++) {
@@ -346,7 +356,14 @@
       g.top = line.off + sz.h + (SC.gap != null ? SC.gap : 1);
       g.n++;
       list.push(line);
+      // 사냥 손맛: 화면 숫자가 max 개를 넘으면 가장 오래된 숫자부터 지움(폰 성능 · 너무 빽빽하지 않게)
+      if (HN && HN.max) {
+        var cnt = 0, li;
+        for (li = list.length - 1; li >= 0; li--) if (list[li].type === 'dmg') cnt++;
+        for (li = 0; li < list.length && cnt > HN.max; li++) if (list[li].type === 'dmg') { list.splice(li, 1); li--; cnt--; }
+      }
     },
+    setHunt: function (h) { HN = h || null; },
     groups: groups,
     // 그림 묶음을 한 색으로 물들인 복사본(기술 효과 그림이 아직 없을 때 기존 그림을 불·번개 색으로). k = 물들이는 세기(0~1)
     //   같은 묶음·색이면 한 번만 만든다
@@ -427,7 +444,18 @@
       var lp = linePos(f, 0), fh = (FONT_H[st.font] || 8) * Math.max(1, st.scale || 1);
       ctx.globalAlpha = k > 0.7 ? Math.max(0, 1 - (k - 0.7) / 0.3) : 1;
       // 마무리·치명타 숫자(crit): 처음에 numPop 배 크게 튀어나왔다가 줄어듦(2026-11-06 밤, config juice.impact.numPop)
-      var IMP = window.CFG && CFG.juice.impact, NP = (IMP && IMP.numPop) || 1, pk = (D.popK || 0.12) * 1.8, Z = st.zoom || 1;
+      var IMP = window.CFG && CFG.juice.impact, NP = (IMP && IMP.numPop) || 1, pk = (D.popK || 0.12) * 1.8, Z = (st.zoom || 1) * (f.zoom || 1);
+      // 사냥 손맛: 모든 숫자가 튀어나옴(pop), 치명타·마무리는 더 크게(critPop) + 뒤에 주황 번쩍
+      if (HN && !f.color) {
+        NP = f.crit ? HN.critPop || NP : HN.pop || 1;
+        if (NP > 1 && k < pk && !f.crit) Z *= 1 + (NP - 1) * (1 - k / pk);
+        if (f.crit && HN.critGlow && f.t < (HN.critGlowMs || 150)) {
+          var gu = f.t / (HN.critGlowMs || 150), gx = snapPx(lp.x - camX), gy = snapPx(lp.y - fh / 2), gr = (HN.critGlowR || 20) * AS() / 0.55 * (0.7 + gu * 0.6);
+          var gg = ctx.createRadialGradient(gx, gy, 0, gx, gy, gr);
+          gg.addColorStop(0, 'rgba(255,240,200,' + (HN.critGlow * (1 - gu)).toFixed(3) + ')'); gg.addColorStop(0.45, 'rgba(255,140,30,' + (HN.critGlow * 0.7 * (1 - gu)).toFixed(3) + ')'); gg.addColorStop(1, 'rgba(255,90,10,0)');
+          ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = gg; ctx.fillRect(gx - gr, gy - gr, gr * 2, gr * 2); ctx.restore();
+        }
+      }
       // 각성 숫자(Z = zoom, 2026-11-06 밤): 글자 가운데를 기준으로 zoom 배
       if ((f.crit && NP > 1 && k < pk) || Z !== 1) {
         var zs = Z * (f.crit && NP > 1 && k < pk ? 1 + (NP - 1) * (1 - k / pk) : 1), zx = snapPx(lp.x - camX) + (Z !== 1 ? 0 : (f.w || 0) / 2), zy = snapPx(lp.y - fh / 2);

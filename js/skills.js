@@ -40,9 +40,12 @@
                    color: '#fff6c8', glow: '#ffc840', ground: !!o.ground, r0: r * 0.3 });
   }
   // 파편 n 개: x,y 에서 위·옆으로 튐, floor = 떨어지는 땅 높이(그 밑으로 안 감), cols = 색 목록, size = 크기(도트), sp = 속도
+  // 효과 최대 수(2026-11-07 사냥 손맛, config hunt.caps): 몹 떼를 한꺼번에 쓸 때 파편·빛이 너무 많아져 폰이 느려지지 않게(넘치면 새것을 덜 만듦)
+  function cap(k, d) { var C = CFG && CFG.hunt && CFG.hunt.caps; return (C && C[k]) || d; }
   function debris(x, y, floor, n, o) {
     o = o || {};
     if (curLv > 1) n = Math.round(n * (1 + 0.15 * (curLv - 1)));   // 기술 Lv 마다 파편·불티 +15%
+    n = Math.min(n, cap('parts', 1e9) - parts.length);
     for (var i = 0; i < n; i++) {
       var a = -Math.PI / 2 + (Math.random() * 2 - 1) * (o.spread || 1.25), sp = (o.sp || 150) * (0.45 + Math.random() * 0.75) * AS() / 0.55;
       parts.push({ x: x + (Math.random() * 2 - 1) * 4, y: y + (Math.random() * 2 - 1) * 4, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, floor: floor,
@@ -52,6 +55,7 @@
   }
   // 둥근 빛(더하기 합성): r = 반지름(도트), ms 동안 커지며 사라짐
   function glow(x, y, r, color, ms, a) {
+    if (glows.length >= cap('glows', 1e9)) return;
     var lk = 1 + 0.05 * (curLv - 1);   // 기술 Lv 마다 조금 더 밝게
     glows.push({ x: x, y: y, r: r * bright, color: color, t: 0, life: ms || 220, a: Math.min(1, (a == null ? 0.8 : a) * bright * lk) });
     if (curLv >= 5) glows.push({ x: x, y: y, r: r * bright * 0.45, color: '#ffffff', t: 0, life: (ms || 220) * 0.8, a: 0.55 });   // Lv5: 흰 심 빛
@@ -207,10 +211,11 @@
     p.state = 'skill'; p.atk = null; p.animT = 0; p.comboStep = 0;
     var s = p.sk = { d: d, t: 0, x0: p.x, z: p.y, dir: p.dir, done: {}, hitWin: {}, fxDone: {}, hitAny: false,
                      finaleDone: false, cast: false, strikeDone: {}, ghostT: 0, boxes: [], exitT: 0,
-                     L: L, mul: L.dmg, area: Math.max((L.lv5 && L.lv5.area) || 1, 1 + LV_GROW * ((L.lv || 1) - 1)),
+                     L: L, mul: L.dmg, area: Math.max((L.lv5 && L.lv5.area) || 1, 1 + LV_GROW * ((L.lv || 1) - 1)) * (H.areaMul ? H.areaMul(d) : 1),
                      shotDone: 0, quaked: false, met: false, chain: chain, pl: null, plDone: false,
                      mv: mv, bk: 0, fl: null, flDone: false, bladesDone: false };
     // area = 효과·판정 크기 배율: 기술 Lv 마다 +6%(Lv5 +24%, 2026-11-06 형님 「Lv 오르면 세 보이게」), Lv5 덤(lv5.area)이 더 크면 그것
+    //   x 사냥 손맛 넓은 범위(2026-11-07, config hunt.aoe, 켠 판에서만: 회전베기·대지 내려찍기·메테오·불기둥 +25%)
     if (q.L) p.mp = Math.max(0, (p.mp || 0) - mpCost(p, L));   // 마나 씀(각성 마력 폭주 = 0)
     s.echo = !!p.echoCast;   // 각성 마력 폭주: 이 기술이 한 번 더 터짐(쏘는 순간 echoes 에 넣음)
     if (s.echo) {            // 쓰는 순간 법사 둘레 보라·하늘 빛(더 크고 밝게)
