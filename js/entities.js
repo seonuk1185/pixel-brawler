@@ -38,6 +38,10 @@
     this.heldBy = null; this.poison = null;
     // 민첩(성장 능력치 2026-11-06, main.js 가 매 장면 Growth 에서 넣음): atkSpd = 콤보 휘두르는 빠르기 배율, moveMul = 걷기·달리기·점프 이동 빠르기 배율
     this.atkSpd = 1; this.moveMul = 1;
+    // 무기 강화 · 속성(2026-11-06, main.js 가 매 장면 Growth.weapon 에서 넣음): wArt = 손에 그릴 무기 그림 이름(강화 단계 그림, 없으면 weaponKey),
+    //   els = 켜진 속성(오라, js/enchant.js), reachMul = 평타 판정 넓이 배율(기사 +10), castSpd = 기술 동작 빠르기 배율(법사 +6),
+    //   cdMul · mpMul = 기술 쿨타임 · 마나 배율(+9, skills.js)
+    this.wArt = null; this.els = null; this.reachMul = 1; this.castSpd = 1; this.cdMul = 1; this.mpMul = 1;
     // 각성(2026-11-06 밤, main.js 가 켜고 끔): superArmor = 보통 타에 움찔·밀림 없음(데미지만), noHitT = 남은 「안 맞음」 시간(깜빡임 없음 —
     //   변신 순간 · 슈퍼아머로 맞은 뒤), cdRate = 기술 쿨타임이 줄어드는 빠르기(2 = 절반), freeMp = 기술 마나 0, echoCast = 기술 한 번 더(법사)
     //   look = 그리기 덧칠 { paint(img) → 다시 칠한 그림, outline: { color, alpha, glow }, white = 흰 번쩍 세기 }
@@ -484,7 +488,7 @@
         var sc = Skills.pick(this, Skills.chainIds(this));
         if (sc) { Skills.start(this, sc); return this.update(0, world); }
       }
-      if (!this.sk || Skills.advance(this, dtMs)) {
+      if (!this.sk || Skills.advance(this, dtMs * (this.castSpd || 1))) {   // 기술 동작 빠르기(법사 강화 +6, 2026-11-06)
         this.state = 'idle'; this.sk = null; this.animT = 0; this.comboIdleT = 0; this.comboStep = 0;
       }
       this.clamp(world);
@@ -614,7 +618,8 @@
     }
     var mr = this.moveReach();   // 달리며 공격·공중 공격 (motions_move.json reach, 이미 줄인 값)
     if (mr) h = mr;
-    var xa = this.x + h.x0 * this.dir, xb = this.x + h.x1 * this.dir, z = this.z || 0;   // 공중이면 그만큼 위로
+    var rm = this.reachMul || 1;   // 공격 범위(기사 강화 +10, 2026-11-06): 앞쪽 끝만 늘림
+    var xa = this.x + h.x0 * this.dir, xb = this.x + (h.x0 + (h.x1 - h.x0) * rm) * this.dir, z = this.z || 0;   // 공중이면 그만큼 위로
     return { x0: Math.min(xa, xb), x1: Math.max(xa, xb), y0: this.y - z + h.yTop, y1: this.y - z + h.yBot, z: this.y, depth: h.depth };
   };
 
@@ -646,17 +651,20 @@
     if (!def.bakedWeapon && this.char.anchors && this.char.anchors[fr.anim]) {
       anc = this.char.anchors[fr.anim][fr.idx];
       if (anc && anc.hide) anc = null;
-      wDef = this.cfg.art.weapons[this.weaponKey];
-      wImg = weaponImgs[this.weaponKey];
+      // 강화 단계 그림(2026-11-06): wArt 그림이 불러와져 있으면 그것, 아니면 원래 무기 그림
+      var ak = this.wArt && weaponImgs[this.wArt] ? this.wArt : this.weaponKey;
+      wDef = this.cfg.art.weapons[ak];
+      wImg = weaponImgs[ak];
     }
     var back = anc && wImg && (anc.layer ? anc.layer === 'back' : wDef.layer === 'back');
     var k = (img && img._k) || 1;   // 그림 점 → 도트 (HD 0.5, 예전 도트 그림 1). 손 위치·기준점은 그림 점 단위
     // 각성 덧칠(2026-11-06 밤, main.js 가 look 을 넣음): 몸 둘레 빛 테두리(몸 뒤) → 다시 칠한 몸(갑옷 검붉게 · 로브 진보라)
     var L = this.look, body = img && L && L.paint ? L.paint(img) : img;
     if (img && L && L.outline) drawOutline(ctx, img, def.pivot, L.outline);
-    if (back) drawWeapon(ctx, def, anc, wDef, wImg, k);
+    var els = anc && wImg ? this.els : null;   // 무기 속성 오라(js/enchant.js)
+    if (back) drawWeapon(ctx, def, anc, wDef, wImg, k, els);
     if (img) Assets.blit(ctx, body, def.pivot.x, def.pivot.y);
-    if (anc && wImg && !back) drawWeapon(ctx, def, anc, wDef, wImg, k);
+    if (anc && wImg && !back) drawWeapon(ctx, def, anc, wDef, wImg, k, els);
     if (img && L && L.white > 0) {   // 변신 순간 흰 번쩍
       ctx.globalAlpha = Math.min(1, L.white); Assets.blit(ctx, img, def.pivot.x, def.pivot.y, FX.whiteSilhouette(img, 0, 0, img.width, img.height, 1)); ctx.globalAlpha = 1;
     }
@@ -704,13 +712,20 @@
   }
 
   // k = 몸 그림 점 → 도트 (손 위치를 도트로 바꿈). 무기 그림은 자기 배율(Assets.blit)
-  function drawWeapon(ctx, def, anc, wDef, wImg, k) {
+  //   els = 무기 속성(2026-11-06): 있으면 오라 = 무기 뒤 빛 → 무기 → 무기 앞 불티(js/enchant.js Enchant.aura). 연기·불씨가 화면 위로 오르게 돌린 각도를 넘김
+  function drawWeapon(ctx, def, anc, wDef, wImg, k, els) {
     if (!anc) return;
     k = k || 1;
     ctx.save();
     ctx.translate((anc.x - def.pivot.x) * k, (anc.y - def.pivot.y) * k);
-    ctx.rotate(anc.angle - (wDef.baseAngle || 0) * Math.PI / 180);
+    var ang = anc.angle - (wDef.baseAngle || 0) * Math.PI / 180;
+    ctx.rotate(ang);
+    var au = els && els.length && window.Enchant, my = wDef.mythic && window.Enchant;   // my = +10 신화 고유 효과(먼저), 그 위에 속성 오라
+    if (my) Enchant.mythic(ctx, wDef, wImg, ang, 'back', au ? 0.7 : 1);
+    if (au) Enchant.aura(ctx, wDef, wImg, els, ang, 'back');
     Assets.blit(ctx, wImg, wDef.grip.x, wDef.grip.y);
+    if (my) Enchant.mythic(ctx, wDef, wImg, ang, 'front', au ? 0.7 : 1);
+    if (au) Enchant.aura(ctx, wDef, wImg, els, ang, 'front');
     ctx.restore();
   }
 

@@ -13,6 +13,10 @@
 //       modes 가 없는 예전 저장 = 예전 깬 판 목록(pixelBrawler.clearedIds, 더 예전 pixelBrawler.cleared)을 이지로 옮김(예전 값은 그대로 둠)
 //       열림 = 앞 난이도에서 마지막 판(stages 맨 끝)을 깸. stagesAllOpen 이면 다 열림. 주소 ?diff=normal = 이번 창에서만 그 난이도(저장 안 함)
 //       main.js 가 쓰는 것: mode() / modeOpen(k) / setMode(k) / cleared() / isCleared(id) / markCleared(id) / M() (지금 난이도 config 값)
+//     무기 강화·속성(2026-11-06, config enchant): 저장칸의 wpn = { lv: 강화 0~10, ench: [칸 1~3 의 속성 또는 null] } (전직한 직업의 무기 하나),
+//       stones = 가진 강화석, crys = { 속성: 가진 결정 수 }. 견습 때 주운 것도 모아 둠(전직하면 바로 씀). 예전 저장 = +0 · 강화석 0 · 결정 0
+//       main.js 가 쓰는 것: weapon(직업) → 무기 묶음(아래 makeWeapon) / stones / crys / gainStone(n) / gainCrys(속성, n)
+//       시험 무기(GAME.test.enhance · enchant, 시험 버튼으로 입은 다른 직업): 이번 창에서만, 강화석·결정 안 씀, 저장 안 함
 //     저장이 막혀 있어도(사생활 보호 창 등) 게임은 됨: 이번에 연 동안만 기억
 //   시험: 주소 뒤 ?lv=N = 이번 창에서만 LvN(경험치 0, 능력치 0 + 그 레벨 점수)으로 시작, 저장 안 함(저장된 레벨·능력치는 그대로)
 (function () {
@@ -113,6 +117,65 @@
     return B;
   }
 
+  // ---------- 무기 강화 · 속성 (2026-11-06, 수치 = config enchant) ----------
+  //   W = 저장되는 것 { lv, ench: [3칸] }. test = 시험 무기(강화석·결정 안 씀, 저장 안 함)
+  var EN = CFG.enchant || null, testW = {};
+  function newW() { return { lv: 0, ench: [null, null, null] }; }
+  function cleanW(w) {
+    var o = newW();
+    if (!w || typeof w !== 'object') return o;
+    o.lv = Math.max(0, Math.min(EN ? EN.maxLv : 10, w.lv | 0));
+    if (Array.isArray(w.ench)) for (var i = 0; i < 3; i++) { var e = w.ench[i]; if (EN && EN.el[e] && o.ench.indexOf(e) < 0) o.ench[i] = e; }
+    return o;
+  }
+  function makeWeapon(cls, W, test) {
+    var BN = (EN.bonus && EN.bonus[cls]) || {};
+    var A = {
+      cls: cls, test: !!test, st: W,
+      lv: function () { return W.lv; },
+      isMax: function () { return W.lv >= EN.maxLv; },
+      // 다음 강화(+lv+1) 성공 확률 · 드는 강화석 (최고면 0)
+      rate: function () { return A.isMax() ? 0 : EN.rate[W.lv]; },
+      cost: function () { return A.isMax() ? 0 : EN.cost[W.lv]; },
+      canEnhance: function () { return !A.isMax() && (test || G.stones >= A.cost()); },
+      // 강화 한 번: 강화석 cost 개 → rate 확률로 +1. 돌려주는 값 { ok, lv, cost } (못 하면 null). roll = 시험용 고정 주사위(0~1)
+      enhance: function (roll) {
+        if (!A.canEnhance()) return null;
+        var c = A.cost(), ok = (roll != null ? roll : Math.random()) < A.rate();
+        if (!test) G.stones -= c;
+        if (ok) W.lv++;
+        A.save();
+        return { ok: ok, lv: W.lv, cost: c };
+      },
+      slotOpen: function (i) { return W.lv >= EN.slotLv[i]; },
+      slotLv: function (i) { return EN.slotLv[i]; },
+      // 칸 i 의 속성(열린 칸만)
+      at: function (i) { return A.slotOpen(i) ? W.ench[i] : null; },
+      // 켜진 속성 목록(칸 순서, 첫째 = 오라 주인공)
+      els: function () { var a = []; for (var i = 0; i < 3; i++) { var e = A.at(i); if (e) a.push(e); } return a; },
+      has: function (e) { return A.els().indexOf(e) >= 0; },
+      // 칸 i 에 속성 e 끼우기(바꾸기): 칸이 열림 + 다른 칸에 없음 + 지금과 다름 + 결정 1개(시험 = 공짜)
+      canSet: function (i, e) { return !!EN.el[e] && A.slotOpen(i) && W.ench[i] !== e && A.els().indexOf(e) < 0 && (test || (G.crys[e] || 0) >= 1); },
+      set: function (i, e) {
+        if (!A.canSet(i, e)) return false;
+        if (!test) G.crys[e]--;
+        W.ench[i] = e; A.save();
+        return true;
+      },
+      // 공격 배율(기사 물리 · 법사 마법): 1 + perLv x 강화
+      atkMul: function () { return 1 + EN.perLv * W.lv; },
+      // 단계 덤 합: k = 'crit' / 'atkSpd' / 'cd' / 'mp' / 'reach' / 'mpRegen' / 'castSpd' / 'area'
+      bonus: function (k) { var n = 0; Object.keys(BN).forEach(function (l) { if (W.lv >= +l && BN[l][k]) n += BN[l][k]; }); return n; },
+      milestones: function () { return Object.keys(BN).map(function (l) { return { lv: +l, val: BN[l], on: W.lv >= +l }; }); },
+      // 강화 단계 그림 이름(config art.weapons) · 등급 이름
+      //   has = 그 그림이 불러와졌나(없으면 한 단계 아래 그림, 예: +10 신화 그림이 아직 없으면 전설)
+      art: function (has) { var k = null; (EN.art[cls] || []).forEach(function (q) { if (W.lv >= q[0] && (!has || has(q[1]))) k = q[1]; }); return k; },
+      tier: function () { var k = ''; EN.tierName.forEach(function (q) { if (W.lv >= q[0]) k = q[1]; }); return k; },
+      save: function () { if (!test) G.save(); }
+    };
+    return A;
+  }
+
   var data = readSave();
   var cur = data.slots[data.slot] || {};
 
@@ -159,6 +222,30 @@
     pts: 0,             // 안 쓴 점수
     noSave: false,      // ?lv=N 시험 중이면 true(저장 안 함)
     club: !!cur.club,   // 첫 무기 몽둥이를 주웠나(2026-11-06, config club). 견습 맨손 공격 +
+    // 무기 강화 · 속성(2026-11-06, config enchant): wpn = 저장되는 무기(전직한 직업), stones = 강화석, crys = { 속성: 결정 수 }
+    wpn: cleanW(cur.wpn),
+    stones: Math.max(0, cur.stones | 0),
+    crys: (function () { var o = {}; if (EN) EN.order.forEach(function (k) { o[k] = Math.max(0, (cur.crys && cur.crys[k]) | 0); }); return o; })(),
+    gainStone: function (n) { n = n | 0; if (n > 0) { G.stones += n; G.save(); } return G.stones; },
+    gainCrys: function (e, n) { n = n | 0; if (n > 0 && G.crys[e] != null) { G.crys[e] += n; G.save(); } return G.crys[e] || 0; },
+    // 무기 묶음(아래 makeWeapon): 저장된 직업 = 저장되는 무기, 다른 직업(시험 버튼) · GAME.test 로 바꾼 무기 = 시험 무기. 견습·강화 없음 = null
+    weapon: function (cls) {
+      cls = cls || G.cls;
+      if (!EN || !cls || !EN.bonus[cls]) return null;
+      if (testW[cls]) return testW[cls];
+      if (cls === G.cls) return G._realW || (G._realW = makeWeapon(cls, G.wpn, false));
+      return (testW[cls] = makeWeapon(cls, newW(), true));
+    },
+    // 시험용(GAME.test.enhance · enchant): 이 직업 무기를 이번 창에서만 lv · ench 로(저장된 무기는 그대로). lv = null → 시험 무기 지움(원래대로)
+    testWeapon: function (cls, lv, ench) {
+      if (!EN || !EN.bonus[cls]) return null;
+      if (lv === null) { delete testW[cls]; return G.weapon(cls); }
+      var w = testW[cls] || makeWeapon(cls, cleanW(G.weapon(cls) ? G.weapon(cls).st : null), true);
+      testW[cls] = w;
+      if (lv != null) w.st.lv = Math.max(0, Math.min(EN.maxLv, lv | 0));
+      if (ench) { w.st.ench = [null, null, null]; ench.slice(0, 3).forEach(function (e, i) { if (EN.el[e] && w.st.ench.indexOf(e) < 0) w.st.ench[i] = e; }); }
+      return w;
+    },
     // 몽둥이 주움 → 저장. 이미 있으면 false
     getClub: function () { if (G.club) return false; G.club = true; G.save(); return true; },
     keys: KEYS,
@@ -237,6 +324,7 @@
     setClass: function (k) {
       if (G.cls || !CFG.classes[k] || k === 'novice') return false;
       G.cls = k; G.sk = newSk(G.lv); realBook = null;
+      G.wpn = newW(); G._realW = null; delete testW[k];   // 전직 = 그 직업 무기를 +0 으로 받음(2026-11-06 강화)
       G.book(k).fill();
       G.save();
       return true;
@@ -253,7 +341,7 @@
     // 시험용(GAME.test.skillSetup, ?lv=N 일 때만): 이번 창에서만 「전직한 저장」처럼 — 직업 cls, 전직 Lv clsLv, 기술 점수를 plan 순서로 돌아가며 씀
     testSetup: function (cls, clsLv, plan) {
       if (!G.noSave || !treeOf(cls)) return null;
-      G.cls = cls; G.sk = newSk(Math.min(G.lv, clsLv || SK.classLv)); realBook = null;
+      G.cls = cls; G.sk = newSk(Math.min(G.lv, clsLv || SK.classLv)); realBook = null; G._realW = null;
       var b = G.book(cls); b.fill();
       var ids = plan || (SK.botPlan && SK.botPlan[cls]) || [], guard = 0;
       while (b.pts() > 0 && guard++ < 200) {
@@ -266,7 +354,8 @@
     },
     save: function () {
       if (G.noSave) return;
-      data.slots[data.slot] = { lv: G.lv, xp: G.xp, 'class': G.cls, stats: G.stats, pts: G.pts, skills: G.cls ? G.sk : undefined, club: G.club || undefined, modes: MSsaved };
+      data.slots[data.slot] = { lv: G.lv, xp: G.xp, 'class': G.cls, stats: G.stats, pts: G.pts, skills: G.cls ? G.sk : undefined, club: G.club || undefined, modes: MSsaved,
+        wpn: G.cls ? G.wpn : undefined, stones: G.stones, crys: G.crys };
       try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch (e) {}
     },
     // ---------- 난이도 (2026-11-06, config modes) ----------

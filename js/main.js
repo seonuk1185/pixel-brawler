@@ -247,10 +247,16 @@
     var bk = Growth.book(G.classKey), pas = bk ? bk.bonus(W.magic ? 'magic' : 'phys') : 0;
     if (!W.magic && !target.isProp) pas += Skills.gritBonus(p);   // 늘 켜진 기술 「투지」(2차, 2026-11-06): 체력이 적을수록 물리 공격 +
     //   2026-11-06 첫 무기 몽둥이: 견습 맨손 타 × (1 + config club.atk) (주웠을 때만, clubMul)
-    var dmg = Math.round(rand(W.damage[0], W.damage[1]) * st.dmg * (target.isProp ? 1 : Growth.atkMul(!!W.magic) * (1 + pas) * ((src && src.mul) || 1) * clubMul(src ? src.wk : p.weaponKey)));
+    //   2026-11-06 무기 강화: 기사 물리 · 법사 마법 x (1 + perLv x 강화) / 원소 공명(법사): 기술 속성 = 끼운 속성이면 x (1 + resonance)
+    var WP = !target.isProp ? wpn() : null, wMul = WP && !!W.magic === (G.classKey === 'mage') ? WP.atkMul() : 1;
+    var resEl = WP && G.classKey === 'mage' && st.damageStyle && ENC.skillEl[st.damageStyle], reso = resEl && WP.has(resEl);
+    if (reso) { wMul *= 1 + ENC.resonance; Enchant.logAdd('resonance'); }
+    var dmg = Math.round(rand(W.damage[0], W.damage[1]) * st.dmg * (target.isProp ? 1 : Growth.atkMul(!!W.magic) * (1 + pas) * ((src && src.mul) || 1) * clubMul(src ? src.wk : p.weaponKey) * wMul));
     // 치명타(민첩, 2026-11-06): 적·허수아비를 때릴 때 확률 Growth.critChance() → 데미지 x critMul + 큰 주황 숫자(agicrit). GAME.test.crit 로 시험 고정
-    var crit = !target.isProp && (G.forceCrit != null ? G.forceCrit : Math.random() < Growth.critChance());
-    if (crit) dmg = Math.round(dmg * CFG.growth.stats.critMul);
+    //   무기(2026-11-06): 기사 +3 치명타 확률 + · 어둠 속성 = 확률 + · 배율 +
+    var dark = WP && WP.has('darkness'), DK = ENC && ENC.fx.darkness;
+    var crit = !target.isProp && (G.forceCrit != null ? G.forceCrit : Math.random() < Growth.critChance() + (WP ? WP.bonus('crit') : 0) + (dark ? DK.crit : 0));
+    if (crit) { dmg = Math.round(dmg * (CFG.growth.stats.critMul + (dark ? DK.critDmg : 0))); if (dark) Enchant.logAdd('darkCrit'); }
     if (G.awk && !target.isProp) dmg = Math.round(dmg * CFG.awaken.atkMul);   // 각성: 공격 +30%(2026-11-06 밤)
     if (!target.isProp) dmg = Math.round(dmg * Skills.brandMul(p, target));   // 늘 켜진 기술 「원소 낙인」(2차): 낙인 찍힌 적은 더 아프게
     // 소품(상자·통): 단계만 넘김(데미지 숫자·콤보 수 없음). 기술(damageStyle) = 한 번에 부서짐, 맞은 곳 = 마법이면 그 자리, 아니면 몸 앞
@@ -278,7 +284,7 @@
     if (target !== G.dummy) { var MH = G.mh; MH.n++; MH.shake = Math.max(MH.shake, shk); if (st.damageStyle) MH.skill = st.damageStyle; MH.x += target.x; MH.y += target.y - target.T.height * 0.45; }   // 여러 마리 한꺼번에(사냥 손맛, 장면 끝에 multiHitFx)
     // 콤보 마무리 타: 짧은 화면 번쩍(2026-11-03 HD). 기술은 자기 flash 를 따로 씀
     if (st.finisher && !st.damageStyle && CFG.view.renderScale > 1) Skills.flash({ color: '#fff8e8', alpha: 0.2, ms: 90 });
-    var knock = J.knockback * AS * W.knockMul * st.knock;
+    var knock = J.knockback * AS * W.knockMul * st.knock * (WP && WP.has('wind') ? ENC.fx.wind.knock : 1);   // 바람 속성 = 더 멀리 밀림
     var hx, topY;
     if (target === G.dummy) {
       target.hit(dir, knock, J.wobble * (st.finisher ? 1.4 : 1), J.flashMs);
@@ -329,6 +335,11 @@
     //   각성 중(2026-11-06 밤) = 숫자 크게 직업 색(damageText.awk_직업)
     FX.damage(target.x, topY, dmg, crit || !!(st.finisher || st.crit || (st.damageStyle && st.knockdown)), J, null, G.awk ? 'awk_' + G.awk.cls : crit ? 'agicrit' : st.numStyle || st.damageStyle, target.id || 'dummy', !!st.mergeNum && !crit);
     if (crit) G.crits = (G.crits || 0) + 1;
+    // 무기 속성 효과(2026-11-06, js/enchant.js): 화상 · 독 · 느려짐 · 튀는 번개 · 흡혈 + 속성 색 불티. 법사 평타는 약하게(mageBasic)
+    if (WP && target !== G.dummy && res) {
+      var els = WP.els();
+      if (els.length) Enchant.onHit(p, target, dmg, { els: els, k: G.classKey === 'mage' && !st.damageStyle ? ENC.mageBasic : 1, x: hx, y: hy, skill: !!st.damageStyle, mage: G.classKey === 'mage' });
+    }
     // 효과음: 치명타 = 「퍽+팅」, 무거운 타 = 묵직하게, 기술에 맞음 = 조금 작게(기술 소리가 따로 남). 한꺼번에 여러 마리여도 sfx.js 가 몇 개만 냄
     if (crit) snd('crit'); else snd(heavyHit ? 'hitHeavy' : 'hit', st.damageStyle ? { v: 0.75 } : null);
     vibrate(Math.round(J.vibrateMs * (st.finisher ? 2 : 1)));
@@ -483,7 +494,7 @@
       if (t !== direct) {
         if (Math.abs(hb.z - z) > B.depth) return;
         var nx = clamp(cx, hb.x0, hb.x1), ny = clamp(cy, hb.y0, hb.y1);
-        if (Math.hypot(nx - cx, ny - cy) > B.r) return;
+        if (Math.hypot(nx - cx, ny - cy) > B.r * (1 + wb('area'))) return;   // 법사 강화 +10 = 마법 범위 +
       }
       var d = Math.abs(t.x - cx) < 4 ? dir : (t.x > cx ? 1 : -1);   // 터진 곳에서 바깥으로 밀림
       onHit(st, t, { dir: d, wk: wk, x: cx, y: cy });
@@ -1367,6 +1378,14 @@
   }
 
   // ---------- 소품 (판의 props: 상자·통·모닥불 + 음식) = props.js. 그림이 없는 종류는 ?debug=1 에서만 자리 표시 ----------
+  // 무기 속성 효과 · 바닥 강화석/결정(2026-11-06, js/enchant.js)
+  Enchant.init(CFG, {
+    enemies: function () { return G.enemies; },
+    player: function () { return G.player; },
+    kill: elKill,
+    got: gotLoot,
+    view: function () { return { laneTop: world.laneTop, laneBottom: world.laneBottom, x0: G.camX + 14, x1: G.camX + LW - 14 - controlPad }; }
+  });
   Props.init(CFG, {
     laneY: laneY,
     fx: function () { return G.assets && G.assets.fx; },
@@ -1423,6 +1442,68 @@
   }
   // 맨손(fist) 타 배율: 몽둥이가 있으면 1 + atk
   function clubMul(wk) { return wk === 'fist' && Growth.club && CFG.club ? 1 + CFG.club.atk : 1; }
+
+  // ================= 무기 강화 · 속성 (2026-11-06, 형님 승인, 수치 = config enchant, 계산·저장 = growth.js Growth.weapon, 효과·오라·줍기 = js/enchant.js) =================
+  //   wpn() = 지금 입은 직업의 무기(견습 = null). 시험 버튼으로 입은 다른 직업 = 시험 무기(저장 안 함)
+  //   G.loot = 이 판에서 얻은 것 { stones, crys: { 속성: 수 } } (결과 화면)
+  var ENC = CFG.enchant || null;
+  function wpn() { return ENC ? Growth.weapon(G.classKey) : null; }
+  function wb(k) { var w = wpn(); return w ? w.bonus(k) : 0; }
+  function artLoaded(k) { return !!(G.assets && G.assets.weapons && G.assets.weapons[k] && CFG.art.weapons[k]); }
+  // 확률 반올림: 2.5 → 2 또는 3(반반)
+  function sround(v) { var f = Math.floor(v); return f + (Math.random() < v - f ? 1 : 0); }
+  // 매 장면: 플레이어에 무기 값 넣기(그림 · 오라 · 빠르기 · 범위 · 쿨타임 · 마나)
+  function wpnApply(p) {
+    var w = wpn();
+    p.wArt = w ? w.art(artLoaded) : null; p.els = w ? w.els() : null;
+    if (!w) { p.reachMul = 1; p.castSpd = 1; p.cdMul = 1; p.mpMul = 1; return; }
+    p.atkSpd *= 1 + w.bonus('atkSpd') + (w.has('wind') ? ENC.fx.wind.atkSpd : 0);
+    p.reachMul = 1 + w.bonus('reach'); p.castSpd = 1 + w.bonus('castSpd');
+    p.cdMul = 1 - w.bonus('cd'); p.mpMul = 1 - w.bonus('mp');
+  }
+  // 기술 크기 배율(사냥 손맛 aoe 에 곱함): 기사 +10 공격 범위 · 법사 +10 마법 범위
+  function wArea() { return 1 + wb('area') + wb('reach'); }
+  // 강화석 · 결정 떨어뜨림(xpStep, 쓰러진 적마다 한 번): 잡몹 = 확률, 중간보스 · 보스 = 꼭. 보스는 판 둘째 속성 결정도
+  function lootDrop(e) {
+    if (!ENC || MODE !== 'stage' || e.noDrop) return;
+    var D = ENC.drop, m = Growth.M().drop || 1, dir = G.player.x > e.x ? -1 : 1, n = 0, kd = Growth.kindOf(e.type, e.T);
+    if (e.T.boss) n = sround(D.boss * m);
+    else if (e.mid) n = sround(D.mid * m);
+    else if (Math.random() < (kd === 'tough' || kd === 'elite' ? D.tough : D.mob) * m) n = 1;
+    for (var i = 0; i < n; i++) Enchant.drop('stone', null, e.x + (i - n / 2) * 8 * AS, e.y + (i % 2 ? 3 : -3), i % 2 ? -dir : dir);
+    var SE = ENC.stageEl[CFG.stage.id];
+    if (e.T.boss && SE && SE[1]) {
+      var c = sround(D.bossCrys * (D.crys[Growth.mode()] || 1));
+      for (var j = 0; j < c; j++) Enchant.drop('crys', SE[1], e.x + (j + 1) * 10 * AS * dir, e.y, dir);
+    }
+    G.lootDrops = (G.lootDrops || 0) + n;
+  }
+  // 주움(enchant.js 가 부름): 저장 + 이 판 기록 + 소리
+  function gotLoot(kind, el) {
+    if (kind === 'stone') { Growth.gainStone(1); G.loot.stones++; }
+    else { Growth.gainCrys(el, 1); G.loot.crys[el] = (G.loot.crys[el] || 0) + 1; }
+    snd('orb', { v: 1.4 });
+  }
+  // 지속 피해 · 튀는 번개로 쓰러뜨림(enchant.js hurt): 보통 쓰러짐 길(takeHit) → 보스면 onBossDown, 잡몹이면 몇 마리 잡기
+  function elKill(e, n) {
+    var res = e.takeHit(n, G.player.x < e.x ? 1 : -1, 2, false, { force: true });
+    if (res === 'dead') { if (e.T.boss) onBossDown(e); else onKill(e); }
+  }
+  // 판을 깸: 바닥에 남은 것 저절로 주움 + 판 속성 결정 → 결과 화면 한 줄(얻은 것)
+  function clearLoot() {
+    if (!ENC) return '';
+    Enchant.collectAll(G.player);
+    var SE = ENC.stageEl[CFG.stage.id], D = ENC.drop;
+    if (SE) { var n = sround(D.clear * (D.crys[Growth.mode()] || 1)); if (n > 0) { Growth.gainCrys(SE[0], n); G.loot.crys[SE[0]] = (G.loot.crys[SE[0]] || 0) + n; } }
+    return lootLine();
+  }
+  function lootLine() {
+    var L = G.loot, parts = [];
+    if (!L) return '';
+    if (L.stones) parts.push('강화석 <b>' + L.stones + '</b>');
+    ENC.order.forEach(function (k) { if (L.crys[k]) parts.push('<i class="elc" style="color:' + ENC.el[k].col2 + '">' + ENC.el[k].name + ' 결정</i> <b>' + L.crys[k] + '</b>'); });
+    return parts.length ? '<br><span class="lootline">얻은 것: ' + parts.join(' · ') + '</span>' : '';
+  }
   // 보스는 꼭 하나(config potions.bossAt: 'rage' = 화날 때 · 'death' = 쓰러질 때). 플레이어 쪽으로 튐
   function bossPotion(B, when) {
     var PO = CFG.potions;
@@ -1774,7 +1855,7 @@
   // 마나(2026-11-06): 초당 Growth.mpRegen() 씩 참(쓰러지면 안 참). 맞힐 때 회복은 onHit. 기술이 씀(skills.js start, 2026-11-06 성장 4단계)
   function mpStep(dt) {
     var p = G.player;
-    if (p.state !== 'dead' && p.mp < p.maxMp) p.mp = Math.min(p.maxMp, p.mp + Growth.mpRegen(G.classKey) * dt / 1000);   // 마나 순환(늘 켜진 기술)도
+    if (p.state !== 'dead' && p.mp < p.maxMp) p.mp = Math.min(p.maxMp, p.mp + Growth.mpRegen(G.classKey) * (1 + wb('mpRegen')) * dt / 1000);   // 법사 강화 +3 = 마나 회복 +   // 마나 순환(늘 켜진 기술)도
   }
   // 쓰러진 적(어떻게 쓰러졌든: 플레이어 타·기술·보스와 같이 쓰러짐)마다 한 번 경험치. 적 머리 위에 「+13 XP」
   function xpStep() {
@@ -1786,6 +1867,7 @@
       else if (!e.T.boss) snd('pop');   // 쓰러진 잡몹 「펑」(보스는 onBossDown 의 bossDown)
       mobPotion(e);   // 물약(2026-11-06 밤)
       clubDrop(e);    // 첫 무기 몽둥이(2026-11-06, 1판 견습만)
+      lootDrop(e);    // 강화석 · 속성 결정(2026-11-06)
       var n = Growth.enemyXp(e.type, e.T, idx);
       if (e.xpMul && n > 0) n = Math.max(1, Math.round(n * e.xpMul));   // 몹 떼(사냥 손맛): 한 마리 경험치 xpMul 배
       var MX = Growth.M().xp;
@@ -2140,6 +2222,7 @@
     p.classKey = G.classKey; p.gender = G.charKey;   // 기술 고르기용
     p.atkSpd = Growth.atkSpd(); p.moveMul = Growth.moveMul();   // 민첩(성장 능력치): 휘두르기·이동 빠르기
     if (G.awk && G.awk.A.atkSpd) p.atkSpd = Math.min(G.awk.A.spdCap, p.atkSpd + G.awk.A.atkSpd);   // 각성 광전사: 더 빠르게(상한 있음)
+    wpnApply(p);   // 무기 강화 · 속성(2026-11-06): 그림 · 오라 · 빠르기(+6 · 바람) · 범위 · 쿨타임 · 마나
     // 플레이어는 화면 끝까지(2026-11-06 형님 폰 접은 화면: 버튼 앞이 벽처럼 막힘). 버튼 밑 비우기는 적·물약만
     if (MODE === 'stage') { world.minX = G.camX + 14; world.maxX = G.camX + LW - 14; }
     if (G.bot && MODE === 'stage' && !G.stage.result) botThink(dt);
@@ -2219,6 +2302,7 @@
       awkPushStep(dt);       // 각성 변신 순간 밀려나는 적
       stageStep(dt);
       Props.update(dt, p);   // 부서지는 그림·음식 줍기
+      Enchant.updateItems(dt, p);   // 강화석 · 결정 줍기(2026-11-06)
     } else {
       G.dummy.update(dt);
       var target = p.x - LW * 0.42;
@@ -2226,6 +2310,7 @@
       G.camX = Math.max(0, Math.min(world.width - LW, G.camX));
     }
     FX.update(dt);
+    Enchant.update(dt);    // 속성 지속 피해 · 얼음 · 독 퍼짐(2026-11-06)
     Skills.update(dt);
     orbsStep(dt);          // 경험치 구슬(사냥 손맛)
     multiHitFx();          // 이 장면에 여러 마리 맞았으면 더 흔들림·멈춤·빛(사냥 손맛)
@@ -2263,6 +2348,7 @@
     if (shots.length) drawShots(camX, true);      // 총알 그림자(지나가는 줄)
     FX.draw(ctx, camX, true);
     if (MODE === 'stage') Props.drawUnder(ctx, camX, LW);   // 소품 그림자·모닥불 빛
+    if (MODE === 'stage') Enchant.drawUnder(ctx, camX);     // 강화석 · 결정 그림자(2026-11-06)
     Skills.drawUnder(ctx, camX, G.player);        // 번개 떨어질 자리 표시
     drawAwkUnder(camX);                           // 각성: 발밑 마법진·불빛
     // 깊이 순서(아래쪽 = 앞쪽). 각성 법사 룬은 몸 뒤 반 · 앞 반
@@ -2270,11 +2356,13 @@
     if (G.dummy) ents.push({ y: G.dummy.y, d: function () { G.dummy.draw(ctx, camX, DEBUG); } });
     G.enemies.forEach(function (e) { ents.push({ y: e.y + (e.alive() ? 0 : -0.5), d: function () { e.draw(ctx, camX, DEBUG); } }); });
     if (MODE === 'stage') Props.addDraw(ents, ctx, camX, LW, DEBUG);
+    if (MODE === 'stage') Enchant.addDraw(ents, ctx, camX);   // 바닥 강화석 · 결정(2026-11-06)
     if (spikes.length) addSpikeDraw(ents, camX);   // 얼음 가시(땅에서 솟음 = 캐릭터와 깊이 순서)
     if (rings.length) addRingDraw(ents, camX);     // 화염 충격파 고리(바닥을 따라 퍼짐 = 캐릭터와 깊이 순서)
     Skills.addEnts(ents, ctx, camX);               // 땅 융기 돌기둥(땅에서 솟음 = 캐릭터와 깊이 순서, 2026-11-06 밤)
     ents.sort(function (a, b) { return a.y - b.y; });
     ents.forEach(function (e) { e.d(); });
+    Enchant.drawOver(ctx, camX);                  // 속성: 불타는·독·얼은 적 표시 · 튀는 번개 · 마법 자리 안개(2026-11-06)
     Projectiles.draw(ctx, camX);
     if (rocks.length) drawRocks(camX);            // 날아가는 바위(공중이라 캐릭터 위)
     if (shots.length) drawShots(camX, false);     // 날아가는 총알
@@ -2332,6 +2420,8 @@
     setIf('pmp', p.maxMp ? Math.floor(p.mp) / p.maxMp : 0, function (v) { hud.pMp.style.width = (v * 100) + '%'; });
     setIf('pmpn', Math.floor(p.mp), function (v) { hud.pMpNum.textContent = v; });
     // 포만감(2026-11-06 밤): 막대 없이 글자만. 0% = 회색(회복 멈춤)
+    var EW = wpn();   // 강화 버튼(2026-11-06): 직업 무기가 있을 때만, 강화할 수 있으면 가진 강화석 수
+    setIf('enc', EW ? G.classKey + EW.lv() + ':' + Growth.stones + ':' + EW.canEnhance() : '', encBadges);
     setIf('pfull', Math.ceil(G.full || 0), function (v) { hud.pFull.textContent = '포만감 ' + v + '%'; hud.pFull.classList.toggle('empty', v <= 0); });
     // 분노 막대(2026-11-06 밤): 평소 = 분노 %(가득 = 빛남), 각성 중 = 남은 시간(직업 색) + 각성 이름. 각성 버튼(폰)·글자(PC)도 같이
     var A = G.awk, rg = A ? Math.max(0, 1 - A.t / A.ms) : (G.rage || 0) / 100, rs = A ? 'awk awk-' + A.cls : rg >= 1 ? 'full' : '';
@@ -2418,6 +2508,7 @@
     Input.setOverride(null);
     var last = G.stageNo >= STAGES.length, clear = kind === 'clear', end = clear && !!S.ending;
     var opened = clear ? saveCleared(CFG.stage.id) : null;   // 깬 판 id 저장(지금 난이도). 마지막 판이면 다음 난이도가 열림(2026-11-06)
+    var loot = clear ? clearLoot() : (ENC ? lootLine() : '');   // 강화석 · 속성 결정(2026-11-06): 깨면 판 속성 결정 + 바닥에 남은 것 주움
     if (clear && G.run) G.run.ms[CFG.stage.id] = S.time;
     var tot = 0, full = !!G.run && G.run.from === STAGES[0].id;
     if (end && full) STAGES.forEach(function (st) { if (G.run.ms[st.id] != null) tot += G.run.ms[st.id]; else full = false; });
@@ -2428,7 +2519,9 @@
       '시간 <b>' + fmtTime(S.time) + '</b> · 맞힌 수 <b>' + G.hits + '</b> · 최대 콤보 <b>' + G.maxCombo + '</b>' +
       (clear ? ' · 남은 체력 <b>' + p.hp + '</b>' : '') +
       '<br>얻은 경험치 <b>' + (G.xpGot || 0) + '</b> · <b>Lv ' + Growth.lv + '</b>' +
+      loot +
       (opened ? '<br><span class="endline">' + CFG.modes[opened].name + ' 난이도가 열렸다!</span>' : '');
+    encBadges();
     var nx = document.getElementById('btnNext');
     nx.hidden = !(clear && !last && !end);
     var focus = clear && !last && !end ? nx : clear ? document.getElementById('btnSel') : document.getElementById('btnRetry');
@@ -2474,6 +2567,7 @@
     G.rage = 0; G.combatT = 0; G.awk = null; G.awkCount = 0; awkPush.length = 0;   // 분노·각성(2026-11-06 밤): 판 시작 = 0
     G.mh = newMh(); G.mk = { n: 0, t: 0 }; G.callout = null; G.kills = 0; G.bestKill = 0; orbs.length = 0;   // 사냥 손맛
     G.clubN = 0;   // 몽둥이(2026-11-06): 이 판에서 센 잡몹 수
+    G.loot = { stones: 0, crys: {} }; G.lootDrops = 0; if (window.Enchant) Enchant.reset();   // 강화석 · 결정 · 속성 효과(2026-11-06)
     FX.setHunt && FX.setHunt(huntPart('dmgNum'));
     G.hits = 0; G.totalDmg = 0; G.maxCombo = 0; G.comboT = 0; G.cstats = { launch: 0, air: 0, otg: 0, cancel: 0, maxAirMs: 0, maxAirHits: 0 }; G.comboTagT = 0; G.hitstop = 0; G.slowT = 0; comboEl.hidden = true;
     var god = G.player && G.player.god;
@@ -2533,6 +2627,7 @@
       if (open && !modeTabFocus && (n === G.stageNo || !focus)) focus = b;
     });
     modeTabFocus = false;
+    encBadges();
     closeMenu(resultEl);
     G.paused = true;
     Input.setOverride(null);
@@ -2652,6 +2747,7 @@
     }
     document.querySelectorAll('[data-class]').forEach(function (b) { b.classList.toggle('on', b.dataset.class === k); });
     refreshGrowth();   // 직업마다 기본 체력이 다름(기사 +)
+    if (typeof encBadges === 'function' && document.getElementById('encPanel')) encBadges();
     return pr;
   }
   // ---------- 능력치 창 (2026-11-06, 수치 = config growth.stats, 계산·저장 = growth.js) ----------
@@ -2862,6 +2958,181 @@
   document.getElementById('btnSkClose').addEventListener('click', closeSkills);
   window.addEventListener('keydown', function (e) { if (e.code === 'Escape' && !skEl.hidden) { e.preventDefault(); closeSkills(); } });
   G.openSkills = openSkills; G.closeSkills = closeSkills;
+
+  // ---------- 강화 창 (2026-11-06, 형님 승인. 수치 = config enchant, 계산·저장 = growth.js Growth.weapon) ----------
+  // 여는 곳: 「기술」 옆 「강화」 · 스테이지 고르기 · 결과 화면(견습은 버튼이 안 보임). 여는 동안 게임 멈춤, 닫으면 원래대로
+  //   왼쪽 = 무기 그림(강화 단계 그림 + 속성 오라, 움직임) · +강화 · 등급 이름 · 성공 확률 · 드는 강화석 · 「강화」(성공 = 금빛 번쩍 / 실패 = 흔들림)
+  //   오른쪽 = 강화 덤(가진 것 밝게) · 속성 칸 3개(+3 · +6 · +9 에 열림) · 가진 결정. 칸을 누르면 → 속성 7가지(결정 수 · 한 줄 설명) → 「부여」(결정 1개)
+  var encEl = document.getElementById('encPanel'), encBack = null, encSlot = -1, encPickEl = null, encRaf = 0, encFxT = 0;
+  var BON_TXT = { crit: '치명타 확률', atkSpd: '공격 속도', cd: '기술 쿨타임', mp: '기술 마나', reach: '공격 범위', mpRegen: '마나 회복', castSpd: '시전 속도', area: '마법 범위' };
+  function bonTxt(v) {
+    return Object.keys(v).map(function (k) { return BON_TXT[k] + ' ' + (k === 'cd' || k === 'mp' ? '-' : '+') + Math.round(v[k] * 100) + '%'; }).join(' · ');
+  }
+  function encBadges() {
+    var w = wpn(), n = w && !w.test && w.canEnhance() ? Growth.stones : 0;
+    document.querySelectorAll('.encbtn, .encopen').forEach(function (b) { b.hidden = !w; });
+    document.querySelectorAll('.encbtn .badge, .encopen .badge').forEach(function (b) { b.hidden = !n; b.textContent = n > 99 ? '99+' : n; });
+  }
+  // 무기 그림 + 오라를 창 그림판에(여는 동안 계속)
+  function encDraw() {
+    var cv = document.getElementById('encCv'), g = cv.getContext('2d'), w = wpn(), ak = w && w.art(artLoaded);
+    var img = ak && G.assets.weapons[ak], D = ak && CFG.art.weapons[ak];
+    g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, cv.width, cv.height);
+    var grow = celeDraw(g, cv);
+    if (img && D) {
+      var k = img._k || 1, dw = img.width * k, Z = cv.width * 0.74 / dw * grow, ang = -0.22;
+      g.imageSmoothingEnabled = !!img._hd;
+      var gx = D.grip.x * k, cx = cv.width / 2, cy = cv.height / 2 + 6;
+      // 무기 가운데가 그림판 가운데 오게: 손잡이 점 기준으로 돌림
+      g.setTransform(Z, 0, 0, Z, 0, 0);
+      g.translate(cx / Z - (dw / 2 - gx) * Math.cos(ang), cy / Z - (dw / 2 - gx) * Math.sin(ang));
+      g.rotate(ang);
+      var els = w.els(), pw = els.length ? 0.7 : 1;
+      if (D.mythic) Enchant.mythic(g, D, img, ang, 'back', pw);
+      if (els.length) Enchant.aura(g, D, img, els, ang, 'back');
+      Assets.blit(g, img, D.grip.x, D.grip.y);
+      if (D.mythic) Enchant.mythic(g, D, img, ang, 'front', pw);
+      if (els.length) Enchant.aura(g, D, img, els, ang, 'front');
+    }
+    if (!encEl.hidden) encRaf = requestAnimationFrame(encDraw);
+  }
+  function renderEnc() {
+    var w = wpn(); if (!w) return;
+    var lv = w.lv(), cls = G.classKey, D = CFG.art.weapons[w.art(artLoaded)] || {};
+    document.getElementById('encStones').textContent = w.test ? '∞' : Growth.stones;
+    document.getElementById('encWho').textContent = (CFG.classes[cls] || {}).label + (w.test ? ' · 시험 무기(강화석·결정 안 듦, 저장 안 됨)' : '');
+    document.getElementById('encLv').textContent = '+' + lv;
+    var ti = ENC.tierName.reduce(function (n, q, i) { return lv >= q[0] ? i : n; }, 0);
+    document.getElementById('encName').innerHTML = '<em class="t' + ti + '">' + w.tier() + '</em> ' + (D.label || '') + ' <b>+' + lv + '</b>';
+    document.getElementById('encInfo').innerHTML = w.isMax() ? '최고 강화! (+' + ENC.maxLv + ')' :
+      '성공 확률 <b>' + Math.round(w.rate() * 100) + '%</b> · 강화석 <b>' + w.cost() + '</b>개' + (w.test ? '' : ' (가진 ' + Growth.stones + '개)') + '<br>실패해도 강화석만 사라져요';
+    var go = document.getElementById('btnEncGo');
+    go.disabled = !w.canEnhance(); go.textContent = w.isMax() ? '최고 강화' : '강화 (+' + (lv + 1) + ')';
+    var bon = document.getElementById('encBon');
+    bon.innerHTML = w.milestones().map(function (m) { return '<div class="' + (m.on ? 'on' : '') + '"><i>+' + m.lv + '</i>' + bonTxt(m.val) + '</div>'; }).join('');
+    var sl = document.getElementById('encSlots');
+    sl.innerHTML = '';
+    for (var i = 0; i < 3; i++) (function (i) {
+      var b = document.createElement('button'), e = w.at(i), open = w.slotOpen(i);
+      b.type = 'button'; b.className = 'eslot' + (e ? '' : ' empty') + (encSlot === i ? ' sel' : ''); b.disabled = !open; b.dataset.slot = i;
+      b.innerHTML = !open ? '<span><b>잠김</b><small>+' + w.slotLv(i) + ' 에 열림</small></span>' :
+        e ? '<img alt="" src="' + Enchant.iconUrl('crys', e) + '"><span><b style="color:' + ENC.el[e].col2 + '">' + ENC.el[e].name + '</b><small>' + (i + 1) + '번 칸 · 바꾸기</small></span>' :
+            '<span><b>비어 있음</b><small>' + (i + 1) + '번 칸 · 누르면 고르기</small></span>';
+      b.addEventListener('click', function () { openPick(i); });
+      sl.appendChild(b);
+    })(i);
+    document.getElementById('encCrys').innerHTML = '가진 결정: ' + ENC.order.map(function (k) {
+      return '<span><img alt="" src="' + Enchant.iconUrl('crys', k) + '">' + ENC.el[k].name + ' ' + (w.test ? '∞' : Growth.crys[k] || 0) + '</span>'; }).join('');
+    encBadges();
+  }
+  // 속성 고르기(칸 i)
+  function openPick(i) {
+    var w = wpn(); if (!w || !w.slotOpen(i)) return;
+    encSlot = i; encPickEl = null;
+    document.getElementById('encMain').hidden = true;
+    var P = document.getElementById('encPick'); P.hidden = false;
+    document.getElementById('encPickT').textContent = (i + 1) + '번 칸 속성' + (w.at(i) ? ' (지금 ' + ENC.el[w.at(i)].name + ')' : '');
+    var L = document.getElementById('encEls'); L.innerHTML = '';
+    ENC.order.forEach(function (e) {
+      var b = document.createElement('button'), E = ENC.el[e], ok = w.canSet(i, e), used = w.els().indexOf(e) >= 0;
+      b.type = 'button'; b.className = 'eel'; b.disabled = !ok; b.dataset.el = e;
+      b.innerHTML = '<img alt="" src="' + Enchant.iconUrl('crys', e) + '"><b style="color:' + E.col + '">' + E.name + '</b><em>' + (w.test ? '∞' : 'x' + (Growth.crys[e] || 0)) + '</em>' +
+        '<small>' + (used ? (w.at(i) === e ? '지금 이 칸 속성' : '다른 칸에 있음') : E.short) + '</small>';
+      b.addEventListener('click', function () {
+        encPickEl = e;
+        L.querySelectorAll('.eel').forEach(function (x) { x.classList.toggle('sel', x.dataset.el === e); });
+        var s = document.getElementById('btnEncSet'); s.disabled = false; s.textContent = E.name + ' 부여 (결정 1개)';
+      });
+      L.appendChild(b);
+    });
+    var s = document.getElementById('btnEncSet'); s.disabled = true; s.textContent = '부여';
+    var f = L.querySelector('.eel:not([disabled])') || document.getElementById('btnEncBack');
+    try { f.focus({ preventScroll: true }); } catch (er) { f.focus(); }
+  }
+  function closePick() {
+    encSlot = -1; encPickEl = null;
+    document.getElementById('encPick').hidden = true; document.getElementById('encMain').hidden = false;
+    renderEnc();
+  }
+  function encMsg(txt, cls) {
+    var m = document.getElementById('encMsg'); m.textContent = txt; m.className = 'encmsg ' + (cls || '');
+    var pic = document.getElementById('encPic'); pic.classList.remove('ok', 'fail'); if (cls) { void pic.offsetWidth; pic.classList.add(cls); }
+  }
+  function doEnhance(roll) {
+    var w = wpn(); if (!w) return null;
+    var r = w.enhance(roll);
+    if (!r) return null;
+    if (r.ok) { encMsg('성공! +' + r.lv + (ENC.slotLv.indexOf(r.lv) >= 0 ? ' · 속성 칸이 열렸어요!' : ''), 'ok'); snd('levelUp'); encCelebrate(r.lv, w); }
+    else { encMsg('실패… 강화석 ' + r.cost + '개만 사라졌어요', 'fail'); snd('block'); }
+    renderEnc();
+    return r;
+  }
+  // 축하(2026-11-06 형님): 등급이 바뀌는 강화(+3 희귀 · +6 영웅 · +9 전설) = 작은 축하(글자 + 그림판 빛줄기),
+  //   +10 신화 = 큰 축하: 창 전체 흰 번쩍 → 무기 그림이 커지며 빛줄기 · 별 터짐, 큰 무지개 글자 「+10 달성!」, 잠깐(1.4초) 버튼이 안 눌림, 팡파르(stageClear)
+  var celeT = 0, celeBig = false, celeLock = 0;
+  function encCelebrate(lv, w) {
+    var tier = ENC.tierName.some(function (q) { return q[0] === lv; });
+    if (!tier) return;
+    celeBig = lv >= ENC.maxLv; celeT = performance.now();
+    var C = document.getElementById('encCele');
+    document.getElementById('encCeleT').textContent = '+' + lv + ' 달성!';
+    document.getElementById('encCeleS').textContent = w.tier() + ' ' + ((CFG.art.weapons[w.art(artLoaded)] || {}).label || '') + (celeBig ? ' · 고유 효과' : '');
+    C.className = 'enccele ' + (celeBig ? 'big' : 'small'); C.hidden = false; void C.offsetWidth; C.classList.add('go');
+    encEl.classList.remove('cele10'); if (celeBig) { void encEl.offsetWidth; encEl.classList.add('cele10'); }
+    clearTimeout(celeLock);
+    if (celeBig) {
+      snd('stageClear'); setTimeout(function () { snd('unlock'); }, 450);
+      document.getElementById('btnEncGo').disabled = true; document.getElementById('btnEncClose').disabled = true;   // 잠깐 멈춤(축하를 보게)
+      celeLock = setTimeout(function () { document.getElementById('btnEncClose').disabled = false; renderEnc(); }, 1400);
+    } else snd('unlock');
+    setTimeout(function () { C.hidden = true; }, celeBig ? 2600 : 1500);
+  }
+  // 그림판 뒤 축하 빛줄기 · 별(celeT 부터 big = 2.6초, 작은 = 1.4초)
+  function celeDraw(g, cv) {
+    var u = (performance.now() - celeT) / (celeBig ? 2600 : 1400);
+    if (!celeT || u >= 1) return 1;
+    var cx = cv.width / 2, cy = cv.height / 2, a = u < 0.15 ? u / 0.15 : 1 - (u - 0.15) / 0.85, n = celeBig ? 16 : 10, R = cv.width * (celeBig ? 0.7 : 0.45);
+    g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = 'lighter';
+    for (var i = 0; i < n; i++) {   // 빛줄기(돌아감)
+      var an = i / n * Math.PI * 2 + u * 1.5;
+      g.globalAlpha = 0.35 * a; g.fillStyle = celeBig ? ['#ff9ee6', '#9fe8ff', '#fff1c4', '#c9b0ff'][i % 4] : '#fff1c4';
+      g.beginPath(); g.moveTo(cx, cy); g.arc(cx, cy, R, an - 0.07, an + 0.07); g.closePath(); g.fill();
+    }
+    for (var j = 0; j < (celeBig ? 28 : 12); j++) {   // 별 터짐
+      var b = j * 2.399, d = R * (0.15 + u * (0.6 + 0.4 * ((j * 7) % 5) / 5)), s = (celeBig ? 4 : 3) * (1 - u);
+      g.globalAlpha = a; g.fillStyle = ['#ffffff', '#fff0a8', '#9fe8ff', '#ffb8f0'][j % 4];
+      g.fillRect(cx + Math.cos(b) * d - s / 2, cy + Math.sin(b) * d * 0.6 - s * 1.5, s, s * 3); g.fillRect(cx + Math.cos(b) * d - s * 1.5, cy + Math.sin(b) * d * 0.6 - s / 2, s * 3, s);
+    }
+    g.restore();
+    return 1 + (celeBig ? 0.25 * Math.sin(Math.min(1, u * 2.5) * Math.PI) : 0);   // 큰 축하 = 무기가 잠깐 커짐
+  }
+  function openEnc() {
+    if (!encEl.hidden || !wpn()) return;
+    encBack = { menu: menuEl && !menuEl.hidden ? menuEl : null, paused: G.paused };
+    G.paused = true; Input.setOverride(null);
+    encSlot = -1; document.getElementById('encPick').hidden = true; document.getElementById('encMain').hidden = false;
+    encMsg('', ''); celeT = 0; document.getElementById('encCele').hidden = true; document.getElementById('btnEncClose').disabled = false;
+    renderEnc();
+    openMenu(encEl, document.getElementById('btnEncGo').disabled ? document.getElementById('btnEncClose') : document.getElementById('btnEncGo'));
+    cancelAnimationFrame(encRaf); encRaf = requestAnimationFrame(encDraw);
+  }
+  function closeEnc() {
+    closeMenu(encEl); cancelAnimationFrame(encRaf);
+    var B = encBack || {}; encBack = null;
+    G.paused = !!B.paused;
+    if (B.menu && !B.menu.hidden) openMenu(B.menu, B.menu.querySelector('.encopen'));
+  }
+  document.getElementById('btnEnc').addEventListener('click', function () { openEnc(); this.blur(); });
+  document.querySelectorAll('.encopen').forEach(function (b) { b.addEventListener('click', function () { openEnc(); }); });
+  document.getElementById('btnEncClose').addEventListener('click', closeEnc);
+  document.getElementById('btnEncGo').addEventListener('click', function () { doEnhance(); });
+  document.getElementById('btnEncBack').addEventListener('click', closePick);
+  document.getElementById('btnEncSet').addEventListener('click', function () {
+    var w = wpn(), e = encPickEl, i = encSlot;
+    if (w && e && w.set(i, e)) { snd('unlock'); closePick(); encMsg((i + 1) + '번 칸에 ' + ENC.el[e].name + ' 속성 부여!', 'ok'); }
+  });
+  window.addEventListener('keydown', function (e) { if (e.code === 'Escape' && !encEl.hidden) { e.preventDefault(); if (encSlot >= 0) closePick(); else closeEnc(); } });
+  G.openEnc = openEnc; G.closeEnc = closeEnc; G.encEnhance = doEnhance; G.encPick = openPick;
 
   // ---------- 기술 칸 열림 알림 (2026-11-06 폰 UI): 레벨업으로 기술 칸이 늘면(config skills.moreLv = Lv10 · Lv13) 한 번 ----------
   //   「축하합니다!」 + 칸 줄(새로 열린 칸 = 빛남, 아직 잠긴 칸 = 자물쇠) + 확인. 여는 동안 게임 멈춤(다른 창처럼), 닫으면 원래대로.
@@ -3096,6 +3367,14 @@
     // 능력치 바로 바꾸기(시험): GAME.test.stats({ str: 10 }) → 남은 점수에서 뺌(모자라면 있는 만큼)
     stats: function (o) { Object.keys(o || {}).forEach(function (k) { Growth.add(k, o[k]); }); refreshGrowth(); return { stats: Growth.stats, pts: Growth.pts }; },
     bot: function (on) { G.bot = on !== false; if (!G.bot) Input.setOverride(null); },
+    // 무기 강화 · 속성 시험(2026-11-06): 이번 창에서만(저장된 무기 · 강화석은 그대로). GAME.test.enhance(9, ['fire', 'ice', 'poison']) / enhance(null) = 원래대로
+    enhance: function (lv, els) { Growth.testWeapon(G.classKey, lv, els || null); encBadges(); var w = wpn(); return w ? { lv: w.lv(), els: w.els(), test: w.test } : null; },
+    enchant: function (els) { Growth.testWeapon(G.classKey, undefined, els || []); var w = wpn(); return w ? { lv: w.lv(), els: w.els() } : null; },
+    // 속성 효과 기록 켜기/읽기: GAME.test.elLog(true) → 싸움 → GAME.test.elLog()
+    elLog: function (on) { return Enchant.log(on); },
+    loot: function () { return { stones: Growth.stones, crys: Growth.crys, got: G.loot, drops: G.lootDrops || 0, ground: Enchant.items.length }; },
+    weapon: function () { var w = wpn(), p = G.player; return w ? { cls: w.cls, lv: w.lv(), els: w.els(), art: w.art(), test: w.test, atkMul: w.atkMul(), rate: w.rate(), cost: w.cost(),
+      atkSpd: p.atkSpd, reachMul: p.reachMul, castSpd: p.castSpd, cdMul: p.cdMul, mpMul: p.mpMul } : null; },
     // 콤보 자동 조종(균형 시험, 2026-11-06 밤): 공격 때마다 기술 하나를 골라 누름(띄우기 → 공중 타 → 캔슬)
     botEager: function (on) { G.botEager = on !== false; },
     retry: function () { resetStage(); },
@@ -3177,7 +3456,7 @@
       noMp: noMp,            // 마나가 모자라 기술이 안 나감(2026-11-06)
       player: function () { return G.player; },   // 늘 켜진 기술 「투지」 표시(2차, 2026-11-06)
       comboTag: comboTag,    // 캔슬로 기술이 나감 → 콤보 글자 「CANCEL」(2026-11-06 밤)
-      areaMul: function (d) { var A = huntPart('aoe'); return (A && A[d.id]) || 1; },   // 사냥 손맛: 넓은 범위(회전베기·대지 내려찍기·메테오·불기둥)
+      areaMul: function (d) { var A = huntPart('aoe'); return ((A && A[d.id]) || 1) * wArea(); },   // x 무기 강화 +10 범위(2026-11-06)   // 사냥 손맛: 넓은 범위(회전베기·대지 내려찍기·메테오·불기둥)
       onCast: onCast         // 기술을 씀 → 포만감이 조금 더 줆(2026-11-06 밤)
     });
     Object.keys(assets.characters).forEach(function (k) { bakeFilter(assets.characters[k]); });

@@ -950,7 +950,21 @@
         axe:   { label: '도끼', img: 'assets/weapons/axe.png',   grip: { x: 9, y: 4 },  baseAngle: 0, layer: 'back' },
         // 법사: staff = 남(74x18, 수정 끝이 손잡이 앞 49도트), wand = 여(32x11, 끝이 손잡이 앞 23도트)
         staff: { label: '지팡이', img: 'assets/weapons/staff.png', grip: { x: 24, y: 9 }, baseAngle: 0, layer: 'back' },
-        wand:  { label: '완드',   img: 'assets/weapons/wand.png',  grip: { x: 8, y: 4 },  baseAngle: 0, layer: 'back' }
+        wand:  { label: '완드',   img: 'assets/weapons/wand.png',  grip: { x: 8, y: 4 },  baseAngle: 0, layer: 'back' },
+        // 강화 등급 그림(2026-11-06, artweapons-v1, 형님 승인): +0 일반 · +3 희귀 · +6 영웅 · +9 전설 (config enchant.art 가 고름).
+        //   그림 = 1배 assets/weapons/<이름>.png, HD = assets/hd/weapons/<이름>.webp(x1.4), 작은 화면 = assets/s055(x0.7). grip = 1배 그림 손잡이 점
+        //   kind = 원소 오라(js/enchant.js)가 불티를 내는 곳(sword = 칼날, staff = 머리 쪽)
+        sword_common:    { label: '검', img: 'assets/weapons/sword_common.png',    grip: { x: 7, y: 4 },  baseAngle: 0, layer: 'back', kind: 'sword' },
+        sword_rare:      { label: '검', img: 'assets/weapons/sword_rare.png',      grip: { x: 7, y: 5 },  baseAngle: 0, layer: 'back', kind: 'sword' },
+        sword_epic:      { label: '검', img: 'assets/weapons/sword_epic.png',      grip: { x: 7, y: 6 },  baseAngle: 0, layer: 'back', kind: 'sword' },
+        sword_legendary: { label: '검', img: 'assets/weapons/sword_legendary.png', grip: { x: 6, y: 8 },  baseAngle: 0, layer: 'back', kind: 'sword' },
+        staff_common:    { label: '지팡이', img: 'assets/weapons/staff_common.png',    grip: { x: 23, y: 7 }, baseAngle: 0, layer: 'back', kind: 'staff' },
+        staff_rare:      { label: '지팡이', img: 'assets/weapons/staff_rare.png',      grip: { x: 23, y: 9 }, baseAngle: 0, layer: 'back', kind: 'staff' },
+        staff_epic:      { label: '지팡이', img: 'assets/weapons/staff_epic.png',      grip: { x: 23, y: 13 }, baseAngle: 0, layer: 'back', kind: 'staff' },
+        staff_legendary: { label: '지팡이', img: 'assets/weapons/staff_legendary.png', grip: { x: 23, y: 9 }, baseAngle: 0, layer: 'back', kind: 'staff' },
+        // +10 신화(2026-11-06): mythic = 고유 효과(js/mythicfx.js) 켬
+        sword_mythic:    { label: '검', img: 'assets/weapons/sword_mythic.png',    grip: { x: 6, y: 11 }, baseAngle: 0, layer: 'back', kind: 'sword', mythic: true },
+        staff_mythic:    { label: '지팡이', img: 'assets/weapons/staff_mythic.png',    grip: { x: 23, y: 16 }, baseAngle: 0, layer: 'back', kind: 'staff', mythic: true }
       },
       // 허수아비: 없으면(null) 코드로 그린 나무 기둥. hit 그림은 「왼쪽에서 맞음」 기준, 오른쪽에서 맞으면 뒤집어 씀
       dummy: artSet === 'novice' ? null : {
@@ -1270,6 +1284,11 @@
       // 치명타(2026-11-06, 민첩 AGI 로 확률이 오름, 데미지 x growth.stats.critMul): 기술 숫자만큼 큰 giant + 주황·빨강 → 마무리 「22!」(노랑)와 구분
       agicrit: { font: 'giant', scale: 1, bold: true, top: '#fff27a', bottom: '#ff5a1a', outline: '#5a0a08', shadow: 'rgba(40,6,4,0.5)',
                  pop: { top: '#ffffff', bottom: '#ffd040' } },
+      // 무기 속성(2026-11-06, js/enchant.js): 화상(주황) · 독(초록) 지속 피해는 작은 숫자, 튀는 번개(하늘), 강화석·결정 주움 글자
+      dot_fire:   { font: 'large', scale: 1, top: '#ffe0a0', bottom: '#ff7a1a', outline: '#4a1404', shadow: 'rgba(30,8,4,0.35)', pop: { top: '#ffffff', bottom: '#ffb040' } },
+      dot_poison: { font: 'large', scale: 1, top: '#e0ffc0', bottom: '#4ed62a', outline: '#123a0a', shadow: 'rgba(6,30,6,0.35)', pop: { top: '#ffffff', bottom: '#a8ff7a' } },
+      chain:      { font: 'mid', scale: 1, top: '#ffffff', bottom: '#6ac8ff', outline: '#0e2448', shadow: 'rgba(6,12,30,0.4)', pop: { top: '#ffffff', bottom: '#fff6a0' } },
+      stone:      { font: 'large', scale: 1, bold: true, top: '#f2f8ff', bottom: '#8fb8e8', outline: '#1a2a4a', shadow: 'rgba(6,10,30,0.4)', pop: { top: '#ffffff', bottom: '#d8ecff' } },
       hurtBottom: '#b82c26',
       popK: 0.12,
       // 여러 번 한꺼번에 맞을 때 숫자 쌓기 (2026-11-03, 메이플처럼 위로 줄 세움, fx.js 의 FX.damage)
@@ -3212,6 +3231,78 @@
       hop: 30,                         // 튀어 오르는 높이
       shadow: 8,                       // 그림자 폭
       glow: ['#fff2b0', '#ffb84a']     // 둘레 빛 [가운데, 바깥]
+    },
+
+    // ---------- 무기 강화 · 속성 부여 (2026-11-06, 형님 승인. 기획성장시스템-설계안.md 「무기 강화·속성」) ----------
+    //   직업마다 무기 하나(기사 = 검, 법사 = 지팡이), 전직 때 받음. 줍기·바꾸기·빼기 없음. 견습(몽둥이)은 강화 없음
+    //   계산·저장 = growth.js(Growth.weapon), 효과·오라·바닥 줍기 = js/enchant.js, 창 = main.js 「강화」
+    //   강화 +0 → +10: 강화석(stones)을 cost 만큼 쓰고 rate 확률로 성공. 실패 = 강화석만 사라짐(깨짐·내려감 없음). 배열 = +1 ~ +10 으로 올릴 때
+    //     기대 강화석(실패 포함): +3 = 5개, +6 = 약 18개, +9 = 약 48개, +10 = 약 72개
+    //   perLv = 1 강화마다 기사 물리 · 법사 마법 공격 +6%
+    //   bonus = 단계 덤(그 강화 이상이면 늘 켜짐): crit = 치명타 확률 +, atkSpd = 휘두르기 빠르기 +, cd = 기술 쿨타임 -, mp = 기술 마나 -,
+    //     reach = 공격 범위(평타 판정 · 기술 크기) +, mpRegen = 마나 회복 +, castSpd = 기술 동작 빠르기 +, area = 마법 범위(기술 크기 · 마법탄 터짐) +
+    //   slotLv = 속성 칸이 열리는 강화(+3 · +6 · +9)
+    //   art = 강화 단계별 무기 그림(art.weapons 이름, +0 일반 · +3 희귀 · +6 영웅 · +9 전설 · +10 신화). 그림이 아직 없으면 한 단계 아래 그림.
+    //     법사 여자(완드)도 등급 그림은 지팡이(그림이 지팡이만 있음)
+    enchant: {
+      maxLv: 10,
+      rate: [1, 1, 1, 0.8, 0.8, 0.8, 0.6, 0.6, 0.6, 0.4],
+      cost: [1, 2, 2, 3, 3, 4, 5, 6, 7, 10],
+      perLv: 0.06,
+      bonus: {
+        knight: { 3: { crit: 0.05 }, 6: { atkSpd: 0.08 }, 9: { cd: 0.1, mp: 0.1 }, 10: { reach: 0.1 } },
+        mage:   { 3: { mpRegen: 0.15 }, 6: { castSpd: 0.1 }, 9: { cd: 0.1, mp: 0.1 }, 10: { area: 0.1 } }
+      },
+      slotLv: [3, 6, 9],
+      art: {
+        knight: [[0, 'sword_common'], [3, 'sword_rare'], [6, 'sword_epic'], [9, 'sword_legendary'], [10, 'sword_mythic']],
+        mage:   [[0, 'staff_common'], [3, 'staff_rare'], [6, 'staff_epic'], [9, 'staff_legendary'], [10, 'staff_mythic']]
+      },
+      tierName: [[0, '일반'], [3, '희귀'], [6, '영웅'], [9, '전설'], [10, '신화']],
+      // ---- 속성 7가지: 칸마다 하나(같은 속성 두 번 안 됨), 끼운 속성은 전부 함께 켜짐. 바꾸기 = 그 속성 결정 1개(언제든) ----
+      //   col = 오라 · 불티 · 결정 색, short = 고르는 창 한 줄 설명
+      order: ['fire', 'ice', 'lightning', 'poison', 'wind', 'darkness', 'light'],
+      el: {
+        fire:      { name: '불',   col: '#ff6a10', col2: '#ffc23a', short: '맞으면 2초 동안 불타요(센 화상)' },
+        ice:       { name: '얼음', col: '#7cc8ff', col2: '#e8f8ff', short: '맞으면 느려지고, 여러 번 맞으면 잠깐 얼어요' },
+        lightning: { name: '번개', col: '#4aa8ff', col2: '#fff4a0', short: '가끔 번개가 옆 적 2마리에게 튀어요' },
+        poison:    { name: '독',   col: '#5cff2a', col2: '#c8ff7a', short: '독이 5번까지 쌓이고, 쓰러지면 옆으로 퍼져요' },
+        wind:      { name: '바람', col: '#6ff0cc', col2: '#e6fff8', short: '공격이 빨라지고 적이 더 멀리 밀려요' },
+        darkness:  { name: '어둠', col: '#7a2cff', col2: '#c890ff', short: '치명타가 더 자주, 더 세게 터져요' },
+        light:     { name: '빛',   col: '#ffcf55', col2: '#fffbe0', short: '준 피해의 일부만큼 체력이 차요' }
+      },
+      // 효과 수치(자동 조종 시험으로 맞춤). 데미지 % 는 「그 타의 데미지」 기준
+      //   fire: 맞을 때마다 pct 만큼 화상 남은 양에 더함(최대 cap = 그 타의 몇 배), ms 동안 tick 마다 나눠서 깎음(새로 맞으면 시간 다시)
+      //   poison: 한 번 맞을 때마다 독 1겹(최대 max), 겹마다 tick 마다 pct. ms 동안(새로 맞으면 다시). 독 걸린 적이 쓰러지면 r 안 적 spreadN 마리에 겹 절반 옮김
+      //   ice: slow = 느려진 적의 시간 배율(0.7 = 30% 느려짐) ms 동안, 보스·중간보스는 bossSlow. freezeHits 번 맞으면 freezeMs 얼음(보스·중간보스 빼고), 그 뒤 freezeCdMs 동안 다시 안 얼음
+      //   lightning: chance 확률로 r 안 다른 적 n 마리에게 pct 데미지(튄 번개는 다시 안 튐). capPerSec = 1초에 튀는 최대 수(몹 떼에서 화면이 번개로 뒤덮이지 않게)
+      //   wind: atkSpd = 휘두르기 +, knock = 밀려나는 거리 배 / darkness: crit = 치명타 확률 +, critDmg = 치명타 배율 +
+      //   light: pct = 준 데미지의 몇 %를 체력으로, capPerSec = 1초에 최대 체력의 몇 %까지만
+      fx: {
+        fire:      { pct: 0.2, cap: 0.6, ms: 2000, tick: 500 },
+        poison:    { pct: 0.03, max: 5, ms: 4000, tick: 500, r: 80, spreadN: 3 },
+        ice:       { slow: 0.7, ms: 1500, bossSlow: 0.88, freezeHits: 6, freezeMs: 900, freezeCdMs: 3000 },
+        lightning: { chance: 0.25, n: 2, r: 85, pct: 0.5, capPerSec: 10 },
+        wind:      { atkSpd: 0.1, knock: 1.3 },
+        darkness:  { crit: 0.08, critDmg: 0.3 },
+        light:     { pct: 0.03, capPerSec: 0.025 }
+      },
+      mageBasic: 0.5,       // 법사 지팡이 평타(마법탄 포함)는 원소 효과(화상·독·튀는 번개·흡혈 양)가 이만큼(기술이 주인공)
+      // 원소 공명(법사): 기술 자체 속성(숫자 모양 damageStyle → 속성)이 끼운 속성과 같으면 그 기술 데미지 +resonance
+      resonance: 0.2,
+      skillEl: { skill_fire: 'fire', skill_ice: 'ice', skill_bolt: 'lightning' },
+      // 지속 피해 숫자: 적마다 tick 한 번에 하나(합친 값), 화면 전체 gapMs 동안 max 개까지만(몹 떼에서 숫자가 뒤덮지 않게)
+      dotNum: { gapMs: 250, max: 6 },
+      // ---- 얻는 곳 ----
+      //   강화석: 잡몹 쓰러질 때 mob 확률(단단한 잡몹 = tough), 중간보스 mid 개, 보스 boss 개(꼭). 확률·개수 x 난이도 modes.drop(노말 1.25 · 하드 1.5)
+      //   속성 결정: 판을 깨면 그 판 속성(stageEl[판 id][0]) clear 개 + 보스가 둘째 속성(stageEl[판 id][1]) boss 개를 떨어뜨림. 개수 x 난이도 crys(노말 1.5 · 하드 2)
+      //   판 속성(2026-11-06): 숲 = 바람 · 폐광 = 번개 · 늪 = 독 · 사막 유적 = 빛 · 설산 = 얼음 · 해적 항구 = 바람 · 화산 = 불 · 유령 고성 = 어둠 · 요새 = 불 · 마왕성 = 어둠
+      //     둘째(보스) 속성으로 3판까지 7가지 중 6가지, 5판까지 전부 나옴
+      drop: { mob: 0.012, tough: 0.04, mid: 1, boss: 2, clear: 2, bossCrys: 1, crys: { easy: 1, normal: 1.5, hard: 2 } },
+      stageEl: { 1: ['wind', 'light'], 2: ['lightning', 'fire'], 3: ['poison', 'darkness'], 4: ['light', 'poison'], 5: ['ice', 'wind'],
+                 6: ['wind', 'ice'], 7: ['fire', 'darkness'], 8: ['darkness', 'ice'], 9: ['fire', 'lightning'], 10: ['darkness', 'light'] },
+      // 바닥에 떨어진 강화석·결정(코드로 그린 도트): 밟으면 주움(물약과 같음). 사라지지 않음, 판을 깨면 남은 것은 저절로 주움
+      pickup: { r: 18, depth: 13 }, pickupDelayMs: 300, hop: 26, shadow: 6
     },
 
     // 먼지 효과(오크 돌진): 112x64, 바닥 가운데 기준

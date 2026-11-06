@@ -147,7 +147,10 @@
     return d ? { d: d, L: lvStat(d, bk.lv(id)) } : null;
   }
   // 드는 마나: 각성 「마력 폭주」(p.freeMp) = 0
-  function mpCost(p, L) { return p && p.freeMp ? 0 : L.mp; }
+  //   무기 강화 +9(2026-11-06): p.mpMul(0.9) 만큼 덜 듦
+  function mpCost(p, L) { return p && p.freeMp ? 0 : Math.round(L.mp * ((p && p.mpMul) || 1)); }
+  // 쿨타임: 무기 강화 +9(2026-11-06) = p.cdMul(0.9) 배
+  function cdOf(p, L) { return Math.round(L.cd * ((p && p.cdMul) || 1)); }
   // 각성 「마력 폭주」 한 번 더: config awaken.mage.echoMs[기술 id] 뒤에 fn (게임 시간, 멈춤·슬로 따름)
   function echo(d, fn) {
     var E = CFG.awaken && CFG.awaken.mage && CFG.awaken.mage.echoMs;
@@ -233,7 +236,7 @@
       s.sz = K.x.map(function () { return p.y; });
       s.aimT = aimTargets(p, K);
     }
-    p.skillCd[d.key] = L.cd;
+    p.skillCd[d.key] = cdOf(p, L);
     if (d.zoom && (!d.zoom.lv5 || L.lv5) && H.zoom) H.zoom(d.zoom.k, d.zoom.ms);   // 큰 기술 화면 당기기(2026-11-06 밤)
   }
 
@@ -1772,7 +1775,7 @@
     SLOTS.forEach(function (slot, i) {
       var q = p ? slotSkill({ classKey: G.classKey, gender: G.charKey }, i) : null, d = q && q.d;
       var rem = d && p.skillCd ? Math.max(0, p.skillCd[d.key] || 0) : 0, cost = d ? mpCost(p, q.L) : 0;
-      var frac = d ? Math.round(Math.min(1, rem / q.L.cd) * 100) / 100 : 0, nomp = !!d && (p.mp || 0) < cost;
+      var frac = d ? Math.round(Math.min(1, rem / cdOf(p, q.L)) * 100) / 100 : 0, nomp = !!d && (p.mp || 0) < cost;
       var key = d ? d.key + '|' + d.icon + '|' + frac + '|' + Math.ceil(rem / 100) + '|' + nomp + '|' + cost : 'none';
       if (uiLast[slot] === key) return;
       var wasHidden = !uiLast[slot] || uiLast[slot] === 'none';
@@ -1822,6 +1825,8 @@
     drawBackdrop: drawBackdrop, drawUnder: drawUnder, drawGhosts: drawGhosts, drawOver: drawOver, drawFlash: drawFlash, drawDebug: drawDebug,
     ui: ui, shakeSlot: shakeSlot, slots: SLOTS, lvStat: lvStat, slotSkill: slotSkill,
     _meteors: function () { return meteors; },   // 시험용
+    // 떨어지는 중인 운석 자리(2026-11-06 무기 속성: 운석에도 속성 꼬리, js/enchant.js)
+    meteorsNow: function () { return meteors.filter(function (m) { return !m.boom && m.t >= m.M.markMs; }).map(function (m) { return meteorPos(m, clamp((m.t - m.M.markMs) / m.M.fallMs, 0, 1)); }); },
     // 2차 기술(2026-11-06): 늘 켜진 기술(main.js 가 부름) · 순간이동 숨기 · 시험용
     gritBonus: gritBonus, tryCounter: tryCounter, shieldSplit: shieldSplit, shieldHit: shieldHit, brandMul: brandMul, brandMark: brandMark,
     hidden: hidden, test: TEST, _fx: function () { return { blades: blades.length, flames: flames.length, beams: beams.length, arcs: arcs.length, shield: !!shieldFx }; },

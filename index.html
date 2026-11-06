@@ -65,7 +65,7 @@
         <div class="prg"><i class="bi"></i><span class="lbl">분노</span><div class="bar"><i id="pRage"></i></div><span class="num" id="pRageNum">0%</span></div>
       </div>
       <!-- 능력치 창 · 기술 창 열기 (2026-11-06): 안 쓴 점수가 있으면 빨간 숫자 표시(.badge). 기술 버튼은 전직한 직업만 -->
-      <span class="hbtns"><button type="button" class="statbtn" id="btnStat" aria-label="능력치">능력치<b class="badge" hidden></b></button><button type="button" class="statbtn skbtn" id="btnSkill" aria-label="기술" hidden>기술<b class="badge" hidden></b></button></span>
+      <span class="hbtns"><button type="button" class="statbtn" id="btnStat" aria-label="능력치">능력치<b class="badge" hidden></b></button><button type="button" class="statbtn skbtn" id="btnSkill" aria-label="기술" hidden>기술<b class="badge" hidden></b></button><button type="button" class="statbtn encbtn" id="btnEnc" aria-label="강화" hidden>강화<b class="badge enb" hidden></b></button></span>
     </div>
     <div class="stageinfo" id="stageInfo"></div>
     <div class="bossbar" id="bossBar" hidden><span id="bossName">오크 족장</span><div class="bar"><em id="bHpLag"></em><i id="bHp"></i></div></div>
@@ -79,7 +79,7 @@
       <h2 id="resTitle">STAGE CLEAR!</h2>
       <p id="resStats"></p>
       <!-- 다음 스테이지(클리어, 마지막 판 아니면) · 다시 하기(같은 판) · 스테이지 고르기 · 연습장. 키보드 ←→ 고르기 + Enter/J -->
-      <div class="rbtns"><button type="button" id="btnNext" hidden>다음 스테이지 →</button><button type="button" id="btnRetry">다시 하기</button><button type="button" class="sub" id="btnSel">스테이지 선택</button><button type="button" class="sub statopen" id="btnResStat">능력치<b class="badge" hidden></b></button><button type="button" class="sub statopen skopen" id="btnResSkill" hidden>기술<b class="badge" hidden></b></button><a id="resPractice" href="?mode=practice">연습장</a></div>
+      <div class="rbtns"><button type="button" id="btnNext" hidden>다음 스테이지 →</button><button type="button" id="btnRetry">다시 하기</button><button type="button" class="sub" id="btnSel">스테이지 선택</button><button type="button" class="sub statopen" id="btnResStat">능력치<b class="badge" hidden></b></button><button type="button" class="sub statopen skopen" id="btnResSkill" hidden>기술<b class="badge" hidden></b></button><button type="button" class="sub statopen encopen" id="btnResEnc" hidden>강화<b class="badge enb" hidden></b></button><a id="resPractice" href="?mode=practice">연습장</a></div>
     </div>
   </div>
   <!-- 스테이지 고르기 (처음 + 결과 화면에서). 판 버튼은 main.js 가 CFG.stages 로 만듦. 위 고르기 버튼(남/여·직업)은 이 위에 그대로 보임 -->
@@ -89,7 +89,7 @@
       <!-- 난이도 탭(2026-11-06): 이지 / 노말 / 하드. main.js 가 CFG.modes 로 만듦(잠긴 난이도 = 자물쇠 + 여는 법) -->
       <div class="mtabs" id="modeTabs"></div>
       <div class="slist" id="stageList"></div>
-      <div class="rbtns stbtns"><button type="button" class="sub statopen" id="btnSelStat">능력치<b class="badge" hidden></b></button><button type="button" class="sub statopen skopen" id="btnSelSkill" hidden>기술<b class="badge" hidden></b></button></div>
+      <div class="rbtns stbtns"><button type="button" class="sub statopen" id="btnSelStat">능력치<b class="badge" hidden></b></button><button type="button" class="sub statopen skopen" id="btnSelSkill" hidden>기술<b class="badge" hidden></b></button><button type="button" class="sub statopen encopen" id="btnSelEnc" hidden>강화<b class="badge enb" hidden></b></button></div>
       <p class="shint">←→ 고르기 · Enter / J 시작</p>
     </div>
   </div>
@@ -137,6 +137,39 @@
       <div class="rbtns"><button type="button" id="btnUpOk">확인</button></div>
     </div>
   </div>
+  <!-- 강화 창 (2026-11-06, 형님 승인): 왼쪽 = 무기 그림(강화 단계 그림 + 속성 오라) · +강화 · 확률 · 드는 강화석 · 「강화」 버튼,
+       오른쪽 = 강화 덤(가진 것 밝게) · 속성 칸 3개(+3 · +6 · +9 에 열림) → 칸을 누르면 속성 고르기(결정 수 · 한 줄 설명) → 부여. 여는 동안 게임 멈춤(main.js openEnc) -->
+  <div class="statpanel encpanel" id="encPanel" hidden>
+    <div class="box">
+      <h2>강화</h2>
+      <div class="sktop"><span class="spts">강화석 <b id="encStones">0</b></span><span class="who" id="encWho"></span><span class="sp"></span><button type="button" class="wbtn x" id="btnEncClose" aria-label="닫기">X</button></div>
+      <!-- 등급이 오름(+3 · +6 · +9) = 작은 축하, +10 = 큰 축하(화면 번쩍 · 잠깐 멈춤 · 「+10 달성!」, main.js encCelebrate) -->
+      <div class="enccele" id="encCele" hidden><b id="encCeleT">+10 달성!</b><small id="encCeleS">신화 무기</small></div>
+      <div class="encwrap">
+        <div class="encl">
+          <div class="encpic" id="encPic"><canvas id="encCv" width="440" height="150"></canvas><b class="enclv" id="encLv">+0</b></div>
+          <p class="encname" id="encName"></p>
+          <p class="encinfo" id="encInfo"></p>
+          <div class="rbtns"><button type="button" id="btnEncGo">강화</button></div>
+          <p class="encmsg" id="encMsg"></p>
+        </div>
+        <div class="encr">
+          <div class="encsec" id="encMain">
+            <p class="ehd"><b>강화 덤</b><span>+1 마다 공격 +6%</span></p>
+            <div class="ebon" id="encBon"></div>
+            <p class="ehd"><b>속성 부여</b><span>칸을 눌러 속성을 골라요 · 바꾸기 = 결정 1개</span></p>
+            <div class="eslots" id="encSlots"></div>
+            <div class="ecrys" id="encCrys"></div>
+          </div>
+          <div class="encsec epick" id="encPick" hidden>
+            <p class="ehd"><b id="encPickT">1번 칸 속성</b><span>결정 1개를 써서 부여해요</span></p>
+            <div class="elist" id="encEls"></div>
+            <div class="rbtns"><button type="button" id="btnEncSet" disabled>부여</button><button type="button" class="sub" id="btnEncBack">뒤로</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
   <div class="combo" id="combo" hidden></div>
   <div class="keyhint">이동 ←↑↓→ / WASD · 달리기 ←← / →→ · 점프 K / X / Space · 공격 J / Z (연타 3타)<span class="dgchip" id="dodgeChip"> · <b>회피</b> <kbd>Shift</kbd> / <kbd>;</kbd></span><span class="skkeys"> · 기술 <span class="skchip" data-skill="A" hidden><kbd>U</kbd><span class="ic"></span><b class="sec"></b></span><span class="skchip" data-skill="B" hidden><kbd>I</kbd><span class="ic"></span><b class="sec"></b></span><span class="skchip" data-skill="C" hidden><kbd>O</kbd><span class="ic"></span><b class="sec"></b></span><span class="skchip" data-skill="D" hidden><kbd>P</kbd><span class="ic"></span><b class="sec"></b></span><span class="alt">(왼손 C V B N)</span></span><span class="awkchip" id="awkChip"> · <b>각성</b> <kbd>L</kbd> / <kbd>F</kbd></span></div>
 
@@ -174,6 +207,8 @@
 <script src="js/skills.js"></script>
 <script src="js/enemies.js"></script>
 <script src="js/props.js"></script>
+<script src="js/mythicfx.js"></script>
+<script src="js/enchant.js"></script>
 <script src="js/debug.js"></script>
 <script src="js/main.js"></script>
 </body>
