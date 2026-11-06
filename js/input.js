@@ -70,7 +70,8 @@
     function joyRunCheck() {
       var M = MV(), ax = Math.abs(joy.x), s = joy.x > 0 ? 1 : -1, horiz = ax > Math.abs(joy.y) * 0.9, now = performance.now();
       if (joyRun) {
-        if (s !== joyRun || ax < 0.35) { joyRun = 0; joyFlick = false; }
+        // 2026-11-06 형님: 달리다 위·아래로 꺾어도 계속 달림. 반대쪽으로 밀거나 가운데로 돌아오면 걷기
+        if ((joy.x * joyRun < -0.3) || Math.hypot(joy.x, joy.y) < 0.3) { joyRun = 0; joyFlick = false; }
       }
       if (horiz && ax >= (M.joyHoldAt || 0.5)) { if (joyHold.dir !== s) joyHold = { dir: s, t: now }; }
       else joyHold = { dir: 0, t: 0 };

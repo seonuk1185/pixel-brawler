@@ -448,7 +448,8 @@
       if (this.comboIdleT > C.resetMs) this.comboStep = 0;
       var ax = Input.axis(cfg), canMove = this.hasMove() && !this.airborne();
       // 달리기: 입력(Input.runDir)이 달리는 쪽이고 그 쪽을 누르고 있을 때
-      var rd = canMove ? Input.runDir(cfg) : 0, running = rd !== 0 && ax.x * rd > 0.3;
+      //   (2026-11-06 형님: 달리다 위·아래로 꺾어도 계속 달림 → 반대쪽으로 밀 때만 멈춤)
+      var rd = canMove ? Input.runDir(cfg) : 0, running = rd !== 0 && ax.x * rd > -0.3;
       if (canMove && Input.takeJump(cfg.move.jump.bufferMs || 150)) {
         // 점프: 지금 좌우 속도를 가지고 뜸(달리던 중이면 달리기 속도 → 멀리)
         this.startJump(running ? rd * this.runSpeed() : ax.x * this.walkSpeed(), running);
@@ -515,7 +516,7 @@
           break;
         }
         hitWindows(st).forEach(function (w) {
-          if (a.i === w.active[0]) this.x += (w.lunge || 0) * this.dir;   // 판정 시작 때 앞으로 살짝 내딛기
+          if (a.i === w.active[0]) this.x += (w.lunge || 0) * (cfg.move.lungeMul || 1) * this.dir;   // 판정 시작 때 앞으로 살짝 내딛기(lungeMul = 전체 배율)
         }, this);
       }
       if (this.atk) {
