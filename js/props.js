@@ -5,8 +5,8 @@
 //   소품은 맞는 대상 목록(targets)에 적과 같이 들어가지만 데미지 숫자·콤보 수에는 안 들어가고, 번개 겨누기(skills.js aimTargets)에서도 빠진다.
 //   적의 공격은 플레이어만 확인하므로 소품을 부수지 못한다.
 (function () {
-  var CFG = null, H = null;     // H = main.js 가 넘겨주는 도구 { laneY, fx, hitstop, feed(포만감 +%), drink(물약 종류) }
-  var list = [], food = [], potions = [], uid = 0;
+  var CFG = null, H = null;     // H = main.js 가 넘겨주는 도구 { laneY, fx, hitstop, feed(포만감 +%), drink(물약 종류), view, club(몽둥이 주움) }
+  var list = [], food = [], potions = [], clubs = [], uid = 0;   // clubs = 바닥의 몽둥이(2026-11-06, 많아야 하나)
   var art = {};                 // 종류별 그림 { frames, breakFrames, pivot } (+ 'food' = { frames: { meat, bread }, pivot })
   function AS() { return (CFG && CFG.actorScale) || 1; }
   function P() { return CFG.props || {}; }
@@ -66,7 +66,7 @@
 
   function reset(st) {
     var T = CFG.propTypes || {};
-    list.length = 0; food.length = 0; potions.length = 0;
+    list.length = 0; food.length = 0; potions.length = 0; clubs.length = 0;
     (st.props || []).forEach(function (pr) {
       var D = T[pr.type] || {};
       list.push(new Prop(pr, D, pr.x, H.laneY(pr.y != null ? pr.y : 0.5)));
@@ -253,6 +253,96 @@
     ctx.restore();
   }
 
+  // ---------- 첫 무기 몽둥이 (2026-11-06, 수치 = config club) ----------
+  //   main.js 가 1판 견습 잡몹 쓰러짐 때 dropClub 을 부름. 밟으면 H.club() (저장 · 알림은 main.js), 여기선 빛 · 불똥. 사라지지 않음
+  function dropClub(x, y, dir) {
+    var C = CFG.club; if (!C) return false;
+    clubs.push({ x: x + (dir || 1) * 6 * AS(), y: y, vx: (dir || 1) * 30 * AS(), z: 0, vz: Math.sqrt(2 * 900 * C.hop), t: 0, bounced: false, ph: Math.random() * 6 });
+    return true;
+  }
+  function updateClubs(dt, p) {
+    var C = CFG.club; if (!C) return;
+    var s = dt / 1000, g = 900;
+    for (var i = clubs.length - 1; i >= 0; i--) {
+      var f = clubs[i];
+      f.t += dt;
+      if (f.z > 0 || f.vz > 0) {   // 튀어 오름 → 한 번 작게 튕기고 멈춤(물약과 같음)
+        f.x += f.vx * s; f.z += f.vz * s; f.vz -= g * s;
+        if (f.z <= 0) {
+          f.z = 0;
+          if (!f.bounced) { f.bounced = true; f.vz = -f.vz * 0.3; f.vx *= 0.4; } else { f.vz = 0; f.vx = 0; }
+        }
+      }
+      if (H.view) { var V = H.view(); f.y = Math.max(V.laneTop, Math.min(V.laneBottom, f.y)); f.x = Math.max(V.x0 + 8, Math.min(V.x1 - 8, f.x)); }
+      if (p && p.state !== 'dead' && f.t >= (C.pickupDelayMs || 0) && Math.abs(p.x - f.x) <= C.pickup.r && Math.abs(p.y - f.y) <= C.pickup.depth) {
+        clubs.splice(i, 1);
+        if (H.club) H.club();
+        var c = C.glow;   // 금빛 둥근 빛 두 겹 + 나무 조각 · 금 불똥이 위로
+        if (Skills.glow) { Skills.glow(p.x, p.y - 40 * AS(), 40 * AS() / 0.55, c[1], 520, 0.75); Skills.glow(p.x, p.y - 10 * AS(), 22 * AS() / 0.55, c[0], 360, 0.6); }
+        if (Skills.debris) Skills.debris(p.x, p.y - 16 * AS(), p.y, 16, { cols: ['#ffffff', c[0], c[1], '#c88a4a'], glow: true, sp: 150, size: 1.6, ms: 640, g: -90, spread: 0.8 });
+      }
+    }
+  }
+  // 몽둥이 그림(코드로 그린 도트, 우리 그림): 36x46 점(= 18x23 도트, 0.5 도트 점). 왼쪽 아래 손잡이(가죽 감개 + 둥근 끝) → 오른쪽 위로 굵어지는 나무 머리.
+  //   나무 3단(밝음 · 가운데 · 어두움, 왼쪽 위가 밝음) + 옹이 2개 + 흰 반짝. 바깥 1점 진한 테두리. HUD 작은 그림도 이것(main.js)
+  var clubArt = null;
+  function clubImg() {
+    if (clubArt) return clubArt;
+    var W = 36, Hh = 46, ax = 9, ay = 41.5, bx = 27, by = 5.5, ux = bx - ax, uy = by - ay, LL = ux * ux + uy * uy, len = Math.sqrt(LL);
+    var m = [], x, y;
+    function rad(t) {   // 길이 방향 t(0 = 손잡이 끝, 1 = 머리 끝) 의 반지름
+      if (t < 0.3) return 2.2;
+      if (t < 0.86) { var u = (t - 0.3) / 0.56; return 2.2 + 3.8 * u * u * (3 - 2 * u); }
+      var w = (t - 0.86) / 0.15; return 6 * Math.sqrt(Math.max(0, 1 - w * w * 0.75));
+    }
+    for (y = 0; y < Hh; y++) for (x = 0; x < W; x++) {
+      var px = x + 0.5 - ax, py = y + 0.5 - ay, t = Math.max(0, Math.min(1, (px * ux + py * uy) / LL));
+      var dx = px - t * ux, dy = py - t * uy, d = Math.sqrt(dx * dx + dy * dy), r = rad(t), v = null;
+      if (d <= r) {
+        var side = (ux * py - uy * px) / len / r;   // -1 = 왼쪽 위(빛 받는 쪽) ~ 1 = 오른쪽 아래
+        if (t < 0.07) v = side < -0.2 ? 'knobL' : 'knob';                                        // 손잡이 끝 둥근 마개
+        else if (t < 0.3) v = Math.floor(t * len / 2.9) % 2 ? (side < -0.2 ? 'wrapL' : 'wrap') : 'wrapD';   // 가죽 감개
+        else v = side < -0.4 ? 'light' : side > 0.4 ? 'dark' : 'mid';
+      }
+      m.push(v);
+    }
+    // 옹이(어두운 점) · 반짝(머리 왼쪽 위)
+    [[22, 17], [23, 17], [23, 18], [18, 24]].forEach(function (q) { var i = q[1] * W + q[0]; if (m[i] === 'mid') m[i] = 'knot'; });
+    [[21, 8], [22, 7], [20, 9], [19, 11], [18, 12]].forEach(function (q) { var i = q[1] * W + q[0]; if (m[i]) m[i] = 'shine'; });
+    var PAL = { knob: '#7a4a24', knobL: '#a8703c', wrap: '#9a4a32', wrapL: '#c4704a', wrapD: '#5e2a1c',
+                light: '#e8bc7c', mid: '#b47c40', dark: '#6e4420', knot: '#4e2c14', shine: '#fff4d8' };
+    var c = document.createElement('canvas'); c.width = W; c.height = Hh;
+    var g = c.getContext('2d');
+    g.fillStyle = '#1a0e1c';   // 테두리
+    for (y = 0; y < Hh; y++) for (x = 0; x < W; x++) {
+      if (m[y * W + x]) continue;
+      if ((x > 0 && m[y * W + x - 1]) || (x < W - 1 && m[y * W + x + 1]) || (y > 0 && m[(y - 1) * W + x]) || (y < Hh - 1 && m[(y + 1) * W + x])) g.fillRect(x, y, 1, 1);
+    }
+    for (y = 0; y < Hh; y++) for (x = 0; x < W; x++) { var k = m[y * W + x]; if (k) { g.fillStyle = PAL[k]; g.fillRect(x, y, 1, 1); } }
+    c._k = 0.5; c._dots = true;
+    clubArt = c;
+    return c;
+  }
+  // 몽둥이 한 개: 바닥에서 둥실(1.5 도트) + 둘레 금빛(더하기, 숨쉬듯) + 1.2초마다 머리 위 반짝 별
+  function drawClub(ctx, camX, f) {
+    var img = clubImg(), col = CFG.club.glow;
+    var bob = f.z > 0 ? 0 : Math.sin(f.t / 260 + f.ph) * 1.5 - 1.5, x = snapPx(f.x - camX), y = snapPx(f.y - f.z + bob);
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    var r = 18, gr = ctx.createRadialGradient(x, y - 12, 0, x, y - 12, r);
+    gr.addColorStop(0, col[0]); gr.addColorStop(0.5, col[1]); gr.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.globalAlpha = 0.42 + 0.18 * Math.sin(f.t / 170 + f.ph); ctx.fillStyle = gr; ctx.fillRect(x - r, y - 12 - r, r * 2, r * 2);
+    ctx.restore();
+    ctx.save(); ctx.translate(x, y);
+    Assets.blit(ctx, img, 18, 45);
+    var ph = ((f.t + f.ph * 300) % 1200) / 1200;
+    if (ph < 0.22) {   // 반짝 별(머리 왼쪽 위)
+      var a = Math.sin(ph / 0.22 * Math.PI), L = 1 + 3 * a;
+      ctx.globalAlpha = a; ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, -19 - L, 1, L * 2); ctx.fillRect(0.5 - L, -18.5, L * 2, 1);
+    }
+    ctx.restore();
+  }
+
   // ---------- 매 장면 ----------
   function update(dt, p) {
     var C = P();
@@ -269,6 +359,7 @@
     }
     updateFood(dt, p);
     updatePotions(dt, p);
+    updateClubs(dt, p);
   }
 
   // ---------- 못 지나감 ----------
@@ -348,6 +439,8 @@
     if (F) food.forEach(function (f) { if (!blinkOff(f)) window.drawShadow(ctx, snapPx(f.x - camX), snapPx(f.y), F.shadow * (1 - Math.min(0.5, f.z / 30))); });
     var PO = CFG.potions;
     if (PO) potions.forEach(function (f) { if (!potBlink(f)) window.drawShadow(ctx, snapPx(f.x - camX), snapPx(f.y), PO.shadow * (1 - Math.min(0.5, f.z / 30))); });
+    var CL = CFG.club;
+    if (CL) clubs.forEach(function (f) { window.drawShadow(ctx, snapPx(f.x - camX), snapPx(f.y), CL.shadow * (1 - Math.min(0.5, f.z / 30))); });
   }
   function blinkOff(f) { var F = CFG.food, left = F.lifeMs - f.t; return left < F.blinkMs && Math.floor(left / 100) % 2 === 0; }
 
@@ -398,6 +491,7 @@
     });
     food.forEach(function (f) { ents.push({ y: f.y - 1, d: function () { drawFood(ctx, camX, f); } }); });
     potions.forEach(function (f) { ents.push({ y: f.y - 1, d: function () { drawPotion(ctx, camX, f); } }); });
+    clubs.forEach(function (f) { ents.push({ y: f.y - 1, d: function () { drawClub(ctx, camX, f); } }); });
   }
 
   window.Props = {
@@ -405,6 +499,7 @@
     load: load, reset: reset, targets: targets, hit: hit, update: update,
     collide: collide, steer: steer, drawUnder: drawUnder, addDraw: addDraw,
     list: list, food: food, potions: potions, art: art, dropPotion: dropPotion, potionImg: potionImg,
-    clear: function () { list.length = 0; food.length = 0; potions.length = 0; }
+    clubs: clubs, dropClub: dropClub, clubImg: clubImg,
+    clear: function () { list.length = 0; food.length = 0; potions.length = 0; clubs.length = 0; }
   };
 })();

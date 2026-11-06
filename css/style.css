@@ -185,6 +185,8 @@ body.smooth #screen { image-rendering: auto; }
 }
 .plv.up .lv { animation: lvpop .5s ease-out; }
 @keyframes lvpop { 0% { transform: translateX(-50%) scale(1.7); color: #fff; } 100% { transform: translateX(-50%) scale(1); } }
+/* 첫 무기 몽둥이(2026-11-06): 얼굴 액자 오른쪽 아래 작은 그림(main.js drawClubIcon, 견습 + 주웠을 때만) */
+.plv .pclub { position: absolute; left: 40px; top: 27px; z-index: 2; width: 14px; height: 18px; image-rendering: pixelated; filter: drop-shadow(1px 1px 0 #000a); }
 .plv.max .lv { color: #3a1606; text-shadow: none; background: linear-gradient(#ffe896, var(--gold2)); }
 .pbars {
   position: absolute; left: 58px; top: 0; padding: 5px 7px 11px 6px; display: flex; flex-direction: column; gap: 2px;
@@ -359,6 +361,7 @@ body.smooth #screen { image-rendering: auto; }
 .spts { margin: 0 0 6px; font: 400 11px/1 var(--ui); color: var(--cream); text-shadow: 1px 1px 0 var(--ink); }
 .spts b { font: 700 22px/1 var(--ui); color: var(--gold); margin: 0 3px; vertical-align: -3px; text-shadow: 2px 2px 0 var(--ink); }
 .spts span { margin-left: 10px; color: #d8c08a; }
+.swpn { margin: -2px 0 6px; font: 400 11px/1 var(--ui); color: #ffd890; text-shadow: 1px 1px 0 var(--ink); }   /* 무기: 몽둥이 (2026-11-06) */
 /* 양피지 줄 */
 .srow { color: #3a2410; background: var(--parch); border: 2px solid var(--ink); box-shadow: inset 0 2px 0 #fff8dc, inset 0 -3px 0 #c9a86a; text-align: left; }
 .srows { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; overflow: auto; min-height: 0; }

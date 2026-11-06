@@ -246,7 +246,8 @@
     //   2026-11-06 성장 4단계: × 기술 Lv 배율(src.mul, 기술만) × 늘 켜진 기술(검 숙련 = 물리 / 원소 증폭 = 마법, 지금 입은 직업의 기술 책)
     var bk = Growth.book(G.classKey), pas = bk ? bk.bonus(W.magic ? 'magic' : 'phys') : 0;
     if (!W.magic && !target.isProp) pas += Skills.gritBonus(p);   // 늘 켜진 기술 「투지」(2차, 2026-11-06): 체력이 적을수록 물리 공격 +
-    var dmg = Math.round(rand(W.damage[0], W.damage[1]) * st.dmg * (target.isProp ? 1 : Growth.atkMul(!!W.magic) * (1 + pas) * ((src && src.mul) || 1)));
+    //   2026-11-06 첫 무기 몽둥이: 견습 맨손 타 × (1 + config club.atk) (주웠을 때만, clubMul)
+    var dmg = Math.round(rand(W.damage[0], W.damage[1]) * st.dmg * (target.isProp ? 1 : Growth.atkMul(!!W.magic) * (1 + pas) * ((src && src.mul) || 1) * clubMul(src ? src.wk : p.weaponKey)));
     // 치명타(민첩, 2026-11-06): 적·허수아비를 때릴 때 확률 Growth.critChance() → 데미지 x critMul + 큰 주황 숫자(agicrit). GAME.test.crit 로 시험 고정
     var crit = !target.isProp && (G.forceCrit != null ? G.forceCrit : Math.random() < Growth.critChance());
     if (crit) dmg = Math.round(dmg * CFG.growth.stats.critMul);
@@ -1372,6 +1373,7 @@
     hitstop: function (ms) { G.hitstop = Math.max(G.hitstop, ms); },
     feed: feed,     // 빵·고기 = 포만감 +%(2026-11-06 밤)
     drink: drink,   // 물약 = 체력·마나 바로(2026-11-06 밤)
+    club: gotClub,  // 몽둥이 주움(2026-11-06)
     // 물약이 머무는 곳: 걷는 길 + 지금 화면(폰 버튼 밑 빼고)
     view: function () { return { laneTop: world.laneTop, laneBottom: world.laneBottom, x0: G.camX + 14, x1: G.camX + LW - 14 - controlPad }; }
   });
@@ -1405,6 +1407,22 @@
     if (!PO || e.T.boss || e.noDrop || e.mid) return;   // 중간보스는 midDown 이 꼭 하나. 난이도(2026-11-06): 확률 x modes.drop
     if (Math.random() < (e.T.hp >= PO.toughHp ? PO.tough : PO.mob) * (Growth.M().drop || 1)) Props.dropPotion(e.x, e.y, G.player.x > e.x ? -1 : 1, null);
   }
+  // ---------- 첫 무기 몽둥이 (2026-11-06, 형님 승인, 수치 = config club) ----------
+  // 나오는 때: 첫 판 · 견습(전직 전, 견습 옷) · 아직 없음 · 바닥에 없음 → 잡몹이 쓰러질 때 chance, 그 판 sureAt 번째 잡몹이면 꼭(G.clubN = 센 수)
+  function clubWanted() { return !!CFG.club && MODE === 'stage' && G.stageNo === 1 && !Growth.cls && !Growth.club && G.classKey === 'novice' && !Props.clubs.length; }
+  function clubDrop(e) {
+    if (e.T.boss || e.noDrop || e.mid || !clubWanted()) return;
+    G.clubN = (G.clubN || 0) + 1;
+    if (G.clubN >= CFG.club.sureAt || Math.random() < CFG.club.chance) Props.dropClub(e.x, e.y, G.player.x > e.x ? -1 : 1);
+  }
+  // 주움(props.js 가 밟으면 부름): 저장 + 「몽둥이 획득!」 + 소리(빛·불똥은 props.js)
+  function gotClub() {
+    if (!Growth.getClub()) return;
+    banner('몽둥이 획득!', 'small');
+    snd('unlock');
+  }
+  // 맨손(fist) 타 배율: 몽둥이가 있으면 1 + atk
+  function clubMul(wk) { return wk === 'fist' && Growth.club && CFG.club ? 1 + CFG.club.atk : 1; }
   // 보스는 꼭 하나(config potions.bossAt: 'rage' = 화날 때 · 'death' = 쓰러질 때). 플레이어 쪽으로 튐
   function bossPotion(B, when) {
     var PO = CFG.potions;
@@ -1767,6 +1785,7 @@
       if (e.mid) midDown(e);   // 중간보스(2026-11-06): 쓰러짐 연출 + 물약 꼭 하나
       else if (!e.T.boss) snd('pop');   // 쓰러진 잡몹 「펑」(보스는 onBossDown 의 bossDown)
       mobPotion(e);   // 물약(2026-11-06 밤)
+      clubDrop(e);    // 첫 무기 몽둥이(2026-11-06, 1판 견습만)
       var n = Growth.enemyXp(e.type, e.T, idx);
       if (e.xpMul && n > 0) n = Math.max(1, Math.round(n * e.xpMul));   // 몹 떼(사냥 손맛): 한 마리 경험치 xpMul 배
       var MX = Growth.M().xp;
@@ -2334,6 +2353,7 @@
     });
     setIf('pxp', Growth.isMax() ? 1 : Growth.xp / Growth.need(), function (v) { hud.pXp.style.width = (v * 100) + '%'; });
     setIf('face', p.char && p.char.anims.idle && p.char.anims.idle[0], drawFace);   // 얼굴 액자: 옷·성별이 바뀔 때만 다시 그림
+    setIf('club', !!(Growth.club && G.classKey === 'novice'), drawClubIcon);   // 몽둥이(2026-11-06): 얼굴 액자 오른쪽 아래 작은 그림
     setIf('pts', Growth.pts, statBadges);   // 안 쓴 능력치 점수 표시
     var bk = Growth.book(G.classKey);
     setIf('skpts', G.classKey + ':' + (bk ? bk.pts() : -1), skillBadges);   // 안 쓴 기술 점수 표시(견습 = 기술 버튼 숨김)
@@ -2367,6 +2387,15 @@
     g.translate(Math.round(W * 0.47), Math.round(H * 0.08 + hf * sc)); g.scale(sc, sc);
     Assets.blit(g, im, pv.x, pv.y);
     g.restore();
+  }
+  // 몽둥이 작은 그림(2026-11-06): props.js 의 바닥 그림을 그대로 작은 캔버스에
+  function drawClubIcon(on) {
+    var c = document.getElementById('pClub'); if (!c) return;
+    c.style.display = on ? '' : 'none';
+    if (!on || c._done) return;
+    var im = Props.clubImg(), g = c.getContext('2d');
+    g.imageSmoothingEnabled = false; g.clearRect(0, 0, c.width, c.height); g.drawImage(im, 0, 0);
+    c._done = true;
   }
   var bannerTimer = 0;
   function banner(text, cls) {
@@ -2444,6 +2473,7 @@
     G.full = CFG.fullness ? CFG.fullness.start : 0; G.fullAcc = 0; G.potGot = 0;   // 포만감·물약(2026-11-06 밤): 판마다 처음부터
     G.rage = 0; G.combatT = 0; G.awk = null; G.awkCount = 0; awkPush.length = 0;   // 분노·각성(2026-11-06 밤): 판 시작 = 0
     G.mh = newMh(); G.mk = { n: 0, t: 0 }; G.callout = null; G.kills = 0; G.bestKill = 0; orbs.length = 0;   // 사냥 손맛
+    G.clubN = 0;   // 몽둥이(2026-11-06): 이 판에서 센 잡몹 수
     FX.setHunt && FX.setHunt(huntPart('dmgNum'));
     G.hits = 0; G.totalDmg = 0; G.maxCombo = 0; G.comboT = 0; G.cstats = { launch: 0, air: 0, otg: 0, cancel: 0, maxAirMs: 0, maxAirHits: 0 }; G.comboTagT = 0; G.hitstop = 0; G.slowT = 0; comboEl.hidden = true;
     var god = G.player && G.player.god;
@@ -2646,6 +2676,8 @@
     var rows = document.getElementById('statRows'), focusK = document.activeElement && document.activeElement.dataset && document.activeElement.dataset.k;
     document.getElementById('statPts').textContent = Growth.pts;
     document.getElementById('statSum').textContent = 'Lv ' + Growth.lv + ' · ' + ((CFG.classes[G.classKey] || {}).label || '');
+    var wpn = document.getElementById('statWpn');   // 첫 무기 몽둥이(2026-11-06): 견습 옷 + 주웠을 때만
+    if (wpn) { var cOn = !!(Growth.club && G.classKey === 'novice' && CFG.club); wpn.hidden = !cOn; if (cOn) wpn.textContent = '무기: 몽둥이 (공격 +' + Math.round(CFG.club.atk * 100) + '%)'; }
     if (!rows.children.length) Growth.keys.forEach(function (k) {
       var I = STAT_INFO[k], r = document.createElement('div');
       r.className = 'srow';
@@ -3058,6 +3090,9 @@
     xp: function (n) { var up = Growth.gain(n); if (up > 0) onLevelUp(up); return { lv: Growth.lv, xp: Growth.xp, need: Growth.need() }; },
     // 치명타 고정(true = 늘 / false = 안 남 / null = 확률대로): GAME.test.crit(true)
     crit: function (v) { G.forceCrit = v == null ? null : !!v; },
+    // 몽둥이 시험(2026-11-06): club() = 지금 상태, club(true/false) = 이번 창에서만 있음/없음(저장 안 함), clubDrop(dx) = 플레이어 앞에 떨어뜨림
+    club: function (on) { if (on != null) Growth.club = !!on; return { club: Growth.club, n: G.clubN || 0, ground: Props.clubs.length, wanted: clubWanted() }; },
+    clubDrop: function (dx) { var p = G.player; return Props.dropClub(p.x + (dx || 50), p.y, 1); },
     // 능력치 바로 바꾸기(시험): GAME.test.stats({ str: 10 }) → 남은 점수에서 뺌(모자라면 있는 만큼)
     stats: function (o) { Object.keys(o || {}).forEach(function (k) { Growth.add(k, o[k]); }); refreshGrowth(); return { stats: Growth.stats, pts: Growth.pts }; },
     bot: function (on) { G.bot = on !== false; if (!G.bot) Input.setOverride(null); },

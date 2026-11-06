@@ -54,7 +54,7 @@
          오른쪽 나무판에 체력(빨강)·마나(파랑)·분노(주황) 막대, 그 오른쪽 능력치·기술 버튼. 폰 세로 = 게임 화면 밑 빈 곳 -->
     <div class="pstat">
       <!-- 레벨 + 얇은 경험치 띠 (성장 2026-11-05, main.js updateHud: pLv 의 부모(.plv)에 max/up 표시) -->
-      <div class="plv"><div class="pface"><canvas id="pFace" width="80" height="80"></canvas></div><span class="lv" id="pLv">Lv 1</span><div class="xbar"><i id="pXp"></i></div></div>
+      <div class="plv"><div class="pface"><canvas id="pFace" width="80" height="80"></canvas></div><span class="lv" id="pLv">Lv 1</span><canvas class="pclub" id="pClub" width="36" height="46" title="몽둥이" style="display:none"></canvas><div class="xbar"><i id="pXp"></i></div></div>
       <div class="pbars">
         <div class="php"><i class="bi"></i><span class="lbl">HP</span><div class="bar"><em id="pHpLag"></em><i id="pHp"></i></div><span class="num" id="pHpNum">150</span>
           <!-- 포만감(2026-11-06 밤): 막대 없이 글자만(체력 숫자 오른쪽). 빵·고기로 참, 있는 동안 체력이 천천히 참(main.js fullStep) -->
@@ -108,6 +108,7 @@
     <div class="box">
       <h2>능력치</h2>
       <p class="spts">남은 점수 <b id="statPts">0</b><span id="statSum"></span></p>
+      <p class="swpn" id="statWpn" hidden></p>
       <div class="srows" id="statRows"></div>
       <div class="rbtns"><button type="button" id="btnStatAuto">자동 배분</button><button type="button" class="sub" id="btnStatReset">초기화</button><button type="button" class="sub" id="btnStatClose">닫기</button></div>
     </div>

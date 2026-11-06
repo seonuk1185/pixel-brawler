@@ -6,6 +6,7 @@
 //   저장 = 이 브라우저 localStorage 'pixelBrawler.save' = { v: 2, slot: 1, slots: { 1: { lv, xp, class, stats, pts, skills } } }
 //     skills = 기술 책 { clsLv, lv: { id: 올린 수 }, bar: [칸에 끼운 id] } (직업이 있을 때만)
 //     class = 전직한 직업('knight' / 'mage', 2026-11-06). 없으면 견습(맨손). 한 번 정하면 setClass 가 안 바꿈(새 저장칸에서 다른 직업)
+//     club = 첫 무기 몽둥이를 주웠으면 true(2026-11-06, config club). 없으면(예전 저장) 안 주운 것 → 견습이면 1판에서 다시 나옴
 //     stats = 올린 능력치, pts = 안 쓴 점수. 예전 저장(능력치 없음, v1)은 지금 레벨만큼 점수를 한꺼번에 줌(3 × (Lv-1), 안 쓴 채로)
 //     지금은 1번 칸만 씀(저장칸 고르기 화면은 나중). 깬 판 목록은 예전엔 따로(pixelBrawler.clearedIds) → 2026-11-06 부터 저장칸의 modes(아래)
 //     난이도(2026-11-06, config modes): 저장칸의 modes = { cur: 지금 난이도('easy'·'normal'·'hard'), cleared: { easy: [깬 판 id], normal: [...], hard: [...] } }
@@ -157,6 +158,9 @@
     stats: zero(),      // 올린 능력치
     pts: 0,             // 안 쓴 점수
     noSave: false,      // ?lv=N 시험 중이면 true(저장 안 함)
+    club: !!cur.club,   // 첫 무기 몽둥이를 주웠나(2026-11-06, config club). 견습 맨손 공격 +
+    // 몽둥이 주움 → 저장. 이미 있으면 false
+    getClub: function () { if (G.club) return false; G.club = true; G.save(); return true; },
     keys: KEYS,
     need: function (lv) { return need(lv == null ? G.lv : lv); },
     isMax: function () { return G.lv >= GR.maxLv; },
@@ -262,7 +266,7 @@
     },
     save: function () {
       if (G.noSave) return;
-      data.slots[data.slot] = { lv: G.lv, xp: G.xp, 'class': G.cls, stats: G.stats, pts: G.pts, skills: G.cls ? G.sk : undefined, modes: MSsaved };
+      data.slots[data.slot] = { lv: G.lv, xp: G.xp, 'class': G.cls, stats: G.stats, pts: G.pts, skills: G.cls ? G.sk : undefined, club: G.club || undefined, modes: MSsaved };
       try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch (e) {}
     },
     // ---------- 난이도 (2026-11-06, config modes) ----------
