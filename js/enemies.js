@@ -113,6 +113,7 @@
   //   보스·큰 적(canLaunch 가 false)은 안 뜸 → 잡몹은 휘청(맞은 그림에 잠깐 멈춤), 보스는 보통 맞음
   Enemy.prototype.canLaunch = function () {
     var A = this.cfg.ai.air, T = this.T;
+    if (T.midBoss) return !!A && !T.noLaunch && this.hasAnim('knockdown');   // 중간보스: 체력이 커도 뜸(원래 보스였던 적은 noLaunch)
     return !!A && !T.boss && !T.noLaunch && T.hp < A.heavyHp && this.hasAnim('knockdown');
   };
   // 위로 쳐 올리기: h = 이번에 올라갈 높이(도트, 지금 위치에서). 이미 더 빠르게 오르는 중이면 그대로

@@ -837,7 +837,7 @@
 
   // ---------- 중간보스 (2026-11-06, config midBoss) ----------
   // 그 판 잡몹 T 를 복사해서 키움: 그림 배율(drawScale) + 몸·공격 판정·그림자(radius)·키·거리를 같은 배율로, 체력 = 그 판 보스 기본 체력 x hpBoss,
-  //   근접 공격은 무겁게(heavy) + 치켜든 그림(예고)을 windMs 더 길게 + 바닥 빨간 예고, 버티기(armor·staggerCdMs·poise), 띄우기 안 됨(noLaunch)
+  //   근접 공격은 무겁게(heavy) + 치켜든 그림(예고)을 windMs 더 길게 + 바닥 빨간 예고, 버티기(armor·staggerCdMs·poise), 띄우기는 됨(원래 보스였던 적만 noLaunch)
   //   그림 = 그 판 변종 색 위에 더 어둡게(midBoss.tint) 구운 것 + 빛나는 테두리(rim). 판마다 한 번 만들어 둠
   var midCache = {};
   function midOf(st) {
@@ -884,7 +884,7 @@
       T.anims[a.anim] = Object.assign({}, A, { playback: pb });
     });
     // 버티기 · 이름 · 보상
-    T.midBoss = true; T.label = L[1]; T.noLaunch = true;
+    T.midBoss = true; T.label = L[1]; T.noLaunch = !!(B.boss || B.noLaunch);   // 띄우기(2026-11-06 형님): 잡몹 대장은 뜸, 원래 보스였던 적이 중간보스면 안 뜸
     T.superArmor = !!MB.armor; T.staggerCdMs = MB.staggerCdMs || 0;
     T.poise = { downCdMs: MB.downCdMs || 0 };
     T.knockResist = (B.knockResist != null ? B.knockResist : 1) * (MB.knockResist != null ? MB.knockResist : 1);
