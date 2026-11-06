@@ -218,11 +218,13 @@
   var MOTIONS = {
     knight_male: {
       motion_dash: { count: 6, ms: [140, 70, 70, 90, 120, 160], active: [3], dashFrames: [1, 2] },        // 0 웅크림 · 1-2 돌진 · 3 가로베기 · 4-5 복귀
-      motion_spin: { count: 7, ms: [120, 60, 60, 60, 60, 110, 160], active: [1, 3, 5] }                    // 0 장전 · 1-4 한 바퀴 · 5 마무리 베기 · 6 가드
+      motion_spin: { count: 7, ms: [120, 60, 60, 60, 60, 110, 160], active: [1, 3, 5] },                   // 0 장전 · 1-4 한 바퀴 · 5 마무리 베기 · 6 가드
+      motion_upper: { count: 4, ms: [110, 45, 60, 150], active: [1, 2] }                                   // 0 낮게 웅크림 · 1 칼 낮게 앞 · 2 45도 올려베기 · 3 복귀
     },
     knight_female: {
       motion_dash: { count: 6, ms: [90, 60, 80, 70, 140, 120], active: [2], dashFrames: [1] },            // 1 수평 돌진 · 2 올려베기
-      motion_spin: { count: 7, ms: [80, 45, 45, 45, 45, 90, 150], active: [1, 3, 5] }                     // 발레식 회전 · 5 런지 착지 베기
+      motion_spin: { count: 7, ms: [80, 45, 45, 45, 45, 90, 150], active: [1, 3, 5] },                    // 발레식 회전 · 5 런지 착지 베기
+      motion_upper: { count: 4, ms: [90, 40, 55, 130], active: [1, 2] }                                    // 남자와 같은 4 자세, 더 빠르게
     },
     mage_male: {
       motion_cast_forward: { count: 6, ms: [110, 120, 140, 80, 120, 150], active: [3] },                 // 3 앞으로 찌르며 발사
@@ -448,25 +450,34 @@
           placeholder: { anims: ['jump', 'jump', 'jump', 'attack3', 'attack3', 'attack3'], f: [0, 1, 2, 0, 1, 4], d: [80, 120, 100, 80, 200, 160] }
         }
       },
-      // 올려베기(2026-11-06 밤 콤보): 웅크렸다가(0장) 칼을 아래에서 위로 베어 올리며 살짝 뜀(1~2장 판정) → 3장 내려섬.
-      //   동작 그림 없음 → 있는 그림을 이어 붙임(남: 3타 웅크림 → 2타 팔 치켜듦 / 여: 점프 웅크림 → 돌진 올려베기 2장 → 3타)
-      //   hop = 살짝 뛰기(leap 와 같음, ms). 끝무렵(3장)에 다른 기술로 이어짐(캔슬)
+      // 올려베기(2026-11-06 밤 콤보): 웅크렸다가(0장) 칼을 아래에서 위로 베어 올려(1~3장 판정 = 적이 뜸) → 4장 내려섬.
+      //   2026-11-06 새 동작 그림 motion_upper(4장): 0 낮게 웅크림(칼 뒤 아래) · 1 칼 낮게 앞 · 2 45도로 올려벤 자세 · 3 복귀.
+      //   형님: 머리 위로 넘기는 장은 뺌(45도까지만) · 제자리(뛰지 않음, 적만 띄움). motionSeq 로 2장을 한 번 더 보여 줘 잠깐 멈춤
+      //   베기 효과는 3장 칼끝을 따라 어깨~머리 높이에서 끝남(머리 위로는 안 넘김). 끝무렵에 다른 기술로 이어짐(캔슬)
       upper: {
-        name: '올려베기', icon: '올', mp: 9, cooldownMs: 6000, damageStyle: 'skill_knight', launcher: true,
+        name: '올려베기', icon: '올', mp: 9, cooldownMs: 6000, damageStyle: 'skill_knight', launcher: true, motion: 'motion_upper',
         desc: '칼을 아래에서 위로 베어 올려 적을 공중에 띄워요. 뜬 적은 평타·기술이 다 맞아요(보스·큰 적은 휘청만)',
         lv5: { area: 1.25, say: '베는 범위 +25%' },
         darken: { ms: 360, alpha: 0.3 },
         iframes: [0, 300],
-        leap: { at: [90, 330], h: 14, fwd: 10 },
-        hits: [ merge(UPPER_HIT, { frames: [1, 2] }) ],
+        motionSeq: [0, 1, 2, 2, 3],
+        motionMs: [110, 45, 60, 120, 150],
+        hits: [ merge(UPPER_HIT, { frames: [1, 3] }) ],
         fx: [
           { frame: 0, type: 'dust' },
-          { frame: 1, type: 'slash', x: 30, y: -62, rot: -78, sx: 1.25, sy: 1.6, tint: '#a8d4ff', ms: 260 },
-          { frame: 1, type: 'sparkup', x: 34, y: -30, color: '#cfe8ff' }
+          { frame: 1, type: 'slash', x: 58, y: -52, rot: 48, sx: 1.1, sy: 1.15, tint: '#a8d4ff', ms: 260 },
+          { frame: 2, type: 'sparkup', x: 44, y: -40, color: '#cfe8ff' }
         ],
-        placeholder: { anims: ['attack3', 'attack2', 'attack2', 'attack2'], f: [0, 3, 3, 4], d: [90, 70, 150, 170] },
+        placeholder: { anims: ['attack3', 'attack2', 'attack2', 'attack2', 'attack2'], f: [0, 3, 3, 3, 4], d: [110, 45, 60, 120, 150] },
+        // 여: 같은 4 자세를 더 빠르게(가볍고 날렵하게)
         female: {
-          placeholder: { anims: ['jump', 'motion_dash', 'motion_dash', 'attack3'], f: [0, 2, 3, 5], d: [90, 70, 150, 170] }
+          motionMs: [90, 40, 55, 110, 130],
+          fx: [
+            { frame: 0, type: 'dust' },
+            { frame: 1, type: 'slash', x: 60, y: -52, rot: 46, sx: 1.05, sy: 1.1, tint: '#a8d4ff', ms: 240 },
+            { frame: 2, type: 'sparkup', x: 52, y: -40, color: '#cfe8ff' }
+          ],
+          placeholder: { anims: ['jump', 'motion_dash', 'motion_dash', 'motion_dash', 'attack3'], f: [0, 2, 3, 3, 5], d: [90, 40, 55, 110, 130] }
         }
       },
       // 칼날 폭풍(2026-11-06, Lv19 사냥 기술): 회전베기 동작 그림(motion_spin)의 한 바퀴(1~4장)를 세 번 되풀이 → 13장 마무리 베기 → 14장 가드.

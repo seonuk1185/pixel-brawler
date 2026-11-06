@@ -1275,6 +1275,14 @@
   "assets/enemies/demonking/death_03.png",
   "assets/enemies/demonking/death_04.png",
   "assets/enemies/demonking/death_05.png",
-  "assets/enemies/demonking/death_06.png"
+  "assets/enemies/demonking/death_06.png",
+  "assets/chars/stage1/knight_male/motion_upper_01.png",
+  "assets/chars/stage1/knight_male/motion_upper_02.png",
+  "assets/chars/stage1/knight_male/motion_upper_03.png",
+  "assets/chars/stage1/knight_male/motion_upper_04.png",
+  "assets/chars/stage1/knight_female/motion_upper_01.png",
+  "assets/chars/stage1/knight_female/motion_upper_02.png",
+  "assets/chars/stage1/knight_female/motion_upper_03.png",
+  "assets/chars/stage1/knight_female/motion_upper_04.png"
  ]
 }

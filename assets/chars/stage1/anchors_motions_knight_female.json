@@ -148,6 +148,54 @@
    "check": {
     "manual": true
    }
+  },
+  "motion_upper_01": {
+   "hand": [
+    67,
+    91
+   ],
+   "angle": 160,
+   "layer": "back",
+   "check": {
+    "manual": true,
+    "src": "motion_upper_01"
+   }
+  },
+  "motion_upper_02": {
+   "hand": [
+    124,
+    99
+   ],
+   "angle": 20,
+   "layer": "back",
+   "check": {
+    "manual": true,
+    "src": "motion_upper_02"
+   }
+  },
+  "motion_upper_03": {
+   "hand": [
+    134,
+    26
+   ],
+   "angle": -50,
+   "layer": "back",
+   "check": {
+    "manual": true,
+    "src": "motion_upper_03"
+   }
+  },
+  "motion_upper_04": {
+   "hand": [
+    115,
+    69
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "manual": true,
+    "src": "motion_upper_04"
+   }
   }
  }
 }
