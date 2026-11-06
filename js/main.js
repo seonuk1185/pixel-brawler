@@ -191,24 +191,39 @@
   // ---------- 판 배경: 3장 겹쳐 흐르기(먼 산 · 숲/폐허/마을 · 흙길) ----------
   //   던전 싸움터(2026-11-07, bg.arena): mid 는 싸움터 가운데에 한 장(카메라와 같이 움직임), far · ground 는 이어 붙임
   //   천장(bg.ceil, 있는 배경 전부): 화면이 배경보다 높으면 배경 바로 위에 천장 타일(far 와 같은 흐름), 그보다 위는 ceil.voidColor
+  //   키 큰 화면(2026-11-07, 정사각형에 가까운 가로 화면 = 폴드 펼침 626x564 도트, config view.tallBg): 위 55% 가 하늘 한 색으로 비어 보임 →
+  //     먼 배경(far · mid · 천장)만 바닥 선(floorY)을 기준으로 z 배 키워서 화면 높이를 채움(z = 최대 maxZoom). 바닥 · 걷는 길 · 캐릭터는 그대로.
+  //     키워도 모자라면 그 위는 하늘색(천장 배경은 천장 타일 + 깜깜한 색), 그림 맨 위 blendPx 는 하늘색으로 부드럽게 이어짐. 보통 폰 · PC(가로/세로 >= squareAspect)는 안 바뀜
+  function bgZoom(off, B) {
+    var TB = CFG.view.tallBg;
+    if (!TB || !(off > 0) || LW / LH >= (CFG.view.squareAspect || 1.5)) return 1;
+    return Math.max(1, Math.min(TB.maxZoom || 2, (off + B.floorY) / B.floorY));
+  }
   function drawStageBg(camX) {
     var B = CFG.bg, I = G.assets.bg, off = world.bgOff, H = B.height;
+    var z = bgZoom(off, B), fy = off + B.floorY, top = fy - B.floorY * z;   // top = 키운 먼 배경의 맨 위 줄(z = 1 이면 off)
     // 화면이 배경보다 높으면: 위는 하늘 맨 윗줄(천장이 있으면 천장 타일 + 깜깜한 색), 아래는 흙길 맨 아랫줄을 늘려 채움
-    if (off > 0) {
+    if (top > 0) {
       if (I.ceil && B.ceil) {
-        var cH = I.ceil.height * (I.ceil._k || 1), cY = off - cH;
+        var cH = I.ceil.height * (I.ceil._k || 1) * z, cY = top - cH;
         if (cY > 0) { ctx.fillStyle = B.ceil.voidColor || '#000'; ctx.fillRect(0, 0, LW, cY + 1); }
-        tileLayer(I.ceil, camX * (B.far ? B.far.parallax : 1), cY);
-      } else { ctx.fillStyle = skyColor(); ctx.fillRect(0, 0, LW, off); }
+        tileLayer(I.ceil, camX * (B.far ? B.far.parallax : 1), cY, z);
+      } else { ctx.fillStyle = skyColor(); ctx.fillRect(0, 0, LW, top + 1); }
     }
-    if (I.far) tileLayer(I.far, camX * B.far.parallax, off);
+    if (I.far) tileLayer(I.far, camX * B.far.parallax, top, z);
+    if (z > 1 && top > 0 && !(I.ceil && B.ceil)) {   // 키운 그림 맨 위 → 하늘색으로 부드럽게
+      var bp = (CFG.view.tallBg.blendPx || 24), sc = skyColor(), nb = 8;   // 하늘색을 띠 nb 개로 점점 옅게(같은 색이라 검게 안 비침)
+      ctx.save(); ctx.fillStyle = sc; ctx.fillRect(0, top - 1, LW, 2);
+      for (var bi = 0; bi < nb; bi++) { ctx.globalAlpha = 1 - (bi + 0.5) / nb; ctx.fillRect(0, top + bi * bp / nb, LW, bp / nb + 0.5); }
+      ctx.restore();
+    }
     if (I.mid && B.arena) {
-      var amw = I.mid.width * (I.mid._k || 1);
-      ctx.drawImage(I.mid, snap((world.width - amw) / 2 - camX), off, amw, I.mid.height * (I.mid._k || 1));
+      var amw = I.mid.width * (I.mid._k || 1) * z;
+      ctx.drawImage(I.mid, snap((world.width - amw) / 2 - camX), top, amw, I.mid.height * (I.mid._k || 1) * z);
     } else if (I.mid) {
-      var camMax = Math.max(1, world.width - LW), mk = I.mid._k || 1;
+      var camMax = Math.max(1, world.width - LW), mk = (I.mid._k || 1) * z;
       var par = Math.min(B.mid.parallax, (I.mid.width * mk - LW) / camMax);   // 판 끝에서 마을 그림이 딱 끝나게
-      ctx.drawImage(I.mid, -snap(camX * par), off, I.mid.width * mk, I.mid.height * mk);
+      ctx.drawImage(I.mid, -snap(camX * par), top, I.mid.width * mk, I.mid.height * mk);
     }
     if (I.ground) {
       tileLayer(I.ground, camX * B.ground.parallax, off);
@@ -229,8 +244,8 @@
     } catch (e) {}
     return sky;
   }
-  function tileLayer(img, sx, y) {
-    var k = img._k || 1, w = img.width * k, h = img.height * k, x = -(snap(sx) % w);
+  function tileLayer(img, sx, y, z) {
+    var k = (img._k || 1) * (z || 1), w = img.width * k, h = img.height * k, x = -(snap(sx) % w);   // z = 키 큰 화면에서 먼 배경을 키운 배율(bgZoom)
     if (x > 0) x -= w;
     // 이음매에 머리카락 같은 틈이 안 생기게 한 칸씩 1/RS 겹쳐 그림
     for (; x < LW; x += w) ctx.drawImage(img, x, y, w + (RS > 1 ? 1 / RS : 0), h);
