@@ -1307,6 +1307,16 @@
   "assets/chars/stage1/knight_female/motion_upper_01.png",
   "assets/chars/stage1/knight_female/motion_upper_02.png",
   "assets/chars/stage1/knight_female/motion_upper_03.png",
-  "assets/chars/stage1/knight_female/motion_upper_04.png"
+  "assets/chars/stage1/knight_female/motion_upper_04.png",
+  "assets/weapons/sword_common.png",
+  "assets/weapons/sword_rare.png",
+  "assets/weapons/sword_epic.png",
+  "assets/weapons/sword_legendary.png",
+  "assets/weapons/staff_common.png",
+  "assets/weapons/staff_rare.png",
+  "assets/weapons/staff_epic.png",
+  "assets/weapons/staff_legendary.png",
+  "assets/weapons/sword_mythic.png",
+  "assets/weapons/staff_mythic.png"
  ]
 }
