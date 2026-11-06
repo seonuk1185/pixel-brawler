@@ -102,7 +102,7 @@
   // 지금 판(CFG.stage)의 길이·배경 높이로 걷는 길을 정함
   function applyStageWorld() {
     var B = CFG.bg;
-    world.width = CFG.stage.width;
+    world.width = CFG.stage.dg ? Math.max(LW, CFG.stage.dg.arenaMin || 0) : CFG.stage.width;   // 던전(2026-11-07) = 한 화면 싸움터: 화면 폭과 arenaMin 중 큰 쪽
     world.bgOff = LH - B.height;   // 화면이 240보다 높으면 배경을 바닥에 붙이고 위는 하늘로 채움. 낮으면(PC 아래 막대, 2026-11-07) 0 밑 = 하늘 위쪽이 잘림
     world.laneTop = world.bgOff + B.laneTop;
     world.laneBottom = Math.min(LH - 8, world.bgOff + B.laneBottom);
@@ -180,12 +180,23 @@
   }
 
   // ---------- 판 배경: 3장 겹쳐 흐르기(먼 산 · 숲/폐허/마을 · 흙길) ----------
+  //   던전 싸움터(2026-11-07, bg.arena): mid 는 싸움터 가운데에 한 장(카메라와 같이 움직임), far · ground 는 이어 붙임
+  //   천장(bg.ceil, 있는 배경 전부): 화면이 배경보다 높으면 배경 바로 위에 천장 타일(far 와 같은 흐름), 그보다 위는 ceil.voidColor
   function drawStageBg(camX) {
     var B = CFG.bg, I = G.assets.bg, off = world.bgOff, H = B.height;
-    // 화면이 배경보다 높으면: 위는 하늘 맨 윗줄, 아래는 흙길 맨 아랫줄을 늘려 채움
-    if (off > 0) { ctx.fillStyle = skyColor(); ctx.fillRect(0, 0, LW, off); }
+    // 화면이 배경보다 높으면: 위는 하늘 맨 윗줄(천장이 있으면 천장 타일 + 깜깜한 색), 아래는 흙길 맨 아랫줄을 늘려 채움
+    if (off > 0) {
+      if (I.ceil && B.ceil) {
+        var cH = I.ceil.height * (I.ceil._k || 1), cY = off - cH;
+        if (cY > 0) { ctx.fillStyle = B.ceil.voidColor || '#000'; ctx.fillRect(0, 0, LW, cY + 1); }
+        tileLayer(I.ceil, camX * (B.far ? B.far.parallax : 1), cY);
+      } else { ctx.fillStyle = skyColor(); ctx.fillRect(0, 0, LW, off); }
+    }
     if (I.far) tileLayer(I.far, camX * B.far.parallax, off);
-    if (I.mid) {
+    if (I.mid && B.arena) {
+      var amw = I.mid.width * (I.mid._k || 1);
+      ctx.drawImage(I.mid, snap((world.width - amw) / 2 - camX), off, amw, I.mid.height * (I.mid._k || 1));
+    } else if (I.mid) {
       var camMax = Math.max(1, world.width - LW), mk = I.mid._k || 1;
       var par = Math.min(B.mid.parallax, (I.mid.width * mk - LW) / camMax);   // 판 끝에서 마을 그림이 딱 끝나게
       ctx.drawImage(I.mid, -snap(camX * par), off, I.mid.width * mk, I.mid.height * mk);
@@ -767,13 +778,13 @@
 
   // ---------- 사냥 손맛 (2026-11-07, config hunt): 켠 판(hunt.stages)에서만 ----------
   // HUNT() = 지금 판에서 켜져 있으면 config hunt, 아니면 null. huntPart('horde') = 그 묶음(꺼져 있으면 null)
-  function HUNT() { var h = CFG.hunt; return h && h.on && MODE === 'stage' && CFG.stage && (h.stages || []).indexOf(CFG.stage.id) >= 0 ? h : null; }
+  function HUNT() { var h = CFG.hunt; return h && h.on && MODE === 'stage' && CFG.stage && (CFG.stage.dg || (h.stages || []).indexOf(CFG.stage.id) >= 0) ? h : null; }   // 던전 = 늘 켬
   function huntPart(k) { var h = HUNT(), q = h && h[k]; return q && q.on !== false ? q : null; }
   // 몹 떼로 늘릴 적 = 성장 경험치 종류 'mob'(고블린·늑대·박쥐 …). 보스·단단한 잡몹·정예는 그대로
   function hordeMob(type) { var T = CFG.enemies[type]; return !!T && !T.boss && Growth.kindOf(type, T) === 'mob'; }
   function hordeOf(w) { var HD = huntPart('horde'); return HD && !(w && w.horde === false) ? HD : null; }
   // 지금 판의 몹 떼 배수(웨이브 hordeMul > 판별 stageMul > mul). 1 = 늘리지 않음
-  function hordeMulOf(w, HD) { return (w && w.hordeMul) || (HD.stageMul && CFG.stage && HD.stageMul[CFG.stage.id]) || HD.mul || 1; }
+  function hordeMulOf(w, HD) { return (w && w.hordeMul) || (CFG.stage && CFG.stage.hordeMul) || (HD.stageMul && CFG.stage && HD.stageMul[CFG.stage.id]) || HD.mul || 1; }
   // 소수 배수: 잡몹마다 (배수 - 1) 을 쌓아서 정수가 넘을 때만 한 마리 더(1.5배 = 두 마리 중 하나만 더)
   function hordeExtra(acc, mul) { var a0 = acc.v; acc.v += mul - 1; return Math.floor(acc.v + 1e-6) - Math.floor(a0 + 1e-6); }
   // 마리 수 배수(2026-11-06 난이도): 잡몹 = 몹 떼 배수 x 난이도 count, 단단한 잡몹 = 난이도 countTough, 나머지(보스·정예) = 1
@@ -811,16 +822,18 @@
     snd('wave', w.boss ? { k: 0.75 } : null);
   }
 
+  // 판 순서(1부터, 난이도 배율 · 경험치 판 배율용): 던전 = config 의 tier(몇 번째 판만큼 센가)
+  function stIdx() { return CFG.stage && CFG.stage.dg ? CFG.stage.tier || 1 : G.stageNo || 1; }
   // 난이도 배율(2026-11-06, config modes): 숫자 하나 = 모든 판 같음, [1판, 10판] = 판 순서대로 고르게
   function modeVal(v) {
     if (!Array.isArray(v)) return v != null ? v : 1;
-    var n = STAGES.length, u = n > 1 ? clamp((G.stageNo || 1) - 1, 0, n - 1) / (n - 1) : 0;
+    var n = STAGES.length, u = n > 1 ? clamp(stIdx() - 1, 0, n - 1) / (n - 1) : 0;
     return v[0] + (v[v.length - 1] - v[0]) * u;
   }
   // 적 하나 만들기: 판 배율(hpMul·dmgMul) + 변종(색·배율) + 난이도 배율 적용. opt = { variant, mid(중간보스) }
   function makeEnemy(type, x, y, opt) {
     var S = G.stage, T = CFG.enemies[type], st = CFG.stage, M = Growth.M();
-    var MQ = opt && opt.mid ? midOf(st) : null;   // 중간보스: 잡몹 T 를 키운 MQ.T + 물들인 그림(MQ.vk)
+    var MQ = opt && opt.mid ? opt.mq || midOf(st) : null;   // 중간보스: 잡몹 T 를 키운 MQ.T + 물들인 그림(MQ.vk). opt.mq = 던전이 미리 만든 것
     var vk = MQ ? MQ.baseVk : (opt && opt.variant) || T.variant, V = vk && CFG.variants ? CFG.variants[vk] : null;   // T.variant = 늘 그 색으로 나오는 적(7단계 용암 골렘)
     var e = new Enemy(type, CFG, MQ ? tintArt(type, MQ.vk) : V ? tintArt(type, vk) : G.assets.enemies[type], x, y);
     if (MQ) { T = e.T = MQ.T; e.hp = e.maxHp = T.hp; e.label = T.label; e.hoverD = T.hover[0] + Math.random() * (T.hover[1] - T.hover[0]); e.mid = true; S.mid = e; }
@@ -846,7 +859,8 @@
   // off = 몹 떼로 늘어난 몹: 화면 밖으로 off x hunt.horde.xOff 도트 더 떨어져서 나옴(한 덩어리로 겹치지 않게)
   function spawnEnemy(type, side, opt, off) {
     var S = G.stage, T = CFG.enemies[type], HD = off ? hordeOf(null) || CFG.hunt.horde : null, ox = HD ? off * (HD.xOff || 0) * AS : 0;
-    var x = side === 'L' ? S.lockCam - T.radius - 30 - ox : S.lockCam + LW + T.radius + 30 + ox;
+    var xl = S.dg ? 0 : S.lockCam, xr = S.dg ? world.width : S.lockCam + LW;   // 던전 = 싸움터 양끝 밖에서
+    var x = side === 'L' ? xl - T.radius - 30 - ox : xr + T.radius + 30 + ox;
     var y = world.laneTop + Math.random() * (world.laneBottom - world.laneTop);
     var e = makeEnemy(type, x, y, opt);
     e.dir = side === 'L' ? 1 : -1;
@@ -857,14 +871,23 @@
   // 그 판 잡몹 T 를 복사해서 키움: 그림 배율(drawScale) + 몸·공격 판정·그림자(radius)·키·거리를 같은 배율로, 체력 = 그 판 보스 기본 체력 x hpBoss,
   //   근접 공격은 무겁게(heavy) + 치켜든 그림(예고)을 windMs 더 길게 + 바닥 빨간 예고, 버티기(armor·staggerCdMs·poise), 띄우기는 됨(원래 보스였던 적만 noLaunch)
   //   그림 = 그 판 변종 색 위에 더 어둡게(midBoss.tint) 구운 것 + 빛나는 테두리(rim). 판마다 한 번 만들어 둠
+  //   2026-11-07 던전: 만드는 부분(midMake)을 따로 → 던전 · 레이드도 같은 모양으로 씀(dgMid)
   var midCache = {};
   function midOf(st) {
     var MB = CFG.midBoss, L = MB && MB.on && MB.list && MB.list[st.id];
-    if (!L || !CFG.enemies[L[0]]) return null;
+    if (!L || !CFG.enemies[L[0]] || !st.waves) return null;
     if (midCache[st.id]) return midCache[st.id];
-    var B = CFG.enemies[L[0]], k = MB.scale || 1, wave = st.waves.length - (MB.wave || 2), boss = null;
+    var wave = st.waves.length - (MB.wave || 2), boss = null;
     if (wave < 0 || st.waves[wave].boss) return null;
     st.waves.forEach(function (w) { (w.spawn || []).forEach(function (q) { var E = CFG.enemies[q[0]]; if (E && E.boss) boss = E; }); });
+    var MQ = midMake(L, Math.round((boss ? boss.hp : CFG.enemies[L[0]].hp * 7) * (MB.hpBoss || 0.45)), 'mid' + st.id);
+    MQ.wave = wave;
+    return (midCache[st.id] = MQ);
+  }
+  // 중간보스 하나 만들기(판 · 던전 같이): L = [잡몹 종류, 이름, 색 변종 또는 null], hp = 체력(판 배율 · 난이도 곱하기 전),
+  //   vk = 물들인 그림 변종 이름(variants 에 넣어 둠, tintArt 가 한 번만 구움). 돌려주는 값 = { type, T, vk, baseVk }
+  function midMake(L, hp, vk) {
+    var MB = CFG.midBoss, B = CFG.enemies[L[0]], k = MB.scale || 1;
     var tmp = Object.assign({}, B); delete tmp.anims;
     var T = JSON.parse(JSON.stringify(tmp));
     T.anims = Object.assign({}, B.anims);
@@ -907,11 +930,11 @@
     T.poise = { downCdMs: MB.downCdMs || 0 };
     T.knockResist = (B.knockResist != null ? B.knockResist : 1) * (MB.knockResist != null ? MB.knockResist : 1);
     T.rim = MB.rim || null;
-    T.hp = Math.round((boss ? boss.hp : B.hp * 7) * (MB.hpBoss || 0.45));
+    T.hp = hp;
     // 그림 색: 그 판 변종(L[2]) 위에 tint 를 얹은 새 변종을 variants 에 넣어 둠(tintArt 가 한 번만 구움)
-    var V0 = L[2] && CFG.variants[L[2]], TN = MB.tint || {}, vk = 'mid' + st.id;
+    var V0 = L[2] && CFG.variants[L[2]], TN = MB.tint || {};
     CFG.variants[vk] = V0 ? Object.assign({}, V0, { sat: (V0.sat != null ? V0.sat : 1) * (TN.sat != null ? TN.sat : 1), bright: (V0.bright != null ? V0.bright : 1) * (TN.bright != null ? TN.bright : 1) }) : TN;
-    return (midCache[st.id] = { type: L[0], T: T, vk: vk, baseVk: L[2] || null, wave: wave });
+    return { type: L[0], T: T, vk: vk, baseVk: L[2] || null };
   }
   // 중간보스 등장: 이름 띠 + 으르렁(보스 소리를 높게) + 흔들림
   function midIntro(e) {
@@ -928,6 +951,194 @@
     var dir = G.player.x >= e.x ? 1 : -1;
     if (CFG.potions && CFG.midBoss.potion) Props.dropPotion(e.x + dir * (e.T.radius + 10 * AS), e.y, dir, CFG.midBoss.potion);
   }
+
+  // ================= 던전 (2026-11-07, 형님 승인, 수치 = config dungeons) =================
+  // 던전 = 판(CFG.stage) 자리에 들어가는 「한 화면 싸움터」. dgStage(이름)이 config 던전 값으로 판 모양 묶음을 만들어 줌:
+  //   { id: 'dg:mine', dgId, dg(config 값), name, bg, waves: [](웨이브 없음), props, hpMul, dmgMul, tier, magnet, hordeMul: 1 }
+  //   → 적 만들기 · 경험치 · 사냥 손맛 · 물약 · 강화석 · HUD · 결과 화면은 판과 같은 길, 「규칙」만 dgStep 이 맡음
+  //   G.stage.dg = 이번 도전 상태(dgStart). 폭 = 화면 폭과 arenaMin 중 큰 쪽(applyStageWorld), 카메라 = 싸움터 안에서 플레이어를 따라감(넓은 화면 = 고정)
+  //   새 던전(레이드 등): config dungeons 에 하나 더. 다른 규칙이면 rule 이름을 정하고 dgStep 의 「규칙」 부분에 갈래를 더함
+  //     쓸 수 있는 도구: dgSpawnMob(종류, 쪽) · dgSpawnMid(번호, 쪽) · dgQueue({ type | mid, side, at }) · dgFinish('clear' / 'over') · banner
+  function DG() { return CFG.stage && CFG.stage.dg ? CFG.stage.dg : null; }
+  var dgCache = {};
+  function dgStage(id) {
+    var D = CFG.dungeons && CFG.dungeons[id]; if (!D) return null;
+    return dgCache[id] || (dgCache[id] = { id: 'dg:' + id, dgId: id, dg: D, name: D.name, bg: D.bg, bgTop: D.bgTop, width: D.arenaMin || 560, waves: [], props: D.props || [],
+      hpMul: D.hpMul || 1, dmgMul: D.dmgMul || 1, tier: D.tier || 1, magnet: D.magnet || null, hordeMul: 1 });
+  }
+  // 열렸나: unlock 'class' = 전직한 저장칸(시험 기간 stagesAllOpen 이면 다 열림, 친구 시험 모드는 늘 조건대로)
+  function dgOpen(id) { var D = CFG.dungeons && CFG.dungeons[id]; if (!D) return false; if (CFG.stagesAllOpen) return true; return D.unlock === 'class' ? !!Growth.cls : true; }
+  // 지금 난이도의 던전 배율(config dungeons.○○.modes): 'stones' · 'spawn' · 'alive'
+  function dgModeK(k) { var D = DG(), M = D && D.modes && D.modes[Growth.mode()]; return M && M[k] != null ? M[k] : 1; }
+  function lerp(a, b, u) { return a + (b - a) * u; }
+  // 던전 중간보스 i 번(config mids.list): 판 중간보스와 같은 방식(midMake)으로 한 번만 만들어 둠
+  function dgMid(i) {
+    var D = DG(), L = D.mids.list[i % D.mids.list.length], key = 'dg:' + CFG.stage.dgId + ':' + (i % D.mids.list.length);
+    return midCache[key] || (midCache[key] = midMake(L, D.mids.hp || 450, 'middg_' + CFG.stage.dgId + '_' + (i % D.mids.list.length)));
+  }
+  function dgStart() {
+    var D = DG(), S = G.stage;
+    S.locked = true;   // 웨이브 판의 「화면 고정」과 같은 뜻(자동 조종이 오른쪽으로 걸어가지 않게)
+    S.dg = { rule: D.rule, t: 0, wait: D.startMs || 0, acc: 0, queue: [], ev: 0, side: Math.random() < 0.5 ? 0 : 1, midN: 0,
+             kills: 0, midKills: 0, end: null, endT: 0, bonus: 0, rec: null, best: null, maxAlive: 0 };
+    if (D.spawn) S.dg.acc = D.spawn.every[0] - (D.spawn.firstMs || 0);   // 첫 몹 = 시작하고 firstMs 뒤
+  }
+  // 몹 하나 뽑기: config mobs [종류, 무게, 이 초부터]
+  function dgPick(D, sec) {
+    var L = D.mobs.filter(function (m) { return sec >= (m[2] || 0); }), tot = 0, r;
+    L.forEach(function (m) { tot += m[1]; });
+    r = Math.random() * tot;
+    for (var i = 0; i < L.length; i++) { r -= L[i][1]; if (r < 0) return L[i][0]; }
+    return L[L.length - 1][0];
+  }
+  function dgSide(R) { R.side = 1 - R.side; return R.side ? 'R' : 'L'; }
+  function dgSpawnMob(type, side, off) { var e = spawnEnemy(type, side, null, off || 0); e.dgMob = true; return e; }
+  function dgSpawnMid(i, side) { var MQ = dgMid(i), e = spawnEnemy(MQ.type, side, { mid: true, mq: MQ }, 0); G.stage.mid = e; return e; }
+  function dgQueue(q) { G.stage.dg.queue.push(q); }
+  // 시간 사건(config events): 큰 글자 + 중간보스 + 몹 몰려옴
+  function dgEvent(ev, R, D) {
+    if (ev.banner) banner(ev.banner, 'boss');
+    snd('bossRoar', { k: 1.25, v: 0.85 });
+    FX.shake(J.shakePx * 1.8, 460);
+    for (var i = 0; i < (ev.mids || 0); i++) dgQueue({ mid: true, idx: R.midN++, side: i % 2 ? 'L' : 'R', at: R.t + 500 + i * (ev.gapMs || 500) });
+    if (ev.rush) for (var k = 0; k < ev.rush.n; k++) dgQueue({ type: dgPick(D, ev.at), side: k % 2 ? 'L' : 'R', at: R.t + 300 + k * ev.rush.ms / ev.rush.n, off: Math.floor(k / 2) % 3 });
+  }
+  function dgStep(dt) {
+    var S = G.stage, R = S.dg, D = DG(), p = G.player;
+    // 카메라: 싸움터 안에서 플레이어를 가운데에(싸움터 = 화면 폭이면 고정)
+    var camMax = Math.max(0, world.width - LW), target = clamp(p.x - (LW - controlPad) / 2, 0, camMax);
+    G.camX += (target - G.camX) * Math.min(1, dt / 120);
+    if (Math.abs(target - G.camX) < 0.5) G.camX = target;
+    G.camX = clamp(G.camX, 0, camMax);
+    // 중간보스 막대: 쓰러진 대장 막대가 사라지면 살아 있는 다른 대장으로
+    if (S.mid && !S.mid.alive() && (S.mid.deadT || 0) > 800) { var nm = G.enemies.filter(function (e) { return e.mid && e.alive(); })[0]; if (nm) S.mid = nm; }
+    if (R.end) { R.endT += dt; if (!S.result && R.endT > (R.end === 'clear' ? 2600 : 400)) dgResult(); return; }
+    if (p.state === 'dead') { S.overT += dt; if (S.overT > (CFG.hero.deathOverMs || 1800)) dgFinish('over'); return; }   // 쓰러짐 = 끝(시계 · 몹 멈춤)
+    if (R.wait > 0) { R.wait -= dt; if (R.wait <= 0) { banner('시작!', 'small'); snd('wave'); } return; }
+    S.time += dt; R.t += dt;
+    rescueStuck(dt);
+    // ---- 규칙: timeAttack(시간 버티기) ----
+    var sec = R.t / 1000, SP = D.spawn, EV = D.events || [], u = clamp(sec / (SP.rampSec || D.timeSec || 60), 0, 1);
+    while (R.ev < EV.length && sec >= EV[R.ev].at) { dgEvent(EV[R.ev], R, D); R.ev++; }
+    var alive = 0, mobs = 0;
+    G.enemies.forEach(function (e) { if (e.alive()) { alive++; if (!e.mid) mobs++; } });
+    // 줄 선 것(대장 · 몰려옴): 대장은 늘, 몹은 cap 안에서
+    for (var i = 0; i < R.queue.length; i++) {
+      var q = R.queue[i];
+      if (q.at > R.t || (!q.mid && alive >= SP.cap)) continue;
+      if (q.mid) dgSpawnMid(q.idx, q.side); else { dgSpawnMob(q.type, q.side, q.off); mobs++; }
+      alive++; R.queue.splice(i--, 1);
+    }
+    // 늘 나오는 몹: every ms 마다 batch 마리(양옆 번갈아), 살아 있는 몹이 maxAlive 보다 적을 때만
+    R.acc += dt * dgModeK('spawn');
+    var every = lerp(SP.every[0], SP.every[1], u), maxA = Math.round(lerp(SP.maxAlive[0], SP.maxAlive[1], u) * dgModeK('alive'));
+    if (R.acc >= every) {
+      R.acc = Math.min(R.acc - every, every);
+      var b = lerp(SP.batch[0], SP.batch[1], u), n = Math.floor(b) + (Math.random() < b % 1 ? 1 : 0);
+      for (var k = 0; k < n && mobs < maxA && alive < SP.cap; k++) { dgSpawnMob(dgPick(D, sec), dgSide(R), Math.floor(k / 2)); mobs++; alive++; }
+    }
+    R.maxAlive = Math.max(R.maxAlive, alive);
+    if (D.timeSec && R.t >= D.timeSec * 1000) dgFinish('clear');
+  }
+  // 끝남: 'clear' = 0초까지 버팀(남은 적은 같이 쓰러짐 · 덤 강화석), 'over' = 쓰러짐. 잠깐 뒤 dgResult
+  function dgFinish(kind) {
+    var S = G.stage, R = S.dg, D = DG();
+    if (!R || R.end) return;
+    R.end = kind; R.endT = 0; R.queue = [];
+    if (kind === 'clear') {
+      R.bonus = Math.max(0, Math.round((D.bonus || 0) * dgModeK('stones')));
+      banner('버텼다!', 'boss');
+      snd('waveClear');
+      G.hitstop = Math.max(G.hitstop, 220); G.slowT = Math.max(G.slowT, 1400);
+      Skills.flash({ color: '#fff2c0', alpha: 0.45, ms: 420 });
+      FX.shake(J.shakePx * 2.2, 500);
+      G.enemies.forEach(function (e) { if (e.alive()) { e.noDrop = true; e.dgSkip = true; e.takeHit(9999, e.x > G.player.x ? 1 : -1, 10, true, { force: true }); } });
+      shots.length = 0; rocks.length = 0;
+    }
+  }
+  // 결과 화면: 바닥에 남은 강화석 저절로 주움 + 덤 → 최고 기록(저장칸 · 난이도별) → 처치 · 대장 · 강화석 · 경험치
+  function dgResult() {
+    var S = G.stage, R = S.dg, D = DG(), clear = R.end === 'clear';
+    S.result = R.end;
+    Input.setOverride(null);
+    if (window.Enchant) Enchant.collectAll(G.player);
+    if (R.bonus) Growth.gainStone(R.bonus);
+    var got = G.loot ? G.loot.stones : 0, stones = got + R.bonus, md = Growth.mode();
+    R.rec = Growth.dgRecord(CFG.stage.dgId, md, { kills: R.kills, stones: stones, clear: clear });
+    R.best = Growth.dgBest(CFG.stage.dgId, md);
+    var NEW = '<i class="newrec">NEW</i>';
+    document.getElementById('resTitle').textContent = clear ? '버텼다!' : '쓰러졌다';
+    resultEl.className = 'result ' + (clear ? 'clear' : 'over') + ' dgres';
+    document.getElementById('resStats').innerHTML =
+      '<span class="dgname">' + D.name + ' · ' + Growth.M().name + '</span>' +
+      '버틴 시간 <b>' + Math.min(D.timeSec, Math.floor(R.t / 1000)) + '초</b> / ' + D.timeSec + '초<br>' +
+      '처치 <b>' + R.kills + '</b>' + (R.rec.kills ? NEW : '') + ' · 대장 처치 <b>' + R.midKills + '</b><br>' +
+      '얻은 강화석 <b>' + got + '</b>' + (R.bonus ? ' + 버틴 덤 <b>' + R.bonus + '</b> = <b>' + stones + '</b>' : '') + (R.rec.stones ? NEW : '') +
+      '<br>얻은 경험치 <b>' + (G.xpGot || 0) + '</b> · <b>Lv ' + Growth.lv + '</b>' +
+      '<span class="dgbest">최고 기록(' + Growth.M().name + ') · 처치 <b>' + R.best.kills + '</b> · 강화석 <b>' + R.best.stones + '</b></span>';
+    encBadges();
+    document.getElementById('btnNext').hidden = true;
+    document.getElementById('btnSel').textContent = '던전 선택';
+    snd(clear ? 'stageClear' : 'fail');
+    openMenu(resultEl, document.getElementById('btnRetry'));
+  }
+  // 강화석(lootDrop 대신, 쓰러진 적마다): 잡몹 = 확률, 중간보스 = [최소, 최대] 개. x 난이도 stones
+  function dgLoot(e) {
+    var DD = DG().drop, m = dgModeK('stones'), dir = G.player.x > e.x ? -1 : 1, n = 0, kd = Growth.kindOf(e.type, e.T);
+    if (e.mid) n = sround((DD.mid[0] + Math.random() * (DD.mid[1] - DD.mid[0])) * m);
+    else if (Math.random() < (kd === 'tough' || kd === 'elite' ? DD.tough : DD.mob) * m) n = 1;
+    for (var i = 0; i < n; i++) Enchant.drop('stone', null, e.x + (i - n / 2) * 8 * AS, e.y + (i % 2 ? 3 : -3), i % 2 ? -dir : dir);
+    G.lootDrops = (G.lootDrops || 0) + n;
+  }
+  // 던전 남은 시간: 위 가운데 큰 도트 숫자(초). 마지막 warnSec 초 = 빨강 + 깜빡 + 초가 바뀔 때 툭 커짐. 시작 전 = 가득, 끝 = 0
+  function drawDgTimer() {
+    var R = G.stage.dg, D = DG(); if (!D || !D.timeSec) return;
+    var ms = Math.max(0, D.timeSec * 1000 - R.t), s = Math.ceil(ms / 1000), warn = s <= (D.warnSec || 0) && !R.end;
+    var st = CFG.damageText[warn ? 'dgTimerWarn' : 'dgTimer'] || CFG.damageText.multikill;
+    var f = ms / 1000 - Math.floor(ms / 1000), pop = warn && s > 0 ? 1 + 0.35 * Math.max(0, f - 0.75) / 0.25 : 1;
+    var z = (st.zoom || 1) * pop, x = dgTimerX((st.zoom || 1) * 13), y = Math.max(4, Math.round(LH * 0.02)) + (st.top0 || 0);
+    ctx.save();
+    ctx.globalAlpha = warn && Math.floor(performance.now() / 250) % 2 ? 0.45 : 1;
+    ctx.translate(x, y); ctx.scale(z, z); ctx.translate(-x, -y);
+    var pw = String(s).length * 6.5 + 8;   // 뒤 판: 반투명 검은 띠(큰 데미지 숫자 위에서도 읽히게)
+    ctx.fillStyle = 'rgba(10,6,12,0.42)'; ctx.fillRect(x - pw / 2, y - 3, pw, 20); ctx.fillRect(x - pw / 2 - 1, y - 2, pw + 2, 18);
+    FX.drawPixelText(ctx, String(s), x, y, st);
+    ctx.restore();
+  }
+  // 시계 가로 자리: 가운데. 폰 화면에서 위 HUD 버튼(능력치 · 기술 · 강화)과 겹치면 그 오른쪽으로 비킴(버튼이 캔버스 위 DOM 이라 가려짐). hw = 시계 반폭(도트)
+  var dgHb = { t: 0, r: 0, b: 0 };
+  function dgTimerX(hw) {
+    var now = performance.now();
+    if (now - dgHb.t > 500) {   // 버튼 자리는 0.5초마다만 잼(레이아웃 읽기 줄임)
+      dgHb.t = now; dgHb.r = 0;
+      var hb = document.querySelector('.hbtns'), c = canvas.getBoundingClientRect();
+      if (hb && hb.offsetParent && c.width) { var r = hb.getBoundingClientRect(); if (r.width) dgHb.r = (r.right - c.left) * LW / c.width; }
+    }
+    var x = LW / 2;
+    if (dgHb.r && x - hw < dgHb.r + 12) x = dgHb.r + 12 + hw;
+    return Math.min(x, LW - hw - 4);
+  }
+  // 던전 들어가기: 배경 · 소품 · 적 그림을 불러온 뒤 처음부터(G.stageNo = 마지막으로 고른 판 그대로)
+  function goDungeon(id) {
+    var st = dgStage(id); if (!st) return Promise.resolve(null);
+    loading(true);
+    return Promise.all([Assets.ensureBg(st.bg), Props.load(st), Assets.ensureEnemies(stageEnemies(st))]).then(function (r) {
+      loading(false);
+      G.assets.bg = r[0];
+      CFG.stage = st; CFG.bg = st.bg; sky = null;
+      applyStageWorld(); bgCache = null; controlPad = measureControlPad();
+      resetStage();
+      return st;
+    });
+  }
+  // 도전 중 나가기(설정 창 「나가기」 → 확인): 바닥 강화석은 저절로 주움(이미 주운 것과 함께 남음), 기록은 안 남김 → 던전 고르기
+  function dgQuit() {
+    var S = G.stage, R = S && S.dg; if (!R) return;
+    if (window.Enchant) Enchant.collectAll(G.player);
+    R.end = 'quit'; S.result = 'quit';
+    openStageSelect('dungeon');
+  }
+  function dgRunning() { var S = G.stage; return MODE === 'stage' && !!(S && S.dg && !S.dg.end && !S.result); }
 
   // ---------- 미리 서 있는 적 (웨이브의 placed) ----------
   function laneY(k) { return world.laneTop + clamp(k, 0, 1) * (world.laneBottom - world.laneTop); }
@@ -1053,6 +1264,7 @@
   }
   // 판에 나오는 변종 그림을 판 시작할 때 미리 구움(게임 중 멈칫 없게). 보스가 화날 때 부르는 색 바꾼 졸개(5단계 얼음 늑대)도
   function bakeStageVariants() {
+    if (CFG.stage.dg) { (CFG.stage.dg.mids ? CFG.stage.dg.mids.list : []).forEach(function (L, i) { var M = dgMid(i); tintArt(M.type, M.vk); }); return; }   // 던전: 중간보스 그림(30초에 멈칫하지 않게)
     var MQ = midOf(CFG.stage);   // 중간보스(2026-11-06): 어둡게 물들인 그림
     if (MQ) tintArt(MQ.type, MQ.vk);
     CFG.stage.waves.forEach(function (w) {
@@ -1078,6 +1290,7 @@
       if (E && E.summon) E.summon.forEach(function (q) { add(summonOf(q).type); });
     }
     (st.waves || []).forEach(function (w) { (w.spawn || []).concat(w.placed || []).forEach(function (s) { add(s[0]); }); });
+    if (st.dg) { (st.dg.mobs || []).forEach(function (m) { add(m[0]); }); ((st.dg.mids && st.dg.mids.list) || []).forEach(function (L) { add(L[0]); }); }   // 던전(2026-11-07)
     return out;
   }
 
@@ -1391,7 +1604,7 @@
     player: function () { return G.player; },
     kill: elKill,
     got: gotLoot,
-    view: function () { return { laneTop: world.laneTop, laneBottom: world.laneBottom, x0: G.camX + 14, x1: G.camX + LW - 14 - controlPad }; }
+    view: function () { var a = CFG.stage && CFG.stage.dg; return { laneTop: world.laneTop, laneBottom: world.laneBottom, x0: (a ? 0 : G.camX) + 14, x1: (a ? world.width : G.camX + LW) - 14 - controlPad }; }   // 던전 = 싸움터 전체
   });
   Props.init(CFG, {
     laneY: laneY,
@@ -1401,7 +1614,7 @@
     drink: drink,   // 물약 = 체력·마나 바로(2026-11-06 밤)
     club: gotClub,  // 몽둥이 주움(2026-11-06)
     // 물약이 머무는 곳: 걷는 길 + 지금 화면(폰 버튼 밑 빼고)
-    view: function () { return { laneTop: world.laneTop, laneBottom: world.laneBottom, x0: G.camX + 14, x1: G.camX + LW - 14 - controlPad }; }
+    view: function () { var a = CFG.stage && CFG.stage.dg; return { laneTop: world.laneTop, laneBottom: world.laneBottom, x0: (a ? 0 : G.camX) + 14, x1: (a ? world.width : G.camX + LW) - 14 - controlPad }; }   // 던전 = 싸움터 전체
   });
 
   // ---------- 포만감 · 물약 (2026-11-06 밤, 형님 결정, 수치 = config fullness · potions) ----------
@@ -1435,7 +1648,7 @@
   }
   // ---------- 첫 무기 몽둥이 (2026-11-06, 형님 승인, 수치 = config club) ----------
   // 나오는 때: 첫 판 · 견습(전직 전, 견습 옷) · 아직 없음 · 바닥에 없음 → 잡몹이 쓰러질 때 chance, 그 판 sureAt 번째 잡몹이면 꼭(G.clubN = 센 수)
-  function clubWanted() { return !!CFG.club && MODE === 'stage' && G.stageNo === 1 && !Growth.cls && !Growth.club && G.classKey === 'novice' && !Props.clubs.length; }
+  function clubWanted() { return !!CFG.club && MODE === 'stage' && G.stageNo === 1 && !CFG.stage.dg && !Growth.cls && !Growth.club && G.classKey === 'novice' && !Props.clubs.length; }
   function clubDrop(e) {
     if (e.T.boss || e.noDrop || e.mid || !clubWanted()) return;
     G.clubN = (G.clubN || 0) + 1;
@@ -1473,6 +1686,7 @@
   // 강화석 · 결정 떨어뜨림(xpStep, 쓰러진 적마다 한 번): 잡몹 = 확률, 중간보스 · 보스 = 꼭. 보스는 판 둘째 속성 결정도
   function lootDrop(e) {
     if (!ENC || MODE !== 'stage' || e.noDrop) return;
+    if (DG() && DG().drop) { dgLoot(e); return; }   // 던전(2026-11-07): 던전 값(config dungeons.○○.drop)
     var D = ENC.drop, m = Growth.M().drop || 1, dir = G.player.x > e.x ? -1 : 1, n = 0, kd = Growth.kindOf(e.type, e.T);
     if (e.T.boss) n = sround(D.boss * m);
     else if (e.mid) n = sround(D.mid * m);
@@ -1866,10 +2080,12 @@
   }
   // 쓰러진 적(어떻게 쓰러졌든: 플레이어 타·기술·보스와 같이 쓰러짐)마다 한 번 경험치. 적 머리 위에 「+13 XP」
   function xpStep() {
-    var idx = G.stageNo - 1;
+    var idx = stIdx() - 1, R = G.stage && G.stage.dg;
     G.enemies.forEach(function (e) {
       if (e.alive() || e.xpDone) return;
       e.xpDone = true;
+      if (e.dgSkip) return;   // 던전 끝(버텼다)에 같이 쓰러진 적: 경험치 · 보상 · 처치 수 없음
+      if (R && !R.end) { R.kills++; if (e.mid) R.midKills++; }   // 던전 처치 수(결과 · 최고 기록)
       if (e.mid) midDown(e);   // 중간보스(2026-11-06): 쓰러짐 연출 + 물약 꼭 하나
       else if (!e.T.boss) snd('pop');   // 쓰러진 잡몹 「펑」(보스는 onBossDown 의 bossDown)
       mobPotion(e);   // 물약(2026-11-06 밤)
@@ -1939,6 +2155,7 @@
   }
 
   function stageStep(dt) {
+    if (G.stage.dg) { dgStep(dt); return; }   // 던전(2026-11-07): 규칙은 dgStep
     var S = G.stage, p = G.player, waves = CFG.stage.waves;
     if (!S.result) S.time += dt;
     placedStep();
@@ -2231,7 +2448,7 @@
     if (G.awk && G.awk.A.atkSpd) p.atkSpd = Math.min(G.awk.A.spdCap, p.atkSpd + G.awk.A.atkSpd);   // 각성 광전사: 더 빠르게(상한 있음)
     wpnApply(p);   // 무기 강화 · 속성(2026-11-06): 그림 · 오라 · 빠르기(+6 · 바람) · 범위 · 쿨타임 · 마나
     // 플레이어는 화면 끝까지(2026-11-06 형님 폰 접은 화면: 버튼 앞이 벽처럼 막힘). 버튼 밑 비우기는 적·물약만
-    if (MODE === 'stage') { world.minX = G.camX + 14; world.maxX = G.camX + LW - 14; }
+    if (MODE === 'stage') { if (CFG.stage.dg) { world.minX = 14; world.maxX = world.width - 14; } else { world.minX = G.camX + 14; world.maxX = G.camX + LW - 14; } }   // 던전 = 싸움터 끝까지
     if (G.bot && MODE === 'stage' && !G.stage.result) botThink(dt);
     awkStep(dt, realMs);   // 각성 시간·불꽃·잔상·끝 폭발
     var pst0 = p.state;
@@ -2283,6 +2500,7 @@
     if (MODE === 'stage') {
       var E = G.ectx;
       E.now += dt; E.view.x0 = G.camX; E.view.x1 = G.camX + LW - (controlPad ? controlPad + 14 : 0);   // 적은 몸이 넓어서 버튼 쪽으로 조금 더 띄움
+      if (CFG.stage.dg) { E.view.x0 = 0; E.view.x1 = world.width - (controlPad ? controlPad + 14 : 0); }   // 던전 = 싸움터 전체(카메라가 움직여도 적은 싸움터 안)
       G.enemies.forEach(function (e) {
         e.update(dt, E);
         if (e.state === 'air') { G.cstats.maxAirMs = Math.max(G.cstats.maxAirMs, e.airT); G.cstats.maxAirHits = Math.max(G.cstats.maxAirHits, e.airHits); }   // 콤보 기록
@@ -2377,8 +2595,10 @@
     Skills.drawOver(ctx, camX);                   // 번개 기둥·회전 원
     FX.draw(ctx, camX, false);
     drawOrbs(camX);                               // 경험치 구슬(사냥 손맛)
+    if (Enchant.drawTwinkles) Enchant.drawTwinkles(ctx, camX);   // 끌어당긴 강화석이 들어간 반짝(던전)
     Skills.drawFlash(ctx, LW, LH);
-    drawCallout();                                // 「5 KILL!」(사냥 손맛)                // 기술 맞는 순간 화면 번쩍
+    drawCallout();                                // 「5 KILL!」(사냥 손맛)
+    if (MODE === 'stage' && G.stage && G.stage.dg) drawDgTimer();   // 던전 남은 시간(위 가운데 큰 숫자)                // 기술 맞는 순간 화면 번쩍
     if (G.vig > 0.01) {                           // 플레이어가 맞음: 화면 가장자리 빨갛게(2026-11-06 밤)
       var vg = ctx.createRadialGradient(LW / 2, LH / 2, Math.min(LW, LH) * 0.35, LW / 2, LH / 2, Math.max(LW, LH) * 0.62);
       vg.addColorStop(0, 'rgba(200,0,20,0)'); vg.addColorStop(1, 'rgba(200,0,20,' + (0.55 * G.vig).toFixed(3) + ')');
@@ -2480,6 +2700,12 @@
       setIf('mname', MB.label, function (v) { hud.midName.textContent = v; });
       setIf('mhp', MB.hp / MB.maxHp, function (v) { hud.mHp.style.width = (v * 100) + '%'; hud.mHpLag.style.width = (v * 100) + '%'; });
     }
+    setIf('dgp', !!(S.dg && !S.result && !S.dg.end), function (v) { if (dgPauseEl) dgPauseEl.hidden = !v; });   // 던전 멈춤 버튼(폰)
+    if (S.dg) {   // 던전(2026-11-07): 「노말 · 강화석 광산  ·  처치 12 · 강화석 3」
+      setIf('go', false, function (v) { hud.goPrompt.hidden = !v; });
+      setIf('info', 'dg' + Growth.mode() + S.dg.kills + ':' + (G.loot ? G.loot.stones : 0), function () { hud.stageInfo.textContent = Growth.M().name + ' · ' + CFG.stage.name + '  ·  처치 ' + S.dg.kills + ' · 강화석 ' + (G.loot ? G.loot.stones : 0); });
+      return;
+    }
     var waves = CFG.stage.waves;
     var go = !S.locked && S.next > 0 && S.next < waves.length && G.camX < S.lastLock + 70 && p.state !== 'dead';
     setIf('go', go, function (v) { hud.goPrompt.hidden = !v; });
@@ -2546,6 +2772,7 @@
     encBadges();
     var nx = document.getElementById('btnNext');
     nx.hidden = !(clear && !last && !end);
+    document.getElementById('btnSel').textContent = '스테이지 선택';   // 던전 결과에서 바꿔 둔 이름
     var focus = clear && !last && !end ? nx : clear ? document.getElementById('btnSel') : document.getElementById('btnRetry');
     snd(clear ? 'stageClear' : 'fail');
     // 전직(2026-11-06): 2단계 보스를 처음 깸 + 아직 직업 없음 → 전직 화면 먼저, 고르고 나면 결과 화면
@@ -2583,6 +2810,8 @@
     G.keepRun = false;
     G.enemies = [];
     G.stage = newStage();
+    if (CFG.stage.dg) dgStart();   // 던전(2026-11-07)
+    if (Enchant.setMagnet) Enchant.setMagnet(CFG.stage.dg ? CFG.stage.magnet : null);   // 끌어당김 = 던전에서만(판은 밟아서 주움)
     G.ectx = makeEnemyCtx();
     G.xpGot = 0;   // 이 판에서 얻은 경험치(결과 화면)
     G.full = CFG.fullness ? CFG.fullness.start : 0; G.fullAcc = 0; G.potGot = 0;   // 포만감·물약(2026-11-06 밤): 판마다 처음부터
@@ -2596,11 +2825,11 @@
     G.player = new Player(CFG);
     applyGrowth(G.player);
     G.player.god = !!god;
-    G.player.x = 90;
+    G.player.x = CFG.stage.dg ? Math.round(world.width / 2) : 90;   // 던전 = 싸움터 가운데
     G.player.y = Math.round((world.laneTop + world.laneBottom) / 2);
     G.player.setCharacter(outfitAssets());
     G.player.weaponKey = G.weaponKey; G.player.setMoveSet(G.moveSet);
-    G.camX = 0;
+    G.camX = CFG.stage.dg ? clamp(G.player.x - LW / 2, 0, Math.max(0, world.width - LW)) : 0;
     lastHud = {};
     bakeStageVariants();
     Props.reset(CFG.stage);
@@ -2641,22 +2870,40 @@
   }, true);
 
   // 스테이지 고르기 화면: 열린 판만 누를 수 있음(잠긴 판 = 회색). 고르는 동안 게임은 멈춤
-  var selEl = document.getElementById('stageSel');
-  function openStageSelect() {
+  //   던전 탭(2026-11-07): 위 「스테이지 · 던전」 탭으로 목록을 바꿈. 던전 카드 = 이름 · 한 줄 설명 · 지금 난이도 최고 기록(잠김 = 자물쇠 + 여는 법)
+  //   view = 'stage' / 'dungeon'(없으면 지난번 탭). 난이도 탭은 던전에도 그대로(적 세기 · 강화석 배율)
+  var selEl = document.getElementById('stageSel'), selView = 'stage', viewTabFocus = false;
+  function openStageSelect(view) {
+    if (view === 'stage' || view === 'dungeon') selView = view;
     if (needClassChange()) { G.paused = true; closeMenu(resultEl); openClassChange(openStageSelect); return; }   // 2단계를 깼는데 직업이 없음 → 전직 먼저
     var list = document.getElementById('stageList'), cleared = loadCleared(), focus = null;
-    focus = modeTabs();   // 난이도 탭(2026-11-06): 방금 탭을 눌렀으면 그 탭에 초점
+    focus = viewTabs();   // 방금 누른 스테이지 · 던전 탭에 초점
+    var mf = modeTabs();   // 난이도 탭(2026-11-06): 방금 탭을 눌렀으면 그 탭에 초점
+    focus = focus || mf;
+    var tabbed = !!focus;
     list.innerHTML = '';
-    STAGES.forEach(function (st, i) {
+    list.classList.toggle('dglist', selView === 'dungeon');
+    var ttl = document.getElementById('selTitle'); if (ttl) ttl.textContent = selView === 'dungeon' ? '던전 선택' : '스테이지 선택';
+    if (selView === 'dungeon') ((CFG.dungeons && CFG.dungeons.order) || []).forEach(function (id) {
+      var D = CFG.dungeons[id], open = dgOpen(id), best = Growth.dgBest(id), b = document.createElement('button');
+      b.type = 'button'; b.className = 'sbtn dbtn' + (open ? '' : ' locked');
+      b.disabled = !open;
+      b.innerHTML = '<b>' + D.name + '</b><span>' + (open ? D.desc : D.lockHint || '잠김') + '</span>' +
+        (open ? '<small>' + (best ? '최고 · 처치 ' + best.kills + ' · 강화석 ' + best.stones : '기록 없음') + '</small>' : '');
+      b.addEventListener('click', function () { closeMenu(selEl); G.paused = false; goDungeon(id); });
+      list.appendChild(b);
+      if (open && !tabbed && !focus) focus = b;
+    });
+    else STAGES.forEach(function (st, i) {
       var n = i + 1, b = document.createElement('button'), open = isOpen(n), done = !!cleared[st.id];
       b.type = 'button'; b.className = 'sbtn' + (open ? '' : ' locked') + (done ? ' cleared' : '');
       b.disabled = !open;
       b.innerHTML = '<b>' + st.id + '</b><span>' + (open ? st.name.replace(/^STAGE\s*\d+\s*/, '') : '잠김') + '</span>' + (done ? '<i>클리어</i>' : '');
       b.addEventListener('click', function () { closeMenu(selEl); G.paused = false; goStage(n); });
       list.appendChild(b);
-      if (open && !modeTabFocus && (n === G.stageNo || !focus)) focus = b;
+      if (open && !tabbed && (n === G.stageNo || !focus)) focus = b;
     });
-    modeTabFocus = false;
+    modeTabFocus = false; viewTabFocus = false;
     encBadges();
     closeMenu(resultEl);
     G.paused = true;
@@ -2665,6 +2912,23 @@
   }
   // 난이도 탭(2026-11-06, config modes): 이지 / 노말 / 하드. 잠긴 난이도 = 자물쇠 + 「이지 10판 클리어 시 열림」(못 누름)
   //   누르면 그 난이도로 바꾸고(저장) 판 목록을 그 난이도의 깬 판으로 다시 그림. 돌려주는 값 = 방금 누른 탭(초점 줄 곳)
+  // 스테이지 · 던전 탭(2026-11-07): 던전이 config 에 없으면 숨김. 돌려주는 값 = 방금 누른 탭(초점 줄 곳)
+  function viewTabs() {
+    var box = document.getElementById('viewTabs'), out = null, has = !!(CFG.dungeons && CFG.dungeons.order && CFG.dungeons.order.length);
+    if (!box) return null;
+    box.hidden = !has; box.innerHTML = '';
+    if (!has) { selView = 'stage'; return null; }
+    [['stage', '스테이지'], ['dungeon', '던전']].forEach(function (v) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'vtab vt-' + v[0] + (v[0] === selView ? ' on' : '');
+      b.setAttribute('aria-pressed', v[0] === selView ? 'true' : 'false');
+      b.innerHTML = '<b>' + v[1] + '</b>';
+      b.addEventListener('click', function () { if (selView === v[0]) return; selView = v[0]; viewTabFocus = true; openStageSelect(); });
+      box.appendChild(b);
+      if (viewTabFocus && v[0] === selView) out = b;
+    });
+    return out;
+  }
   var modeTabFocus = false;
   function modeTabs() {
     var box = document.getElementById('modeTabs'), O = CFG.modes, cur = Growth.mode(), out = null, last = STAGES[STAGES.length - 1].id;
@@ -3474,6 +3738,7 @@
   document.querySelectorAll('.sndbtn').forEach(function (b) { b.addEventListener('click', function () { setTimeout(sndTitle, 0); }); });
   function openSet() {
     if (!setEl.hidden) return;
+    var xr = document.getElementById('dgExitRow'); if (xr) xr.hidden = !dgRunning();   // 던전 도전 중에만 「나가기」
     setBack = { menu: menuEl && !menuEl.hidden ? menuEl : null, paused: G.paused };
     G.paused = true; Input.setOverride(null);
     keyWait = null; keyMsg(''); keyTable();
@@ -3496,6 +3761,23 @@
   });
   document.getElementById('pcSet').addEventListener('click', function () { openSet(); this.blur(); });
   G.openSet = openSet; G.closeSet = closeSet;
+
+  // ---------- 던전 나가기 확인(2026-11-07): 설정 창 「나가기」 → 게임 안 확인 창(브라우저 창 아님) ----------
+  //   나가기 = 이번 도전 끝(모은 강화석은 남음) → 던전 고르기. 계속하기 · Esc = 설정 창으로 돌아감
+  var dgCfEl = document.getElementById('dgConfirm'), dgPauseEl = document.getElementById('btnDgPause');
+  function dgConfirmOpen() { if (!dgRunning() || !dgCfEl) return; openMenu(dgCfEl, document.getElementById('btnDgStay')); }
+  function dgConfirmClose() { if (!dgCfEl || dgCfEl.hidden) return; closeMenu(dgCfEl); if (!setEl.hidden) openMenu(setEl, document.getElementById('btnDgExit')); }
+  if (dgCfEl) {
+    document.getElementById('btnDgExit').addEventListener('click', function () { dgConfirmOpen(); this.blur(); });
+    document.getElementById('btnDgStay').addEventListener('click', function () { dgConfirmClose(); });
+    document.getElementById('btnDgQuit').addEventListener('click', function () { closeMenu(dgCfEl); closeSet(); dgQuit(); this.blur(); });
+    window.addEventListener('keydown', function (e) {   // 확인 창이 떠 있으면 Esc = 계속하기(설정 창이 같이 닫히지 않게 먼저 받음)
+      if (dgCfEl.hidden || e.code !== 'Escape') return;
+      e.preventDefault(); e.stopPropagation(); dgConfirmClose();
+    }, true);
+  }
+  // 폰 멈춤 버튼(던전 도전 중, 오른쪽 위 소리 버튼 옆): 설정 창을 엶(= 멈춤 · 나가기)
+  if (dgPauseEl) dgPauseEl.addEventListener('click', function () { openSet(); this.blur(); });
 
   // ---------- 창 키 (2026-11-07, config keys.stat · skill · enc · menu = C · V · B · Esc) ----------
   //   창이 없을 때 누르면 그 창을 엶, 같은 키를 다시 누르면 닫음. 다른 창 · 전직 화면이 열려 있으면 안 열림(Esc 는 각 창이 먼저 받아 닫음)
@@ -3739,6 +4021,24 @@
     // 콤보 자동 조종(균형 시험, 2026-11-06 밤): 공격 때마다 기술 하나를 골라 누름(띄우기 → 공중 타 → 캔슬)
     botEager: function (on) { G.botEager = on !== false; },
     retry: function () { resetStage(); },
+    // 던전 시험(2026-11-07): dungeon('mine') = 바로 들어감 / dgTime(초, 사건 건너뛰기) = 시계를 그 초로 / dg() = 지금 상태
+    dungeon: function (id) { return goDungeon(id || 'mine').then(function (st) { return !!st; }); },
+    dgTime: function (s, skipEv) {
+      var R = G.stage.dg, D = DG(); if (!R) return null;
+      R.wait = 0; R.t = s * 1000; G.stage.time = R.t;
+      if (skipEv) { R.ev = 0; while (R.ev < (D.events || []).length && D.events[R.ev].at <= s) R.ev++; }
+      return R.t;
+    },
+    dg: function () {
+      var S = G.stage, R = S && S.dg; if (!R) return null;
+      var alive = G.enemies.filter(function (e) { return e.alive(); });
+      return { id: CFG.stage.dgId, t: Math.round(R.t), wait: Math.round(R.wait), kills: R.kills, midKills: R.midKills, alive: alive.length, mids: alive.filter(function (e) { return e.mid; }).length,
+        maxAlive: R.maxAlive, queue: R.queue.length, end: R.end, result: S.result, bonus: R.bonus, rec: R.rec, best: R.best, stones: G.loot ? G.loot.stones : 0, saved: Growth.stones,
+        ground: Enchant.items.length, magnet: Enchant.items.filter(function (f) { return !!f.mag; }).length, width: world.width, LW: LW, camX: Math.round(G.camX), mode: Growth.mode(), open: dgOpen(CFG.stage.dgId),
+        types: alive.map(function (e) { return e.type + (e.mid ? '*' : ''); }).join(',') };
+    },
+    dgQuit: function () { dgQuit(); },
+    dgOpen: function (id) { return dgOpen(id || 'mine'); },
     // 판 바로 가기: GAME.test.stage(2) (판 번호 = id, ?stage= 와 같음) / 고르기 화면 열기: GAME.test.select()
     stage: function (n) { return goStage(stageIndexOfId(n) || n); },   // n = 판 번호(id)
     select: function () { openStageSelect(); },
@@ -3837,9 +4137,11 @@
       resetStage(pick);
       document.getElementById('btnRetry').addEventListener('click', function () { closeMenu(resultEl); G.keepRun = true; resetStage(); this.blur(); });
       document.getElementById('btnNext').addEventListener('click', function () { closeMenu(resultEl); G.keepRun = true; goStage(G.stageNo + 1); this.blur(); });
-      document.getElementById('btnSel').addEventListener('click', function () { openStageSelect(); this.blur(); });
+      document.getElementById('btnSel').addEventListener('click', function () { openStageSelect(CFG.stage.dg ? 'dungeon' : 'stage'); this.blur(); });
       if (params.get('god') === '1' && !CFG.demo) G.player.god = true;
-      if (pick) openStageSelect();
+      var urlDg = params.get('dg');
+      if (urlDg && CFG.dungeons && CFG.dungeons[urlDg] && (!CFG.demo || dgOpen(urlDg))) goDungeon(urlDg);   // 던전 바로 시작(2026-11-07, ?dg=mine)
+      else if (pick) openStageSelect();
       else if (needClassChange()) openClassChange(null);   // ?stage=N 으로 바로 시작했는데 전직 안 한 저장(2단계 깸)
     }
     modeLink();

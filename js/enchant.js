@@ -657,19 +657,63 @@
     var P = EN;
     items.push({ kind: kind, el: el || null, x: x + (dir || 1) * 6 * AS(), y: y, vx: (dir || 1) * (24 + Math.random() * 20) * AS(), z: 0, vz: Math.sqrt(2 * 900 * P.hop) * (0.85 + Math.random() * 0.3), t: 0, bounced: false, ph: Math.random() * 6 });
   }
-  function pick(f, p) {
+  // tiny = 끌려 들어와 주움(던전 끌어당김): 큰 빛·불티 대신 들어간 자리에 작은 반짝(+ 모양 별)만
+  function pick(f, p, tiny) {
     if (H.got) H.got(f.kind, f.el);
     var col = f.kind === 'stone' ? ['#e8f4ff', '#7fe0ff'] : [EN.el[f.el].col2, EN.el[f.el].col];
     var y = p.y - (p.z || 0) - 100 * AS();
     FX.damage(p.x, y, f.kind === 'stone' ? '강화석 +1' : EN.el[f.el].name + ' 결정 +1', false, CFG.juice, null, f.kind === 'stone' ? 'stone' : 'el_' + f.el, 'player:pick' + (f.el || ''), false);
+    if (tiny) { twinkles.push({ x: f.x, y: f.y - f.z, t: 0, col: col[1] }); if (twinkles.length > 24) twinkles.shift(); return; }
     if (window.Skills && Skills.glow) Skills.glow(p.x, p.y - 30 * AS(), 26 * AS() / 0.55, col[1], 320, 0.6);
     if (window.Skills && Skills.debris) Skills.debris(p.x, p.y - 16 * AS(), p.y, 8, { cols: ['#ffffff', col[0], col[1]], glow: true, sp: 120, size: 1.3, ms: 460, g: -80, spread: 0.7 });
   }
+  // ---------- 끌어당김(2026-11-07 던전 전용, config dungeons.○○.magnet): 작은 블랙홀에 빨려 들듯 ----------
+  //   떨어지고 M.delayMs 뒤 플레이어 가로 M.r · 위아래 M.depth 안에 들면 붙잡힘(f.mag) → M.ms 동안 M.turns 바퀴 빙글 돌며
+  //   (바닥 원근이라 위아래는 납작하게) 가슴 높이로 빨려 들고, 끝으로 갈수록 빨라지며 M.shrink 배까지 작아짐 → 들어가는 순간 작은 반짝(twinkles)
+  //   MAG = null 이면(판) 예전처럼 밟아서 주움. main.js 가 판 · 던전을 시작할 때 setMagnet(그 판 magnet 또는 null)
+  var MAG = null, twinkles = [];
+  function setMagnet(M) { MAG = M && M.on !== false ? M : null; }
+  function magnetStep(f, p, dt) {
+    var M = f.mag, cy = 22 * AS() / 0.55;   // 빨려 드는 곳 = 플레이어 가슴(바닥에서 cy 도트 위)
+    M.t += dt;
+    var u = Math.min(1, M.t / M.ms), e = u * u * (3 - 2 * u) * 0.35 + u * u * 0.65;   // 처음엔 천천히, 끝에 휙
+    var r = M.r0 * (1 - e), a = M.a0 + M.dir * M.turns * Math.PI * 2 * e;
+    if (!f.tr) f.tr = [];
+    f.tr.unshift(f.x, f.y - f.z); if (f.tr.length > 8) f.tr.length = 8;
+    f.x = p.x + Math.cos(a) * r; f.y = p.y + Math.sin(a) * r * 0.45;
+    f.z = M.z0 + (cy - M.z0) * e + Math.sin(e * Math.PI) * 6;
+    f.sc = 1 - (1 - (MAG && MAG.shrink != null ? MAG.shrink : 0.5)) * e;
+    return u >= 1;
+  }
+  function twinkleStep(dt) { for (var i = twinkles.length - 1; i >= 0; i--) { twinkles[i].t += dt; if (twinkles[i].t > 260) twinkles.splice(i, 1); } }
+  // 들어간 순간 작은 반짝: 속성 색 작은 네모 빛 + 하얀 + 모양 별(커졌다 작아짐)
+  function drawTwinkles(ctx, camX) {
+    if (!twinkles.length) return;
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    twinkles.forEach(function (w) {
+      var k = w.t / 260, a = Math.sin(Math.min(1, k * 1.6) * Math.PI), L = 1 + 3.5 * Math.sin(k * Math.PI), x = snapPx(w.x - camX), y = snapPx(w.y);
+      ctx.globalAlpha = a * 0.55; ctx.fillStyle = w.col; ctx.fillRect(x - 2, y - 2, 4, 4);
+      ctx.globalAlpha = a; ctx.fillStyle = '#ffffff'; ctx.fillRect(x - 0.5, y - L, 1, L * 2); ctx.fillRect(x - L, y - 0.5, L * 2, 1);
+    });
+    ctx.restore();
+  }
   function updateItems(dt, p) {
     var s = dt / 1000, g = 900, PK = EN.pickup;
+    twinkleStep(dt);
     for (var i = items.length - 1; i >= 0; i--) {
       var f = items[i];
       f.t += dt;
+      // 끌어당김(던전): 붙잡힌 것은 빙글 돌며 빨려 듦(바닥 튀기 · 화면 띠 안으로 당기기 없음)
+      if (f.mag) {
+        if (!p || p.state === 'dead') { f.mag = null; f.sc = 1; f.tr = null; f.z = 0; f.vz = 0; f.vx = 0; continue; }   // 쓰러지면 그 자리에 떨어짐(끝에 저절로 주움)
+        if (magnetStep(f, p, dt)) { items.splice(i, 1); pick(f, p, true); }
+        continue;
+      }
+      if (MAG && p && p.state !== 'dead' && f.t >= (MAG.delayMs || 0) && Math.abs(p.x - f.x) <= MAG.r && Math.abs(p.y - f.y) <= (MAG.depth || MAG.r)) {
+        var dx = f.x - p.x, dy = (f.y - p.y) / 0.45;
+        f.mag = { t: 0, ms: MAG.ms || 500, r0: Math.max(4, Math.hypot(dx, dy)), a0: Math.atan2(dy, dx), dir: dx >= 0 ? -1 : 1, turns: MAG.turns != null ? MAG.turns : 1, z0: f.z };
+        continue;
+      }
       if (f.z > 0 || f.vz > 0) {
         f.x += f.vx * s; f.z += f.vz * s; f.vz -= g * s;
         if (f.z <= 0) { f.z = 0; if (!f.bounced) { f.bounced = true; f.vz = -f.vz * 0.3; f.vx *= 0.4; } else { f.vz = 0; f.vx = 0; } }
@@ -684,20 +728,26 @@
   function collectAll(p) { var n = items.length; while (items.length) pick(items.pop(), p); return n; }
   function drawItem(ctx, camX, f) {
     var img = f.kind === 'stone' ? stoneImg() : crysImg(f.el), col = f.kind === 'stone' ? '#7fe0ff' : EN.el[f.el].col;
-    var bob = f.z > 0 ? 0 : Math.sin(f.t / 260 + f.ph) * 1.5 - 1.5, x = snapPx(f.x - camX), y = snapPx(f.y - f.z + bob), hh = img.height * 0.5;
+    var bob = f.z > 0 || f.mag ? 0 : Math.sin(f.t / 260 + f.ph) * 1.5 - 1.5, x = snapPx(f.x - camX), y = snapPx(f.y - f.z + bob), hh = img.height * 0.5;
+    if (f.mag && f.tr && f.tr.length > 2) {   // 빨려 드는 꼬리: 지나온 자리에 옅어지는 작은 점
+      ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = col;
+      for (var q = 0; q < f.tr.length; q += 2) { ctx.globalAlpha = 0.5 * (1 - q / f.tr.length); ctx.fillRect(snapPx(f.tr[q] - camX) - 1, snapPx(f.tr[q + 1]) - hh * 0.5 - 1, 2, 2); }
+      ctx.restore();
+    }
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
     var r = 11, gr = ctx.createRadialGradient(x, y - hh * 0.5, 0, x, y - hh * 0.5, r);
     gr.addColorStop(0, col); gr.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.globalAlpha = 0.4 + 0.15 * Math.sin(f.t / 170 + f.ph); ctx.fillStyle = gr; ctx.fillRect(x - r, y - hh * 0.5 - r, r * 2, r * 2);
     ctx.restore();
     ctx.save(); ctx.translate(x, y);
+    if (f.sc != null && f.sc !== 1) { ctx.translate(0, -hh * 0.5); ctx.scale(f.sc, f.sc); ctx.translate(0, hh * 0.5); }   // 빨려 들며 작아짐
     Assets.blit(ctx, img, img.width / 2, img.height);
     var ph = ((f.t + f.ph * 300) % 1300) / 1300;
     if (ph < 0.2) { var a = Math.sin(ph / 0.2 * Math.PI), L = 1 + 2.5 * a; ctx.globalAlpha = a; ctx.fillStyle = '#ffffff'; ctx.fillRect(-2.5, -hh + 1 - L, 1, L * 2); ctx.fillRect(-2 - L, -hh + 0.5, L * 2, 1); }
     ctx.restore();
   }
   function addDraw(ents, ctx, camX) { items.forEach(function (f) { ents.push({ y: f.y - 1, d: function () { drawItem(ctx, camX, f); } }); }); }
-  function drawUnder(ctx, camX) { items.forEach(function (f) { window.drawShadow(ctx, snapPx(f.x - camX), snapPx(f.y), EN.shadow * (1 - Math.min(0.5, f.z / 30))); }); }
+  function drawUnder(ctx, camX) { items.forEach(function (f) { if (f.mag) return; window.drawShadow(ctx, snapPx(f.x - camX), snapPx(f.y), EN.shadow * (1 - Math.min(0.5, f.z / 30))); }); }
   function snapPx(v) { return window.snapPx ? window.snapPx(v) : v; }
 
   // 창(main.js)에서 쓰는 작은 그림: 강화석 · 결정 그림을 data URL 로(한 번만)
@@ -723,9 +773,10 @@
     aura: aura, mythic: mythic, colors: EL,
     onHit: onHit, update: update, drawOver: drawOver, hurt: hurt,
     drop: drop, updateItems: updateItems, collectAll: collectAll, addDraw: addDraw, drawUnder: drawUnder, items: items,
+    setMagnet: setMagnet, drawTwinkles: drawTwinkles,   // 끌어당김(2026-11-07 던전 전용)
     stoneImg: stoneImg, crysImg: crysImg, iconUrl: iconUrl,
     // 판 다시 시작 · 판 바꾸기: 상태 전부 비움
-    reset: function () { tracked.forEach(function (e) { e._el = null; }); tracked.length = 0; arcs.length = 0; mists.length = 0; items.length = 0; numT.length = 0; chainT.length = 0; pts.length = 0; flying.length = 0; },
+    reset: function () { tracked.forEach(function (e) { e._el = null; }); tracked.length = 0; arcs.length = 0; mists.length = 0; items.length = 0; twinkles.length = 0; numT.length = 0; chainT.length = 0; pts.length = 0; flying.length = 0; },
     // 시험용: 기록 켜기(GAME.test.elLog(true)) / 읽기
     log: function (on) { if (on === true) LOG = {}; else if (on === false) LOG = null; return LOG; },
     logAdd: log,

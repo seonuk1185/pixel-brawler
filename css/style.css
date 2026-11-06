@@ -166,6 +166,14 @@ body.smooth #screen { image-rendering: auto; }
 .sndbtn:active i { transform: translateY(1px); }
 .sndbtn:focus-visible { outline: 2px solid var(--gold); outline-offset: -4px; }
 .topbar[hidden] ~ .sndbtn { right: max(6px, env(safe-area-inset-right)); }
+/* 던전 멈춤(2026-11-07): 폰 화면 + 던전 도전 중에만, 소리 버튼 바로 왼쪽. 나무 칸 + 도트 두 줄(II) */
+.dgpause { position: absolute; top: max(4px, env(safe-area-inset-top)); right: calc(max(6px, env(safe-area-inset-right)) + 88px); z-index: 6;
+  display: none; align-items: center; justify-content: center; width: 40px; height: 40px; padding: 0; border: 0; background: transparent; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.touchui .dgpause:not([hidden]) { display: flex; }
+.topbar[hidden] ~ .dgpause { right: calc(max(6px, env(safe-area-inset-right)) + 42px); }
+.dgpause i { display: block; width: 26px; height: 21px; opacity: .85; background: linear-gradient(90deg, transparent 8px, #f5e0a8 8px 11px, transparent 11px 14px, #f5e0a8 14px 17px, transparent 17px) center / 26px 11px no-repeat, linear-gradient(#6a4020, #4a2a12);
+  border: 2px solid var(--ink); box-shadow: inset 0 0 0 1px var(--gold3); }
+.dgpause:active i { transform: translateY(1px); }
 /* 시험 탭이 숨어도 콤보 글자는 스피커 밑으로 */
 .sndbtn ~ .combo { top: max(50px, calc(env(safe-area-inset-top) + 46px)); }
 
@@ -307,6 +315,17 @@ body.smooth #screen { image-rendering: auto; }
 .result p b { font-weight: 700; color: #a01c10; }
 .result .endline { display: block; margin-bottom: 4px; font: 700 22px/1.2 var(--ui); color: #7a1a0c; text-shadow: 1px 1px 0 #fff4d0; }
 
+/* 던전 결과(2026-11-07): 던전 이름 · 난이도 줄, 새 기록 「NEW」 딱지, 최고 기록 줄 */
+.result .dgname { display: block; margin-bottom: 2px; font: 700 13px/1.4 var(--ui); color: #7a1a0c; }
+.result .dgbest { display: block; margin-top: 6px; padding-top: 5px; border-top: 1px dashed #b08a4a; font-size: 11px; color: #5a3a18; }
+.result .newrec { display: inline-block; margin-left: 4px; padding: 1px 4px; font: 700 9px/1 var(--ui); font-style: normal; color: #fff; vertical-align: 2px;
+  background: linear-gradient(#ff7a3a, #d8281a); border: 1px solid var(--ink); animation: goblink .7s steps(2) infinite; }
+/* 던전 나가기 확인 창: 설정 창(같은 statpanel) 위 */
+.statpanel.dgconfirm { z-index: 36; }
+.statpanel.dgconfirm .box { width: min(400px, 94vw); align-items: center; }
+.dgconfirm .dgq { margin: 4px 0 12px; padding: 8px 14px; font: 400 12px/1.7 var(--ui); color: #4a3018; background: var(--parch); border: 2px solid var(--ink); }
+.dgconfirm .dgq small { font-size: 10px; color: #7a5a30; }
+
 /* ---------- 스테이지 고르기 (폰 조작판보다 위, 시험 도구 .topbar 보다 아래) ---------- */
 .stagesel { position: fixed; inset: 0; z-index: 5; display: flex; align-items: center; justify-content: center; background: #07050ab0; padding: 26px 12px 12px; }
 .stagesel[hidden] { display: none; }
@@ -345,6 +364,20 @@ body.smooth #screen { image-rendering: auto; }
 .mtab.locked b::before { content: ''; width: 12px; height: 12px; background: var(--ic-lock) center / 12px no-repeat; }
 .mtab small { font: 400 9px/1.1 var(--ui); color: #c8b890; white-space: nowrap; }
 .mtab:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+/* 스테이지 · 던전 탭(2026-11-07): 난이도 탭 위 작은 나무 탭 두 개. 고른 탭 = 밝은 나무 + 금 밑줄 */
+.vtabs { display: flex; gap: 4px; justify-content: center; margin: 0 0 8px; }
+.vtabs[hidden] { display: none; }
+.vtab { min-width: 92px; padding: 5px 12px 6px; cursor: pointer; color: #d8c08a; background: linear-gradient(#5a3a20, #3e2412); border: 2px solid var(--ink); border-radius: 0;
+  box-shadow: inset 0 0 0 1px var(--gold3); }
+.vtab b { font: 700 13px/1 var(--ui); }
+.vtab.on { color: #fff4c8; background: linear-gradient(#9a5a24, #6a3812); box-shadow: inset 0 0 0 1px var(--gold2), inset 0 -3px 0 var(--gold); }
+.vtab:active { transform: translateY(2px); }
+.vtab:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+/* 던전 카드: 판 카드보다 넓게 · 이름 + 한 줄 설명 + 최고 기록 */
+.sbtn.dbtn { width: 220px; min-height: 76px; gap: 5px; }
+.sbtn.dbtn b { font-size: 17px; }
+.sbtn.dbtn small { font: 400 10px/1.2 var(--ui); color: #7a4a18; }
+.slist.dglist { min-height: 96px; align-content: center; }
 .shint { margin: 10px 0 0; font: 400 11px/1 var(--ui); color: #d8c08a; }
 .touchui .shint{ display: none; }
 @media (max-height: 420px) {

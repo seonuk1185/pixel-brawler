@@ -248,13 +248,15 @@
 
   // ---------- 판 배경 3장 (2026-11-04 여러 판): 판을 고를 때 그 판 배경만 불러옴. 같은 배경은 한 번만 ----------
   // bg = 판의 bg { far, mid, ground }. 돌려주는 값 = { far: 그림, mid: 그림, ground: 그림 }. 배경 HD 는 _k = 0.5 (1 도트 = 2 점)
+  //   ceil(2026-11-07 던전) = 키 큰 화면에서 배경 위를 채우는 천장 타일(있는 배경만, main.js drawStageBg)
+  var BG_LAYERS = ['far', 'mid', 'ground', 'ceil'];
   var bgJobs = {};
   function ensureBg(bg) {
     if (!bg) return Promise.resolve({});
-    var key = ['far', 'mid', 'ground'].map(function (k) { return bg[k] ? bg[k].img : ''; }).join('|');
+    var key = BG_LAYERS.map(function (k) { return bg[k] ? bg[k].img : ''; }).join('|');
     if (bgJobs[key]) return bgJobs[key];
     var out = {};
-    bgJobs[key] = Promise.all(['far', 'mid', 'ground'].map(function (k) {
+    bgJobs[key] = Promise.all(BG_LAYERS.map(function (k) {
       if (!bg[k]) return null;
       return loadImage(bg[k].img).then(function (im) { if (im) prepList([im], 1, null); out[k] = im; });
     })).then(function () { return out; });

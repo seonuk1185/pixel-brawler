@@ -906,6 +906,19 @@
     height: 240, floorY: 144, laneTop: 158, laneBottom: 230
   };
 
+  // ---------- 던전 배경: 강화석 광산 (art\dungeon-bg\mine 에서 복사, 2026-11-07) ----------
+  // 한 화면 싸움터(arena) 배경: mid = 가운데 큰 무지개 어미 결정 + 광차(싸움터 가운데에 한 장, 카메라와 같이 움직임 = parallax 1),
+  //   far = 결정 박힌 바위벽 + 바닥(옆으로 이어 붙임), ground = 흙바닥(이어 붙임), ceil = 화면이 240보다 높을 때 배경 위를 채우는 천장(far 와 같은 흐름).
+  //   ceil 보다 더 위 = voidColor(깜깜한 굴 천장). 크기·바닥·걷는 길은 판 배경과 같음
+  var BG_DG_MINE = {
+    arena: true,
+    far:    { img: 'assets/bg/dungeon/mine/far.png',    w: 250, tile: true,  parallax: 0.5 },
+    mid:    { img: 'assets/bg/dungeon/mine/mid.png',    w: 210, tile: false, parallax: 1 },
+    ground: { img: 'assets/bg/dungeon/mine/ground.png', w: 250, tile: true,  parallax: 1.0 },
+    ceil:   { img: 'assets/bg/dungeon/mine/ceil.png',   w: 250, h: 200, voidColor: '#07060b' },
+    height: 240, floorY: 144, laneTop: 158, laneBottom: 230
+  };
+
   window.CFG = {
     version: 'stage1-proto-2',
     artSet: artSet,
@@ -1283,6 +1296,9 @@
       levelup: { font: 'huge', scale: 1, bold: true, top: '#fff6a0', bottom: '#ffb52e', outline: '#5a2a08', shadow: 'rgba(30,12,4,0.45)',
                  pop: { top: '#ffffff', bottom: '#ffe066' } },
       // 몇 마리 잡기 「5 KILL!」(2026-11-07 사냥 손맛, 화면 위 가운데, hunt.multiKill): 큰 금색 → 빨강
+      // 던전 남은 시간(2026-11-07, main.js drawDgTimer): 위 가운데 큰 숫자(초). zoom = 크기 배율, Warn = 마지막 몇 초(빨강, 깜빡)
+      dgTimer:     { font: 'giant', scale: 1, bold: true, zoom: 1.7, top: '#fff6d8', bottom: '#ffc23a', outline: '#2a1606', shadow: 'rgba(10,6,4,0.55)' },
+      dgTimerWarn: { font: 'giant', scale: 1, bold: true, zoom: 1.9, top: '#ffb0a0', bottom: '#ff2a1a', outline: '#3a0404', shadow: 'rgba(30,4,4,0.6)' },
       multikill: { font: 'giant', scale: 1, bold: true, zoom: 1.3, top: '#fffbe0', bottom: '#ff7a1a', outline: '#4a0e04', shadow: 'rgba(30,6,4,0.5)',
                    pop: { top: '#ffffff', bottom: '#ffe066' } },
       // 치명타(2026-11-06, 민첩 AGI 로 확률이 오름, 데미지 x growth.stats.critMul): 기술 숫자만큼 큰 giant + 주황·빨강 → 마무리 「22!」(노랑)와 구분
@@ -2919,6 +2935,53 @@
         8: ['ghost', '유령 기사 대장', null],
         9: ['soldier', '마족 병사 대장', null],
         10: ['soldier', '심연 근위대장', 'abyss']
+      }
+    },
+
+    // ---------- 던전 (2026-11-07, 형님 승인) ----------
+    // 스테이지 고르기 화면 「던전」 탭에서 들어감. 던전 하나 = 한 화면 싸움터(arena) + 규칙(rule). 난이도(이지·노말·하드)는 고르기 화면에서 고른 난이도를 따름
+    //   (적 체력·공격 = modes 의 hpMul · dmgMul, 판 순서 대신 tier 번째 판 값). 저장 = 저장칸마다 던전 · 난이도별 최고 기록(growth.js dgBest)
+    //   order = 고르기 화면에 나오는 순서. 새 던전(레이드 등) = 아래 mine 과 같은 모양으로 하나 더 + order 에 이름 (rule 이 다르면 main.js 던전 칸에 그 규칙 추가)
+    //   공통 값: name · desc(카드 한 줄) · unlock('class' = 전직 뒤 열림, 시험 기간 stagesAllOpen 이면 다 열림) · lockHint(잠긴 카드 글자)
+    //     tier = 몇 번째 판만큼 센가(적 판 배율 hpMul·dmgMul 은 아래 값, 난이도 배율·경험치 판 배율은 이 판 순서로), arenaMin = 싸움터 최소 폭(도트, 화면이 더 넓으면 화면 폭)
+    //     bg = 배경(arena 배경, 위 BG_DG_MINE), bgTop = 배경을 못 읽었을 때 위쪽 색
+    //     magnet = 던전에서만(2026-11-07 형님): 떨어진 강화석·결정이 작은 블랙홀에 빨려 들듯 플레이어에게 들어옴(js/enchant.js setMagnet).
+    //       떨어진 뒤 delayMs 지나고 플레이어 가로 r · 위아래 depth 도트 안에 있으면(밟아서 줍는 거리 enchant.pickup 18 · 13 보다 조금 넓게)
+    //       ms 동안 turns 바퀴 빙글 돌며 다가가고 shrink 배까지 작아짐 → 들어가는 순간 작은 반짝. 판(스테이지)은 그대로 밟아서 주움
+    //       레이드 보스처럼 한꺼번에 빨아들일 땐 r · depth 를 크게(9999). 다 끝나면 남은 것은 저절로 주움
+    dungeons: {
+      order: ['mine'],
+      // ===== 강화석 광산: 90초 버티기(rule 'timeAttack') =====
+      //   양옆에서 몹이 끝없이 나옴(시간이 갈수록 더 자주 · 더 많이). 30초 = 「대장 출현!」 중간보스 2, 60초 = 중간보스 5 + 몹 몰려옴
+      //   쓰러지면 끝(그때까지 모은 강화석은 남음), 0초까지 버티면 「버텼다!」 + 덤 강화석. 경험치는 보통처럼(적마다)
+      mine: {
+        name: '강화석 광산', desc: '90초 버티기 · 강화석 캐기', rule: 'timeAttack',
+        unlock: 'class', lockHint: '전직 후 열림',
+        tier: 3, hpMul: 1.15, dmgMul: 1.15,    // 3판(늪지대)쯤 세기. 난이도 배율은 modes(이지 1 · 노말 2.0 · 하드 2.95쯤, 3판 값)
+        arenaMin: 560,
+        bg: BG_DG_MINE, bgTop: '#07060b',
+        timeSec: 90,          // 시간(초). 위 가운데 큰 숫자
+        warnSec: 10,          // 남은 시간이 이 초 이하면 빨갛게 깜빡
+        startMs: 1200,        // 시작 글자(「시작!」) 뒤 시계가 가기 시작
+        // 몹 종류: [적 종류, 뽑힐 무게, 이 초부터 나옴]. 무게가 클수록 자주
+        mobs: [['goblin', 5, 0], ['bat', 3, 0], ['wolf', 3, 8], ['skeleton', 2, 15], ['lizard', 2, 35], ['imp', 2, 50], ['mummy', 1, 65]],
+        // 나오는 빠르기: 처음 → rampSec 초에 끝 값으로 고르게
+        //   every = 몇 ms 마다 한 번 나옴 [처음, 끝], batch = 한 번에 몇 마리 [처음, 끝](소수 = 가끔 하나 더),
+        //   maxAlive = 살아 있는 몹 최대 [처음, 끝](넘으면 쓰러질 때까지 기다림), cap = 어떤 경우에도 넘지 않는 살아 있는 적 수(중간보스 포함, 성능)
+        spawn: { every: [1500, 550], batch: [1, 2.6], maxAlive: [6, 18], rampSec: 80, cap: 34, firstMs: 300 },
+        // 중간보스(midBoss 와 같은 방식으로 키운 잡몹): list 를 돌아가며. hp = 체력(판 배율 · 난이도 곱하기 전, 2판 해골 대장 ≈ 470)
+        mids: { hp: 470, list: [['goblin', '광산 고블린 대장', null], ['skeleton', '광부 해골 대장', null], ['lizard', '굴 도마뱀 대장', null]] },
+        // 시간 사건: at = 지난 초. banner = 큰 글자, mids = 중간보스 수(양옆 번갈아 gapMs 씩), rush = 몹 n 마리 몰려옴(rushMs 동안, maxAlive 무시 · cap 은 지킴)
+        events: [
+          { at: 30, banner: '대장 출현!', mids: 2, gapMs: 600 },
+          { at: 60, banner: '대장 총출동!', mids: 5, gapMs: 500, rush: { n: 12, ms: 3000 } }
+        ],
+        // 강화석: 잡몹 mob 확률(단단한 잡몹 tough), 중간보스 mid = [최소, 최대] 개. 판(enchant.drop: 1.2% · 4% · 1개)보다 훨씬 많이
+        drop: { mob: 0.07, tough: 0.12, mid: [4, 6] },
+        bonus: 8,             // 0초까지 버티면 덤 강화석
+        // 난이도별: stones = 강화석(떨어지는 확률·개수·덤) 배율, spawn = 나오는 빠르기 배율, alive = 살아 있는 몹 최대 배율(cap 은 그대로)
+        modes: { easy: { stones: 1, spawn: 1, alive: 1 }, normal: { stones: 1.5, spawn: 1.15, alive: 1.2 }, hard: { stones: 2, spawn: 1.3, alive: 1.4 } },
+        magnet: { r: 48, depth: 28, delayMs: 400, ms: 520, turns: 1.25, shrink: 0.5 }
       }
     },
 

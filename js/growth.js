@@ -17,6 +17,8 @@
 //       stones = 가진 강화석, crys = { 속성: 가진 결정 수 }. 견습 때 주운 것도 모아 둠(전직하면 바로 씀). 예전 저장 = +0 · 강화석 0 · 결정 0
 //       main.js 가 쓰는 것: weapon(직업) → 무기 묶음(아래 makeWeapon) / stones / crys / gainStone(n) / gainCrys(속성, n)
 //       시험 무기(GAME.test.enhance · enchant, 시험 버튼으로 입은 다른 직업): 이번 창에서만, 강화석·결정 안 씀, 저장 안 함
+//     던전 최고 기록(2026-11-07, config dungeons): 저장칸의 dg = { 던전 이름: { 난이도: { kills: 최고 처치 수, stones: 최고 강화석, clears: 끝까지 버틴 횟수 } } }
+//       main.js 가 쓰는 것: dgBest(던전, 난이도) / dgRecord(던전, 난이도, { kills, stones, clear }) → 새 기록이면 { kills: true, stones: true }
 //     저장이 막혀 있어도(사생활 보호 창 등) 게임은 됨: 이번에 연 동안만 기억
 //   시험: 주소 뒤 ?lv=N = 이번 창에서만 LvN(경험치 0, 능력치 0 + 그 레벨 점수)으로 시작, 저장 안 함(저장된 레벨·능력치는 그대로)
 (function () {
@@ -257,6 +259,19 @@
       return w;
     },
     // 몽둥이 주움 → 저장. 이미 있으면 false
+    // 던전 최고 기록(2026-11-07): 없으면 null
+    dg: (function () { var o = {}, d = cur.dg; if (d && typeof d === 'object') Object.keys(d).forEach(function (k) { var m = d[k]; if (!m || typeof m !== 'object') return; o[k] = {}; Object.keys(m).forEach(function (md) { var r = m[md]; if (r && typeof r === 'object') o[k][md] = { kills: Math.max(0, r.kills | 0), stones: Math.max(0, r.stones | 0), clears: Math.max(0, r.clears | 0) }; }); }); return o; })(),
+    dgBest: function (id, md) { var r = G.dg[id] && G.dg[id][md || G.mode()]; return r ? { kills: r.kills, stones: r.stones, clears: r.clears } : null; },
+    // 한 번 끝남 → 처치 수 · 강화석 각각 최고면 바꿈(+ 버티면 clears + 1) 그리고 저장. 돌려주는 값 = 이번에 새로 세운 기록
+    dgRecord: function (id, md, run) {
+      md = md || G.mode();
+      var m = G.dg[id] || (G.dg[id] = {}), r = m[md] || (m[md] = { kills: 0, stones: 0, clears: 0 }), out = { kills: false, stones: false, first: !r.kills && !r.stones && !r.clears };
+      if ((run.kills | 0) > r.kills) { r.kills = run.kills | 0; out.kills = true; }
+      if ((run.stones | 0) > r.stones) { r.stones = run.stones | 0; out.stones = true; }
+      if (run.clear) r.clears++;
+      G.save();
+      return out;
+    },
     getClub: function () { if (G.club) return false; G.club = true; G.save(); return true; },
     keys: KEYS,
     need: function (lv) { return need(lv == null ? G.lv : lv); },
@@ -365,7 +380,7 @@
     save: function () {
       if (G.noSave) return;
       data.slots[data.slot] = { lv: G.lv, xp: G.xp, 'class': G.cls, stats: G.stats, pts: G.pts, skills: G.cls ? G.sk : undefined, club: G.club || undefined, modes: MSsaved,
-        wpn: G.cls ? G.wpn : undefined, stones: G.stones, crys: G.crys };
+        wpn: G.cls ? G.wpn : undefined, stones: G.stones, crys: G.crys, dg: G.dg };
       try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch (e) {}
     },
     // ---------- 난이도 (2026-11-06, config modes) ----------

@@ -47,6 +47,8 @@
   </details>
   <!-- 소리 켜기/끄기(2026-11-07 효과음, js/sfx.js): 오른쪽 위 「시험」 탭 왼쪽 작은 스피커(시험 탭이 숨으면 그 자리). PC = M 키. 끄면 스피커에 X -->
   <button type="button" class="sndbtn" id="btnSnd" aria-label="소리 끄기" aria-pressed="false"><i></i></button>
+  <!-- 던전 멈춤(2026-11-07): 던전 도전 중 폰 화면에서만(소리 버튼 왼쪽). 누르면 설정 창(멈춤 · 던전 나가기). PC = Esc · 아래 막대 「설정」 -->
+  <button type="button" class="dgpause" id="btnDgPause" aria-label="멈춤" hidden><i></i></button>
 
   <!-- 스테이지 판 화면 위 글자: 체력 막대, 보스 막대, GO, 알림 (게임 화면 크기에 맞춰 main.js 가 위치를 잡음) -->
   <div class="hud" id="hud" hidden>
@@ -85,7 +87,9 @@
   <!-- 스테이지 고르기 (처음 + 결과 화면에서). 판 버튼은 main.js 가 CFG.stages 로 만듦. 위 고르기 버튼(남/여·직업)은 이 위에 그대로 보임 -->
   <div class="stagesel" id="stageSel" hidden>
     <div class="box">
-      <h2>스테이지 선택</h2>
+      <h2 id="selTitle">스테이지 선택</h2>
+      <!-- 스테이지 · 던전 탭(2026-11-07): 목록을 판 ↔ 던전으로 바꿈(main.js viewTabs, 던전 = config dungeons) -->
+      <div class="vtabs" id="viewTabs"></div>
       <!-- 난이도 탭(2026-11-06): 이지 / 노말 / 하드. main.js 가 CFG.modes 로 만듦(잠긴 난이도 = 자물쇠 + 여는 법) -->
       <div class="mtabs" id="modeTabs"></div>
       <div class="slist" id="stageList"></div>
@@ -210,6 +214,8 @@
         <div class="setrow"><b>전체화면</b><button type="button" class="wbtn" id="btnSetFull">꺼짐</button><span id="fullTip">화면을 꽉 채워요</span></div>
         <div class="setrow"><b>조작 도움말</b><button type="button" class="wbtn" id="btnSetHelp">보이기</button><span>화면 아래 키 안내 한 줄</span></div>
         <div class="setrow padrow"><b>게임패드</b><span>준비 중</span></div>
+        <!-- 던전 도전 중에만(2026-11-07, main.js openSet): 누르면 게임 안 확인 창(dgConfirm) -->
+        <div class="setrow dgrow" id="dgExitRow" hidden><b>던전</b><button type="button" class="wbtn" id="btnDgExit">나가기</button><span>모은 강화석은 남아요</span></div>
       </div>
       <div class="keysec pconly">
         <div class="ksh"><b>키 설정</b><span>칸을 누르고 키를 누르세요 · Esc 취소 · Backspace 지우기 · 같은 쪽 두 번 = 달리기</span><button type="button" class="wbtn" id="btnKeyReset">기본값으로</button></div>
@@ -217,6 +223,15 @@
         <p class="keymsg" id="keyMsg" aria-live="polite"></p>
       </div>
       <div class="rbtns"><button type="button" id="btnSetClose">계속하기</button></div>
+    </div>
+  </div>
+
+  <!-- 던전 나가기 확인(2026-11-07): 설정 창 위에 뜨는 게임 안 확인 창. 계속하기 · Esc = 설정 창으로 (main.js dgConfirmOpen) -->
+  <div class="statpanel dgconfirm" id="dgConfirm" hidden>
+    <div class="box">
+      <h2>던전 나가기</h2>
+      <p class="dgq">지금 나가면 이번 도전은 끝나요.<br>지금까지 모은 강화석은 그대로 남아요.<br><small>(최고 기록에는 안 들어가요)</small></p>
+      <div class="rbtns"><button type="button" class="sub" id="btnDgQuit">나가기</button><button type="button" id="btnDgStay">계속하기</button></div>
     </div>
   </div>
 
