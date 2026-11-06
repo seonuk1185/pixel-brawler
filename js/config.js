@@ -2923,6 +2923,83 @@
       abyss: { label: '심연', hue: 0, sat: 0.85, bright: 0.86, color: '#7a2ab0', colorK: 0.38, hpMul: 1.15 }
     },
 
+    // ---------- 속성 몹 (2026-11-07, 형님 승인, js/elmobs.js) ----------
+    // 있는 잡몹(어느 종류든)에 속성 하나를 얹음: 색(tint = variants 와 같은 값, el_<속성> 이름으로 variants 에 들어감) + 몸 둘레 오라 + 속성 능력.
+    //   웨이브 · 던전에서 { el: 'fire' } 로 씀(던전 = dungeons.○○.el · elRand). 속성 이름 = 무기 속성과 같음(fire · ice · lightning · poison · wind · darkness · light, 'dark' 도 됨)
+    //   거리 · 크기 값은 전부 화면 도트(actorScale 로 안 줄임). 오라 크기 = 몹 키(T.height) / auraRef 배(sizeK 범위 안), 바닥 자국 · 터짐 = 그 배의 제곱근(큰 몹 = 조금만 크게)
+    //   플레이어가 받는 상태(불탐 · 얼어붙음 · 독 · 감전): 몸 색 + 머리 위 작은 표시. 불탐 · 독은 체력 1 아래로는 안 내려감(벗어나면 그만)
+    //   성능: 오라는 플레이어에서 가까운 auraMax 마리만, 살아 있는 속성 몹이 lite 마리 넘으면 코드로 그리는 오라(번개 · 바람) 줄 수를 줄임. 바닥 자국은 hazMax 개까지
+    elMobs: {
+      on: true,
+      auraRef: 34, sizeK: [0.75, 1.7], auraMax: 16, lite: 18, hazMax: 16,
+      // 효과 그림(art\element-mobs\fx 에서 복사 → assets/fx/elmob/<이름>_01.png = 게임 도트 1배, HD = assets/hd/fx/elmob/…webp 2배)
+      //   [장 수, 기준점 x, y(그림 속, 게임 도트), fps, 반복]. holy_glow_silver = 빛 몹용 은빛(같은 그림을 은색 · 흰빛으로 구움)
+      fx: {
+        fire_ground: [4, 38, 28, 10, true], fire_burst: [4, 36, 36, 14, false], ice_aura: [4, 28, 68, 8, true], ice_puddle: [4, 32, 18, 10, false],
+        poison_puddle: [4, 38, 38, 8, true], poison_gas: [4, 40, 34, 10, false], spark_trail: [4, 125, 20, 16, true], shadow_smoke: [4, 26, 84, 8, true],
+        holy_glow: [4, 26, 76, 8, true], holy_glow_silver: [4, 26, 76, 8, true]
+      },
+      // 플레이어 상태: burn = 불탐(everyMs 마다 dmg, ms 동안), chill = 얼어붙음(걷기 · 달리기 move 배, 휘두르기 atk 배), shock = 감전(짧은 번쩍 + 작은 데미지)
+      //   poison = 독(원래 있는 독 p.poison 그대로: 초록 숫자). dmg 는 몹 공격력 배율(판 · 난이도)을 곱함
+      status: {
+        burn:   { ms: 2200, everyMs: 550, dmg: 2, color: '#ff7a2a' },
+        chill:  { ms: 1800, move: 0.62, atk: 0.85, color: '#7fd8ff' },
+        poison: { ms: 2400, everyMs: 600, dmg: 2, color: '#8cff3a' },
+        shock:  { ms: 420, color: '#ffe14a' }
+      },
+      els: {
+        // 불: 금빛 불기둥 오라(형님: 지금 금빛 빛기둥 = 불 몹) · 때리면 불탐 · 쓰러지면 화염 폭발 + 불타는 바닥(그 위에 서 있으면 불탐)
+        fire: { name: '불', tint: { label: '불', hue: 0, sat: 1.15, bright: 1.02, color: '#ff6a2a', colorK: 0.3 },
+                aura: { art: 'holy_glow', alpha: 0.8, add: true, k: 1 },
+                hit: { burn: true },
+                death: { burst: { art: 'fire_burst', k: 1.1 }, ground: { art: 'fire_ground', ms: 3400, r: 22, depth: 8, burn: true, k: 0.9 } } },
+        // 얼음: 서리 오라 · 때리면 얼어붙음(느려짐) · 쓰러지면 빙결 장판(그 위에 서 있으면 얼어붙음)
+        ice:  { name: '얼음', tint: { label: '얼음', hue: 0, sat: 0.75, bright: 1.12, color: '#8fd8ff', colorK: 0.36 },
+                aura: { art: 'ice_aura', alpha: 0.85, add: false, k: 1 },
+                hit: { chill: true },
+                death: { ground: { art: 'ice_puddle', ms: 4200, r: 22, depth: 8, chill: true, k: 1 } } },
+        // 번개(코드로 그림): 세로 일자 번개 bolts 줄이 몸을 둥글게 감싸고 돌며 지지직(spin = 한 바퀴 ms) · 가끔 빠르게 돌진(전기 잔상, 부딪히면 감전) · 때리면 감전
+        //   dash: 플레이어가 가로 range 도트 · 위아래 depth 안이면 cd ms 마다 windMs 지지직(멈춤) → speedK x 걷기 빠르기로 ms 동안 돌진, dmg = 부딪히는 데미지
+        lightning: { name: '번개', tint: { label: '번개', hue: 0, sat: 1.05, bright: 1.1, color: '#ffe14a', colorK: 0.28 },
+                aura: { code: 'bolts', bolts: 3, spin: 1400, rx: 0.4, hK: 1.05, color: '#fff6b0', glow: '#ffd23a' },
+                hit: { shock: { dmg: [2, 4] } },
+                dash: { range: [46, 150], depth: 12, cd: [3200, 5200], firstCd: [1200, 2600], windMs: 320, ms: 380, speedK: 5.5, dmg: [5, 7], knock: 10, flinchMs: 200, trailMs: 60 } },
+        // 독: 발밑 독 기운 · 걷다가 가끔 독 웅덩이(그 위에 서 있으면 독) · 때리면 독 · 쓰러지면 독가스(안에 있으면 독)
+        poison: { name: '독', tint: { label: '독', hue: 0, sat: 1.05, bright: 0.95, color: '#8cff3a', colorK: 0.3 },
+                aura: { art: 'poison_puddle', alpha: 0.5, add: false, k: 0.55, ground: true, bubbles: 3 },
+                hit: { poison: true },
+                walk: { art: 'poison_puddle', every: 70, chance: 0.55, cd: 2600, ms: 3200, r: 20, depth: 8, poison: true, k: 0.75 },
+                death: { gas: { art: 'poison_gas', ms: 2600, r: 26, depth: 12, poison: true, k: 0.95 } } },
+        // 바람(코드로 그림): 회오리 말고 몸 둘레를 밑에서 위로 꽈배기처럼 감아 올라가는 반투명 바람 줄기(strands 줄, turns 바퀴) · 걷기 빨라짐(speed 배) ·
+        //   가까이 있으면 cd ms 마다 돌풍(플레이어를 push 도트 밀어냄, 데미지 없음) · 때리면 더 밀림(hitPush)
+        wind: { name: '바람', tint: { label: '바람', hue: 0, sat: 0.8, bright: 1.12, color: '#bfffe6', colorK: 0.3 },
+                aura: { code: 'braid', strands: 3, turns: 2.2, rise: 1100, rx: 0.42, hK: 1.12, color: '225,255,245', alpha: 0.5, show: 0.72 },
+                speed: 1.3,
+                gust: { range: 62, depth: 16, cd: [3400, 5200], firstCd: [1500, 3000], push: 34 },
+                hit: { push: 18 } },
+        // 어둠: 그림자 연기 오라 · 나올 때 스르르 나타남(fadeInMs) · 가끔 잠깐 흐려짐(stealth: alpha 까지, ms 동안, 맞기는 함) · 때리면 체력을 빨아 감(drain = 준 데미지 x 배)
+        darkness: { name: '어둠', tint: { label: '어둠', hue: 0, sat: 0.85, bright: 0.78, color: '#a040ff', colorK: 0.34 },
+                aura: { art: 'shadow_smoke', alpha: 0.8, add: false, k: 1 },
+                fadeInMs: 700,
+                stealth: { cd: [4500, 7000], ms: 1300, alpha: 0.28, fadeMs: 260 },
+                hit: { drain: 0.6 } },
+        // 빛: 은빛 · 흰빛 빛기둥 오라(같은 그림을 은색으로) · cd ms 마다 빛 퍼짐: 둘레 r 도트 안 몹 체력 heal(최대 체력 비율) + 자기는 shieldMs 동안 보호막(받는 데미지 x shield)
+        light: { name: '빛', tint: { label: '빛', hue: 0, sat: 0.55, bright: 1.18, color: '#f2f6ff', colorK: 0.34 },
+                aura: { art: 'holy_glow_silver', alpha: 0.62, add: true, k: 1 },
+                pulse: { cd: [4200, 6200], firstCd: [1500, 3000], r: 70, depth: 26, heal: 0.08, shieldMs: 1600, shield: 0.5 } }
+      },
+      // 속성 던전 몹 구성(나중에 던전을 만들 때 씀, 지금은 준비만): mobs = [종류, 무게], mids = 중간보스 [종류, 이름, 색 변종], el = 그 던전 몹 속성
+      //   불(fire)은 이미 있는 dungeons.fire(불의 화산굴) 가 씀
+      dungeons: {
+        ice:       { el: 'ice',       mobs: [['wolf', 4], ['yeti', 2], ['skeleton', 3], ['bat', 2]],      mids: [['yeti', '얼음 설인 대장', null], ['wolf', '서리 늑대 대장', 'ice']] },
+        lightning: { el: 'lightning', mobs: [['wolf', 4], ['goblin', 3], ['bat', 3], ['gunner', 1]],      mids: [['wolf', '번개 늑대 대장', null], ['goblin', '번개 고블린 대장', null]] },
+        poison:    { el: 'poison',    mobs: [['lizard', 4], ['goblin', 3], ['bat', 2], ['mummy', 1]],     mids: [['lizard', '독 도마뱀 대장', 'bog'], ['mummy', '독 미라 대장', null]] },
+        wind:      { el: 'wind',      mobs: [['bat', 4], ['wolf', 3], ['goblin', 3], ['imp', 1]],         mids: [['wolf', '바람 늑대 대장', null], ['goblin', '돌풍 고블린 대장', null]] },
+        darkness:  { el: 'darkness',  mobs: [['ghost', 3], ['skeleton', 3], ['bat', 3], ['soldier', 1]],  mids: [['ghost', '그림자 기사 대장', 'spectral'], ['soldier', '어둠 병사 대장', 'abyss']] },
+        light:     { el: 'light',     mobs: [['skeleton', 3], ['soldier', 3], ['mage', 2], ['ghost', 1]], mids: [['soldier', '빛의 기사 대장', null], ['mage', '빛의 사제 대장', null]] }
+      }
+    },
+
     // ---------- 중간보스 (2026-11-06, 형님 승인) ----------
     // 판마다 하나, 보스방 바로 앞 웨이브(wave = 끝에서 몇 번째: 2 = 보스 바로 앞)에 그 판 잡몹을 크게 키운 「OO 대장」이 나옴. 새 그림 없음(있는 그림을 키우고 물들임)
     //   list = 판 id: [잡몹 종류, 이름, 색 변종(variants, 없으면 null)]. 잡몹 그림을 scale 배로 그리고 판정(몸·공격 상자·그림자)도 같이 키움
@@ -3006,7 +3083,9 @@
         bonus: 8,             // 0초까지 버티면 덤 강화석
         // 난이도별: stones = 강화석(떨어지는 확률·개수·덤) 배율, spawn = 나오는 빠르기 배율, alive = 살아 있는 몹 최대 배율(cap 은 그대로)
         modes: { easy: { stones: 1, spawn: 1, alive: 1 }, normal: { stones: 1.5, spawn: 1.15, alive: 1.2 }, hard: { stones: 2, spawn: 1.3, alive: 1.4 } },
-        magnet: { r: 48, depth: 28, delayMs: 400, ms: 520, turns: 1.25, shrink: 0.5 }
+        magnet: { r: 48, depth: 28, delayMs: 400, ms: 520, turns: 1.25, shrink: 0.5 },
+        // 속성 몹 섞기(2026-11-07, config elMobs): 도전마다 els 에서 pick 개 속성을 뽑아 둠 → from 초부터 types 몹이 나올 때 chance 확률로 그 속성 몹
+        elRand: { chance: 0.14, from: 12, pick: 2, types: ['goblin', 'wolf', 'skeleton', 'bat', 'lizard'], els: ['fire', 'ice', 'lightning', 'poison', 'wind', 'darkness', 'light'] }
       },
       // ===== 불의 화산굴: 레이드(rule 'raid', 2026-11-07 형님 승인) =====
       //   들어가면 웨이브 1~5 = 불 속성 몹 큰 무리(도깨비 · 도마뱀 · 박쥐 · 늑대 · 용암 골렘 정예) + 사이사이 중간보스
@@ -3018,6 +3097,7 @@
         name: '불의 화산굴', desc: '레이드 · 화염룡 이그니스', rule: 'raid',
         unlock: 'class', lockHint: '전직 후 열림',
         tier: 5, hpMul: 1.1, dmgMul: 1.1,      // 몹 세기 = 5판(설산)쯤. 난이도 배율은 modes(이지 · 노말 · 하드, 5판 값)
+        el: 'fire',           // 웨이브 몹 · 대장 · 보스가 부르는 졸개 = 전부 불 속성 몹(2026-11-07, config elMobs.els.fire: 금빛 불기둥 · 불탐 · 화염 폭발 · 불타는 바닥)
         arenaMin: 560,
         bg: BG_DG_FIRE, bgTop: '#090404',
         startMs: 1200,

@@ -257,7 +257,7 @@
   };
 
   Enemy.prototype.alive = function () { return this.state !== 'dead'; };
-  Enemy.prototype.speedMul = function () { return this.enraged ? this.T.enrage.speedMul : 1; };
+  Enemy.prototype.speedMul = function () { return (this.enraged ? this.T.enrage.speedMul : 1) * (this.elSpd || 1); };   // elSpd = 바람 속성 몹(2026-11-07 js/elmobs.js)
 
   // 몸 판정 (앞 = 바라보는 쪽 +)
   Enemy.prototype.hurtbox = function () {
@@ -1264,10 +1264,13 @@
     if (T.glide && (this.state === 'idle' || this.state === 'walk')) by = snapPx(Math.sin(this.clock / T.glide.bobMs * Math.PI * 2) * T.glide.bob);
     var faded = this.faded();   // 유령 기사 돌진 중 옅어진 장: 반투명
     if (faded) alpha *= 0.6;
+    if (this.elA != null) alpha *= this.elA;   // 어둠 속성 몹: 스르르 나타남 · 잠깐 흐려짐(js/elmobs.js)
+    var elm = this.elm && window.ElMob, ely = y + by - snapPx(fz);   // 속성 몹 오라(2026-11-07): 몸 뒤 · 몸 앞
     var auk = this.auraK();       // 10단계 마왕 각성 오라: 몸 뒤에(먼저) 그림
     if (auk > 0) this.drawAura(g, x, y, auk);
     var chk = this.chargeK();     // 9단계 장군 기 모으기(0~1, 아니면 -1): 몸 뒤 땅 금·불꽃
     if (chk >= 0) this.drawCharge(g, x, y, chk, 'ground');
+    if (elm) ElMob.draw(this, g, x, ely, y, 'back', alpha);
     g.save();
     g.globalAlpha = alpha;
     g.translate(x, y + by - snapPx(fz));
@@ -1297,6 +1300,7 @@
     }
 
     g.restore();
+    if (elm) ElMob.draw(this, g, x, ely, y, 'front', alpha);
     if (chk >= 0) this.drawCharge(g, x, y, chk, 'body');
     // 보스 휘청: 가슴 핵 주황 빛(1·2·4 장, 3장 = 핵 꺼짐 = 때릴 기회). core.x = 앞 +
     var CO = T.stagger && T.stagger.core;

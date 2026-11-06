@@ -326,6 +326,7 @@
     }
     var airHit = jumpHit && target.T && target.T.flying;
     if (airHit) dmg = Math.round(dmg * (target.T.flying.jumpDmgMul || 1));
+    if (target.elm) dmg = ElMob.dmgIn(target, dmg);   // 빛 속성 몹 보호막(2026-11-07)
     // 손맛(2026-11-06 밤, config juice.impact): 무거운 타(마무리·기술·넘어뜨림·띄우기)는 더 오래 멈추고 더 흔들림
     var IM = J.impact || {}, heavyHit = !!(st.finisher || st.damageStyle || st.knockdown || st.launch);
     G.hitstop = Math.max(G.hitstop, J.hitstopMs * W.hitstopMul * st.hitstop * (heavyHit ? IM.heavyStop || 1 : 1));
@@ -578,6 +579,7 @@
     G.comboT = 0; comboEl.hidden = true;
     // 독(전갈 왕 독침): 맞으면 잠깐 독 → poisonStep 이 everyMs 마다 체력을 조금씩 깎음(독으로는 안 쓰러짐)
     if (spec.poison) p.poison = { t: spec.poison.ms, tick: spec.poison.everyMs, every: spec.poison.everyMs, dmg: spec.poison.dmg };
+    if (e.elm) ElMob.onPlayerHit(e, spec, dmg);   // 속성 몹(2026-11-07): 불탐 · 얼어붙음 · 독 · 감전 · 밀림 · 체력 빨기
     Skills.tryCounter(p, e);   // 늘 켜진 기술 「반격」(2차, 2026-11-06): 움찔했으면 확률로 바로 되받아 베기
     return true;
   }
@@ -868,6 +870,9 @@
     var S = G.stage, T = CFG.enemies[type], st = CFG.stage, M = Growth.M();
     var MQ = opt && opt.mid ? opt.mq || midOf(st) : null;   // 중간보스: 잡몹 T 를 키운 MQ.T + 물들인 그림(MQ.vk). opt.mq = 던전이 미리 만든 것
     var vk = MQ ? MQ.baseVk : (opt && opt.variant) || T.variant, V = vk && CFG.variants ? CFG.variants[vk] : null;   // T.variant = 늘 그 색으로 나오는 적(7단계 용암 골렘)
+    // 속성 몹(2026-11-07, opt.el, js/elmobs.js): 색 = el_<속성> 변종(늘 그 색인 적 · 중간보스는 원래 색 그대로) + 오라 · 능력은 아래 ElMob.apply
+    var elk = opt && opt.el && window.ElMob ? ElMob.key(opt.el) : null;
+    if (elk && !MQ && !T.variant && CFG.variants['el_' + elk]) { vk = 'el_' + elk; V = CFG.variants[vk]; }
     var e = new Enemy(type, CFG, MQ ? tintArt(type, MQ.vk) : V ? tintArt(type, vk) : G.assets.enemies[type], x, y);
     if (MQ) { T = e.T = MQ.T; e.hp = e.maxHp = T.hp; e.label = T.label; e.hoverD = T.hover[0] + Math.random() * (T.hover[1] - T.hover[0]); e.mid = true; S.mid = e; }
     var hm = (st.hpMul || 1) * (V && V.hpMul || 1) * modeVal(M.hpMul), dm = (st.dmgMul || 1) * (V && V.dmgMul || 1) * modeVal(M.dmgMul);
@@ -885,6 +890,7 @@
     var HDe = huntPart('death');
     if (HDe && !T.boss && !MQ) e.huntDeath = HDe;   // 중간보스는 보스처럼 그 자리에 쓰러짐(펑 없이)
     e.wave = S.waveIdx;
+    if (elk) ElMob.apply(e, elk);
     G.enemies.push(e);
     if (T.boss) S.boss = e;
     return e;
@@ -1014,6 +1020,7 @@
     S.locked = true;   // 웨이브 판의 「화면 고정」과 같은 뜻(자동 조종이 오른쪽으로 걸어가지 않게)
     S.dg = { rule: D.rule, t: 0, wait: D.startMs || 0, acc: 0, queue: [], ev: 0, side: Math.random() < 0.5 ? 0 : 1, midN: 0,
              kills: 0, midKills: 0, end: null, endT: 0, bonus: 0, rec: null, best: null, maxAlive: 0 };
+    if (D.elRand) { var EP = D.elRand.els.slice(); S.dg.elPool = []; while (S.dg.elPool.length < (D.elRand.pick || 1) && EP.length) S.dg.elPool.push(EP.splice(Math.floor(Math.random() * EP.length), 1)[0]); }   // 이번 도전 속성(광산)
     if (D.rule === 'raid') { Object.assign(S.dg, { phase: 'rest', restT: 0, wi: -1, wsp: 0, wmid: [], mobs: null, camLock: null, boss: null, bossT: 0, lootT: -1 }); Raid.reset(); return; }   // 레이드(2026-11-07): 웨이브 → 보스
     if (D.spawn) S.dg.acc = (D.pack ? D.pack.every[0] : D.spawn.every[0]) - (D.spawn.firstMs || 0);   // 첫 몹(무리) = 시작하고 firstMs 뒤
   }
@@ -1028,8 +1035,16 @@
     return L[L.length - 1][0];
   }
   function dgSide(R) { R.side = 1 - R.side; return R.side ? 'R' : 'L'; }
-  function dgSpawnMob(type, side, off) { var e = spawnEnemy(type, side, null, off || 0); e.dgMob = true; return e; }
-  function dgSpawnMid(i, side) { var MQ = dgMid(i), e = spawnEnemy(MQ.type, side, { mid: true, mq: MQ }, 0); G.stage.mid = e; return e; }
+  // 속성 몹(2026-11-07, config elMobs): 던전 el = 모든 몹 그 속성(불의 화산굴), elRand = 도전마다 뽑아 둔 속성(elPool) 중 하나를 from 초부터 chance 확률로(광산)
+  function dgEl(type) {
+    var D = DG(), R = G.stage && G.stage.dg; if (!D || !window.ElMob) return null;
+    if (D.el) return D.el;
+    var ER = D.elRand; if (!ER || !R || !R.elPool || !R.elPool.length || R.t < (ER.from || 0) * 1000 || ER.types.indexOf(type) < 0) return null;
+    return Math.random() < ER.chance ? R.elPool[Math.floor(Math.random() * R.elPool.length)] : null;
+  }
+  function dgOpt(type) { var el = dgEl(type); return el ? { el: el } : null; }
+  function dgSpawnMob(type, side, off) { var e = spawnEnemy(type, side, dgOpt(type), off || 0); e.dgMob = true; return e; }
+  function dgSpawnMid(i, side) { var MQ = dgMid(i), D = DG(), e = spawnEnemy(MQ.type, side, { mid: true, mq: MQ, el: D && D.el }, 0); G.stage.mid = e; return e; }
   function dgQueue(q) { G.stage.dg.queue.push(q); }
   // ---------- 몹 떼(2026-11-07 형님: 한 줄로 오는 느낌 → 무리로, config pack) ----------
   //   한 번에 3~6마리 무리: 옆 간격 pack.dx 도트씩 엇갈리고, 깊이(위아래)는 걷는 길 전체에 고르게 퍼짐(순서는 섞음)
@@ -1069,7 +1084,7 @@
   }
   // 줄 선 무리 하나 내보내기: 정한 자리(x, y) · 뛰어내림(drop = 높이)이면 들어온 것으로(entered)
   function dgPlace(q) {
-    var e = makeEnemy(q.type, q.x, clamp(q.y, world.laneTop, world.laneBottom));
+    var e = makeEnemy(q.type, q.x, clamp(q.y, world.laneTop, world.laneBottom), dgOpt(q.type));
     e.dgMob = true; e.dir = q.x < G.player.x ? 1 : -1;
     if (q.drop) { e.dropZ = q.drop; e.entered = true; }
     return e;
@@ -1456,7 +1471,14 @@
   }
   // 판에 나오는 변종 그림을 판 시작할 때 미리 구움(게임 중 멈칫 없게). 보스가 화날 때 부르는 색 바꾼 졸개(5단계 얼음 늑대)도
   function bakeStageVariants() {
-    if (CFG.stage.dg) { (CFG.stage.dg.mids ? CFG.stage.dg.mids.list : []).forEach(function (L, i) { var M = dgMid(i); tintArt(M.type, M.vk); }); return; }   // 던전: 중간보스 그림(30초에 멈칫하지 않게)
+    if (CFG.stage.dg) {
+      (CFG.stage.dg.mids ? CFG.stage.dg.mids.list : []).forEach(function (L, i) { var M = dgMid(i); tintArt(M.type, M.vk); });   // 던전: 중간보스 그림(30초에 멈칫하지 않게)
+      // 속성 몹 색(2026-11-07): 던전 el = 그 던전 몹 전부, elRand = 이번 도전 속성(elPool) x types
+      var D0 = CFG.stage.dg, R0 = G.stage && G.stage.dg, els = D0.el ? [D0.el] : (R0 && R0.elPool) || [];
+      var tps = D0.el ? stageEnemies(CFG.stage) : D0.elRand ? D0.elRand.types : [];
+      if (window.ElMob) tps.forEach(function (t) { var E0 = CFG.enemies[t]; if (E0 && !E0.variant && !E0.boss) els.forEach(function (k) { tintArt(t, 'el_' + ElMob.key(k)); }); });
+      return;
+    }
     var MQ = midOf(CFG.stage);   // 중간보스(2026-11-06): 어둡게 물들인 그림
     if (MQ) tintArt(MQ.type, MQ.vk);
     CFG.stage.waves.forEach(function (w) {
@@ -2680,6 +2702,7 @@
     p.atkSpd = Growth.atkSpd(); p.moveMul = Growth.moveMul();   // 민첩(성장 능력치): 휘두르기·이동 빠르기
     if (G.awk && G.awk.A.atkSpd) p.atkSpd = Math.min(G.awk.A.spdCap, p.atkSpd + G.awk.A.atkSpd);   // 각성 광전사: 더 빠르게(상한 있음)
     wpnApply(p);   // 무기 강화 · 속성(2026-11-06): 그림 · 오라 · 빠르기(+6 · 바람) · 범위 · 쿨타임 · 마나
+    if (window.ElMob) ElMob.playerMods(p);   // 속성 몹에게 얼어붙음 = 느려짐 + 상태 몸 색(2026-11-07)
     // 플레이어는 화면 끝까지(2026-11-06 형님 폰 접은 화면: 버튼 앞이 벽처럼 막힘). 버튼 밑 비우기는 적·물약만
     if (MODE === 'stage') { if (CFG.stage.dg) { world.minX = 14; world.maxX = world.width - 14; var rw = Raid.wallX(); if (rw != null) { world.minX = G.camX + 14; world.maxX = Math.min(world.maxX, rw); } } else { world.minX = G.camX + 14; world.maxX = G.camX + LW - 14; } }   // 던전 = 싸움터 끝까지
     if (G.bot && MODE === 'stage' && !G.stage.result) botThink(dt);
@@ -2754,6 +2777,7 @@
       spikesStep(dt);        // 서리 거인 얼음 가시
       ringsStep(dt);         // 마왕군 장군 화염 충격파 고리
       poisonStep(dt);        // 전갈 왕 독 · 독 웅덩이
+      if (window.ElMob) ElMob.step(dt);   // 속성 몹(2026-11-07): 오라 고르기 · 돌풍 · 빛 퍼짐 · 독 웅덩이 · 쓰러짐 효과 · 바닥 위험 · 불탐
       mpStep(dt);            // 마나 차기
       fullStep(dt);          // 포만감: 체력 천천히 + 줄어듦(2026-11-06 밤)
       rageStep(dt);          // 분노: 싸움이 없으면 천천히 줆(2026-11-06 밤)
@@ -2801,6 +2825,7 @@
     // 바닥 위: 보스 공격 예고 띠, 먼지
     G.enemies.forEach(function (e) { e.drawTelegraph(ctx, camX); });
     if (puddles.length) drawPuddles(camX);        // 두꺼비 독 웅덩이(바닥)
+    if (window.ElMob) ElMob.drawUnder(ctx, camX); // 속성 몹 바닥 자국(불타는 바닥 · 빙결 장판 · 독 웅덩이) · 빛 고리(2026-11-07)
     if (rocks.length) drawRocksUnder(camX);       // 바위 떨어질 자리 빨간 원 + 그림자
     if (cannons.length) drawCannonsUnder(camX);   // 대포알 떨어질 자리 그림자 + 빨간 원
     if (shots.length) drawShots(camX, true);      // 총알 그림자(지나가는 줄)
@@ -2822,6 +2847,7 @@
     ents.sort(function (a, b) { return a.y - b.y; });
     ents.forEach(function (e) { e.d(); });
     Enchant.drawOver(ctx, camX);                  // 속성: 불타는·독·얼은 적 표시 · 튀는 번개 · 마법 자리 안개(2026-11-06)
+    if (window.ElMob) ElMob.drawOver(ctx, camX);  // 속성 몹: 독가스 · 돌풍 · 플레이어 머리 위 상태 표시(2026-11-07)
     Projectiles.draw(ctx, camX);
     if (rocks.length) drawRocks(camX);            // 날아가는 바위(공중이라 캐릭터 위)
     if (shots.length) drawShots(camX, false);     // 날아가는 총알
@@ -3085,6 +3111,7 @@
     G.stage = newStage();
     if (!(CFG.stage.dg && CFG.stage.dg.boss)) Raid.free();   // 레이드 보스 그림(2026-11-07): 레이드가 아니면 놓아줌(메모리)
     else Raid.reset();
+    if (window.ElMob) ElMob.reset();   // 속성 몹 바닥 위험 · 상태(2026-11-07)
     if (CFG.stage.dg) dgStart();   // 던전(2026-11-07)
     if (Enchant.setMagnet) Enchant.setMagnet(CFG.stage.dg ? CFG.stage.magnet : null);   // 끌어당김 = 던전에서만(판은 밟아서 주움)
     G.ectx = makeEnemyCtx();
@@ -4348,6 +4375,10 @@
         types: alive.map(function (e) { return e.type + (e.mid ? '*' : ''); }).join(',') };
     },
     dgQuit: function () { dgQuit(); },
+    // 속성 몹 시험(2026-11-07): elSpawn('goblin', 'fire', dx, dy) = 플레이어 앞 dx · 위아래 dy 에 그 속성 몹 / elLog(true) → 싸움 → elLog(false) = 능력 기록 / el() = 상태
+    elSpawn: function (type, el, dx, dy) { var p = G.player, e = makeEnemy(type, p.x + (dx || 60), clamp(p.y + (dy || 0), world.laneTop, world.laneBottom), { el: el }); e.entered = true; e.dir = e.x < p.x ? 1 : -1; return G.enemies.length - 1; },
+    elLog: function (on) { return ElMob.log(on); },
+    el: function () { return ElMob.state(); },
     // 레이드 시험(2026-11-07): raidBoss() = 남은 웨이브 건너뛰고 바로 보스, raid() = 보스 상태(js/raid.js Raid.test.state), raidPat('slam') = 그 공격 바로
     raidBoss: function () { var R = G.stage.dg, D = DG(); if (!R || D.rule !== 'raid') return false; G.enemies.forEach(function (e) { if (e.alive()) { e.noDrop = true; e.dgSkip = true; e.takeHit(9999, 1, 10, true, { force: true }); } }); R.queue = []; R.wait = 0; R.wi = D.waves.length - 1; R.phase = 'rest'; R.restT = 0; return true; },
     raidWave: function (i) { var R = G.stage.dg, D = DG(); if (!R || D.rule !== 'raid') return false; G.enemies.forEach(function (e) { if (e.alive()) { e.noDrop = true; e.dgSkip = true; e.takeHit(9999, 1, 10, true, { force: true }); } }); R.queue = []; R.wait = 0; R.wi = i - 1; R.phase = 'rest'; R.restT = 0; return true; },
@@ -4437,6 +4468,12 @@
       comboTag: comboTag,    // 캔슬로 기술이 나감 → 콤보 글자 「CANCEL」(2026-11-06 밤)
       areaMul: function (d) { var A = huntPart('aoe'); return ((A && A[d.id]) || 1) * wArea(); },   // x 무기 강화 +10 범위(2026-11-06)   // 사냥 손맛: 넓은 범위(회전베기·대지 내려찍기·메테오·불기둥)
       onCast: onCast         // 기술을 씀 → 포만감이 조금 더 줆(2026-11-06 밤)
+    });
+    // 속성 몹(2026-11-07, js/elmobs.js): 효과 그림 불러오기 + 쓰는 도구
+    if (window.ElMob) ElMob.init({
+      G: function () { return G; }, snd: snd, push: pushPlayer,
+      dmgText: function (p, n, col) { FX.damage(p.x, p.y - (p.z || 0) - 112 * AS, n, false, J, col, null, 'player'); },
+      debris: function (x, y, z, n, o) { if (Skills.debris) Skills.debris(x, y, z, n, o); }
     });
     Object.keys(assets.characters).forEach(function (k) { bakeFilter(assets.characters[k]); });
     document.body.classList.add('mode-' + MODE);

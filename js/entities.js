@@ -678,6 +678,9 @@
         rg.globalCompositeOperation = 'source-in'; rg.fillStyle = '#ff2a2a'; rg.fillRect(0, 0, rc.width, rc.height); if (Assets.copyMeta) Assets.copyMeta(img, rc); img._redP = rc; }
       ctx.globalAlpha = 0.55 * Math.min(1, this.redT / 120); Assets.blit(ctx, img, def.pivot.x, def.pivot.y, img._redP); ctx.globalAlpha = 1;
     }
+    if (img && this.stTint && !hurtFlash && !(this.redT > 0)) {   // 속성 몹에게 받은 상태(2026-11-07 js/elmobs.js): 불탐 · 얼어붙음 · 독 · 감전 = 몸 색
+      ctx.globalAlpha = this.stTint.a; Assets.blit(ctx, img, def.pivot.x, def.pivot.y, silhouette(img, this.stTint.color)); ctx.globalAlpha = 1;
+    }
 
     if (debug) {
       ctx.fillStyle = '#0f0'; ctx.fillRect(-1, -1, 3, 3); // 발 기준점
