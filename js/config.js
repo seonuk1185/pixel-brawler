@@ -1470,7 +1470,7 @@
       orc: {
         label: '오크 족장', boss: true, frameW: 320, frameH: 232, pivot: { x: 168, y: 226 },
         anims: enemyAnims('orc', {
-          idle: [4, 5, true], walk: [6, 8, true],
+          idle: [4, 5, true], walk: [12, 8, true],
           attack1: [5, 8, false, [1, 2, 2, 2, 2, 3, 4, 4, 4, 5]],   // 내려찍기: 2 치켜듦(예고 500ms) → 4 땅에 박힘
           attack2: [5, 9, false, [1, 1, 1, 2, 3, 4, 4, 5]],         // 가로 휘두르기: 1 뒤로 젖힘(예고) → 3 쭉 뻗음
           special: [5, 10, false, null],                             // 어깨 돌진: 코드에서 단계별로 재생(아래 charge)
@@ -1480,8 +1480,8 @@
           death: [5, 6, false, [1, 1, 2, 2, 3, 4, 5]]
         }),
         walkAnim: 'walk',
-        walkStride: 34,   // 보폭 걷기(enemies.js stepWalk): 걷기 6장 한 바퀴에 가는 그림 점. 걷기 그림 속 발이 거의 제자리(새 그림 필요) → 8fps 쯤으로 차분하게
-        hp: 1000, speedX: 34, speedY: 26, radius: 40, height: 152,
+        walkStride: 170,   // 보폭 걷기(enemies.js stepWalk): 걷기 12장 한 바퀴에 가는 그림 점(2026-11-06 새 걷기 그림 artoss-walk, 발 고정 보정 구움). 48도트/초에 4.6fps 쯤
+        hp: 1000, speedX: 48, speedY: 26, radius: 40, height: 152,
         hurtbox: { x0: -27, x1: 50, yTop: -152, yBot: 0 },
         engage: 70, hover: [70, 90], range: [40, 160], alignY: 10, cooldown: [900, 1700], firstCooldown: [1200, 1500],
         knockResist: 0.25, deathKnock: 60,
@@ -1491,7 +1491,7 @@
         //   d = 그림 1~4 각각 시간(ms). 3번(도끼 짚고 무릎 꿇고 헐떡임) 800ms = 때릴 기회. 휘청 중 맞으면 번쩍이기만
         stagger: { at: [0.66, 0.33], onWall: true, d: [280, 140, 800, 280] },
         enrageAt: 0.5,           // 체력이 이 비율 아래로 떨어지면 화남: 빨라지고 고블린 부름
-        enrage: { speedMul: 1.3, cooldownMul: 0.65, summon: ['goblin', 'goblin'] },
+        enrage: { speedMul: 1.2, cooldownMul: 0.65, summon: ['goblin', 'goblin'] },   // 빠르기 1.3 → 1.2(2026-11-06 새 걷기로 기본 34 → 48: 화나도 58 = 플레이어 걷기 115 의 절반 쯤)
         attacks: {
           slam:  { anim: 'attack1', active: [3, 4], reach: { x0: 40, x1: 104, yTop: -120, yBot: 0 }, depth: 16,
                    dmg: [18, 22], knock: 34, flinchMs: 450, telegraph: [2], shake: 2.5, when: [40, 100], weight: 3, heavy: true },
@@ -1572,7 +1572,7 @@
       golem: {
         label: '돌 골렘', boss: true, frameW: 320, frameH: 232, pivot: { x: 168, y: 226 },
         anims: enemyAnims('golem', {
-          idle: [4, 5, true], walk: [6, 8, true],
+          idle: [4, 5, true], walk: [12, 8, true],
           attack1: [5, 8, false, [1, 2, 2, 2, 2, 3, 4, 4, 4, 5]],   // 내려찍기: 2 두 주먹 치켜듦(예고) → 4 땅에 박힘
           attack2: [5, 9, false, [1, 1, 1, 2, 3, 4, 4, 5]],         // 팔 휘두르기: 1 뒤로 젖힘(예고) → 3 쭉 뻗음
           special: [5, 8, false, [1, 1, 2, 3, 3, 3, 3, 4, 4, 5]],   // 바위 던지기: 1 뽑기 · 3 머리 위로(예고) · 4 던짐
@@ -1586,9 +1586,9 @@
           rockburst: { frames: seq(EN + 'rockburst/rockburst_', 5), pivot: { x: 64, y: 84 }, fps: 12 }    // 바위 터짐(바닥 가운데 기준)
         },
         walkAnim: 'walk',
-        walkStride: 32,   // 보폭 걷기(enemies.js stepWalk): 걷기 6장 한 바퀴에 가는 그림 점. 7.5fps 쯤
+        walkStride: 155,   // 보폭 걷기(enemies.js stepWalk): 걷기 12장 한 바퀴에 가는 그림 점(2026-11-06 새 걷기 그림 artoss-walk). 42도트/초에 4.4fps 쯤
         // 체력·데미지: 자동 조종(?bot=1, 피하지 않음) 시험에서 오크(1단계)보다 한 단계 버겁게 맞춤(2026-11-04)
-        hp: 1050, speedX: 30, speedY: 24, radius: 42, height: 150,
+        hp: 1050, speedX: 42, speedY: 24, radius: 42, height: 150,
         hurtbox: { x0: -34, x1: 55, yTop: -150, yBot: 0 },
         engage: 70, hover: [70, 90], range: [40, 160], alignY: 10, cooldown: [1100, 1900], firstCooldown: [1200, 1500],
         knockResist: 0.2, deathKnock: 50,
@@ -1909,7 +1909,7 @@
       giant: {
         label: '서리 거인', boss: true, frameW: 352, frameH: 248, pivot: { x: 200, y: 242 },
         anims: enemyAnims('giant', {
-          idle: [4, 5, true], walk: [6, 8, true],
+          idle: [4, 5, true], walk: [12, 8, true],
           attack1: [5, 8, false, [1, 2, 2, 2, 2, 3, 4, 4, 4, 5]],   // 내려찍기: 1 듦 · 2 머리 위로(예고 500ms) · 3 내려침 · 4 땅에 박힘 · 5 어깨에 멤
           attack2: [5, 9, false, [1, 1, 1, 2, 3, 4, 4, 5]],         // 휘두르기: 1 뒤로 젖힘(예고) · 2 휘두름 · 3 쭉 뻗음 · 4 몸 앞 · 5 복귀
           special: [5, 8, false, [1, 2, 2, 2, 2, 3, 4, 4, 4, 5]],   // 얼음 가시: 1 손 듦 · 2 손 높이 + 서리 빛(예고) · 3 땅 침 = 가시 · 4 짚은 채 · 5 복귀
@@ -1922,9 +1922,9 @@
           icespike: { frames: seq(EN + 'icespike/icespike_', 5), pivot: { x: 48, y: 84 }, fps: 14 }   // 얼음 가시 덩어리(바닥 가운데 기준, 한 번)
         },
         walkAnim: 'walk',
-        walkStride: 32,   // 보폭 걷기(enemies.js stepWalk): 걷기 6장 한 바퀴에 가는 그림 점. 7fps 쯤
+        walkStride: 156,   // 보폭 걷기(enemies.js stepWalk): 걷기 12장 한 바퀴에 가는 그림 점(2026-11-06 새 걷기 그림 artoss-walk). 39도트/초에 4fps 쯤
         // 체력·데미지: 자동 조종(?bot=1, 피하지 않음) 시험에서 4단계 전갈 왕과 6단계 선장 사이가 되게 맞춤(그림 자료 제안 hp 1100 · 내려찍기 19~23 · 휘두르기 14~17 보다 낮춤)
-        hp: 1000, speedX: 28, speedY: 22, radius: 44, height: 158,
+        hp: 1000, speedX: 39, speedY: 22, radius: 44, height: 158,
         hurtbox: { x0: -40, x1: 48, yTop: -158, yBot: 0 },
         engage: 76, hover: [80, 110], range: [40, 300], alignY: 10, cooldown: [1000, 1800], firstCooldown: [1200, 1500],
         knockResist: 0.2, deathKnock: 40,
@@ -1996,7 +1996,7 @@
       lavagolem: {
         label: '골렘', variant: 'lava', frameW: 320, frameH: 232, pivot: { x: 168, y: 226 },
         anims: enemyAnims('golem', {
-          idle: [4, 5, true], walk: [6, 8, true],
+          idle: [4, 5, true], walk: [12, 8, true],
           attack1: [5, 8, false, [1, 2, 2, 2, 2, 3, 4, 4, 4, 5]],
           attack2: [5, 9, false, [1, 1, 1, 2, 3, 4, 4, 5]],
           special: [5, 8, false, [1, 1, 2, 3, 3, 3, 3, 4, 4, 5]],
@@ -2009,6 +2009,7 @@
           rockburst: { frames: seq(EN + 'rockburst/rockburst_', 5), pivot: { x: 64, y: 84 }, fps: 12 }
         },
         walkAnim: 'walk',
+        walkStride: 155,   // 돌 골렘과 같은 걷기 그림 12장(2026-11-06) → 보폭 걷기. 빠르기는 그대로 30
         hp: 240, speedX: 30, speedY: 24, radius: 42, height: 150,
         hurtbox: { x0: -34, x1: 55, yTop: -150, yBot: 0 },
         engage: 70, hover: [90, 130], range: [30, 300], alignY: 10, cooldown: [2000, 3000], firstCooldown: [1200, 1800],
@@ -2041,7 +2042,7 @@
       wyvern: {
         label: '붉은 와이번', boss: true, frameW: 400, frameH: 256, pivot: { x: 248, y: 250 },
         anims: enemyAnims('wyvern', {
-          idle: [4, 5, true], walk: [6, 8, true],
+          idle: [4, 5, true], walk: [12, 8, true],
           attack1: [5, 9, false, [1, 1, 1, 1, 2, 2, 3, 4, 4, 5]],                 // 물기+꼬리: 1 포효(예고 450ms) · 2 물기 · 3 몸 돌림 · 4 꼬리 · 5 복귀
           attack2: [5, 9, false, [1, 1, 1, 1, 1, 2, 3, 4, 2, 3, 4, 2, 3, 4, 5]],  // 불 뿜기: 1 목이 달아오름(예고 550ms) · 2-3-4 불길 세 번(1초) · 5 입 닫음
           fly: [5, 9, false, null],                                                 // 날아오르기·맴돌기: 장마다 시간은 아래 dive 수치(코드에서)
@@ -2055,7 +2056,7 @@
           breath: { frames: seq(EN + 'breath/breath_', 4), pivot: { x: 125, y: 32 }, fps: 14 }   // 불길 한 토막(기준 = 오른쪽 잘린 면 가운데, 불 머리가 왼쪽)
         },
         walkAnim: 'walk',
-        walkStride: 38,   // 보폭 걷기(enemies.js stepWalk): 걷기 6장 한 바퀴에 가는 그림 점. 8fps 쯤
+        walkStride: 64,   // 보폭 걷기(enemies.js stepWalk): 걷기 12장 한 바퀴에 가는 그림 점(2026-11-06 새 네 발 걷기 그림 artoss-walk, 손으로 맞춘 값). 38도트/초에 9.6fps 쯤
         rim: { color: '#1a0608', px: 1, alpha: 0.85 },
         hp: 1000, speedX: 38, speedY: 28, radius: 48, height: 150,
         hurtbox: { x0: -62, x1: 58, yTop: -150, yBot: 0 },
@@ -2347,9 +2348,9 @@
           aura:   { frames: seq(EN + 'kingaura/aura_', 4),     pivot: { x: 64, y: 212 }, fps: 10 }    // 각성 오라(마왕 발에 맞춤, 반복)
         },
         walkAnim: 'walk',
-        walkStride: 37, walkDy: [2, 0, 0, 0, 0, 0],   // 보폭 걷기(enemies.js stepWalk): 걷기 6장 한 바퀴에 가는 그림 점. 7.5fps 쯤, walkDy = 1장이 2점 떠 있음
+        walkStride: 64,   // 보폭 걷기(enemies.js stepWalk): 걷기 6장(= 한 걸음, 같은 걸음을 되풀이) 한 바퀴에 가는 그림 점(2026-11-06 새 걷기 그림 artoss-walk, walkDy 없앰). 48도트/초에 6fps 쯤
         // 체력·데미지: 자동 조종(?bot=1) 시험에서 9단계 마왕군 장군보다 조금 버겁게 맞춤(그림 자료 제안 hp 1600 보다 낮춤, 판 배율 x1.7)
-        hp: 1100, speedX: 34, speedY: 24, radius: 46, height: 178,
+        hp: 1100, speedX: 48, speedY: 24, radius: 46, height: 178,
         hurtbox: { x0: -36, x1: 34, yTop: -176, yBot: 0 },
         engage: 80, hover: [80, 110], range: [40, 170], alignY: 10, cooldown: [950, 1700], firstCooldown: [1400, 1700],
         knockResist: 0.15, deathKnock: 0,
