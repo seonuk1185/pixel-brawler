@@ -47,8 +47,9 @@
   </details>
   <!-- 소리 켜기/끄기(2026-11-07 효과음, js/sfx.js): 오른쪽 위 「시험」 탭 왼쪽 작은 스피커(시험 탭이 숨으면 그 자리). PC = M 키. 끄면 스피커에 X -->
   <button type="button" class="sndbtn" id="btnSnd" aria-label="소리 끄기" aria-pressed="false"><i></i></button>
-  <!-- 던전 멈춤(2026-11-07): 던전 도전 중 폰 화면에서만(소리 버튼 왼쪽). 누르면 설정 창(멈춤 · 던전 나가기). PC = Esc · 아래 막대 「설정」 -->
-  <button type="button" class="dgpause" id="btnDgPause" aria-label="멈춤" hidden><i></i></button>
+  <!-- 폰 설정 버튼(2026-11-07, 톱니): 폰 화면에서만(소리 버튼 왼쪽). 누르면 설정 창 = 게임 멈춤. 던전 도전 중에도 같은 버튼(= 멈춤 · 던전 나가기, 예전 던전 멈춤 버튼을 합침)
+       PC = Esc · 아래 막대 「설정」 -->
+  <button type="button" class="phset" id="btnPhSet" aria-label="설정 (멈춤)" title="설정 (멈춤)"><i></i></button>
 
   <!-- 스테이지 판 화면 위 글자: 체력 막대, 보스 막대, GO, 알림 (게임 화면 크기에 맞춰 main.js 가 위치를 잡음) -->
   <div class="hud" id="hud" hidden>
@@ -212,7 +213,13 @@
         <div class="setrow"><b>효과음 크기</b><span class="vol" id="setVol"><button type="button" class="wbtn x vbtn" id="btnVolDn" aria-label="효과음 작게">-</button><i class="vbar" id="volBar" role="slider" aria-label="효과음 크기" aria-valuemin="0" aria-valuemax="10"></i><button type="button" class="wbtn x vbtn" id="btnVolUp" aria-label="효과음 크게">+</button></span><span id="volTxt">100%</span></div>
         <div class="setrow"><b>화면 흔들림</b><button type="button" class="wbtn" id="btnSetShake">켜짐</button><span>맞을 때 · 큰 기술 때 화면이 흔들려요</span></div>
         <div class="setrow"><b>전체화면</b><button type="button" class="wbtn" id="btnSetFull">꺼짐</button><span id="fullTip">화면을 꽉 채워요</span></div>
-        <div class="setrow"><b>조작 도움말</b><button type="button" class="wbtn" id="btnSetHelp">보이기</button><span>화면 아래 키 안내 한 줄</span></div>
+        <div class="setrow pconly"><b>조작 도움말</b><button type="button" class="wbtn" id="btnSetHelp">보이기</button><span>화면 아래 키 안내 한 줄</span></div>
+        <!-- 폰 화면(touchui)에서만(2026-11-07 폰 설정): 진동(안 되는 기기 = 줄 숨김) · 조작 도움말(창) · 조이스틱 범위 · 버튼 위치 바꾸기(js/padlayout.js) · 콤보 버튼(준비 중) -->
+        <div class="setrow touchonly" id="vibRow"><b>진동</b><button type="button" class="wbtn" id="btnSetVib">켜짐</button><span>맞을 때 · 세게 칠 때 폰이 떨려요</span></div>
+        <div class="setrow touchonly"><b>조작 도움말</b><button type="button" class="wbtn" id="btnSetHelpT">보기</button><span>폰 조작 방법</span></div>
+        <div class="setrow touchonly joyrow"><b>조이스틱 범위</b><span class="seg3" id="joySeg"><button type="button" class="wbtn" data-joy="wide">넓게</button><button type="button" class="wbtn" data-joy="mid">보통</button><button type="button" class="wbtn" data-joy="narrow">좁게</button></span><span>왼쪽 누르는 곳 넓이</span></div>
+        <div class="setrow touchonly"><b>버튼 위치</b><button type="button" class="wbtn" id="btnSetLay">바꾸기</button><span id="layTip">버튼을 끌어서 옮겨요</span></div>
+        <div class="setrow touchonly padrow"><b>콤보 버튼</b><span>준비 중</span></div>
         <div class="setrow padrow"><b>게임패드</b><span>준비 중</span></div>
         <!-- 던전 도전 중에만(2026-11-07, main.js openSet): 누르면 게임 안 확인 창(dgConfirm) -->
         <div class="setrow dgrow" id="dgExitRow" hidden><b>던전</b><button type="button" class="wbtn" id="btnDgExit">나가기</button><span>모은 강화석은 남아요</span></div>
@@ -235,26 +242,57 @@
     </div>
   </div>
 
+  <!-- 폰 조작 도움말(2026-11-07 폰 설정 「조작 도움말 · 보기」): 설정 창 위에 뜨는 작은 창 -->
+  <div class="statpanel phhelp" id="phHelp" hidden>
+    <div class="box">
+      <h2>조작 도움말</h2>
+      <dl class="keymap">
+        <dt>이동</dt><dd>화면 왼쪽 아무 데나 누르고 끌어요</dd>
+        <dt>달리기</dt><dd>한쪽으로 계속 밀거나, 뗐다가 바로 같은 쪽으로 다시 밀어요</dd>
+        <dt>공격 · 점프 · 회피</dt><dd>오른쪽 아래 동그라미 버튼</dd>
+        <dt>기술</dt><dd>공격 둘레 네모 칸 (기술 창에서 끼워요)</dd>
+        <dt>각성</dt><dd>분노가 100% 면 마름모를 눌러요</dd>
+        <dt>설정 · 멈춤</dt><dd>오른쪽 위 톱니 버튼 (던전에서는 나가기도)</dd>
+        <dt>버튼 위치</dt><dd>설정 → 버튼 위치 바꾸기에서 끌어서 옮겨요</dd>
+      </dl>
+      <div class="rbtns"><button type="button" id="btnPhHelpOk">확인</button></div>
+    </div>
+  </div>
+  <!-- 버튼 위치 바꾸기(2026-11-07, js/padlayout.js): 멈춘 게임 위에 폰 버튼을 전부 보여 주고 끌어서 옮김(작은 칸에 맞춰 붙음 · 안 겹침 · 화면 안).
+       화면 모양(넓은 · 보통 · 네모난)마다 따로 저장(폴드 접음 · 펼침이 각자). 띠 = 고른 버튼 크기 · 전체 크기 · 기본 배치로 · 취소 · 저장 -->
+  <div class="layed" id="layEd" hidden>
+    <div class="lebar" id="leBar">
+      <div class="lerow"><b class="lett">버튼 위치 바꾸기</b><span class="leshape" id="leShape"></span><span class="lemsg" id="leMsg" aria-live="polite"></span></div>
+      <div class="lerow">
+        <span class="legrp" id="leSize"><em id="leSel">공격</em><button type="button" class="wbtn" data-s="0.8">작게</button><button type="button" class="wbtn" data-s="1">보통</button><button type="button" class="wbtn" data-s="1.25">크게</button></span>
+        <span class="legrp"><em>전체 크기</em><button type="button" class="wbtn x" id="leGDn" aria-label="전체 작게">-</button><b id="leG">100%</b><button type="button" class="wbtn x" id="leGUp" aria-label="전체 크게">+</button></span>
+        <span class="legrp"><button type="button" class="wbtn" id="leReset">기본 배치로</button><button type="button" class="wbtn" id="leCancel">취소</button><button type="button" class="wbtn on" id="leSave">저장</button></span>
+      </div>
+    </div>
+  </div>
+  <!-- 가로로 돌려 주세요(2026-11-07, 형님 결정 = 가로 화면 전용): 폰을 세로로 들면 가운데 안내 + 게임 멈춤(main.js resize · step) -->
+  <div class="rotov" id="rotOv" hidden><div class="rbox"><i class="rotic"></i><b>가로로 돌려 주세요</b><small>이 게임은 가로 화면으로 해요</small></div></div>
+
   <!-- 폰 조작 -->
   <div class="joyzone" id="joyZone">
     <div class="joy" id="joy"><i id="joyKnob"></i></div>
   </div>
   <div class="btns">
-    <button type="button" class="btn jump" id="btnJump" aria-label="점프">점프</button>
-    <button type="button" class="btn atk" id="btnAtk" aria-label="공격">공격</button>
+    <button type="button" class="btn jump" id="btnJump" data-lab="점프" aria-label="점프">점프</button>
+    <button type="button" class="btn atk" id="btnAtk" data-lab="공격" aria-label="공격">공격</button>
     <!-- 회피(2026-11-07): 점프 왼쪽 아래 작은 동그라미. 쿨타임 중엔 시계 방향으로 어두움(--cd, main.js dodgeUi) -->
-    <button type="button" class="btn dodge" id="btnDodge" aria-label="회피"><i class="sweep"></i><span>회피</span></button>
+    <button type="button" class="btn dodge" id="btnDodge" data-lab="회피" aria-label="회피"><i class="sweep"></i><span>회피</span></button>
     <!-- 기술 칸 A~E (기사·법사만, 견습은 숨김. 3번 칸 Lv10 · 4번 칸 Lv13 · 5번 칸 Lv15(2026-11-07) 부터). 네모 도트 액자 + 기술 그림(js/icons.js), 공격 버튼 둘레 반달(2026-11-06 폰 UI).
          칸 순서는 PC 아래 막대와 하나(폰 = 앞 5칸). PC 에서 회피를 끼운 칸은 회피 그림 + 누르면 회피
          쿨타임 중엔 시계 방향으로 어두움 + 남은 초, 마나가 모자라면 회색 그림 + 밑에 「MP n」 (skills.js 의 ui) -->
-    <button type="button" class="btn sk skA" id="btnSkA" data-skill="A" hidden aria-label="기술 1"><span class="ic"></span><i class="sweep"></i><b class="sec"></b><small class="mp"></small></button>
-    <button type="button" class="btn sk skB" id="btnSkB" data-skill="B" hidden aria-label="기술 2"><span class="ic"></span><i class="sweep"></i><b class="sec"></b><small class="mp"></small></button>
-    <button type="button" class="btn sk skC" id="btnSkC" data-skill="C" hidden aria-label="기술 3"><span class="ic"></span><i class="sweep"></i><b class="sec"></b><small class="mp"></small></button>
-    <button type="button" class="btn sk skD" id="btnSkD" data-skill="D" hidden aria-label="기술 4"><span class="ic"></span><i class="sweep"></i><b class="sec"></b><small class="mp"></small></button>
-    <button type="button" class="btn sk skE" id="btnSkE" data-skill="E" hidden aria-label="기술 5"><span class="ic"></span><i class="sweep"></i><b class="sec"></b><small class="mp"></small></button>
+    <button type="button" class="btn sk skA" id="btnSkA" data-lab="기술 1" data-skill="A" hidden aria-label="기술 1"><span class="ic"></span><i class="sweep"></i><b class="sec"></b><small class="mp"></small></button>
+    <button type="button" class="btn sk skB" id="btnSkB" data-lab="기술 2" data-skill="B" hidden aria-label="기술 2"><span class="ic"></span><i class="sweep"></i><b class="sec"></b><small class="mp"></small></button>
+    <button type="button" class="btn sk skC" id="btnSkC" data-lab="기술 3" data-skill="C" hidden aria-label="기술 3"><span class="ic"></span><i class="sweep"></i><b class="sec"></b><small class="mp"></small></button>
+    <button type="button" class="btn sk skD" id="btnSkD" data-lab="기술 4" data-skill="D" hidden aria-label="기술 4"><span class="ic"></span><i class="sweep"></i><b class="sec"></b><small class="mp"></small></button>
+    <button type="button" class="btn sk skE" id="btnSkE" data-lab="기술 5" data-skill="E" hidden aria-label="기술 5"><span class="ic"></span><i class="sweep"></i><b class="sec"></b><small class="mp"></small></button>
     <!-- 각성(2026-11-06 밤 → 2026-11-06 폰 UI 마름모): 기술 반달 위 끝. 분노 100% 면 금빛으로 빛남(.ready), 각성 중 = 직업 색(.on).
          안쪽 차오름 = 분노(--rg), 왼쪽 글자 = 분노 %(pct). 걷는 길 밖이라 main.js controlPad 에 안 들어감 -->
-    <button type="button" class="btn awk" id="btnAwk" aria-label="각성"><i class="dia"></i><i class="fill"></i><span>각성</span><b class="pct" id="awkPct"></b></button>
+    <button type="button" class="btn awk" id="btnAwk" data-lab="각성" aria-label="각성"><i class="dia"></i><i class="fill"></i><span>각성</span><b class="pct" id="awkPct"></b></button>
   </div>
 </div>
 
@@ -275,6 +313,7 @@
 <script src="js/mythicfx.js"></script>
 <script src="js/enchant.js"></script>
 <script src="js/debug.js"></script>
+<script src="js/padlayout.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>

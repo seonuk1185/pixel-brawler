@@ -37,6 +37,8 @@
   var canvas = document.getElementById('screen');
   var ctx = canvas.getContext('2d');
   var hudEl = document.getElementById('hud');
+  // 가로로 돌려 주세요(2026-11-07, 형님 결정 = 가로 화면 전용): 폰 화면(touchui)을 세로로 들면 안내(#rotOv) + 게임 멈춤(step). 세로 CSS 는 그대로 두되 안 씀
+  var rotEl = document.getElementById('rotOv'), rotHold = false;
   var LW = 480, LH = 240, SCALE = 1;
   var world = { width: CFG.world.width, laneTop: 0, laneBottom: 0, floorY: 0, bgOff: 0, minX: null, maxX: null };
   // 폰 가로 화면: 공격 버튼이 게임 화면 오른쪽 아래(걷는 길)를 덮는다 → 그 폭(도트)만큼 오른쪽을 싸움 자리에서 뺀다.
@@ -59,6 +61,9 @@
     var pw = Math.round(cw * dpr), ph = Math.round(ch * dpr);
     var portrait = ch > cw * 1.05;
     document.body.classList.toggle('portrait', portrait);
+    rotHold = portrait && document.body.classList.contains('touchui');
+    if (rotEl) rotEl.hidden = !rotHold;
+    if (rotHold) Input.setOverride(null);
     var topCss = 0, padB = portrait ? 0 : pcBarPx();
     document.documentElement.style.setProperty('--pcbarH', padB + 'px');
     if (portrait) {
@@ -127,6 +132,7 @@
       if (!btn || !btn.offsetParent || btn.hidden) return;
       var b = btn.getBoundingClientRect();
       if (b.top >= laneB || b.bottom <= laneT || b.left >= c.right) return;
+      if (b.left + b.width / 2 < c.left + c.width / 2) return;   // 버튼 위치 바꾸기(2026-11-07)로 화면 왼쪽 반에 둔 공격 버튼 = 오른쪽을 안 비움
       pad = Math.max(pad, Math.ceil((c.right - b.left + 4) * LW / c.width));
     });
     return Math.max(0, Math.min(Math.round(LW * 0.3), pad));
@@ -243,7 +249,7 @@
 
   // 폰 진동: 사용자가 한 번이라도 화면을 누른 뒤에만(그 전엔 브라우저가 막고 경고를 띄움)
   function vibrate(ms) {
-    if (!(J.vibrateMs > 0) || !navigator.vibrate) return;
+    if (!(J.vibrateMs > 0) || !navigator.vibrate || (opt && opt.vib === false)) return;   // 설정 창 「진동」(2026-11-07)
     if (navigator.userActivation && !navigator.userActivation.hasBeenActive) return;
     try { navigator.vibrate(ms); } catch (e) {}
   }
@@ -2428,7 +2434,7 @@
 
   // ---------- 갱신 ----------
   function step(realMs) {
-    if (G.paused) return;   // 스테이지 고르기 화면: 멈춤
+    if (G.paused || rotHold) return;   // 스테이지 고르기 화면 · 창 · 세로 화면(가로로 돌려 주세요): 멈춤
     FX.updateShake(realMs);
     Skills.tickReal(realMs);
     if (G.callout) G.callout.t += realMs;     // 「5 KILL!」 글자(진짜 시간)
@@ -2703,7 +2709,7 @@
       setIf('mname', MB.label, function (v) { hud.midName.textContent = v; });
       setIf('mhp', MB.hp / MB.maxHp, function (v) { hud.mHp.style.width = (v * 100) + '%'; hud.mHpLag.style.width = (v * 100) + '%'; });
     }
-    setIf('dgp', !!(S.dg && !S.result && !S.dg.end), function (v) { if (dgPauseEl) dgPauseEl.hidden = !v; });   // 던전 멈춤 버튼(폰)
+    setIf('dgp', !!(S.dg && !S.result && !S.dg.end), function (v) { if (phSetEl) { phSetEl.classList.toggle('dg', v); phSetEl.title = v ? '멈춤 · 설정' : '설정 (멈춤)'; phSetEl.setAttribute('aria-label', phSetEl.title); } });   // 폰 톱니 버튼: 던전 도전 중 = 멈춤 · 나가기
     if (S.dg) {   // 던전(2026-11-07): 「노말 · 강화석 광산  ·  처치 12 · 강화석 3」
       setIf('go', false, function (v) { hud.goPrompt.hidden = !v; });
       setIf('info', 'dg' + Growth.mode() + S.dg.kills + ':' + (G.loot ? G.loot.stones : 0), function () { hud.stageInfo.textContent = Growth.M().name + ' · ' + CFG.stage.name + '  ·  처치 ' + S.dg.kills + ' · 강화석 ' + (G.loot ? G.loot.stones : 0); });
@@ -3594,8 +3600,11 @@
   //   2026-11-07 키 설정 · 화면 설정(형님 승인): 효과음 크기 · 화면 흔들림 · 전체화면 + 키 설정 표(js/keys.js). 친구 시험 모드(?demo=1)도 같은 창
   //   저장 = localStorage 'pixelBrawler.opts' = { vol: 0~10, shake: 켬/끔 } (친구 시험 모드 = 'pixelBrawler.demo.opts'). 전체화면은 저장 안 함(브라우저 규칙: 누를 때만)
   var setEl = document.getElementById('setPanel'), setBack = null;
-  var OPT_KEY = CFG.demo ? 'pixelBrawler.demo.opts' : 'pixelBrawler.opts', opt = { vol: 10, shake: true };
-  try { var op0 = JSON.parse(localStorage.getItem(OPT_KEY) || 'null'); if (op0 && typeof op0 === 'object') opt = { vol: op0.vol >= 0 && op0.vol <= 10 ? Math.round(op0.vol) : 10, shake: op0.shake !== false }; } catch (e) {}
+  //   2026-11-07 폰 설정: vib = 진동 켬/끔, joy = 조이스틱 범위('wide' 넓게 · 'mid' 보통 · 'narrow' 좁게 → body 의 joy-wide / joy-narrow, style.css .joyzone)
+  var phSetEl = document.getElementById('btnPhSet');
+  var OPT_KEY = CFG.demo ? 'pixelBrawler.demo.opts' : 'pixelBrawler.opts', opt = { vol: 10, shake: true, vib: true, joy: 'mid' };
+  try { var op0 = JSON.parse(localStorage.getItem(OPT_KEY) || 'null'); if (op0 && typeof op0 === 'object') opt = { vol: op0.vol >= 0 && op0.vol <= 10 ? Math.round(op0.vol) : 10, shake: op0.shake !== false,
+    vib: op0.vib !== false, joy: ['wide', 'mid', 'narrow'].indexOf(op0.joy) >= 0 ? op0.joy : 'mid' }; } catch (e) {}
   function optSave() { try { localStorage.setItem(OPT_KEY, JSON.stringify(opt)); } catch (e) {} }
   // 효과음 크기: js/sfx.js 는 고치지 않음 → 그 파일이 보는 config audio.master(전체 크기)를 바꾸고, 켜져 있으면 SFX.setMuted(false) 로 다시 맞춤
   var AU = CFG.audio || (CFG.audio = {}), VOL0 = AU.master != null ? AU.master : 0.8;
@@ -3604,7 +3613,9 @@
     if (live && window.SFX && SFX.isMuted && !SFX.isMuted() && SFX.setMuted) SFX.setMuted(false);
   }
   function shakeApply() { FX.setShakeMul(opt.shake ? 1 : 0); }
-  volApply(false); shakeApply();
+  function joyApply() { document.body.classList.toggle('joy-wide', opt.joy === 'wide'); document.body.classList.toggle('joy-narrow', opt.joy === 'narrow'); }
+  var vibCan = typeof navigator.vibrate === 'function';
+  volApply(false); shakeApply(); joyApply();
   // 전체화면(Fullscreen API): 안 되는 브라우저(아이폰 등) = 버튼 잠금, 거절되면 글자로 알림
   var DE = document.documentElement;
   function fsOn() { return !!(document.fullscreenElement || document.webkitFullscreenElement); }
@@ -3613,11 +3624,17 @@
   function fsToggle() {
     fsFail = '';
     function bad() { fsFail = '전체화면을 쓸 수 없어요 (브라우저가 막음, F11 을 써 보세요)'; setUi(); }
+    // 폰 화면(2026-11-07): 전체화면이 켜지면 가로로 고정(screen.orientation.lock, 안 되는 브라우저 = 그냥 지나감)
+    function lockLand() {
+      if (Input.mode() !== 'touch') return;
+      try { var o = screen.orientation, q = o && o.lock && o.lock('landscape'); if (q && q.catch) q.catch(function () {}); } catch (e) {}
+    }
     try {
-      var r;
-      if (fsOn()) r = (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+      var r, on = fsOn();
+      if (on) r = (document.exitFullscreen || document.webkitExitFullscreen).call(document);
       else r = (DE.requestFullscreen || DE.webkitRequestFullscreen).call(DE);
-      if (r && r.catch) r.catch(bad);
+      if (r && r.then) r.then(on ? null : lockLand, bad);
+      else if (!on) setTimeout(lockLand, 300);
     } catch (e) { bad(); }
   }
   ['fullscreenchange', 'webkitfullscreenchange'].forEach(function (t) { document.addEventListener(t, function () { if (!setEl.hidden) setUi(); }); });
@@ -3634,6 +3651,10 @@
     document.getElementById('volTxt').textContent = (opt.vol * 10) + '%';
     document.getElementById('btnVolDn').disabled = opt.vol <= 0; document.getElementById('btnVolUp').disabled = opt.vol >= 10;
     document.getElementById('setSndTip').textContent = Keys.lab('sound') ? Keys.lab('sound') + ' 키로도 켜고 꺼요' : '';
+    // 폰 설정(2026-11-07): 진동(안 되는 기기 = 줄 숨김) · 조이스틱 범위
+    document.getElementById('vibRow').hidden = !vibCan;
+    var vb2 = document.getElementById('btnSetVib'); vb2.textContent = opt.vib ? '켜짐' : '꺼짐'; vb2.classList.toggle('on', opt.vib);
+    document.querySelectorAll('#joySeg [data-joy]').forEach(function (b) { b.classList.toggle('on', b.dataset.joy === opt.joy); });
   }
   function setVol(v) { v = Math.max(0, Math.min(10, Math.round(v))); if (v === opt.vol) return; opt.vol = v; optSave(); volApply(true); setUi(); }
   document.getElementById('btnVolDn').addEventListener('click', function () { setVol(opt.vol - 1); if (this.disabled) document.getElementById('btnVolUp').focus(); });
@@ -3648,6 +3669,25 @@
   })();
   document.getElementById('btnSetShake').addEventListener('click', function () { opt.shake = !opt.shake; optSave(); shakeApply(); setUi(); });
   document.getElementById('btnSetFull').addEventListener('click', function () { fsToggle(); setTimeout(setUi, 0); });
+  // 폰 설정(2026-11-07): 진동 켜기 = 짧게 한 번 떨어 봄 · 조이스틱 범위 · 조작 도움말 창 · 버튼 위치 바꾸기(js/padlayout.js)
+  document.getElementById('btnSetVib').addEventListener('click', function () {
+    opt.vib = !opt.vib; optSave(); setUi();
+    if (opt.vib && vibCan) try { navigator.vibrate(40); } catch (e) {}
+  });
+  document.querySelectorAll('#joySeg [data-joy]').forEach(function (b) { b.addEventListener('click', function () { opt.joy = b.dataset.joy; optSave(); joyApply(); setUi(); }); });
+  var phHelpEl = document.getElementById('phHelp');
+  document.getElementById('btnSetHelpT').addEventListener('click', function () { openMenu(phHelpEl, document.getElementById('btnPhHelpOk')); });
+  document.getElementById('btnPhHelpOk').addEventListener('click', function () { closeMenu(phHelpEl); openMenu(setEl, document.getElementById('btnSetHelpT')); });
+  document.getElementById('btnSetLay').addEventListener('click', function () {
+    // 설정 창은 잠깐 숨기고(게임은 계속 멈춤) 바꾸기 화면 → 저장 · 취소 = 설정 창으로 돌아옴
+    closeMenu(setEl);
+    var ok = PadLayout.open(function (saved) {
+      openMenu(setEl, document.getElementById('btnSetLay'));
+      document.getElementById('layTip').textContent = saved ? '저장했어요 (이 화면 모양에만)' : '버튼을 끌어서 옮겨요';
+      setUi();
+    });
+    if (!ok) openMenu(setEl, document.getElementById('btnSetLay'));
+  });
 
   // ---------- 키 설정 표 (2026-11-07, js/keys.js) ----------
   //   왼쪽 = 움직이기 · 싸우기 · 창 · 소리, 오른쪽 = 기술 1~10번 칸. 칸(기본 키 · 보조 키)을 누르면 「키를 누르세요」 → 다음 키로 바뀜
@@ -3767,7 +3807,7 @@
 
   // ---------- 던전 나가기 확인(2026-11-07): 설정 창 「나가기」 → 게임 안 확인 창(브라우저 창 아님) ----------
   //   나가기 = 이번 도전 끝(모은 강화석은 남음) → 던전 고르기. 계속하기 · Esc = 설정 창으로 돌아감
-  var dgCfEl = document.getElementById('dgConfirm'), dgPauseEl = document.getElementById('btnDgPause');
+  var dgCfEl = document.getElementById('dgConfirm');
   function dgConfirmOpen() { if (!dgRunning() || !dgCfEl) return; openMenu(dgCfEl, document.getElementById('btnDgStay')); }
   function dgConfirmClose() { if (!dgCfEl || dgCfEl.hidden) return; closeMenu(dgCfEl); if (!setEl.hidden) openMenu(setEl, document.getElementById('btnDgExit')); }
   if (dgCfEl) {
@@ -3779,8 +3819,8 @@
       e.preventDefault(); e.stopPropagation(); dgConfirmClose();
     }, true);
   }
-  // 폰 멈춤 버튼(던전 도전 중, 오른쪽 위 소리 버튼 옆): 설정 창을 엶(= 멈춤 · 나가기)
-  if (dgPauseEl) dgPauseEl.addEventListener('click', function () { openSet(); this.blur(); });
+  // 폰 톱니 설정 버튼(2026-11-07, 오른쪽 위 소리 버튼 옆, 예전 던전 멈춤 버튼을 합침): 설정 창 = 멈춤(던전 도전 중이면 나가기 줄도)
+  if (phSetEl) phSetEl.addEventListener('click', function () { if (setEl.hidden && !PadLayout.isOpen()) openSet(); this.blur(); });
 
   // ---------- 창 키 (2026-11-07, config keys.stat · skill · enc · menu = C · V · B · Esc) ----------
   //   창이 없을 때 누르면 그 창을 엶, 같은 키를 다시 누르면 닫음. 다른 창 · 전직 화면이 열려 있으면 안 열림(Esc 는 각 창이 먼저 받아 닫음)
@@ -3800,7 +3840,7 @@
     var w = is(K.stat) ? 'stat' : is(K.skill) ? 'skill' : is(K.enc) ? 'enc' : is(K.menu) ? 'menu' : null;
     if (!w || (classEl && !classEl.hidden)) return;
     var own = { stat: statEl, skill: skEl, enc: encEl, menu: setEl }[w];
-    var open = [statEl, skEl, encEl, upEl, setEl].filter(function (p) { return p && !p.hidden; })[0];
+    var open = [statEl, skEl, encEl, upEl, setEl, phHelpEl, document.getElementById('layEd')].filter(function (p) { return p && !p.hidden; })[0];
     if (open) {
       if (open === own) { e.preventDefault(); ({ stat: closeStats, skill: closeSkills, enc: closeEnc, menu: closeSet })[w](); }
       return;

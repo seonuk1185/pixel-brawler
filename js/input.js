@@ -41,7 +41,9 @@
   var runKey = 0, tap = { dir: 0, t: 0 };
   // 폰: joyRun = 조이스틱으로 정한 달리는 쪽, joyRel = 마지막으로 뗀 시각·쪽(빠르게 다시 밀기 = 달리기)
   var joyRun = 0, joyRel = { t: -1e9, dir: 0 }, joyFlick = false, joyHold = { dir: 0, t: 0 };   // joyHold = 같은 쪽으로 밀기 시작한 시각
-  var joyRunTick = null;   // 조이스틱 만들 때 joyRunCheck 를 넣어 둠 → runDir 가 매 프레임 부름
+  var joyRunTick = null;
+  // 조이스틱이 안 생기는 곳(2026-11-07 버튼 위치 바꾸기, js/padlayout.js 가 넣음): fn(x, y) → true = 버튼 둘레라 조이스틱 안 만듦
+  var joyBlock = null;   // 조이스틱 만들 때 joyRunCheck 를 넣어 둠 → runDir 가 매 프레임 부름
 
   function matches(code, list) { return list.indexOf(code) >= 0; }
   function anyHeld(list) { for (var i = 0; i < list.length; i++) if (keysDown[list[i]]) return true; return false; }
@@ -111,6 +113,7 @@
     joyRunTick = joyRunCheck;
     zone.addEventListener('pointerdown', function (e) {
       if (joy.id !== null) return;
+      if (joyBlock && joyBlock(e.clientX, e.clientY)) { e.preventDefault(); return; }
       joy.id = e.pointerId; joy.active = true;
       zone.setPointerCapture(e.pointerId);
       var r = zone.getBoundingClientRect();
@@ -200,6 +203,7 @@
     // 칸 누름(PC 아래 막대를 마우스로 누름 · 시험용): 회피를 끼운 칸이면 회피(2026-11-07)
     pressSlot: pressSlot,
     setSlotDodge: function (fn) { slotIsDodge = fn; },
+    setJoyBlock: function (fn) { joyBlock = fn; },   // 버튼 둘레에서는 조이스틱 안 생김(2026-11-07)
     // 화면 갈래(2026-11-07): mode() = 'pc' / 'touch', setMode = 시험용, onMode(fn) = 바뀔 때 부름
     mode: function () { return uiMode; },
     setMode: setMode,

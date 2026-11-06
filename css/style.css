@@ -166,14 +166,17 @@ body.smooth #screen { image-rendering: auto; }
 .sndbtn:active i { transform: translateY(1px); }
 .sndbtn:focus-visible { outline: 2px solid var(--gold); outline-offset: -4px; }
 .topbar[hidden] ~ .sndbtn { right: max(6px, env(safe-area-inset-right)); }
-/* 던전 멈춤(2026-11-07): 폰 화면 + 던전 도전 중에만, 소리 버튼 바로 왼쪽. 나무 칸 + 도트 두 줄(II) */
-.dgpause { position: absolute; top: max(4px, env(safe-area-inset-top)); right: calc(max(6px, env(safe-area-inset-right)) + 88px); z-index: 6;
+/* 폰 톱니 설정 버튼(2026-11-07, 예전 던전 멈춤 버튼을 합침): 폰 화면(touchui)에서만, 소리 버튼 바로 왼쪽. 나무 칸 + 도트 톱니.
+   던전 도전 중(.dg) = 금테 진하게(누르면 멈춤 · 나가기) */
+.phset { position: absolute; top: max(4px, env(safe-area-inset-top)); right: calc(max(6px, env(safe-area-inset-right)) + 88px); z-index: 6;
   display: none; align-items: center; justify-content: center; width: 40px; height: 40px; padding: 0; border: 0; background: transparent; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-.touchui .dgpause:not([hidden]) { display: flex; }
-.topbar[hidden] ~ .dgpause { right: calc(max(6px, env(safe-area-inset-right)) + 42px); }
-.dgpause i { display: block; width: 26px; height: 21px; opacity: .85; background: linear-gradient(90deg, transparent 8px, #f5e0a8 8px 11px, transparent 11px 14px, #f5e0a8 14px 17px, transparent 17px) center / 26px 11px no-repeat, linear-gradient(#6a4020, #4a2a12);
+.touchui .phset { display: flex; }
+.topbar[hidden] ~ .phset { right: calc(max(6px, env(safe-area-inset-right)) + 42px); }
+.phset i { display: block; width: 26px; height: 21px; opacity: .85; image-rendering: pixelated; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' shape-rendering='crispEdges'%3E%3Cpath fill='%23f5e0a8' d='M3 3h6v6h-6zM5 1h2v2h-2zM5 9h2v2h-2zM1 5h2v2h-2zM9 5h2v2h-2zM2 2h2v2h-2zM8 2h2v2h-2zM2 8h2v2h-2zM8 8h2v2h-2z'/%3E%3Cpath fill='%234a2a12' d='M5 5h2v2h-2z'/%3E%3C/svg%3E") center / 18px 18px no-repeat, linear-gradient(#6a4020, #4a2a12);
   border: 2px solid var(--ink); box-shadow: inset 0 0 0 1px var(--gold3); }
-.dgpause:active i { transform: translateY(1px); }
+.phset.dg i { opacity: 1; box-shadow: inset 0 0 0 1px var(--gold); }
+.phset:active i { transform: translateY(1px); }
+.phset:focus-visible { outline: 2px solid var(--gold); outline-offset: -4px; }
 /* 시험 탭이 숨어도 콤보 글자는 스피커 밑으로 */
 .sndbtn ~ .combo { top: max(50px, calc(env(safe-area-inset-top) + 46px)); }
 
@@ -1138,3 +1141,66 @@ button.cpick { cursor: pointer; }
   .encwrap { grid-template-columns: 1fr; }
   .ebon, .elist { grid-template-columns: 1fr; }
 }
+
+/* ---------- 폰 설정(2026-11-07, 형님 승인): 설정 창 큰 누름 칸 · 진동 · 조이스틱 범위 · 조작 도움말 · 버튼 위치 바꾸기 · 가로로 돌려 주세요 ---------- */
+.setrow[hidden] { display: none; }
+body:not(.touchui) .touchonly { display: none; }
+.seg3 { display: flex; gap: 3px; }
+/* 폰 화면 설정 창: 칸 높이 40 이상, 줄이 많으면 줄만 굴림(위아래로 밀기) */
+.touchui .setpanel .box { width: min(860px, 98vw); }
+.touchui .setpanel .setrows { flex: 1 1 auto; min-height: 0; overflow-y: auto; align-content: start; touch-action: pan-y; scrollbar-width: thin; scrollbar-color: var(--gold2) #2a1608; }
+.touchui .setpanel .setrow { min-height: 48px; padding: 3px 8px; grid-template-columns: 104px auto 1fr; }
+.touchui .setpanel .setrow .wbtn { height: 40px; min-width: 72px; font-size: 13px; }
+.touchui .setpanel .seg3 .wbtn { min-width: 50px; padding: 0 6px; }
+.touchui .setrow .vol .wbtn.x { width: 40px; height: 40px; }
+.touchui .setpanel .vbar { width: 100px; height: 28px; }
+.touchui .setpanel .padrow { grid-template-columns: 104px 1fr; }
+.touchui .setpanel .rbtns button { min-height: 46px; }
+/* 조작 도움말 창(폰): 설정 창 위 */
+.statpanel.phhelp { z-index: 36; }
+.phhelp .box { width: min(540px, 96vw); }
+.phhelp .keymap { min-height: 0; overflow-y: auto; touch-action: pan-y; font-size: 12px; }
+.phhelp .rbtns button { min-height: 46px; }
+/* 조이스틱 범위(설정): 보통 = 왼쪽 58% x 아래 80% (위 .touchui .joyzone) */
+.touchui.joy-wide .joyzone { width: 70%; height: 90%; }
+.touchui.joy-narrow .joyzone { width: 45%; height: 62%; }
+
+/* 버튼 위치 바꾸기(js/padlayout.js): 저장한 배치 = .btns 가 화면 전체(누름은 버튼만), 버튼 자리 · 크기는 padlayout.js 가 직접 */
+.touchui .btns.custom { left: 0; top: 0; right: 0; bottom: 0; width: auto; height: auto; pointer-events: none; }
+.touchui .btns.custom .btn { pointer-events: auto; }
+.touchui .btns.measure .btn { display: block !important; }
+/* 바꾸기 화면: 멈춘 게임 위 어두운 막 + 8px 점 칸, 버튼 9개 전부(숨은 기술 칸도) + 이름표, 고른 버튼 = 점선 테 */
+.layed { position: fixed; inset: 0; z-index: 30; touch-action: none; background: radial-gradient(circle, #ffe89633 1px, transparent 1.5px) 0 0 / 8px 8px, #07050a99; }
+.layed[hidden] { display: none; }
+body.layedit .btns { z-index: 31; }
+body.layedit .btns .btn { display: block !important; opacity: 1 !important; animation: none; cursor: grab; touch-action: none; }
+body.layedit .btns .btn.sk { background: #3a2410cc; }
+body.layedit .btns .btn.sk::after { content: attr(data-lab); position: absolute; left: 50%; top: 50%; z-index: 3; transform: translate(-50%, -50%); font: 700 11px/1 var(--ui); color: #fff3c0;
+  text-shadow: 1px 1px 0 var(--ink), -1px 0 0 var(--ink), 0 -1px 0 var(--ink); white-space: nowrap; pointer-events: none; }
+body.layedit .btns .btn.lesel { outline: 3px dashed #ffe896; outline-offset: 3px; }
+.lebar { position: fixed; left: 50%; top: max(6px, env(safe-area-inset-top)); transform: translateX(-50%); z-index: 32; width: max-content; max-width: calc(100vw - 16px);
+  display: flex; flex-direction: column; gap: 5px; padding: 6px 8px; background: var(--wood); border: 2px solid var(--ink); box-shadow: inset 0 0 0 2px var(--gold2), 0 3px 0 #0008; transition: opacity .12s; }
+.lebar.bot { top: auto; bottom: max(6px, env(safe-area-inset-bottom)); }
+.lebar.drag { opacity: .2; pointer-events: none; }
+.lerow { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 5px 12px; }
+.lett { font: 700 14px/1 var(--ui14); color: var(--gold); text-shadow: 1px 1px 0 var(--ink); }
+.leshape { font: 400 11px/1 var(--ui); color: #d8c08a; }
+.lemsg { font: 700 11px/1.2 var(--ui); color: #ffd23f; }
+.legrp { display: flex; align-items: center; gap: 4px; }
+.legrp em { font: 400 11px/1 var(--ui); font-style: normal; color: #f5e0a8; text-align: right; white-space: nowrap; }
+.legrp b { min-width: 38px; font: 700 12px/1 var(--ui); color: #fff3c0; text-align: center; }
+.lebar .wbtn { height: 40px; min-width: 48px; justify-content: center; font-size: 13px; }
+.lebar .wbtn.x { width: 40px; min-width: 0; }
+.lebar .wbtn.on { color: #3a1606; background: linear-gradient(#ffe896, var(--gold) 50%, var(--gold2)); box-shadow: inset 0 2px 0 #fffbe0, inset 0 -3px 0 var(--gold3); }
+@media (max-height: 400px) { .lebar { padding: 4px 6px; gap: 3px; } .lebar .wbtn { height: 36px; } }
+
+/* 가로로 돌려 주세요(폰을 세로로 들면): 화면 전체 막 + 가운데 나무판, 폰 그림이 옆으로 눕는 움직임 */
+.rotov { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 16px; background: #07050af2; touch-action: none; }
+.rotov[hidden] { display: none; }
+.rotov .rbox { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 26px 28px 22px; text-align: center; background: var(--wood);
+  border: 3px solid var(--ink); box-shadow: inset 0 0 0 2px var(--gold2), 0 0 0 3px var(--gold3), 0 6px 0 3px #000a; }
+.rotov b { font: 700 22px/1.2 var(--ui14); color: var(--gold); text-shadow: 2px 2px 0 var(--ink); }
+.rotov small { font: 400 11px/1.3 var(--ui); color: var(--cream); }
+.rotic { position: relative; width: 38px; height: 62px; margin: 8px 0; background: #2a1608; border: 4px solid #f5e0a8; box-shadow: 0 0 0 2px var(--ink), inset 0 0 0 2px var(--ink); animation: rotph 2.2s ease-in-out infinite; }
+.rotic::after { content: ''; position: absolute; left: 50%; bottom: 3px; width: 8px; height: 4px; margin-left: -4px; background: #f5e0a8; }
+@keyframes rotph { 0%, 30% { transform: rotate(0); } 50%, 85% { transform: rotate(-90deg); } 100% { transform: rotate(0); } }
