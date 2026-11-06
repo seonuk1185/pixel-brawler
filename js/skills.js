@@ -1197,10 +1197,19 @@
     });
   }
 
-  // ---------- 버튼 표시 (폰: 공격 버튼 둘레 동그라미 / PC: 아래 글자 옆 작은 칸) ----------
+  // ---------- 버튼 표시 (폰: 공격 버튼 둘레 반달의 네모 도트 칸 + 기술 그림 / PC: 아래 글자 옆 작은 칸) ----------
   // 쿨타임 중이면 어둡게 + 시계 방향으로 밝아지는 부채꼴(--cd = 남은 비율) + 남은 초. 빈 칸·안 보이는 칸(Lv13 전 3·4번)은 숨김.
-  //   마나가 모자라면 회색(nomp) + 버튼 밑에 드는 마나. G.player 가 없으면(처음) 다 숨김
+  //   마나가 모자라면 회색(nomp) + 버튼 밑에 「MP 드는 마나」. G.player 가 없으면(처음) 다 숨김
   var uiLast = {};
+  // 폰 기술 버튼 그림(2026-11-06 폰 UI): js/icons.js 의 32칸 액자 그림을 버튼 크기(기기 점)에 가장 가까운 정수 배로 → CSS 가 버튼 크기에 맞춤.
+  //   같은 기술·같은 크기면 다시 안 그림. 화면 크기가 바뀌면(폴드 펴기 등) 다시 그림
+  function setIcon(el, ic, id) {
+    var px = Math.round((el.offsetWidth || 46) * (window.devicePixelRatio || 1)), sc = Math.max(1, Math.round(px / 32)), key = id + '@' + sc;
+    if (ic.dataset.icon === key) return;
+    ic.dataset.icon = key; ic.textContent = '';
+    ic.appendChild(PixelIcons.canvas(id, sc, { frame: true }));
+  }
+  window.addEventListener('resize', function () { uiLast = {}; });
   function ui(G) {
     var changed = false, p = G.player;
     SLOTS.forEach(function (slot, i) {
@@ -1221,9 +1230,12 @@
         el.title = d.name + ' (MP ' + cost + ')';
         el.setAttribute('aria-label', d.name);
         var ic = el.querySelector('.ic'), sec = el.querySelector('.sec'), mp = el.querySelector('.mp');
-        if (ic && ic.textContent !== d.icon) ic.textContent = d.icon;
+        if (ic) {
+          if (el.classList.contains('sk') && window.PixelIcons && PixelIcons.meta[d.id]) setIcon(el, ic, d.id);   // 폰 버튼 = 도트 그림(액자 포함)
+          else if (ic.textContent !== d.icon) ic.textContent = d.icon;                                            // PC 아래 글자 = 글자 하나
+        }
         if (sec) sec.textContent = rem > 0 ? (rem >= 1000 ? Math.ceil(rem / 1000) : (rem / 1000).toFixed(1)) : '';
-        if (mp) mp.textContent = cost;
+        if (mp) mp.textContent = 'MP ' + cost;
       });
     });
     return changed;

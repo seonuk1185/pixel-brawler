@@ -546,35 +546,36 @@
   //   메모(2026-11-06): 메테오(필살)는 지금 만든 기술이라 Lv15 에 둠. 2차로 순간이동·불기둥이 생기면 Lv23 으로 옮기는 것도 생각(숫자 하나)
   // 예비 후보(아직 목록에 없음): 집중 · 마력 폭주 · 서리 갑옷 · 회오리(법사, 적을 빨아들여 띄우는 바람 — 2026-11-06 밤 형님 「나중 후보」)
   // 2026-11-06 밤 콤보: 띄우기 기술 올려베기(기사)·땅 융기(법사)를 Lv9 로 앞당김(3번째 칸이 Lv9 에 열림 → 바로 끼워짐). 불기둥은 2차 그대로(띄우지 않는 큰 한 방)
+  //   short = 기술 창(책 모양, 2026-11-06 폰 UI) 칸에 쓰는 짧은 설명 한 줄(긴 설명 desc 는 칸에 손을 올리면 · 고르면 보임)
   var SKILL_TREE = {
     knight: [
-      { id: 'dash', unlock: 0 },
-      { id: 'spin', unlock: 8 },
-      { id: 'upper', unlock: 9 },   // 2026-11-06 밤 콤보: 2차(Lv19)에서 앞당김. Lv9 = 3번째 칸이 열리면서 바로 끼워짐
-      { id: 'mastery', unlock: 10, name: '검 숙련', icon: '숙', desc: '검으로 하는 모든 공격(콤보·기술)이 세져요',
+      { id: 'dash', unlock: 0, short: '앞으로 미끄러지며 베요' },
+      { id: 'spin', unlock: 8, short: '한 바퀴 돌며 세 번 베요' },
+      { id: 'upper', unlock: 9, short: '적을 공중에 띄워요' },   // 2026-11-06 밤 콤보: 2차(Lv19)에서 앞당김. Lv9 = 3번째 칸이 열리면서 바로 끼워짐
+      { id: 'mastery', unlock: 10, short: '검 공격이 세져요', name: '검 숙련', icon: '숙', desc: '검으로 하는 모든 공격(콤보·기술)이 세져요',
         passive: { stat: 'phys', val: [0.08, 0.12, 0.16, 0.2, 0.25] } },
-      { id: 'skin', unlock: 11, name: '강철 피부', icon: '피', desc: '적에게 받는 피해가 줄어요',
+      { id: 'skin', unlock: 11, short: '받는 피해가 줄어요', name: '강철 피부', icon: '피', desc: '적에게 받는 피해가 줄어요',
         passive: { stat: 'guard', val: [0.05, 0.08, 0.11, 0.14, 0.18] } },
-      { id: 'wave', unlock: 13 },
-      { id: 'slam', unlock: 15 },
-      { id: 'grit', unlock: 17, soon: true, name: '투지', icon: '투', desc: '체력이 적을수록 공격이 세져요', passive: true },
-      { id: 'counter', unlock: 21, soon: true, name: '반격', icon: '반', desc: '맞는 순간 가끔 바로 되받아 베어요', passive: true },
-      { id: 'holy', unlock: 23, soon: true, name: '성검 낙뢰', icon: '성', desc: '(필살) 칼을 하늘로 들어 번개 칼을 여러 개 꽂아요' }
+      { id: 'wave', unlock: 13, short: '초승달 검기를 날려요' },
+      { id: 'slam', unlock: 15, short: '뛰어올라 땅을 내려찍어요' },
+      { id: 'grit', unlock: 17, short: '체력이 적을수록 세져요', soon: true, name: '투지', icon: '투', desc: '체력이 적을수록 공격이 세져요', passive: true },
+      { id: 'counter', unlock: 21, short: '맞는 순간 되받아 베요', soon: true, name: '반격', icon: '반', desc: '맞는 순간 가끔 바로 되받아 베어요', passive: true },
+      { id: 'holy', unlock: 23, short: '번개 칼을 여러 개 꽂아요', soon: true, name: '성검 낙뢰', icon: '성', desc: '(필살) 칼을 하늘로 들어 번개 칼을 여러 개 꽂아요' }
     ],
     mage: [
-      { id: 'fireball', unlock: 0 },
-      { id: 'bolt', unlock: 8 },
-      { id: 'rise', unlock: 9 },    // 2026-11-06 밤 콤보: 땅 융기(띄우기). 2차 「불기둥」 자리를 대신해 앞당김
-      { id: 'amp', unlock: 10, name: '원소 증폭', icon: '증', desc: '모든 마법(지팡이 타·마법탄·기술)이 세져요',
+      { id: 'fireball', unlock: 0, short: '큰 불덩이를 던져요' },
+      { id: 'bolt', unlock: 8, short: '번개 세 줄기를 내리꽂아요' },
+      { id: 'rise', unlock: 9, short: '돌기둥으로 적을 띄워요' },    // 2026-11-06 밤 콤보: 땅 융기(띄우기). 2차 「불기둥」 자리를 대신해 앞당김
+      { id: 'amp', unlock: 10, short: '모든 마법이 세져요', name: '원소 증폭', icon: '증', desc: '모든 마법(지팡이 타·마법탄·기술)이 세져요',
         passive: { stat: 'magic', val: [0.08, 0.12, 0.16, 0.2, 0.25] } },
-      { id: 'flow', unlock: 11, name: '마나 순환', icon: '순', desc: '마나가 더 빨리 차요',
+      { id: 'flow', unlock: 11, short: '마나가 더 빨리 차요', name: '마나 순환', icon: '순', desc: '마나가 더 빨리 차요',
         passive: { stat: 'mpRegen', val: [0.2, 0.35, 0.5, 0.65, 0.85] } },
-      { id: 'ice', unlock: 13 },
-      { id: 'meteor', unlock: 15 },
-      { id: 'blink', unlock: 17, soon: true, name: '순간이동', icon: '이', desc: '앞이나 뒤로 짧게 사라졌다 나타나요(피하기)' },
-      { id: 'shield', unlock: 19, soon: true, name: '마나 방패', icon: '방', desc: '받는 피해 일부를 마나가 대신 받아요', passive: true },
-      { id: 'pillar', unlock: 21, soon: true, name: '불기둥', icon: '기', desc: '앞 바닥에서 큰 불기둥이 솟아 그 자리의 적을 크게 태워요(띄우지는 않음)' },
-      { id: 'brand', unlock: 23, soon: true, name: '원소 낙인', icon: '낙', desc: '마법에 맞은 적이 잠깐 더 아프게 맞아요', passive: true }
+      { id: 'ice', unlock: 13, short: '맞은 적은 느려져요' },
+      { id: 'meteor', unlock: 15, short: '큰 운석을 떨어뜨려요' },
+      { id: 'blink', unlock: 17, short: '짧게 사라졌다 나타나요', soon: true, name: '순간이동', icon: '이', desc: '앞이나 뒤로 짧게 사라졌다 나타나요(피하기)' },
+      { id: 'shield', unlock: 19, short: '피해를 마나가 대신 받아요', soon: true, name: '마나 방패', icon: '방', desc: '받는 피해 일부를 마나가 대신 받아요', passive: true },
+      { id: 'pillar', unlock: 21, short: '큰 불기둥이 솟아요', soon: true, name: '불기둥', icon: '기', desc: '앞 바닥에서 큰 불기둥이 솟아 그 자리의 적을 크게 태워요(띄우지는 않음)' },
+      { id: 'brand', unlock: 23, short: '맞은 적이 더 아프게 맞아요', soon: true, name: '원소 낙인', icon: '낙', desc: '마법에 맞은 적이 잠깐 더 아프게 맞아요', passive: true }
     ]
   };
 

@@ -106,14 +106,28 @@
       <div class="rbtns"><button type="button" id="btnStatAuto">자동 배분</button><button type="button" class="sub" id="btnStatReset">초기화</button><button type="button" class="sub" id="btnStatClose">닫기</button></div>
     </div>
   </div>
-  <!-- 기술 창 (2026-11-06 성장 4단계): 위 = 기술 칸(키 이름), 아래 = 기술 10개(+ 로 기술 Lv 올리기 · 칸 번호로 끼우기). 줄은 main.js 가 만듦 -->
+  <!-- 기술 창 (2026-11-06 성장 4단계 → 2026-11-06 책 모양): 위 = 남은 기술 점수 · 초기화 · X, 가운데 = 펼친 책(왼쪽 쪽 = 쓰는 기술 2줄씩, 오른쪽 쪽 = 늘 켜진 기술),
+       아래 띠 = 기술 칸(열린 만큼 + 잠긴 칸은 자물쇠). 끼우기 = 기술을 누르고 → 칸을 누름. 칸 · 기술 줄은 main.js 가 만듦 -->
   <div class="statpanel skillpanel" id="skillPanel" hidden>
     <div class="box">
       <h2>기술</h2>
-      <p class="spts">남은 기술 점수 <b id="skPts">0</b><span id="skSum"></span></p>
+      <div class="sktop"><span class="spts">남은 기술 점수 <b id="skPts">0</b></span><span class="who" id="skSum"></span><span class="sp"></span><button type="button" class="wbtn" id="btnSkReset">초기화</button><button type="button" class="wbtn x" id="btnSkClose" aria-label="닫기">X</button></div>
+      <div class="spread">
+        <div class="page act"><div class="ph"><b>쓰는 기술</b><span>기술 칸에 끼워서 버튼으로 눌러요</span></div><div class="cells" id="skAct"></div></div>
+        <div class="spine"></div>
+        <div class="page pas"><div class="ph"><b>늘 켜진 기술</b><span>배우면 저절로</span></div><div class="cells" id="skPas"></div></div>
+      </div>
       <div class="skbar" id="skBar"></div>
-      <div class="skrows" id="skRows"></div>
-      <div class="rbtns"><button type="button" class="sub" id="btnSkReset">초기화</button><button type="button" class="sub" id="btnSkClose">닫기</button></div>
+    </div>
+  </div>
+  <!-- 기술 칸 열림 알림 (2026-11-06): Lv9 · Lv13 에 새 기술 칸이 열리면 한 번. 칸 줄(새 칸 = 빛남) + 확인. 여는 동안 게임 멈춤(main.js openUnlock) -->
+  <div class="statpanel unlockpop" id="unlockPop" hidden>
+    <div class="box">
+      <h2>축하합니다!</h2>
+      <p class="uptxt"><b id="upLv">Lv 9</b> 기술 칸이 열렸어요!</p>
+      <div class="upslots" id="upSlots"></div>
+      <p class="upsub">새 칸에 기술을 끼워서 버튼으로 눌러요</p>
+      <div class="rbtns"><button type="button" id="btnUpOk">확인</button></div>
     </div>
   </div>
   <div class="combo" id="combo" hidden></div>
@@ -126,13 +140,15 @@
   <div class="btns">
     <button type="button" class="btn jump" id="btnJump" aria-label="점프">점프</button>
     <button type="button" class="btn atk" id="btnAtk" aria-label="공격">공격</button>
-    <!-- 기술 칸 A~D (기사·법사만, 견습은 숨김. C·D 는 Lv13 부터). 쿨타임 중엔 어둡고 남은 초, 마나가 모자라면 회색 + 밑에 드는 마나 (skills.js 의 ui) -->
-    <button type="button" class="btn sk skA" id="btnSkA" data-skill="A" hidden aria-label="기술 1"><i class="sweep"></i><span class="ic"></span><b class="sec"></b><small class="mp"></small></button>
-    <button type="button" class="btn sk skB" id="btnSkB" data-skill="B" hidden aria-label="기술 2"><i class="sweep"></i><span class="ic"></span><b class="sec"></b><small class="mp"></small></button>
-    <button type="button" class="btn sk skC" id="btnSkC" data-skill="C" hidden aria-label="기술 3"><i class="sweep"></i><span class="ic"></span><b class="sec"></b><small class="mp"></small></button>
-    <button type="button" class="btn sk skD" id="btnSkD" data-skill="D" hidden aria-label="기술 4"><i class="sweep"></i><span class="ic"></span><b class="sec"></b><small class="mp"></small></button>
-    <!-- 각성(2026-11-06 밤): 분노 100% 면 빛남(.ready), 각성 중 = 직업 색(.on). 안쪽 차오름 = 분노(--rg). 기술 버튼 부채꼴 위 왼쪽(걷는 길 밖, main.js controlPad 에 안 들어감) -->
-    <button type="button" class="btn awk" id="btnAwk" aria-label="각성"><i class="fill"></i><span>각성</span></button>
+    <!-- 기술 칸 A~D (기사·법사만, 견습은 숨김. 3번 칸 Lv9 · 4번 칸 Lv13 부터). 네모 도트 액자 + 기술 그림(js/icons.js), 공격 버튼 둘레 반달(2026-11-06 폰 UI).
+         쿨타임 중엔 시계 방향으로 어두움 + 남은 초, 마나가 모자라면 회색 그림 + 밑에 「MP n」 (skills.js 의 ui) -->
+    <button type="button" class="btn sk skA" id="btnSkA" data-skill="A" hidden aria-label="기술 1"><span class="ic"></span><i class="sweep"></i><b class="sec"></b><small class="mp"></small></button>
+    <button type="button" class="btn sk skB" id="btnSkB" data-skill="B" hidden aria-label="기술 2"><span class="ic"></span><i class="sweep"></i><b class="sec"></b><small class="mp"></small></button>
+    <button type="button" class="btn sk skC" id="btnSkC" data-skill="C" hidden aria-label="기술 3"><span class="ic"></span><i class="sweep"></i><b class="sec"></b><small class="mp"></small></button>
+    <button type="button" class="btn sk skD" id="btnSkD" data-skill="D" hidden aria-label="기술 4"><span class="ic"></span><i class="sweep"></i><b class="sec"></b><small class="mp"></small></button>
+    <!-- 각성(2026-11-06 밤 → 2026-11-06 폰 UI 마름모): 기술 반달 위 끝. 분노 100% 면 금빛으로 빛남(.ready), 각성 중 = 직업 색(.on).
+         안쪽 차오름 = 분노(--rg), 왼쪽 글자 = 분노 %(pct). 걷는 길 밖이라 main.js controlPad 에 안 들어감 -->
+    <button type="button" class="btn awk" id="btnAwk" aria-label="각성"><i class="dia"></i><i class="fill"></i><span>각성</span><b class="pct" id="awkPct"></b></button>
   </div>
 </div>
 
@@ -144,6 +160,7 @@
 <script src="js/fxdraw.js"></script>
 <script src="js/entities.js"></script>
 <script src="js/projectiles.js"></script>
+<script src="js/icons.js"></script>
 <script src="js/skills.js"></script>
 <script src="js/enemies.js"></script>
 <script src="js/props.js"></script>

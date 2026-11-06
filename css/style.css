@@ -91,7 +91,7 @@ body.smooth #screen { image-rendering: auto; }
 .rbtns button[hidden] { display: none; }
 .rbtns button:disabled { color: #8a7a5a; background: linear-gradient(#5a4a36, #3e3226); box-shadow: inset 0 0 0 2px #4a3c2c, 0 3px 0 #000a; outline: none; cursor: default; transform: none; }
 /* 키보드로 고른 버튼 표시 (결과 화면 · 스테이지 고르기 · 창) */
-.rbtns button:focus-visible, .rbtns a:focus-visible, .sbtn:focus-visible, .splus:focus-visible, .statbtn:focus-visible, .kslot:focus-visible, .ccard:focus-visible {
+.rbtns button:focus-visible, .rbtns a:focus-visible, .sbtn:focus-visible, .splus:focus-visible, .statbtn:focus-visible, .ccard:focus-visible {
   outline: 3px solid #fff8d0; outline-offset: 2px;
 }
 /* 안 쓴 점수 표시: 빨간 보석 */
@@ -314,10 +314,10 @@ body.smooth #screen { image-rendering: auto; }
 .spts b { font: 700 22px/1 var(--ui); color: var(--gold); margin: 0 3px; vertical-align: -3px; text-shadow: 2px 2px 0 var(--ink); }
 .spts span { margin-left: 10px; color: #d8c08a; }
 /* 양피지 줄 */
-.srow, .skrow { color: #3a2410; background: var(--parch); border: 2px solid var(--ink); box-shadow: inset 0 2px 0 #fff8dc, inset 0 -3px 0 #c9a86a; text-align: left; }
+.srow { color: #3a2410; background: var(--parch); border: 2px solid var(--ink); box-shadow: inset 0 2px 0 #fff8dc, inset 0 -3px 0 #c9a86a; text-align: left; }
 .srows { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; overflow: auto; min-height: 0; }
 /* 창 안 스크롤 막대: 얇은 금색 */
-.srows, .skrows, .slist, .clist { scrollbar-width: thin; scrollbar-color: var(--gold2) #2a1608; }
+.srows, .slist, .clist { scrollbar-width: thin; scrollbar-color: var(--gold2) #2a1608; }
 .srow { display: grid; grid-template-columns: 32px 56px 36px 1fr 50px; align-items: center; gap: 6px; padding: 3px 5px 3px 6px; }
 /* 줄 아이콘(힘 칼 · 민첩 장화 · 체력 하트 · 지능 책 · 지혜 수정). 줄 순서 = growth.js KEYS */
 .srow::before { content: ''; width: 32px; height: 32px; background: #3a2410 center / 24px 24px no-repeat; border: 2px solid var(--ink); box-shadow: inset 0 0 0 2px var(--gold2); }
@@ -342,62 +342,169 @@ body.smooth #screen { image-rendering: auto; }
 .splus:active { transform: translateY(2px); }
 .splus:disabled { cursor: default; color: #a8a090; text-shadow: none; background: linear-gradient(135deg, #8a8478 0 14%, #6a645a 14% 70%, #4a463e 70%); transform: none; }
 .statpanel .rbtns button { min-height: 42px; }
-/* 기술 창: 위 기술 칸 4개 + 기술 줄(아이콘 · 이름·설명·숫자 · 칸 번호 · +) */
-.skillpanel .box { width: min(780px, 97vw); }
-.skbar { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 0 0 6px; }
-.skslot {
-  display: flex; align-items: center; gap: 5px; min-width: 116px; padding: 3px 7px; text-align: left;
-  background: #2a1608; border: 2px dashed var(--gold3);
+/* 기술 창 (2026-11-06 책 모양, 형님 승인 시안 skillwin): 위 줄(남은 점수 · Lv · 초기화 · X) /
+   펼친 책(왼쪽 쪽 = 쓰는 기술 2줄씩 · 책등 · 오른쪽 쪽 = 늘 켜진 기술, 보랏빛 종이) / 아래 기술 칸 띠. 그림 = js/icons.js(금테 액자) */
+.skillpanel { padding: 18px 8px 6px; }
+.skillpanel .box { width: min(824px, 98vw); height: min(560px, 100%); padding: 12px 14px 10px; text-align: left; }
+.skillpanel h2 { position: absolute; left: 50%; top: -17px; margin: 0; transform: translateX(-50%); }
+.sktop { display: flex; align-items: center; gap: 10px; height: 28px; margin: 0 4px 6px; white-space: nowrap; }
+.sktop .spts { margin: 0; }
+.sktop .who { font: 400 11px/1 var(--ui); color: #d8c08a; overflow: hidden; text-overflow: ellipsis; }
+.sktop .sp { flex: 1; }
+.wbtn {
+  height: 28px; padding: 0 12px; display: inline-flex; align-items: center; cursor: pointer; flex: none;
+  font: 400 11px/1 var(--ui); color: #f5e0a8; background: linear-gradient(#8a5428, #5c3418); border: 2px solid var(--ink); border-radius: 0;
+  box-shadow: inset 0 2px 0 #b07a44, inset 0 -3px 0 #2e180a;
 }
-.skslot.on { border: 2px solid var(--ink); background: var(--parch); box-shadow: inset 0 0 0 1px var(--gold2); }
-.skslot.locked { opacity: .5; }
-.skslot kbd { font: 700 11px/1 var(--ui); color: #3a1606; background: linear-gradient(#ffe896, var(--gold2)); border: 1px solid var(--ink); padding: 2px 4px; }
-.skslot .ic { min-width: 14px; font: 700 14px/1 var(--ui); color: #f5e0a8; }
-.skslot.on .ic { color: #24508a; }
-.skslot small { font: 400 11px/1 var(--ui); color: #d8c08a; white-space: nowrap; }
-.skslot.on small { color: #3a2410; }
-.skrows { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; overflow: auto; min-height: 0; }
-.skrow { display: grid; grid-template-columns: 38px 1fr auto 50px; align-items: center; gap: 7px; padding: 4px 5px 4px 6px; }
-/* 기술 아이콘: 쓰는 기술 = 파란 보석 / 늘 켜짐 = 보라 보석 */
-.skrow .ki {
-  width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
-  font: 700 22px/1 var(--ui); color: #fff; text-shadow: 2px 2px 0 #0a1a4a;
-  background: radial-gradient(circle at 35% 30%, #a8d4ff, #3a6ad0 50%, #1a3a8a); border: 2px solid var(--ink); box-shadow: inset 0 0 0 2px var(--gold2);
+.wbtn.x { width: 32px; padding: 0; justify-content: center; font: 700 14px/1 var(--ui); color: #3a1606; background: linear-gradient(#ffe896, var(--gold) 50%, var(--gold2)); box-shadow: inset 0 2px 0 #fffbe0, inset 0 -3px 0 var(--gold3); }
+.wbtn:active { transform: translateY(2px); }
+.wbtn:disabled { color: #8a7a5a; background: linear-gradient(#5a4a36, #3e3226); box-shadow: none; cursor: default; transform: none; }
+.spread { flex: 1; min-height: 0; display: flex; }
+.page { min-height: 0; display: flex; flex-direction: column; padding: 6px 8px 8px; border: 2px solid var(--ink); }
+.page.act { flex: 1.95; min-width: 0; background: linear-gradient(90deg, #f3e2b4, #f6e7bd 80%, #e2c88e); box-shadow: inset 0 2px 0 #fff8dc, inset -6px 0 8px -4px #8a6a3a; }
+.page.pas { flex: 1; min-width: 0; background: linear-gradient(90deg, #d8cbe8, #e8def2 20%, #e4d8ee); box-shadow: inset 0 2px 0 #fbf6ff, inset 6px 0 8px -4px #6a5a8a; }
+.spine { width: 10px; flex: none; background: linear-gradient(90deg, #3a1e0a, #7a4a22 50%, #3a1e0a); border-top: 2px solid var(--ink); border-bottom: 2px solid var(--ink); }
+.ph { display: flex; align-items: center; gap: 6px; margin: 0 0 2px; white-space: nowrap; overflow: hidden; }
+.ph b { flex: none; padding: 3px 8px; font: 700 11px/1 var(--ui); color: #fff; border: 2px solid var(--ink); }
+.act .ph b { background: linear-gradient(#e8401a, #9a2010); text-shadow: 1px 1px 0 #3a0a06; }
+.pas .ph b { background: linear-gradient(#a888e0, #5a3a9a); text-shadow: 1px 1px 0 #1a0a3a; }
+.ph span { font: 400 11px/1 var(--ui); color: #6a4a28; overflow: hidden; text-overflow: ellipsis; }
+.pas .ph span { color: #4a3a6a; }
+/* 칸 목록: 끼운 칸 번호(왼쪽 위로 삐져나옴)가 안 잘리게 안쪽 여백 */
+.cells { display: grid; gap: 4px; min-height: 0; overflow: auto; align-content: start; padding: 6px 2px 2px 5px; scrollbar-width: thin; scrollbar-color: #a8743c transparent; }
+.act .cells { grid-template-columns: 1fr 1fr; }
+/* 기술 한 칸: [그림 · 이름 Lv · 짧은 설명](누르면 고름) + 초록 + */
+.cell { position: relative; display: grid; grid-template-columns: 1fr 30px; align-items: center; gap: 4px; height: 46px; padding: 2px 4px 2px 3px; background: #fffaf0a0; border: 2px solid #8a6a3a; }
+.pas .cell { background: #ffffff90; border-color: #7a6a9a; }
+.cpick { display: grid; grid-template-columns: 40px 1fr; align-items: center; gap: 6px; min-width: 0; height: 100%; padding: 0; margin: 0;
+  background: none; border: 0; border-radius: 0; text-align: left; color: inherit; font: inherit; }
+button.cpick { cursor: pointer; }
+.cpick canvas { display: block; width: 40px; height: 40px; image-rendering: pixelated; }
+.cell .nm { min-width: 0; display: block; }
+.cell .l1 { display: flex; align-items: center; gap: 6px; height: 17px; white-space: nowrap; }
+.cell .l1 b { font: 400 14px/1.1 var(--ui14); color: #3a1606; overflow: hidden; text-overflow: ellipsis; }
+.cell .lvl { flex: none; font: 700 11px/1 var(--ui); color: #a01c10; }
+.cell .sd { display: block; margin: 3px 0 0; font: 400 11px/1.2 var(--ui); color: #4a3018; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pas .cell:not(.soon):not(.lock) .sd { color: #2c6a12; font-weight: 700; }
+.cell .eq { position: absolute; left: -5px; top: -6px; z-index: 2; min-width: 16px; padding: 2px 3px; font: 700 11px/1 var(--ui); color: #3a1606; text-align: center;
+  background: linear-gradient(#ffe896, var(--gold2)); border: 2px solid var(--ink); pointer-events: none; }
+.cell.sel { border-color: var(--ink); background: #fff6d0; box-shadow: 0 0 0 2px var(--gold), 0 0 0 4px var(--ink), 0 0 10px 3px #ffd23f99; z-index: 1; }
+.cell.lock, .cell.soon { background: #d8c8a070; border-style: dashed; }
+.pas .cell.lock, .pas .cell.soon { background: #c8bcd870; }
+.cell.lock .l1 b, .cell.soon .l1 b { color: #6a5a40; }
+.cell.lock .sd, .cell.soon .sd { color: #6a5a40; }
+.pas .cell.lock .sd, .pas .cell.soon .sd { color: #6a5a7a; }
+.cell .tag { flex: none; padding: 1px 5px; font: 400 11px/1 var(--ui); color: #f5e0a8; background: #5c3418; border: 1px solid var(--ink); }
+.cell .tag.lk::before { content: ''; display: inline-block; width: 10px; height: 10px; margin-right: 2px; vertical-align: -1px; background: var(--ic-lock) center / 10px no-repeat; }
+/* 초록 보석 + (작은 팔각형). Lv5 = MAX */
+.plus {
+  width: 28px; height: 28px; padding: 0; border: 0; border-radius: 0; cursor: pointer; justify-self: end;
+  font: 700 18px/1 var(--ui); color: #fff; text-shadow: 2px 2px 0 #0a4a12;
+  background: linear-gradient(135deg, #d8ffc0 0 14%, #7ee05a 14% 45%, #3cb83a 45% 70%, #1e7a22 70%); box-shadow: inset 0 0 0 2px var(--ink), inset 0 0 0 4px #ffffff40;
+  clip-path: polygon(6px 0, calc(100% - 6px) 0, 100% 6px, 100% calc(100% - 6px), calc(100% - 6px) 100%, 6px 100%, 0 calc(100% - 6px), 0 6px);
 }
-.skrow.pas .ki { background: radial-gradient(circle at 35% 30%, #e0c0ff, #7a4ad0 50%, #3e1a8a); text-shadow: 2px 2px 0 #2a0a4a; }
-.skrow.lockedrow, .skrow.soon { opacity: .6; }
-.skrow.soon .ki, .skrow.lockedrow .ki { background: #5a4a36; color: #a8987a; text-shadow: none; }
-.skrow .km b { font: 400 14px/1.1 var(--ui14); color: #3a1606; margin-right: 6px; }
-.skrow .km .kk { font: 400 11px/1 var(--ui); color: #8a6a40; margin-right: 6px; }
-.skrow .km .kl { font: 700 11px/1 var(--ui); color: #a01c10; }
-.skrow.soon .km .kl, .skrow.lockedrow .km .kl { color: #8a5a3a; }
-.skrow .km p { margin: 2px 0 0; font: 400 11px/1.35 var(--ui); color: #4a3018; }
-.skrow .km em { display: block; font: 700 11px/1.35 var(--ui); font-style: normal; color: #2c6a12; }
-.skrow .km .k5 { display: block; font: 400 11px/1.35 var(--ui); font-style: normal; color: #8a7a5a; }
-.skrow .km .k5.got { color: #b07000; font-weight: 700; }
-.skrow .kc { display: flex; gap: 4px; }
-.kslot {
-  width: 34px; height: 40px; padding: 0; cursor: pointer; font: 700 11px/1 var(--ui); color: #f5e0a8;
-  background: linear-gradient(#8a5428, #5c3418); border: 2px solid var(--ink); border-radius: 0; box-shadow: inset 0 2px 0 #b07a44, inset 0 -3px 0 #2e180a;
+.plus:active { transform: translateY(2px); }
+.plus:disabled { cursor: default; color: #a8a090; text-shadow: none; background: linear-gradient(135deg, #8a8478 0 14%, #6a645a 14% 70%, #4a463e 70%); transform: none; }
+.plus.max { font: 700 11px/1 var(--ui); letter-spacing: -1px; }
+.plus.max:disabled { color: #ffe9a8; text-shadow: 1px 1px 0 #3a1606; background: linear-gradient(135deg, #fff2a0 0 14%, var(--gold) 14% 50%, var(--gold2) 50% 75%, var(--gold3) 75%); }
+/* 아래 띠: 기술 칸(열린 칸 = 누를 수 있음, 잠긴 칸 = 자물쇠). 기술을 골랐으면 열린 칸이 금빛으로 깜빡(.tgt) */
+.skbar { display: flex; align-items: center; gap: 8px; height: 50px; margin: 6px 2px 0; padding: 0 8px; background: #2a1608; border: 2px solid var(--ink); box-shadow: inset 0 0 0 1px var(--gold3); }
+.skbar .bl { flex: none; font: 700 11px/1.2 var(--ui); color: var(--gold); white-space: nowrap; }
+.bslot {
+  position: relative; flex: 1 1 0; min-width: 0; max-width: 132px; height: 40px; display: flex; align-items: center; gap: 5px; padding: 2px 6px 2px 2px; cursor: pointer;
+  text-align: left; background: #4a2a12; border: 2px solid var(--gold3); border-radius: 0; color: #f5e0a8;
 }
-.kslot.on { color: #3a1606; background: linear-gradient(#ffe896, var(--gold) 50%, var(--gold2)); box-shadow: inset 0 2px 0 #fffbe0, inset 0 -3px 0 var(--gold3), 0 0 0 2px #fff4; }
+.bslot canvas { flex: none; display: block; width: 32px; height: 32px; image-rendering: pixelated; }
+.bslot small { min-width: 0; font: 400 11px/1.1 var(--ui); color: #f5e0a8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bslot kbd { position: absolute; left: -6px; top: -8px; z-index: 1; min-width: 16px; padding: 2px 3px; font: 700 11px/1 var(--ui); color: #3a1606; text-align: center;
+  background: linear-gradient(#ffe896, var(--gold2)); border: 2px solid var(--ink); }
+.bslot .bph { flex: none; width: 32px; height: 32px; background: #1e0e04; border: 2px dashed #8a5a1488; }
+.bslot.empty small { color: #a8906a; }
+.bslot.locked { cursor: default; background: #24140a; border-style: dashed; border-color: #6a4a2a; }
+.bslot.locked kbd { background: #6a5a40; color: #2a1608; }
+.bslot.locked .bph { border: 0; background: var(--ic-lock) center / 24px no-repeat; }
+.bslot.locked small { color: #8a7a5a; }
+.bslot.tgt { border-color: #fff4b0; animation: bslotglow .5s steps(2) infinite alternate; }
+.bslot.cur { background: #6a4418; }
+.bslot:not(:disabled):active { transform: translateY(2px); }
+@keyframes bslotglow { from { box-shadow: 0 0 4px 1px #ffd23f88; } to { box-shadow: 0 0 10px 3px #ffd23fcc; } }
+.skbar .hint { flex: 1 0 auto; text-align: right; font: 400 11px/1.3 var(--ui); color: #d8c08a; white-space: nowrap; }
+.skbar .hint b { color: #fff3c0; }
+.skbar .hint em { font-style: normal; color: #ffe08a; }
+.wbtn:focus-visible, .cpick:focus-visible, .plus:focus-visible, .bslot:focus-visible { outline: 3px solid #fff8d0; outline-offset: 1px; }
+/* 낮은 가로 화면(폰): 칸을 조금 낮게 */
+@media (max-height: 420px) {
+  .skillpanel .box { padding-top: 10px; padding-bottom: 8px; }
+  .sktop { margin-bottom: 4px; }
+  .cell { height: 44px; }
+}
+/* 좁은 가로 화면(작은 폰): 도움말은 숨기고 칸에 자리를 줌 */
+@media (max-width: 740px) {
+  .skbar .hint { display: none; }
+  .ph span { display: none; }
+  .cell { grid-template-columns: 1fr 24px; gap: 3px; padding-right: 3px; }
+  .cpick { grid-template-columns: 34px 1fr; gap: 4px; }
+  .cpick canvas { width: 34px !important; height: 34px !important; }
+  .cell .l1 { gap: 4px; }
+  .cell .l1 b { font: 400 11px/1.1 var(--ui); }
+  .plus { width: 24px; height: 24px; font-size: 14px; }
+  .plus.max { font-size: 11px; letter-spacing: -2px; }
+}
+@media (max-height: 400px) {
+  .cells { gap: 3px; padding-top: 5px; }
+  .cell { height: 42px; }
+}
+/* 세로 화면 · 아주 좁은 화면: 책을 위아래로(쓰는 기술 → 늘 켜진 기술), 칸은 한 줄에 하나, 전체가 스크롤 */
+@media (max-width: 560px) {
+  .skillpanel .box { height: min(760px, 100%); }
+  .skillpanel h2 { position: relative; left: auto; top: auto; transform: none; margin: -27px auto 8px; }
+  .spread { flex-direction: column; overflow: auto; }
+  .page { flex: none !important; }
+  .page .cells { overflow: visible; }
+  .act .cells { grid-template-columns: 1fr; }
+  .spine { width: auto; height: 8px; border: 0; border-left: 2px solid var(--ink); border-right: 2px solid var(--ink); background: linear-gradient(#3a1e0a, #7a4a22 50%, #3a1e0a); }
+  .skbar { height: auto; flex-wrap: wrap; padding: 10px 8px 6px; gap: 10px 8px; }
+  .skbar .bl { width: 100%; }
+  .bslot { flex: 1 1 40%; max-width: none; }
+  .sktop .who { display: none; }
+}
+
+/* ---------- 기술 칸 열림 알림 (2026-11-06 폰 UI): 「축하합니다!」 금빛 리본 + 칸 줄(새 칸 = 빛남) + 확인 ---------- */
+.unlockpop .box { width: min(440px, 94vw); padding: 16px 18px 14px; align-items: center; box-shadow: inset 0 0 0 3px var(--gold), inset 0 0 0 5px var(--gold3), inset 0 0 0 8px #2a1608,
+  0 0 0 3px var(--gold2), 0 0 0 6px var(--ink), 0 0 26px 10px #ffd23f55; }
+.unlockpop h2 { color: #3a1606; text-shadow: 1px 1px 0 #fff4c0; background: linear-gradient(#fff2a0, var(--gold) 55%, var(--gold2)); }
+.unlockpop h2::before, .unlockpop h2::after { background: var(--gold3); }
+.uptxt { margin: 2px 0 10px; font: 400 14px/1.3 var(--ui14); color: var(--cream); text-shadow: 1px 1px 0 var(--ink); }
+.uptxt b { font: 700 14px/1 var(--ui); color: var(--gold); margin-right: 4px; }
+.upslots { display: flex; justify-content: center; gap: 12px; padding: 12px 14px 8px; background: #2a1608; border: 2px solid var(--ink); box-shadow: inset 0 0 0 1px var(--gold3); }
+.upslot { position: relative; width: 64px; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.upslot canvas { display: block; width: 48px; height: 48px; image-rendering: pixelated; }
+.upslot .bph { width: 48px; height: 48px; background: #1e0e04; border: 2px dashed #8a5a1488; }
+.upslot small { max-width: 64px; font: 400 11px/1.1 var(--ui); color: #f5e0a8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.upslot kbd { position: absolute; left: 2px; top: -6px; z-index: 1; min-width: 16px; padding: 2px 3px; font: 700 11px/1 var(--ui); color: #3a1606; text-align: center;
+  background: linear-gradient(#ffe896, var(--gold2)); border: 2px solid var(--ink); }
+.upslot.locked .bph { border: 2px dashed #6a4a2a; background: #24140a var(--ic-lock) center / 24px no-repeat; }
+.upslot.locked small { color: #8a7a5a; }
+.upslot.locked kbd { background: #6a5a40; color: #2a1608; }
+.upslot.new canvas, .upslot.new .bph { animation: upglow .6s ease-in-out infinite alternate; }
+.upslot.new small { color: #fff3c0; font-weight: 700; }
+.upslot.new::after {
+  content: 'NEW'; position: absolute; right: -2px; top: -8px; padding: 1px 4px; font: 700 11px/1 var(--ui); color: #fff; text-shadow: 1px 1px 0 #0a4a12;
+  background: linear-gradient(#7ee05a, #2e9a2e); border: 2px solid var(--ink);
+}
+@keyframes upglow { from { filter: drop-shadow(0 0 2px #ffd23f); } to { filter: drop-shadow(0 0 9px #ffe066) brightness(1.15); } }
+.upsub { margin: 10px 0 12px; font: 400 11px/1.3 var(--ui); color: #d8c08a; }
+#btnUpOk { min-width: 140px; }
 @media (max-height: 420px) {
   .statpanel .box { padding-top: 12px; padding-bottom: 10px; }
   .spts { margin-bottom: 4px; }
   .srows { gap: 3px; margin-bottom: 6px; }
   .srow { padding: 0 5px 0 6px; }
   .srow::before { width: 30px; height: 30px; }
-  .skbar { margin-bottom: 4px; }
-  .skslot { min-width: 0; padding: 2px 6px; }
-  .skrow { padding: 2px 5px 2px 6px; }
   .statpanel .rbtns button { min-height: 40px; padding: 0 16px; }
 }
 @media (max-width: 560px) {
   .srow { grid-template-columns: 32px 48px 30px 1fr 48px; gap: 5px; }
-  .skrow { grid-template-columns: 34px 1fr 48px; }
-  .skrow .kc { grid-column: 2 / 3; }
-  .skslot small { display: none; }
-  .skslot { min-width: 0; flex: 1 1 0; justify-content: center; }
 }
 
 /* ---------- 전직 화면: 기사·법사 큰 카드(움직이는 모습) + 준비 중 카드 3장 ---------- */
@@ -489,68 +596,85 @@ body.smooth #screen { image-rendering: auto; }
     position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; margin: -26px 0 0 -26px;
     border-radius: 50%; background: radial-gradient(circle at 35% 35%, #ffe896, var(--gold2) 70%, var(--gold3)); border: 2px solid var(--ink);
   }
-  /* 공격 버튼(+ 점프·기술). 가로 화면에서는 게임 화면 위에 겹치므로 반투명하게,
-     main.js 가 이 버튼이 덮는 폭만큼 오른쪽을 「싸움 못 들어가는 곳」으로 비워 둔다(controlPad).
-     크기·자리는 예전 그대로(금테는 box-shadow 라 폭에 안 들어감 → controlPad 그대로) */
+  /* 폰 조작판(2026-11-06 폰 UI, 형님 승인 시안 layout_844 · 폴드): 큰 공격(오른쪽 아래) · 점프(공격 왼쪽 아래) ·
+     기술 4칸 = 네모 도트 액자(js/icons.js 그림)가 공격 둘레 왼쪽 위로 반달(왼쪽 아래 1번 → 위로 돌아 4번) · 각성 마름모 = 반달 위 끝.
+     자리·크기 = 공격 버튼(.btns 상자) 오른쪽·아래에서 잰 값 x --k (폰 1 / 폴드 편 화면 1.2 / 세로 1.3).
+     반달 = 공격 가운데에서 왼쪽 12 · 위 2 옮긴 점을 가운데로 반지름 102, 각도 155 · 126 · 97 · 68° (시안 layout-mock.js 그대로)
+     가로 화면에서는 게임 화면 위에 겹치므로 반투명. main.js 는 공격 버튼만 재서 그 폭만큼 오른쪽을 「싸움 못 들어가는 곳」으로 비움(controlPad) */
   .btns {
-    display: block; position: absolute; right: max(16px, env(safe-area-inset-right)); bottom: 14px;
-    width: 80px; height: 80px; z-index: 4;
+    --k: 1;
+    display: block; position: absolute; right: max(calc(16px * var(--k)), env(safe-area-inset-right)); bottom: calc(14px * var(--k));
+    width: calc(80px * var(--k)); height: calc(80px * var(--k)); z-index: 4;
   }
   .btn {
     position: absolute; border-radius: 50%; border: 3px solid #140a04cc; font: 700 14px/1 var(--ui14); color: #ffe9a8;
     text-shadow: 2px 2px 0 var(--ink);
   }
-  .btn.atk { right: 0; bottom: 0; width: 80px; height: 80px;
+  .btn.atk { right: 0; bottom: 0; width: 100%; height: 100%;
     background: radial-gradient(circle at 38% 32%, #ff7a5ab3, #b8261ca6 55%, #6a1010a6);
-    box-shadow: 0 0 0 3px #f2c14ec0, 0 0 0 5px #140a0499, inset 0 -6px 0 #0004; }
+    box-shadow: 0 0 0 3px #f2c14ec0, 0 0 0 5px #140a0499, inset 0 -6px 0 #0004, inset 0 4px 0 #ffffff26; }
   .btn.atk.down { transform: scale(.92); background: radial-gradient(circle at 38% 32%, #ff9a7ae0, #d8362ad9 55%, #8a1414d9); box-shadow: 0 0 0 3px #ffe08a, 0 0 0 5px #140a04aa, inset 0 -2px 0 #0004; }
-  /* 점프: 공격 버튼 바로 위 왼쪽. 기술 B 는 그 오른쪽, 기술 A 는 그 위.
-     네 버튼 모두 공격 버튼 가로 폭 안(+6px)에 세로로 쌓아서 싸움 못 들어가는 곳(controlPad) 폭이 거의 그대로 */
-  .btn.jump { right: 36px; bottom: 84px; width: 50px; height: 50px; padding: 0; font-size: 14px;
+  /* 점프: 공격 버튼 왼쪽 아래(반달 1번 칸 밑) */
+  .btn.jump { right: calc(126px * var(--k)); bottom: calc(-4px * var(--k)); width: calc(52px * var(--k)); height: calc(52px * var(--k)); padding: 0;
     background: radial-gradient(circle at 38% 32%, #a8f07cb3, #2e9a2eb3 55%, #145a18b3);
     box-shadow: 0 0 0 2px #f2c14eb0, 0 0 0 4px #140a0488, inset 0 -4px 0 #0004; }
   .btn.jump.down { transform: scale(.9); background: radial-gradient(circle at 38% 32%, #c8ffa0e0, #3ab83ae0 55%, #1a6a1ee0); }
-  /* 기술 버튼 4칸: 파란 보석. 공격 버튼 위로 감싸는 부채꼴(B 오른쪽 위 → A → D 맨 위, C 는 점프 위). --cd = 남은 쿨타임 비율(1 → 0) */
+  /* 기술 칸 4개: 네모 도트 액자 그림(.ic 안 캔버스, skills.js ui). 쿨타임 = 액자 안이 시계 방향으로 어두움(--cd = 남은 비율 1 → 0) + 남은 초,
+     마나 모자람 = 회색 그림 + 밑에 「MP n」. 살짝 반투명(밑의 캐릭터가 보이게), 누르면 진하게 */
   .btn.sk {
-    width: 40px; height: 40px; padding: 0; overflow: hidden; font: 700 22px/1 var(--ui); color: #fff; text-shadow: 2px 2px 0 #0a1a4a;
-    background: radial-gradient(circle at 36% 30%, #a8d4ffcc, #3a6ad0c0 55%, #1a3a8ac0); border-color: #140a04cc; box-shadow: inset 0 -4px 0 #0003;
+    width: calc(46px * var(--k)); height: calc(46px * var(--k)); padding: 0; overflow: visible; opacity: .84;
+    border: 0; border-radius: 0; background: none; box-shadow: none;
   }
   .btn.sk[hidden] { display: none; }
-  .btn.skA { right: 2px; bottom: 132px; }
-  .btn.skB { right: -10px; bottom: 86px; }
-  .btn.skC { right: 46px; bottom: 142px; }
-  .btn.skD { right: 24px; bottom: 180px; }
-  /* 마나가 모자람: 회색 + 밑에 드는 마나(파랑). 눌렀는데 모자라면 잠깐 흔들림(nompHit) */
-  .btn.sk .mp { position: absolute; left: 0; right: 0; bottom: 1px; z-index: 2; font: 700 11px/1 var(--ui); color: #bfe0ff; text-shadow: 1px 1px 0 #000; display: none; }
-  .btn.sk.nomp { background: radial-gradient(circle at 36% 30%, #8a8a98cc, #4a4a5acc 60%); }
-  .btn.sk.nomp .mp { display: block; color: #8fb8ff; }
-  .btn.sk.nomp .ic { opacity: .35; }
-  .btn.sk.down { transform: scale(.9); }
-  .btn.sk .ic { position: relative; z-index: 1; }
+  .btn.skA { right: calc(121.4px * var(--k)); bottom: calc(62.1px * var(--k)); }
+  .btn.skB { right: calc(89px * var(--k)); bottom: calc(101.5px * var(--k)); }
+  .btn.skC { right: calc(41.4px * var(--k)); bottom: calc(120.2px * var(--k)); }
+  .btn.skD { right: calc(-9.2px * var(--k)); bottom: calc(113.6px * var(--k)); }
+  .btn.sk .ic { position: absolute; inset: 0; z-index: 0; }
+  .btn.sk .ic canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; filter: drop-shadow(0 3px 0 #000a); }
   .btn.sk .sweep {
-    position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
-    background: conic-gradient(#000b calc(var(--cd, 0) * 360deg), transparent 0);
+    position: absolute; inset: 12.5%; z-index: 1; pointer-events: none;
+    background: conic-gradient(#000c calc(var(--cd, 0) * 360deg), transparent 0);
   }
   .btn.sk .sec {
     position: absolute; inset: 0; z-index: 2; display: flex; align-items: center; justify-content: center;
-    font: 700 14px/1 var(--ui); color: #fff; text-shadow: 1px 1px 0 #000, -1px -1px 0 #000;
+    font: 700 22px/1 var(--ui); color: #fff; text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
   }
-  .btn.sk.cool .ic { opacity: .2; }
-  .btn.sk:not(.cool) { box-shadow: inset 0 -4px 0 #0003, 0 0 0 2px #f2c14e99; }
-  /* 각성 버튼: 기술 부채꼴 위 왼쪽(걷는 길보다 높음 → controlPad 그대로).
-     평소 = 어둡고 안쪽이 분노만큼 차오름(--rg), 100% = 금빛으로 빛나며 숨쉼(.ready), 각성 중 = 붉게(.on) */
+  .btn.sk .mp {
+    position: absolute; left: 50%; bottom: -5px; z-index: 3; transform: translateX(-50%); display: none; padding: 1px 4px; white-space: nowrap;
+    font: 700 11px/1 var(--ui); color: #bfe0ff; text-shadow: 1px 1px 0 #000; background: #1e3a7a; border: 2px solid var(--ink);
+  }
+  .btn.sk.nomp .mp { display: block; }
+  .btn.sk.nomp .ic canvas { filter: grayscale(1) brightness(.6) drop-shadow(0 3px 0 #000a); }
+  .btn.sk.cool .ic canvas { filter: brightness(.85) drop-shadow(0 3px 0 #000a); }
+  .btn.sk.down { opacity: 1; transform: scale(.9); }
+  /* 각성: 반달 위 끝 마름모. 평소 = 어두운 보석 + 안쪽이 분노만큼 아래부터 차오름(--rg) + 왼쪽에 분노 %,
+     100% = 금빛으로 빛나며 숨쉼(.ready), 각성 중 = 붉게(.on). 걷는 길보다 높음 → controlPad 그대로 */
   .btn.awk {
-    right: 66px; bottom: 188px; width: 44px; height: 44px; padding: 0; overflow: hidden; font: 700 11px/1 var(--ui);
-    background: #3a2418b3; border-color: #140a04cc; box-shadow: inset 0 -4px 0 #0003, 0 0 0 2px #8a5a1499;
+    right: calc(18.4px * var(--k)); bottom: calc(173.9px * var(--k)); width: calc(56px * var(--k)); height: calc(56px * var(--k)); padding: 0; overflow: visible; opacity: .9;
+    border: 0; border-radius: 0; background: none; box-shadow: none;
+    font: 700 11px/1 var(--ui); color: #ffe9a8; text-shadow: 1px 1px 0 var(--ink), -1px 0 0 var(--ink), 0 -1px 0 var(--ink), 1px 0 0 var(--ink);
   }
-  .btn.awk .fill { position: absolute; left: 0; right: 0; bottom: 0; height: calc(var(--rg, 0) * 100%); background: #ff8a2a77; pointer-events: none; }
-  .btn.awk span { position: relative; z-index: 1; opacity: .6; }
-  .btn.awk.ready { background: radial-gradient(circle at 38% 32%, #fff2a0, #ffb020 45%, #e0601a 80%); color: #3a1204; text-shadow: 0 1px 0 #fff8; border-color: var(--ink); animation: awkready .55s ease-in-out infinite alternate; }
-  .btn.awk.ready span, .btn.awk.on span { opacity: 1; }
-  .btn.awk.ready .fill, .btn.awk.on .fill { display: none; }
-  .btn.awk.on { background: radial-gradient(circle at 38% 32%, #ff8a6a, #c8301a 60%, #7a1010); border-color: var(--ink); box-shadow: 0 0 0 2px #ffe08a; }
+  .btn.awk .dia, .btn.awk .fill { position: absolute; pointer-events: none; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+  .btn.awk .dia { inset: 0; background: var(--ink); }
+  .btn.awk .dia::before, .btn.awk .dia::after { content: ''; position: absolute; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+  .btn.awk .dia::before { inset: 4px; background: linear-gradient(135deg, #ffe08a, var(--gold2) 50%, var(--gold3)); }
+  .btn.awk .dia::after { inset: 8px; background: radial-gradient(circle at 45% 40%, #4a3020, #2a1810 70%); }
+  .btn.awk .fill { inset: 8px; background: linear-gradient(to top, #ff8a2acc calc(var(--rg, 0) * 100%), transparent 0); }
+  .btn.awk span { position: relative; z-index: 1; }
+  .btn.awk .pct { position: absolute; right: calc(100% + 2px); top: 50%; transform: translateY(-50%); font: 700 11px/1 var(--ui); color: #ffd8b0; white-space: nowrap; }
+  .btn.awk.ready, .btn.awk.on { opacity: 1; }
+  .btn.awk.ready .pct, .btn.awk.on .pct, .btn.awk.ready .fill, .btn.awk.on .fill { display: none; }
+  .btn.awk.ready .dia::after { background: radial-gradient(circle at 40% 35%, #fff2a0, #ffb020 45%, #e0601a 85%); }
+  .btn.awk.ready span { color: #3a1204; text-shadow: 0 1px 0 #fff8; }
+  .btn.awk.ready { animation: awkready .55s ease-in-out infinite alternate; }
+  .btn.awk.on .dia::after { background: radial-gradient(circle at 38% 32%, #ff8a6a, #c8301a 60%, #7a1010); }
   .btn.awk.down { transform: scale(.9); }
-  @keyframes awkready { from { box-shadow: 0 0 0 2px #ffe08a, 0 0 4px 1px #ff9a2a; } to { box-shadow: 0 0 0 2px #ffe08a, 0 0 12px 4px #ffd23f; } }
+  @keyframes awkready { from { filter: drop-shadow(0 0 3px #ff9a2a); } to { filter: drop-shadow(0 0 10px #ffd23f) drop-shadow(0 0 4px #fff2a0); } }
+}
+/* 폴드 편 화면처럼 높은 가로 화면: 조작판을 1.2배 */
+@media (pointer: coarse) and (min-height: 600px) {
+  .btns { --k: 1.2; }
 }
 .mode-practice .btn.awk, .mode-practice .awkchip, .mode-practice .prg { display: none; }
 /* PC: 아래 조작 글자 끝 「각성 L / F」 — 분노 100% 면 주황으로 빛남 */
@@ -574,18 +698,12 @@ body.smooth #screen { image-rendering: auto; }
 .portrait .banner.boss { font-size: 33px; }
 @media (pointer: coarse) {
   .portrait .joyzone { height: 60%; width: 48%; }
-  /* 세로 화면: 조작 자리가 넉넉해서 점프는 공격 버튼 왼쪽(아래 줄), 기술은 공격 버튼 위 */
-  .portrait .btn.jump { right: 116px; bottom: 0; width: 66px; height: 66px; font-size: 14px; background: radial-gradient(circle at 38% 32%, #a8f07c, #2e9a2e 55%, #145a18); }
   .portrait .joy { bottom: 60px; left: 36px; }
-  .portrait .btns { bottom: 56px; right: 24px; width: 104px; height: 104px; }
-  .portrait .btn.atk { width: 104px; height: 104px; font-size: 14px; background: radial-gradient(circle at 38% 32%, #ff7a5a, #b8261c 55%, #6a1010); box-shadow: 0 0 0 4px var(--gold), 0 0 0 6px var(--ink), inset 0 -6px 0 #0004; }
-  .portrait .btn.sk { width: 56px; height: 56px; font-size: 22px; background: radial-gradient(circle at 36% 30%, #a8d4ff, #3a6ad0 55%, #1a3a8a); }
-  .portrait .btn.sk.nomp { background: radial-gradient(circle at 36% 30%, #8a8a98, #4a4a5a 60%); }
-  .portrait .btn.skA { right: 82px; bottom: 82px; }
-  .portrait .btn.skB { right: 12px; bottom: 116px; }
-  .portrait .btn.skC { right: 140px; bottom: 76px; }
-  .portrait .btn.skD { right: 70px; bottom: 146px; }
-  .portrait .btn.awk { right: 150px; bottom: 140px; width: 50px; height: 50px; font-size: 11px; }
+  /* 세로 화면: 게임 화면 밑 빈 곳에 같은 반달 배치를 1.3배로(가려지는 게 없으니 진하게) */
+  .portrait .btns { --k: 1.3; bottom: 56px; right: 24px; }
+  .portrait .btn.atk { background: radial-gradient(circle at 38% 32%, #ff7a5a, #b8261c 55%, #6a1010); box-shadow: 0 0 0 4px var(--gold), 0 0 0 6px var(--ink), inset 0 -6px 0 #0004; }
+  .portrait .btn.jump { background: radial-gradient(circle at 38% 32%, #a8f07c, #2e9a2e 55%, #145a18); }
+  .portrait .btn.sk, .portrait .btn.awk { opacity: 1; }
 }
 
 /* PC: 아래 조작 글자 옆 작은 기술 칸(아이콘 + 쿨타임 초) */
