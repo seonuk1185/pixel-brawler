@@ -251,6 +251,8 @@
   }
 
   function rand(a, b) { return a + Math.floor(Math.random() * (b - a + 1)); }
+  // 효과음(2026-11-07, js/sfx.js): 이름 하나로 소리. 소리 장치가 없거나 꺼져 있으면 그냥 지나감
+  function snd(name, opts) { if (window.SFX) SFX.play(name, opts); }
 
   function overlap(h, b) {
     return h.x0 < b.x1 && h.x1 > b.x0 && h.y0 < b.y1 && h.y1 > b.y0 && Math.abs(h.z - b.z) <= h.depth;
@@ -277,6 +279,7 @@
     if (target.isProp) {
       Props.hit(target, { dmg: dmg, strong: !!st.damageStyle, finisher: !!st.finisher, dir: dir,
         x: src ? src.x : p.x + p.dir * 30 * AS, y: src ? src.y : p.y - (p.z || 0) + (st.hitY != null ? st.hitY : -40 * AS) });
+      snd('hit', { v: 0.55, k: 1.35 });   // 상자·통: 가볍게
       return;
     }
     // 방패 막기(해골 병사): 앞에서 오는 보통 타면 막음 → 데미지 없이 쨍 불똥 + 조금 밀림.
@@ -348,6 +351,8 @@
     //   각성 중(2026-11-06 밤) = 숫자 크게 직업 색(damageText.awk_직업)
     FX.damage(target.x, topY, dmg, crit || !!(st.finisher || st.crit || (st.damageStyle && st.knockdown)), J, null, G.awk ? 'awk_' + G.awk.cls : crit ? 'agicrit' : st.numStyle || st.damageStyle, target.id || 'dummy', !!st.mergeNum && !crit);
     if (crit) G.crits = (G.crits || 0) + 1;
+    // 효과음: 치명타 = 「퍽+팅」, 무거운 타 = 묵직하게, 기술에 맞음 = 조금 작게(기술 소리가 따로 남). 한꺼번에 여러 마리여도 sfx.js 가 몇 개만 냄
+    if (crit) snd('crit'); else snd(heavyHit ? 'hitHeavy' : 'hit', st.damageStyle ? { v: 0.75 } : null);
     vibrate(Math.round(J.vibrateMs * (st.finisher ? 2 : 1)));
     G.hits++; G.totalDmg += dmg;
     // 분노(2026-11-06 밤): 평타 +2 · 기술 +4(공중·누운 적 타도). 각성 광전사 = 준 데미지 x lifesteal 만큼 체력(머리 위 초록 숫자는 합쳐서)
@@ -391,6 +396,7 @@
     if (K.n < (MK.min || 3)) return;
     G.callout = { txt: K.n + ' KILL!', t: 0, life: MK.showMs || 900, n: K.n };
     G.bestKill = Math.max(G.bestKill || 0, K.n);
+    if (K.n === (MK.min || 3) || (MK.slow || []).some(function (q) { return q[0] === K.n; })) snd('multiKill', { n: K.n });   // 「띠링」: 처음 3마리 + 5 · 8 · 12 마리
     (MK.slow || []).forEach(function (q) { if (K.n === q[0]) { G.slowT = Math.max(G.slowT, q[1]); FX.shake(J.shakePx * (MK.shake || 1), 220); } });
   }
   // 「5 KILL!」 글자: 화면 위 가운데(진짜 시간). 처음에 크게 튀어나왔다가 줄어들고, 끝에서 흐려짐
@@ -430,6 +436,7 @@
       }
       o.x += o.vx * s; o.y += o.vy * s;
     }
+    if (got) snd('orb');   // 아주 작은 「틱」(sfx.js 가 간격을 둠)
     if (got && Skills.glow && !(G.orbGlowT > 0)) { Skills.glow(tx, ty, 16 * AS / 0.55, '#fff2a0', 160, 0.45); G.orbGlowT = 70; }
   }
   function drawOrbs(camX) {
@@ -458,6 +465,7 @@
   // 방패로 막음: 방패 자리에 하얀·노란 쨍 불똥 + 쇳조각 반짝임, 짧은 멈춤·작은 흔들림(데미지 숫자·콤보 수 없음)
   function blockFx(e, dir) {
     var x = e.x + e.dir * 30 * AS, y = e.y - 56 * AS;
+    snd('block');
     G.hitstop = Math.max(G.hitstop, J.hitstopMs * 0.7);
     FX.shake(J.shakePx * 0.5, J.shakeMs * 0.7);
     FX.impact(x, y, -dir, '#e8f0ff', Math.round(J.sparkCount * 0.9), false, G.assets.fx && G.assets.fx.impact, 0.85);
@@ -514,6 +522,7 @@
     dmg -= shA;
     var dir = p.x >= e.x ? 1 : -1;
     if (!p.takeHit(dmg, dir, spec.knock, spec.flinchMs, !!spec.heavy)) return false;
+    snd(p.state === 'dead' ? 'playerDown' : 'playerHurt');
     if (shA) Skills.shieldHit(p, shA);   // 실제로 맞았을 때만 마나를 깎음   // heavy = 넘어짐. 안 맞았으면 false(총알은 그대로 지나감)
     G.combatT = 0; rageAdd(CFG.rage.hurt);   // 분노: 맞으면 +6(2026-11-06 밤)
     // 맞는 느낌 세게(2026-11-06 밤, config juice.hurt): 짧은 멈춤 + 흔들림 + 빨간 번쩍(몸) + 화면 가장자리 빨갛게(데미지만큼) + 불똥·피 조각
@@ -652,7 +661,7 @@
     var HC = huntPart('combo'), mile = !!(HC && HC.every && G.comboHits % HC.every === 0);
     comboEl.classList.toggle('big', !!(HC && HC.big));
     comboEl.classList.remove('pop'); comboEl.classList.remove('mile'); void comboEl.offsetWidth; comboEl.classList.add(mile ? 'mile' : 'pop');
-    if (mile) Skills.flash({ color: '#fff2c0', alpha: 0.3, ms: 180 });
+    if (mile) { Skills.flash({ color: '#fff2c0', alpha: 0.3, ms: 180 }); snd('combo'); }
     comboEl.hidden = false;
   }
 
@@ -669,6 +678,7 @@
     intro = { e: e, t: 0, ms: king ? BI.kingMs : BI.ms, king: king, shook: false,
               title: (BI.titles && BI.titles[e.type]) || '', color: king ? BI.kingColor : (e.T.rageColor || BI.color) };
     Input.takeAttack(5000); Input.takeJump(5000);   // 미리 눌러 둔 공격으로 바로 넘어가지 않게
+    snd('bossIntro', king ? { k: 0.85 } : null);   // 낮은 북 + 뿔피리(마왕 = 더 낮게)
   }
   function introStep(ms) {
     intro.t += ms;
@@ -794,6 +804,7 @@
     S.placedQ.forEach(spawnPlaced); S.placedQ = [];
     G.enemies.forEach(function (e) { if (e.asleep) wakeEnemy(e, Math.random() * (CFG.ai.wake.groupDelayMs || 0)); });
     banner(w.boss ? 'BOSS!' : 'WAVE ' + (i + 1), w.boss ? 'boss' : '');
+    snd('wave', w.boss ? { k: 0.75 } : null);
   }
 
   // 적 하나 만들기: 판 배율(hpMul·dmgMul) + 변종(색·배율) 적용. opt = { variant }
@@ -1087,6 +1098,7 @@
     shots.push({ e: e, s: s, x: mx, z: z, h0: -s.spawn.y, h: -s.spawn.y, dir: e.dir, trav: 0, t: 0, wait: (o && o.wait) || 0, sc: (o && o.scale) || 1,
                  art: F && F[s.proj || 'bullet'], imp: F && s.impact ? F[s.impact] : null });
     if (o && o.wait) return;   // 늦게 나가는 무리: 연기·불꽃은 첫 무리 때만
+    snd('enemyShot');
     var SM = F && s.muzzle !== null ? F[s.muzzle || 'smoke'] : null;
     if (SM && SM.frames.length) FX.sprite(mx, my, SM.frames, SM.fps, SM.pivot, e.dir > 0, false);   // 총구 연기(그림은 왼쪽을 봄)
     if (Skills.debris) Skills.debris(mx, my, e.y, 4, { cols: ['#fff2a0', '#ffb040', '#ffffff'], glow: true, sp: 110, size: 1.2, ms: 160 });   // 불꽃 튐
@@ -1297,7 +1309,7 @@
   // ---------- 포만감 · 물약 (2026-11-06 밤, 형님 결정, 수치 = config fullness · potions) ----------
   // 포만감(G.full, 0~100 %): 판 시작마다 start. 0 보다 크면 체력이 초당 최대 체력 x regenPct 씩 참(조금씩 모아서 1씩), 초당 decayPerSec 씩 줆,
   //   기술을 쓸 때마다 skillCost 더 줆(skills.js start → H.onCast). 0 = 회복만 멈춤
-  function feed(n) { var F = CFG.fullness; G.full = Math.min(F.max, (G.full || 0) + n); }
+  function feed(n) { var F = CFG.fullness; G.full = Math.min(F.max, (G.full || 0) + n); snd('food'); }
   function fullStep(dt) {
     var F = CFG.fullness, p = G.player;
     if (!F || p.state === 'dead') return;
@@ -1314,6 +1326,7 @@
     if (it.hp) p.hp = Math.min(p.maxHp, p.hp + Math.round(p.maxHp * it.hp));
     if (it.mp) p.mp = Math.min(p.maxMp, p.mp + Math.round(p.maxMp * it.mp));
     G.potGot = (G.potGot || 0) + 1;
+    snd('potion');
     return { hp: p.hp - h0, mp: Math.round(p.mp - m0) };
   }
   // 잡몹이 쓰러질 때 가끔 물약(단단한 잡몹은 조금 더 자주). 보스·보스와 같이 쓰러진 졸개(noDrop)는 안 줌(보스는 bossPotion)
@@ -1354,6 +1367,7 @@
     var p = G.player, AW = CFG.awaken, cls = awkClass(), A = AW[cls];
     G.rage = 0; G.awkCount = (G.awkCount || 0) + 1;
     G.awk = { cls: cls, A: A, t: 0, ms: AW.ms, intro: 0, fxT: 0, ghostT: 0 };
+    snd('awaken');
     // 공통: 슈퍼아머 · 쿨타임 2배 빨리 / 법사: 마나 0 · 한 번 더 · 효과 더 크고 밝게 / 갑옷·로브 다시 칠하기 + 빛 테두리(entities.js look)
     p.superArmor = true; p.cdRate = AW.cdRate;
     p.freeMp = p.echoCast = cls === 'mage';
@@ -1417,6 +1431,7 @@
     var a = G.awk, p = G.player, AW = CFG.awaken;
     if (!a) return;
     if (boom) {
+      snd('awakenEnd');
       var A = a.A, R = AW.end.r * AS, x = p.x, z = p.y;
       G.hitstop = Math.max(G.hitstop, 130);
       FX.shake(J.shakePx * 4, 750);
@@ -1679,6 +1694,7 @@
     G.enemies.forEach(function (e) {
       if (e.alive() || e.xpDone) return;
       e.xpDone = true;
+      if (!e.T.boss) snd('pop');   // 쓰러진 잡몹 「펑」(보스는 onBossDown 의 bossDown)
       mobPotion(e);   // 물약(2026-11-06 밤)
       var n = Growth.enemyXp(e.type, e.T, idx);
       if (e.xpMul && n > 0) n = Math.max(1, Math.round(n * e.xpMul));   // 몹 떼(사냥 손맛): 한 마리 경험치 xpMul 배
@@ -1701,6 +1717,7 @@
     p.maxMp = Growth.maxMp(G.classKey);
     if (addMp > 0) p.mp = Math.min(p.maxMp, p.mp + addMp);
     FX.damage(p.x, p.y - (p.z || 0) - 118 * AS, 'LEVEL UP!', false, J, null, 'levelup', 'player:lv');
+    snd('levelUp');
     if (LU.flash) Skills.flash(LU.flash);
     FX.impact(p.x, p.y - (p.z || 0) - 60 * AS, p.dir, LU.sparkCol || '#ffe066', Math.round(J.sparkCount * 1.4), true, G.assets.fx && G.assets.fx.impact, 1);
 
@@ -1717,6 +1734,7 @@
     rings.length = 0;                  // 화염 충격파 고리도 사라짐
     G.hitstop = Math.max(G.hitstop, 260);
     G.slowT = 1400;                    // 보스 쓰러질 때 슬로모션
+    snd('bossDown', boss.T.finalBoss ? { k: 0.8 } : null);
     FX.shake(J.shakePx * 3, 500);
     shove = null;
     // 마지막 보스(10단계 마왕): 마지막 타에 더 긴 멈춤·슬로모션 + 하얀 번쩍 → 쓰러지는 그림(왕관이 떨어짐)을 다 보여 준 뒤 엔딩(stageStep · showResult)
@@ -1773,6 +1791,7 @@
         B.awakenShown = true;
         var AW = B.T.awaken;
         banner(josa(B.label, '이', '가') + ' 각성했다!', 'boss');
+        snd('bossRoar', { k: 0.8 });
         Skills.flash({ color: AW.flash || '#ff3a8c', alpha: 0.55, ms: 520 });
         FX.shake(J.shakePx * AW.shake, 900);
         G.hitstop = Math.max(G.hitstop, 160);
@@ -1788,6 +1807,7 @@
         //   몸 둘레 불꽃 테두리·발밑 고리는 enemies.js(rageT). 수치(빨라짐·졸개)는 그대로
         var RG = CFG.ai.rage; B.rageT = 0;
         banner(josa(B.label || '오크 족장', '이', '가') + ' 분노했다!', 'boss');
+        snd('bossRoar');
         G.hitstop = Math.max(G.hitstop, RG.hitstopMs); G.slowT = Math.max(G.slowT, RG.slowMs);
         Skills.flash({ color: B.rageColor(), alpha: RG.flash, ms: 420 });
         FX.shake(J.shakePx * RG.shake, 700);
@@ -1809,6 +1829,7 @@
         else {
           if (p.state !== 'dead') p.hp = Math.min(p.maxHp, p.hp + (CFG.stage.healOnClear || 0));
           banner('CLEAR!', 'small');
+          snd('waveClear');
         }
       }
     }
@@ -2030,10 +2051,13 @@
     if (MODE === 'stage') { world.minX = G.camX + 14; world.maxX = G.camX + LW - 14; }
     if (G.bot && MODE === 'stage' && !G.stage.result) botThink(dt);
     awkStep(dt, realMs);   // 각성 시간·불꽃·잔상·끝 폭발
+    var pst0 = p.state;
     var ev = p.update(dt, world);
+    if (p.state === 'jump' && pst0 !== 'jump') snd('jump');
     if (ev.slash) {
       // fx 는 하나 또는 여러 개(법사 2타 = 바람 + 지팡이 끝 반짝임)
       var st0 = ev.slash.step;
+      if (st0.cast) snd('magicShot'); else if (window.SFX) SFX.swing(p.weaponKey, !!st0.finisher);   // 휘두르는 소리(무기마다)
       (Array.isArray(st0.fx) ? st0.fx : [st0.fx]).forEach(function (sfx) { swingFx(p, st0, sfx); });
     }
     if (ev.cast) castMagic(ev.cast.step);
@@ -2067,8 +2091,9 @@
         if ((e.x - p.x) * p.dir < gap) e.x = p.x + p.dir * gap;   // 늘 주인공 앞에 붙어서 밀려감
       });
     }
-    if (ev.moveSwing) moveSwingFx(p, ev.moveSwing.kind);
-    if (ev.land) landFx(p);
+    if (ev.moveSwing) { moveSwingFx(p, ev.moveSwing.kind); if (window.SFX) SFX.swing(p.weaponKey, ev.moveSwing.kind !== 'jump'); }
+    if (ev.land) { landFx(p); snd('land'); }
+    if (ev.dodge && ev.dodge.start) snd('dodge');
     if (ev.dodge || ev.dodgeGhost) dodgeFx(p, ev);
     // 날아가는 마법탄: 처음 맞은 대상(또는 끝까지 날아간 곳)에서 터짐
     Projectiles.update(dt, hitTargets(), function (pr, t) { explode(pr.x, pr.y, pr.z, pr.st, pr.dir, pr.wk, t); });
@@ -2295,6 +2320,7 @@
     var nx = document.getElementById('btnNext');
     nx.hidden = !(clear && !last && !end);
     var focus = clear && !last && !end ? nx : clear ? document.getElementById('btnSel') : document.getElementById('btnRetry');
+    snd(clear ? 'stageClear' : 'fail');
     // 전직(2026-11-06): 2단계 보스를 처음 깸 + 아직 직업 없음 → 전직 화면 먼저, 고르고 나면 결과 화면
     if (needClassChange()) { resultEl.hidden = true; openClassChange(function () { openMenu(resultEl, focus); }); }
     else openMenu(resultEl, focus);
@@ -2726,6 +2752,7 @@
       row.appendChild(c);
     }
     if (!upEl.hidden) return;
+    snd('unlock');
     upBack = { menu: menuEl && !menuEl.hidden ? menuEl : null, paused: G.paused };
     G.paused = true; Input.setOverride(null);
     openMenu(upEl, document.getElementById('btnUpOk'));

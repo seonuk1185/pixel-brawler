@@ -148,6 +148,27 @@ body.smooth #screen { image-rendering: auto; }
   background: linear-gradient(#8a5428, #5c3418); border: 2px solid var(--ink);
 }
 
+/* ---------- 소리 켜기/끄기 (2026-11-07 효과음, js/sfx.js) ----------
+   오른쪽 위 「시험」 탭 바로 왼쪽 작은 나무 칸 + 도트 스피커(켬 = 소리 물결, 끔 = 빨간 X). 시험 탭이 숨으면 그 자리(오른쪽 끝). 누르는 칸 40x40 */
+.sndbtn {
+  --ic-snd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' shape-rendering='crispEdges'%3E%3Cpath fill='%23f5e0a8' d='M1 4h2v4h-2zM3 3h1v6h-1zM4 2h1v8h-1zM5 1h1v10h-1z'/%3E%3Cpath fill='%239fe8ff' d='M7 4h1v4h-1zM8 2h1v1h-1zM9 3h1v6h-1zM8 9h1v1h-1z'/%3E%3C/svg%3E");
+  --ic-snd-off: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' shape-rendering='crispEdges'%3E%3Cpath fill='%23a08a68' d='M1 4h2v4h-2zM3 3h1v6h-1zM4 2h1v8h-1zM5 1h1v10h-1z'/%3E%3Cpath fill='%23ff6a4a' d='M7 4h1v1h-1zM8 5h1v1h-1zM9 6h1v1h-1zM10 7h1v1h-1zM10 4h1v1h-1zM9 5h1v1h-1zM8 6h1v1h-1zM7 7h1v1h-1z'/%3E%3C/svg%3E");
+  position: absolute; top: max(4px, env(safe-area-inset-top)); right: calc(max(6px, env(safe-area-inset-right)) + 46px); z-index: 6;
+  display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; padding: 0; border: 0; background: transparent; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.sndbtn i {
+  display: block; width: 26px; height: 21px; opacity: .85; image-rendering: pixelated;
+  background: var(--ic-snd) center / 18px 18px no-repeat, linear-gradient(#6a4020, #4a2a12);
+  border: 2px solid var(--ink); box-shadow: inset 0 0 0 1px var(--gold3);
+}
+.sndbtn.off i { background-image: var(--ic-snd-off), linear-gradient(#4a3424, #34200e); opacity: .75; }
+.sndbtn:active i { transform: translateY(1px); }
+.sndbtn:focus-visible { outline: 2px solid var(--gold); outline-offset: -4px; }
+.topbar[hidden] ~ .sndbtn { right: max(6px, env(safe-area-inset-right)); }
+/* 시험 탭이 숨어도 콤보 글자는 스피커 밑으로 */
+.sndbtn ~ .combo { top: max(50px, calc(env(safe-area-inset-top) + 46px)); }
+
 /* ---------- 화면 위 정보(HUD): 게임 화면 크기에 맞춰 main.js 가 위치를 잡음 ---------- */
 .hud { position: absolute; left: 0; top: 0; pointer-events: none; z-index: 3; overflow: hidden; }
 /* 플레이어 판: 왼쪽 위 얼굴 액자(+ Lv 리본) · 오른쪽 나무판에 막대 3개 · 경험치 띠 · 능력치/기술 버튼 */

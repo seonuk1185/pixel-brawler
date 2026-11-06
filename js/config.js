@@ -1056,6 +1056,16 @@
                 look: { hue: 12, sat: 1.35, bright: 0.72, color: '#3a0a6a', colorK: 0.3 } },
       novice: { name: '각성', color: '#ffd23f', glow: '#fff2a0' }
     },
+    // ---------- 효과음 (2026-11-07, js/sfx.js: 소리 파일 없이 코드로 만든 칩튠 소리) ----------
+    //   on = false 면 처음부터 꺼짐(오른쪽 위 스피커 버튼 · PC M 키로 켬, 브라우저에 저장). master = 전체 크기, sfx = 효과음 크기(0~1)
+    //   maxVoices = 동시에 나는 소리 수 상한(레벨업·보스·클리어 같은 중요한 소리는 상한 없음). 소리마다 동시 수·간격은 sfx.js 목록(cap · gap)
+    //   limiter = 누르개(몹이 한꺼번에 맞아도 소리가 안 터지게): threshold dB 넘으면 ratio 배로 누름
+    //   vol = 소리 하나만 크기 바꾸기 { hit: 0.8, orb: 0.5 … } (1 = 그대로)
+    audio: {
+      on: true, master: 0.8, sfx: 0.7, maxVoices: 18,
+      limiter: { threshold: -16, knee: 10, ratio: 8, attack: 0.003, release: 0.18 },
+      vol: {}
+    },
     juice: {
       hitstopMs: 75,        // 맞는 순간 화면 멈춤
       shakePx: 3,           // 화면 흔들림 세기(도트)

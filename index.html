@@ -45,6 +45,8 @@
     <a class="modebtn" id="modeBtn" href="?mode=practice">연습장</a>
     </div>
   </details>
+  <!-- 소리 켜기/끄기(2026-11-07 효과음, js/sfx.js): 오른쪽 위 「시험」 탭 왼쪽 작은 스피커(시험 탭이 숨으면 그 자리). PC = M 키. 끄면 스피커에 X -->
+  <button type="button" class="sndbtn" id="btnSnd" aria-label="소리 끄기" aria-pressed="false"><i></i></button>
 
   <!-- 스테이지 판 화면 위 글자: 체력 막대, 보스 막대, GO, 알림 (게임 화면 크기에 맞춰 main.js 가 위치를 잡음) -->
   <div class="hud" id="hud" hidden>
@@ -155,6 +157,7 @@
 </div>
 
 <script src="js/config.js"></script>
+<script src="js/sfx.js"></script>
 <script src="js/growth.js"></script>
 <script src="js/assets.js"></script>
 <script src="js/input.js"></script>

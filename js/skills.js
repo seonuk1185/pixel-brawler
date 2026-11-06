@@ -174,6 +174,8 @@
     if (from) FX.list[FX.list.length - 1].t = Math.min(fr.length - 1, from) * 1000 / fps;
   }
   function centerPivot(fr) { return Assets.centerOf(fr[0]); }
+  // 효과음(2026-11-07, js/sfx.js): 쓰기 시작 = SFX.cast(기술 id), 날아감·터짐·꽂힘 = 그 순간 snd
+  function snd(name, opts) { if (window.SFX) SFX.play(name, opts); }
 
   // ---------- 시작 ----------
   // 눌린 칸(A~D) 중 쓸 수 있는 기술(쿨타임 끝남 + 마나 넉넉) 하나 → { d, L }. 빈 칸·안 보이는 칸은 입력을 버림.
@@ -223,6 +225,7 @@
       debris(p.x, p.y - 40 * AS(), p.y, 10, { cols: ['#ffffff', '#d8b0ff', '#5ae6ff'], glow: true, sp: 160, size: 1.5, ms: 420, g: -60, spread: 1.6 });
     }
     casts[d.id] = (casts[d.id] || 0) + 1;
+    if (window.SFX) SFX.cast(d.id);
     if (H.onCast && !d.auto) H.onCast(d);   // 포만감이 조금 더 줆(main.js, 2026-11-06 밤). 반격(저절로)은 안 줆
     if (d.strikes) {
       var K = s.K = boltsFor(d.strikes, L);
@@ -566,6 +569,7 @@
   // 화염구: 느리고 큰 불덩이 → 처음 맞은 적(또는 끝)에서 터짐
   // s = 그 기술 진행(데미지 배율·Lv5 크기), o = 쏘는 자리 { x, y, dir, dy(위아래로 비킴) } (각성 「한 발 더」는 처음 쏜 자리 그대로)
   function castFireball(p, d, s, o) {
+    snd('fireball');
     var c = d.cast, real = fxArt(c.art), B = CFG.magic.bolt;
     var fr = real ? real.fr : tintFx(B.frames, c.tint, c.tintK);
     var ka = s.area || 1;   // 기술 Lv 크기(탄 그림·판정 같이)
@@ -586,6 +590,7 @@
     ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = g; ctx.fillRect(-r, -r, r * 2, r * 2); ctx.restore();
   }
   function fireBurst(pr, direct) {
+    snd('fireBoom');
 
     var S = pr.skill, c = S.c, b = c.burst, real = fxArt(b.art), M = CFG.magic.burst, A = S.area || 1, R = b.r * A;   // A = Lv5 폭발 크기
     if (real) spriteFrom(pr.x, pr.y, real.fr, real.fps, real.pivot, pr.dir < 0, A, b.fromFrame);
@@ -619,6 +624,7 @@
   // 번개 한 줄기: 정해 둔 바닥 자리(sx[k], sz[k] = 겨눈 적 발밑 또는 법사 앞 고정 자리)에 화면 맨 위에서 내리꽂힘
   //   (2026-11-06 밤: s = 그 기술 진행, x·z = 꽂힐 자리 → 각성 「한 번 더」가 같은 자리에 다시 꽂을 수 있게)
   function strike(p, d, s, k, x, z) {
+    snd('lightning');
     var K = s.K || d.strikes, h = K.hits[Math.min(k, K.hits.length - 1)], KR = K.r * s.area;   // KR = Lv5 번개 굵기
     bolts.push({ x: x, z: z, t: 0, life: K.ms || 200, K: K, seed: Math.random() * 1000 });
     var hitA = fxArt(K.hitArt), M = CFG.magic.spark;
@@ -653,6 +659,7 @@
 
   // 검기 날리기: 앞으로 날아가며 길 위의 적을 모두 꿰뚫음(적마다 한 번). k = 몇 번째 검기(Lv5 = 2개, 두 번째는 살짝 위)
   function castWave(p, d, k) {
+    snd('skWave');
     var w = d.shot, s = p.sk, lk = lookOf(d), A = (s.L.lv5 && fxArt(lk.projLv5, lk.fps)) || fxArt(lk.proj, lk.fps), hitIds = {};
     // 우리 그림(ours): 나가는 장 → 반복 구간(range)만 날아가는 동안 → 끝에서 흩어지는 장(range 뒤)을 그 자리에 한 번
     var ours = !!(A && A.ours && A.range), fr = A ? (ours ? A.fr.slice(0, A.range[1] + 1) : (A.fr.length > 2 ? A.fr.slice(1) : A.fr)) : null;
@@ -698,6 +705,7 @@
   // 대지 내려찍기 착지: 양옆 땅 충격파 → 반지름 안 적 모두(누운 적도) + 짧은 기절
   function quake(p, d) {
     var Q = d.quake, s = p.sk, R = Q.r * s.area, x = p.x, z = p.y, lk = lookOf(d), A = fxArt(lk.ring);
+    snd('skSlam');
     H.hitstop(70);
     FX.shake(CFG.juice.shakePx * 2.6, CFG.juice.shakeMs * 1.8);
     H.dust(x - 16 * AS(), z, -1); H.dust(x + 16 * AS(), z, 1);
@@ -726,6 +734,7 @@
 
   // 얼음창: 처음 맞은 적 하나(Lv5 = 꿰뚫음) + 느려짐. 날아가는 그림 = look.proj(없으면 마법탄을 얼음색으로)
   function castIce(p, d, s, o) {
+    snd('iceSpear');
     var c = d.cast, lk = lookOf(d), real = fxArt(lk.proj), B = CFG.magic.bolt, hitIds = {};
     var fr = real ? real.fr : tintFx(B.frames, c.tint, c.tintK), pierce = !!(s.L.lv5 && s.L.lv5.pierce);
     var ki = s.area || 1;   // 기술 Lv 크기(창 그림·판정 같이)
@@ -748,6 +757,7 @@
     ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = g; ctx.fillRect(-r, -r, r * 2, r * 2); ctx.restore();
   }
   function iceHit(pr, t) {
+    snd('iceHit');
     var S = pr.skill, c = S.c, lk = lookOf(S.d), A = fxArt(lk.hit), M = CFG.magic.spark;
     H.onHit(stOf(c.hit, S.d), t, { dir: pr.dir, wk: S.wk, x: pr.x, y: pr.y, mul: S.mul });
     // 느려짐: 그 적의 시간이 mul 배로 흐름(enemies.js update). 보스는 덜 느려짐
@@ -800,6 +810,7 @@
   }
   // 돌기둥 솟음: 우리 그림(look.pillar, 기둥 솟음~무너짐) + 흔들림·보라 빛·돌 파편 + 기둥 위 적 띄우기(판정 = 기둥 폭 r x area, 위아래 depth)
   function pillarBurst(p, d, s, x, z) {
+    snd('earthRise');
     var P = d.pillar, R = P.r * s.area, lk = lookOf(d), A = fxArt(lk.pillar);
     pillars.push({ x: x, z: z, A: A, t: 0, life: A ? A.fr.length * 1000 / A.fps : 520, dir: s.dir, k: s.area });
     H.hitstop(50);
@@ -886,6 +897,7 @@
       m.t += dt;
       if (m.t < M.markMs - 160 && m.tgt && (!m.tgt.alive || m.tgt.alive())) { m.x = m.tgt.x; m.z = m.tgt.y; }
       if (!m.boom && m.t >= M.markMs) {   // 떨어지는 중: 불티
+        if (!m.fallSnd) { m.fallSnd = true; snd('meteorFall'); }   // 「휘이잉」
         m.emberT -= dt;
         if (m.emberT <= 0) {
           m.emberT = 30;
@@ -901,6 +913,7 @@
     }
   }
   function meteorBoom(m) {
+    snd('meteorBoom');
     var M = m.M, R = M.r * m.area, x = m.x, z = m.z, lk = lookOf(m.d), A = fxArt(lk.boom), B = CFG.magic.burst, y = z - 24 * AS();
     if (m.artOn) {   // 우리 그림(폭발·불고리·연기 들어 있음): 빛·흔들림·데미지만
       H.hitstop(110); FX.shake(CFG.juice.shakePx * 3.6, CFG.juice.shakeMs * 2.2);
@@ -1016,6 +1029,7 @@
     }
     if (s.bk === 0 && t1 >= B.at) {
       s.bk = 1;
+      snd('blink');
       addGhost(p, { color: '#c890ff', lifeMs: 300, alpha: 0.55 });   // 사라지는 자리에 보라 잔상
       blinkBurst(p, d, s, p.x, p.y);
       p.x += s.mv * B.dist * k;   // 판 끝·벽은 main.js 의 p.clamp 가 막음
@@ -1080,6 +1094,7 @@
     }
   }
   function flameBurst(p, d, s, x, z) {
+    snd('firePillar');
     var F = d.flame, f = { x: x, z: z, F: F, d: d, t: 0, life: F.ms, k: s.area, R: F.r * s.area, wk: p.weaponKey, mul: s.mul, dir: s.dir,
                            ticks: 0, emberT: 0, lv: curLv };
     flames.push(f);
@@ -1217,6 +1232,7 @@
   }
   // 칼이 땅에 꽂힘: 금빛 땅 충격파 + 빛 + 금 불티·돌 + 둘레 적 데미지(마지막 칼 = 크게)
   function bladeLand(b) {
+    snd('holyBolt');
     var K = b.K, R = K.r * b.k, x = b.x, z = b.z, big = b.last;
     H.dust(x - 10 * AS(), z, -1); H.dust(x + 10 * AS(), z, 1);
     FX.shake(CFG.juice.shakePx * (b.h.shake || 1.5), CFG.juice.shakeMs * (big ? 1.8 : 1));
