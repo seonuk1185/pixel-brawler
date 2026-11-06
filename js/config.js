@@ -1228,23 +1228,24 @@
       crit:   { font: 'huge', scale: 1, bold: true, top: '#ffe066', bottom: '#ffa83a', outline: '#5a2a14', shadow: 'rgba(30,12,8,0.4)',
                 pop: { top: '#fffbe0', bottom: '#ffe066' } },
       // 기술 숫자 (2026-11-03): 마무리 숫자(huge 12도트)보다 큰 giant(8x14, 굵게 → 획 3도트). 기술마다 색이 다름
+      //   zoom 1.2 = 기술 숫자 1.2배(2026-11-07 형님: 큰 피해 기술이니 숫자 더 크게). 각성 숫자는 그보다 큰 1.45
       //   기술 쪽에서 damageStyle 로 고른다(CFG.skills). 새 모양을 만들면 여기에 이름을 하나 더 적고 기술의 damageStyle 을 그 이름으로
-      skill_knight: { font: 'giant', scale: 1, bold: true, top: '#ffffff', bottom: '#9cc8ff', outline: '#1a2a4a', shadow: 'rgba(8,14,30,0.45)',
+      skill_knight: { font: 'giant', scale: 1, bold: true, zoom: 1.2, top: '#ffffff', bottom: '#9cc8ff', outline: '#1a2a4a', shadow: 'rgba(8,14,30,0.45)',
                       pop: { top: '#ffffff', bottom: '#ffffff' } },
-      skill_fire:   { font: 'giant', scale: 1, bold: true, top: '#ffd27a', bottom: '#ff5a1e', outline: '#4a1408', shadow: 'rgba(30,8,4,0.45)',
+      skill_fire:   { font: 'giant', scale: 1, bold: true, zoom: 1.2, top: '#ffd27a', bottom: '#ff5a1e', outline: '#4a1408', shadow: 'rgba(30,8,4,0.45)',
                       pop: { top: '#fff4d0', bottom: '#ffb040' } },
-      skill_bolt:   { font: 'giant', scale: 1, bold: true, top: '#fff6a0', bottom: '#5ae6ff', outline: '#14244a', shadow: 'rgba(6,12,30,0.45)',
+      skill_bolt:   { font: 'giant', scale: 1, bold: true, zoom: 1.2, top: '#fff6a0', bottom: '#5ae6ff', outline: '#14244a', shadow: 'rgba(6,12,30,0.45)',
                       pop: { top: '#ffffff', bottom: '#fff6a0' } },
       // 얼음창(2026-11-06): 흰색 → 얼음 파랑
-      skill_ice:    { font: 'giant', scale: 1, bold: true, top: '#ffffff', bottom: '#7fe0ff', outline: '#0e2a48', shadow: 'rgba(6,14,30,0.45)',
+      skill_ice:    { font: 'giant', scale: 1, bold: true, zoom: 1.2, top: '#ffffff', bottom: '#7fe0ff', outline: '#0e2a48', shadow: 'rgba(6,14,30,0.45)',
                       pop: { top: '#ffffff', bottom: '#d8f8ff' } },
       // 땅 융기(2026-11-06 밤): 흰색 → 보라(마법진 색)
-      skill_earth:  { font: 'giant', scale: 1, bold: true, top: '#ffffff', bottom: '#c8a0ff', outline: '#2a1048', shadow: 'rgba(14,6,30,0.45)',
+      skill_earth:  { font: 'giant', scale: 1, bold: true, zoom: 1.2, top: '#ffffff', bottom: '#c8a0ff', outline: '#2a1048', shadow: 'rgba(14,6,30,0.45)',
                       pop: { top: '#ffffff', bottom: '#ead8ff' } },
       // 2차 기술(2026-11-06): 성검 낙뢰 = 흰색 → 금색 / 순간이동 = 흰색 → 보라
-      skill_holy:   { font: 'giant', scale: 1, bold: true, top: '#ffffff', bottom: '#ffd23f', outline: '#4a3004', shadow: 'rgba(30,20,4,0.45)',
+      skill_holy:   { font: 'giant', scale: 1, bold: true, zoom: 1.2, top: '#ffffff', bottom: '#ffd23f', outline: '#4a3004', shadow: 'rgba(30,20,4,0.45)',
                       pop: { top: '#ffffff', bottom: '#fff6c8' } },
-      skill_arcane: { font: 'giant', scale: 1, bold: true, top: '#ffffff', bottom: '#c890ff', outline: '#24083e', shadow: 'rgba(16,6,30,0.45)',
+      skill_arcane: { font: 'giant', scale: 1, bold: true, zoom: 1.2, top: '#ffffff', bottom: '#c890ff', outline: '#24083e', shadow: 'rgba(16,6,30,0.45)',
                       pop: { top: '#ffffff', bottom: '#e8d0ff' } },
       // 늘 켜진 기술 알림 글자(2026-11-06): 「투지!」(붉은 주황) · 「반격!」(금색) · 마나 방패가 막은 마나 「MP -12」(파랑)
       grit:    { font: 'large', scale: 1, bold: true, top: '#ffe0c8', bottom: '#ff5a2a', outline: '#4a0e04', shadow: 'rgba(30,6,4,0.4)',
@@ -1262,12 +1263,12 @@
       // 음식 먹고 회복한 양(2026-11-04): 초록 숫자, 보통 숫자와 같은 크기
       heal: { font: 'mid', scale: 1, top: '#d6ffc4', bottom: '#4cd64a', outline: '#123a16', shadow: 'rgba(6,30,10,0.35)',
               pop: { top: '#ffffff', bottom: '#a8ff8a' } },
-      // 각성 중 데미지(2026-11-06 밤): 기술 숫자(giant)보다 zoom 배 크게 + 직업 색(광전사 = 붉은 불꽃 / 마력 폭주 = 보라·하늘 / 견습 = 금색)
-      awk_knight: { font: 'giant', scale: 1, bold: true, zoom: 1.3, top: '#fff0d8', bottom: '#ff3a1a', outline: '#3a0404', shadow: 'rgba(40,4,4,0.5)',
+      // 각성 중 데미지(2026-11-06 밤): 기술 숫자(giant)보다 zoom 배 크게(2026-11-07: 1.3 → 1.45, 기술 숫자 1.2 보다 크게) + 직업 색(광전사 = 붉은 불꽃 / 마력 폭주 = 보라·하늘 / 견습 = 금색)
+      awk_knight: { font: 'giant', scale: 1, bold: true, zoom: 1.45, top: '#fff0d8', bottom: '#ff3a1a', outline: '#3a0404', shadow: 'rgba(40,4,4,0.5)',
                     pop: { top: '#ffffff', bottom: '#ffb040' } },
-      awk_mage:   { font: 'giant', scale: 1, bold: true, zoom: 1.3, top: '#f6eaff', bottom: '#b46aff', outline: '#20083a', shadow: 'rgba(20,6,40,0.5)',
+      awk_mage:   { font: 'giant', scale: 1, bold: true, zoom: 1.45, top: '#f6eaff', bottom: '#b46aff', outline: '#20083a', shadow: 'rgba(20,6,40,0.5)',
                     pop: { top: '#ffffff', bottom: '#8ff0ff' } },
-      awk_novice: { font: 'giant', scale: 1, bold: true, zoom: 1.3, top: '#fffbe0', bottom: '#ffc030', outline: '#4a2a04', shadow: 'rgba(30,20,4,0.5)',
+      awk_novice: { font: 'giant', scale: 1, bold: true, zoom: 1.45, top: '#fffbe0', bottom: '#ffc030', outline: '#4a2a04', shadow: 'rgba(30,20,4,0.5)',
                     pop: { top: '#ffffff', bottom: '#fff2a0' } },
       // 물약·포만감(2026-11-06 밤): 「+HP 52」(빨강) · 「+MP 30」(파랑) · 「포만감 +30%」(주황)
       pothp: { font: 'large', scale: 1, bold: true, top: '#ffe0dc', bottom: '#ff4a4a', outline: '#4a0a0e', shadow: 'rgba(30,6,6,0.4)',
