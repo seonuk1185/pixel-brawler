@@ -266,11 +266,13 @@
     //   2026-11-06: 레벨 몫 + 힘(물리: 맨손·검) 또는 지능(마법: 지팡이·완드로 나간 타·마법탄·터짐·화염구·번개 = 무기 magic)
     //   2026-11-06 성장 4단계: × 기술 Lv 배율(src.mul, 기술만) × 늘 켜진 기술(검 숙련 = 물리 / 원소 증폭 = 마법, 지금 입은 직업의 기술 책)
     var bk = Growth.book(G.classKey), pas = bk ? bk.bonus(W.magic ? 'magic' : 'phys') : 0;
+    if (!W.magic && !target.isProp) pas += Skills.gritBonus(p);   // 늘 켜진 기술 「투지」(2차, 2026-11-06): 체력이 적을수록 물리 공격 +
     var dmg = Math.round(rand(W.damage[0], W.damage[1]) * st.dmg * (target.isProp ? 1 : Growth.atkMul(!!W.magic) * (1 + pas) * ((src && src.mul) || 1)));
     // 치명타(민첩, 2026-11-06): 적·허수아비를 때릴 때 확률 Growth.critChance() → 데미지 x critMul + 큰 주황 숫자(agicrit). GAME.test.crit 로 시험 고정
     var crit = !target.isProp && (G.forceCrit != null ? G.forceCrit : Math.random() < Growth.critChance());
     if (crit) dmg = Math.round(dmg * CFG.growth.stats.critMul);
     if (G.awk && !target.isProp) dmg = Math.round(dmg * CFG.awaken.atkMul);   // 각성: 공격 +30%(2026-11-06 밤)
+    if (!target.isProp) dmg = Math.round(dmg * Skills.brandMul(p, target));   // 늘 켜진 기술 「원소 낙인」(2차): 낙인 찍힌 적은 더 아프게
     // 소품(상자·통): 단계만 넘김(데미지 숫자·콤보 수 없음). 기술(damageStyle) = 한 번에 부서짐, 맞은 곳 = 마법이면 그 자리, 아니면 몸 앞
     if (target.isProp) {
       Props.hit(target, { dmg: dmg, strong: !!st.damageStyle, finisher: !!st.finisher, dir: dir,
@@ -322,6 +324,7 @@
         target.guardBroken = false;
         FX.impact(target.x + target.dir * 14 * AS, target.y - 54 * AS, -dir, '#fff4c8', J.sparkCount, true, G.assets.fx && G.assets.fx.impact, 1.1);
       }
+      if (res && res !== 'dead') Skills.brandMark(p, target, st);   // 원소 낙인(2차): 기술 마법에 맞은 적에게 낙인
       if (res === 'dead' && target.T.boss) onBossDown(target);
       else if (res === 'dead') G.hitstop = Math.max(G.hitstop, J.hitstopMs * 1.6);
     }
@@ -415,8 +418,11 @@
     var dmg = rand(spec.dmg[0], spec.dmg[1]);
     if (e.dmgMul !== 1) dmg = Math.max(1, Math.round(dmg * e.dmgMul));   // 판·변종 공격력 배율
     dmg = guardDmg(dmg);   // 늘 켜진 기술 「강철 피부」(받는 피해 -%)
+    var shA = Skills.shieldSplit(p, dmg);   // 늘 켜진 기술 「마나 방패」(2차, 2026-11-06): 피해 일부를 마나가 대신 받음
+    dmg -= shA;
     var dir = p.x >= e.x ? 1 : -1;
-    if (!p.takeHit(dmg, dir, spec.knock, spec.flinchMs, !!spec.heavy)) return false;   // heavy = 넘어짐. 안 맞았으면 false(총알은 그대로 지나감)
+    if (!p.takeHit(dmg, dir, spec.knock, spec.flinchMs, !!spec.heavy)) return false;
+    if (shA) Skills.shieldHit(p, shA);   // 실제로 맞았을 때만 마나를 깎음   // heavy = 넘어짐. 안 맞았으면 false(총알은 그대로 지나감)
     G.combatT = 0; rageAdd(CFG.rage.hurt);   // 분노: 맞으면 +6(2026-11-06 밤)
     // 맞는 느낌 세게(2026-11-06 밤, config juice.hurt): 짧은 멈춤 + 흔들림 + 빨간 번쩍(몸) + 화면 가장자리 빨갛게(데미지만큼) + 불똥·피 조각
     var HU = J.hurt || {}, hk = Math.min(1, dmg / Math.max(1, p.maxHp * (HU.fullAt || 0.12)));   // hk = 이번 데미지 세기 0~1
@@ -431,6 +437,7 @@
     G.comboT = 0; comboEl.hidden = true;
     // 독(전갈 왕 독침): 맞으면 잠깐 독 → poisonStep 이 everyMs 마다 체력을 조금씩 깎음(독으로는 안 쓰러짐)
     if (spec.poison) p.poison = { t: spec.poison.ms, tick: spec.poison.everyMs, every: spec.poison.everyMs, dmg: spec.poison.dmg };
+    Skills.tryCounter(p, e);   // 늘 켜진 기술 「반격」(2차, 2026-11-06): 움찔했으면 확률로 바로 되받아 베기
     return true;
   }
   // 받는 피해 줄이기(2026-11-06, 늘 켜진 기술 stat 'guard' = 기사 강철 피부): 적 타·불 뿜기에. 1 아래로는 안 줄임
@@ -2395,9 +2402,13 @@
     return passiveNow(e, show) + (show < max && lv ? '  →  Lv' + (show + 1) + ': ' + passiveNow(e, show + 1) : '');
   }
   // 늘 켜진 기술의 그 Lv 값: 「물리 공격 +12%」
+  //   2차(2026-11-06): 투지 「체력 적으면 공격 최대 +20%」 · 반격 「반격 확률 30%」 · 마나 방패 「피해의 20% 마나로」 · 원소 낙인 「낙인 찍힌 적 피해 +10%」
   function passiveNow(e, lv) {
-    var P = e.passive, k = { phys: '물리 공격 +', magic: '마법 공격 +', guard: '받는 피해 -', mpRegen: '마나 회복 +' }[P.stat] || '';
-    return k + pctTxt(P.val[Math.max(1, lv) - 1]);
+    var P = e.passive, v = pctTxt(P.val[Math.max(1, lv) - 1]);
+    if (P.stat === 'shield') return '피해의 ' + v + ' 마나로';
+    var k = { phys: '물리 공격 +', magic: '마법 공격 +', guard: '받는 피해 -', mpRegen: '마나 회복 +',
+              grit: '체력 적으면 공격 최대 +', counter: '반격 확률 ', brand: '낙인 찍힌 적 피해 +' }[P.stat] || '';
+    return k + v;
   }
   // 기술 그림(js/icons.js, 금테 액자 포함): css = 화면 크기(px), gray = 회색(잠김 · 준비 중). 기기 점에 가장 가까운 정수 배로 그림
   function skIcon(id, css, gray) {
@@ -2810,6 +2821,7 @@
       slow: function (ms) { G.slowT = Math.max(G.slowT, ms); },
       zoom: function (k, ms) { G.zoom = { k: k, ms: ms, t: 0 }; },   // 큰 기술 화면 당기기(2026-11-06 밤)
       noMp: noMp,            // 마나가 모자라 기술이 안 나감(2026-11-06)
+      player: function () { return G.player; },   // 늘 켜진 기술 「투지」 표시(2차, 2026-11-06)
       comboTag: comboTag,    // 캔슬로 기술이 나감 → 콤보 글자 「CANCEL」(2026-11-06 밤)
       onCast: onCast         // 기술을 씀 → 포만감이 조금 더 줆(2026-11-06 밤)
     });

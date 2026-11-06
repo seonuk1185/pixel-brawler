@@ -556,6 +556,7 @@
   };
 
   Player.prototype.draw = function (ctx, camX, weaponImgs, debug) {
+    if (this.state === 'skill' && window.Skills && Skills.hidden && Skills.hidden(this)) return;   // 순간이동 중 안 보임(2차, 2026-11-06)
     var fr = this.currentFrame();
     var def = this.char.def;
     var img = this.char.anims[fr.anim][fr.idx];

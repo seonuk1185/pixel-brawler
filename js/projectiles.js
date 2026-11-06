@@ -41,7 +41,8 @@
             if (p.dir > 0) b.x0 -= p.backReach; else b.x1 += p.backReach;
           }
           targets.forEach(function (t) {
-            if (!t || (t.canBeHit && !t.canBeHit()) || (p.skip && p.skip(t))) return;
+            // skip 이 있으면 그것이 맞을 수 있나까지 정함(기술 탄: H.canHit → 검기는 누운 적도, 2026-11-06)
+            if (!t || (p.skip ? p.skip(t) : (t.canBeHit && !t.canBeHit()))) return;
             if (!overlap(b, t.hurtbox())) return;
             var d = (t.x - p.x) * p.dir;          // 앞쪽으로 가장 가까운 대상 먼저
             if (d < best) { best = d; hit = t; }

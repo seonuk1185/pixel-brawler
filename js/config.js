@@ -302,8 +302,9 @@
   // 그림은 아직 임시: 있는 효과 그림(slash_wave·fireball·fire_explosion·마법탄)을 물들이거나 코드로 그린 고리·파편.
   //   look = 그림 갈아 끼우는 곳(효과 그림 이름 = 아래 skillFx). 새 그림이 오면 skillFx 에 이름·장 수를 적고 look 값만 바꾸면 됨
   //   (판정·데미지는 안 건드림). 그림이 없거나(count 0) 못 불러오면 저절로 지금 임시 그림
-  // 검기: 날아가며 길 위의 적을 모두 꿰뚫음(적마다 한 번). 누운 적은 위로 지나감(hitsDown 없음)
-  var WAVE_HIT = { dmg: 1.6, hitstop: 0.6, knock: 1.1, shake: 1.2, spark: 1.2, big: true, hitY: -58 };
+  // 검기: 날아가며 길 위의 적을 모두 꿰뚫음(적마다 한 번)
+  //   2026-11-06 형님: 누운 적도 맞음(hitsDown, 누운 적 때리기 규칙 그대로) → 검기가 누운 몸 위를 지나가도 닿음(skills.js castWave)
+  var WAVE_HIT = { dmg: 1.6, hitstop: 0.6, knock: 1.1, shake: 1.2, spark: 1.2, big: true, hitY: -58, hitsDown: true };
   // 내려찍기: 착지 자리 양옆 땅 충격파. 맞은 적은 짧게 기절(stunMs, 넘어뜨리지는 않음), 누운 적도 맞음
   var SLAM_HIT = { dmg: 2.5, hitstop: 1.6, knock: 0.6, shake: 2.6, stunMs: 700, spark: 1.4, big: true, hitsDown: true, away: true, noJuggle: true,
                    flash: { color: '#fff0d0', alpha: 0.35, ms: 140 }, slowMs: 200 };
@@ -317,11 +318,29 @@
   // launch = 띄우기 세기(config ai.air: 잡몹은 공중으로 → 평타·기술 다 맞음 → 떨어지면 넘어짐·누운 적 때리기). 보스·큰 적은 안 뜸(휘청)
   //   launcher: true = 띄우기 기술(자동 조종이 서 있는 잡몹에게 먼저 씀)
   // 올려베기: 아래에서 위로 베어 올림. 맞은 잡몹이 높이 뜸. 누운 적은 안 맞음(hitsDown 없음 = 다시 주워 띄우기 없음)
-  var UPPER_HIT = { reach: { x0: -10, x1: 100, yTop: -150, yBot: -4, depth: 22 }, launch: 1, dmg: 1.5, hitstop: 1.5, knock: 0.3, shake: 1.6,
+  //   2026-11-06 형님: 판정이 좁다 → 앞 100 → 140(+40%), 위아래 22 → 33(+50%). 그림은 그대로(새 동작 그림은 나중)
+  var UPPER_HIT = { reach: { x0: -10, x1: 140, yTop: -150, yBot: -4, depth: 33 }, launch: 1, dmg: 1.5, hitstop: 1.5, knock: 0.3, shake: 1.6,
                    spark: 1.3, big: true, hitY: -74, flash: { color: '#e6f2ff', alpha: 0.28, ms: 110 }, slowMs: 140 };
   // 땅 융기: 보라 마법진 자리에서 돌기둥이 솟아 그 위 잡몹을 띄움(기둥 폭 r, 위아래 depth). 누운 적은 안 맞음
   var RISE_HIT = { launch: 1.1, dmg: 1.8, hitstop: 1.5, knock: 0.25, shake: 2.2, spark: 1.3, big: true,
                   flash: { color: '#c8a0ff', alpha: 0.3, ms: 130 }, slowMs: 160 };
+  // ---------- 2차 기술 (2026-11-06, 형님 승인): 기사 성검 낙뢰 · 반격(되받아 베기) / 법사 순간이동 · 불기둥 ----------
+  // 효과는 전부 우리 코드로 그림(skills.js: 번개 칼·불기둥·마법진·빛 줄기). 새 동작 그림 없음 → 있는 공격 그림을 이어 붙임
+  // 성검 낙뢰: 번개 칼 하나하나(땅까지 꽂힘 = 누운 적도 맞음). 마지막 칼 = 둘레 넘어뜨림
+  var HOLY_HIT = { dmg: 1.1, hitstop: 1.3, knock: 0.6, shake: 1.8, spark: 1.4, big: true, hitsDown: true, noJuggle: true,
+                   flash: { color: '#fff6c8', alpha: 0.22, ms: 90 } };
+  var HOLY_LAST = { dmg: 1.8, hitstop: 2.2, knock: 2.0, shake: 3.2, knockdown: true, spark: 1.6, big: true, hitsDown: true,
+                    flash: { color: '#fffbe0', alpha: 0.5, ms: 180 }, slowMs: 260 };
+  // 반격(늘 켜진 기술)이 나갈 때 되받아 베는 한 칼(누운 적은 안 맞음)
+  var COUNTER_HIT = { reach: { x0: -20, x1: 104, yTop: -112, yBot: -4, depth: 22 }, dmg: 1.8, hitstop: 1.4, knock: 1.6, shake: 1.8,
+                      spark: 1.3, big: true, hitY: -60, flash: { color: '#fff4d0', alpha: 0.3, ms: 90 }, slowMs: 120 };
+  // 순간이동: 사라지는 자리의 작은 보라 폭발(밀어냄). 작은 폭발이라 누운 적은 안 맞음
+  var BLINK_HIT = { dmg: 1.3, hitstop: 1.0, knock: 1.6, shake: 1.4, spark: 1.1, big: true, flash: { color: '#d8b0ff', alpha: 0.18, ms: 80 } };
+  // 불기둥: 솟는 순간 크게 한 번(FLAME_HIT) + 타는 동안 작게 여러 번(FLAME_TICK). 땅에서 솟음 = 누운 적도 맞음. 띄우지 않음
+  //   tick 은 분노를 안 채움(noRage, 여러 번 맞아 분노가 너무 빨리 차지 않게)
+  var FLAME_HIT = { dmg: 2.0, hitstop: 1.6, knock: 0.5, shake: 2.4, spark: 1.4, big: true, hitsDown: true, noJuggle: true,
+                    flash: { color: '#ffb060', alpha: 0.35, ms: 150 }, slowMs: 180 };
+  var FLAME_TICK = { dmg: 0.45, hitstop: 0.35, knock: 0.05, shake: 0.5, spark: 0.8, hitsDown: true, noJuggle: true, noRage: true };
   var SKILLS = {
     knight: {
       // 돌진베기: 1~2장 동안 앞으로 약 120도트 미끄러지며 길 위의 적을 한 번씩 벤다(무적), 베는 장 다음 장에 「쾅」 멈춤
@@ -361,6 +380,7 @@
       // 회전베기: 제자리에서 한 바퀴 돌며 1·3·5장에 앞뒤 둘레를 벤다, 5장(마무리)에 넘어뜨림 + 둘레 적을 밀어냄
       spin: {
         name: '회전베기', icon: '회', mp: 10, cooldownMs: 7000, damageStyle: 'skill_knight', motion: 'motion_spin',
+        walk: true,   // 2026-11-06 형님: 도는 동안 누르는 쪽으로 걷기 빠르기만큼 움직임(달리기 빠르기 아님, 판 밖으로는 안 나감)
         desc: '제자리에서 한 바퀴 돌며 둘레의 적을 세 번 베고 밀어내요',
         lv5: { area: 1.25, say: '베는 둘레 +25%' },
         darken: { ms: 600, alpha: 0.45 },
@@ -440,6 +460,39 @@
         female: {
           placeholder: { anims: ['jump', 'motion_dash', 'motion_dash', 'attack3'], f: [0, 2, 3, 5], d: [90, 70, 150, 170] }
         }
+      },
+      // 성검 낙뢰(2차 필살, 2026-11-06): 웅크렸다(0장) 칼을 하늘로 들고(1~2장, 칼끝에서 하늘로 금빛 줄기) 버티는 동안
+      //   앞쪽 적들(가까운 순, 적이 모자라면 같은 적에게 또) 위로 금빛 번개 칼이 하나씩 떨어져 땅에 꽂힘 → 마지막 칼은 둘레를 넘어뜨림.
+      //   blades = { frame = 첫 칼이 떨어지기 시작하는 장, n = 칼 수(Lv5 lv5.blades), gapMs = 칼 사이, fallMs = 떨어지는 시간,
+      //              x = 적이 없을 때 앞 거리들, aim = 찾는 범위, lockMs = 떨어지기 전 자리 고정, r·depth = 칼 하나 판정, stayMs = 꽂혀 있는 시간,
+      //              hits = 칼마다 데미지(마지막 = HOLY_LAST) }
+      //   칼은 기사가 다른 걸 해도 그대로 떨어짐(메테오처럼). 그림 = 우리 코드(skills.js drawBlade)
+      holy: {
+        name: '성검 낙뢰', icon: '성', mp: 30, cooldownMs: 18000, damageStyle: 'skill_holy',
+        desc: '(필살) 칼을 하늘로 들어 앞쪽 적들 위로 금빛 번개 칼을 내리꽂아요. 마지막 칼은 둘레를 넘어뜨려요(누운 적도 맞아요)',
+        lv5: { blades: 7, say: '번개 칼 5개 → 7개' },
+        darken: { ms: 1500, alpha: 0.55 },
+        iframes: [0, 1100],
+        zoom: { k: 1.06, ms: 1300 },
+        blades: { frame: 2, n: 5, gapMs: 120, fallMs: 170, x: [70, 120, 170, 220, 270], aim: { range: 300, depth: 80 }, lockMs: 60,
+                  r: 30, depth: 34, stayMs: 520, hits: [HOLY_HIT, HOLY_HIT, HOLY_HIT, HOLY_HIT, HOLY_LAST] },
+        fx: [ { frame: 0, type: 'dust' }, { frame: 1, type: 'beam', x: 34, y: -128, ms: 1100, color: '#ffe9a0' } ],
+        placeholder: { anims: ['attack3', 'attack2', 'attack2', 'attack2'], f: [0, 3, 3, 4], d: [140, 160, 760, 240] },
+        female: {
+          fx: [ { frame: 0, type: 'dust' }, { frame: 1, type: 'beam', x: 20, y: -132, ms: 1100, color: '#ffe9a0' } ],
+          placeholder: { anims: ['jump', 'motion_dash', 'motion_dash', 'attack3'], f: [0, 2, 2, 5], d: [140, 160, 760, 240] }
+        }
+      },
+      // 반격(늘 켜진 기술 counter)이 나갈 때 쓰는 되받아 베기 한 칼. 칸에 끼우는 기술이 아님(기술 책엔 「반격」만 보임).
+      //   auto = 저절로 나감(마나·포만감 안 씀), keepDir = 방향 그대로(때린 적 쪽). cooldownMs = 다시 나갈 때까지(반격 Lv 마다 curve 로 줄어듦)
+      counterSlash: {
+        name: '반격', icon: '반', mp: 0, cooldownMs: 1500, damageStyle: 'skill_knight', auto: true, keepDir: true,
+        iframes: [0, 330],
+        hits: [ merge(COUNTER_HIT, { frames: [1, 1] }) ],
+        trail: { frames: [0, 1], everyMs: 30, lifeMs: 160, alpha: 0.4, color: '#ffd27a' },
+        fx: [ { frame: 0, type: 'counterflash' }, { frame: 1, type: 'arc', x: 34, y: -62, r: 46, color: '#ffe08a', ms: 220 } ],
+        placeholder: { anim: 'attack1', f: [0, 3, 4], d: [60, 130, 140] },
+        female: { placeholder: { anim: 'attack1', f: [0, 2, 3], d: [60, 130, 140] } }
       }
     },
     mage: {
@@ -533,6 +586,33 @@
           motionMs: [70, 100, 110, 60, 160, 120],
           placeholder: { anim: 'attack3', f: [0, 1, 2, 2, 3, 4], d: [70, 100, 110, 60, 160, 120] }
         }
+      },
+      // 순간이동(2차, 2026-11-06): 0장(at 전) 보라 빛이 모임 → 사라짐(자리에 작은 보라 폭발 = 둘레 적 밀어냄) → hideMs 뒤 dist 만큼 떨어진 곳에 나타남.
+      //   방향 = 누르는 쪽(안 누르면 바라보는 쪽). 뒤로 가도 바라보는 방향은 그대로(적을 보며 물러남). 쓰는 동안 안 맞음
+      //   blink = { at = 사라지는 ms, hideMs = 안 보이는 시간, dist = 거리, r·depth = 폭발 판정, hit }. Lv5 = 더 멀리 + 나타나는 자리도 폭발
+      blink: {
+        name: '순간이동', icon: '이', mp: 8, cooldownMs: 6000, damageStyle: 'skill_arcane',
+        desc: '누르는 쪽(안 누르면 앞)으로 순간이동해요. 사라지는 자리에 작은 폭발이 터져 둘레 적을 밀어내요. 쓰는 동안 안 맞아요',
+        lv5: { dist: 1.3, both: true, say: '거리 +30% · 나타나는 자리도 폭발' },
+        iframes: [0, 420],
+        blink: { at: 90, hideMs: 150, dist: 160, r: 50, depth: 30, hit: BLINK_HIT },
+        placeholder: { anims: ['attack3', 'attack3', 'idle'], f: [0, 0, 0], d: [90, 150, 170] }
+      },
+      // 불기둥(2차, 2026-11-06): 「하늘로 들기」 동작. 1장에 앞쪽 가까운 적 발밑(없으면 x 앞)에 주황 마법진 → lockMs 전까지 따라감 →
+      //   3장에 큰 불기둥이 솟아 크게 한 번(hit) + 타는 동안 tickMs 마다 작게(tick, ticks 번). 띄우지 않음(땅 융기와 다름), 누운 적도 맞음.
+      //   flame = { frame, burst, x, aim, lockMs, r = 기둥 판정 반폭, depth, h = 기둥 높이(원래 크기 도트), ms = 타는 시간, tickMs, ticks, hit, tick }
+      pillar: {
+        name: '불기둥', icon: '기', mp: 18, cooldownMs: 9000, damageStyle: 'skill_fire', motion: 'motion_cast_sky',
+        desc: '앞쪽 적 발밑에서 큰 불기둥이 솟아 크게 태워요. 타는 동안 여러 번 더 맞아요(띄우지는 않음, 누운 적도 맞아요)',
+        lv5: { area: 1.35, say: '불기둥 굵기 +35%' },
+        darken: { ms: 900, alpha: 0.45 },
+        iframes: { frames: [0, 2] },
+        flame: { frame: 1, burst: 3, x: 120, aim: { range: 230, depth: 60 }, lockMs: 90, r: 50, depth: 34, h: 230, ms: 1100,
+                 tickMs: 220, ticks: 4, hit: FLAME_HIT, tick: FLAME_TICK },
+        placeholder: { anim: 'attack2', f: [0, 1, 2, 3, 3, 3, 4], d: [80, 90, 60, 160, 160, 110, 100] },
+        female: {
+          placeholder: { anim: 'attack3', f: [0, 1, 2, 2, 2, 3, 4], d: [80, 90, 160, 160, 120, 80, 70] }
+        }
       }
     }
   };
@@ -558,9 +638,13 @@
         passive: { stat: 'guard', val: [0.05, 0.08, 0.11, 0.14, 0.18] } },
       { id: 'wave', unlock: 13, short: '초승달 검기를 날려요' },
       { id: 'slam', unlock: 15, short: '뛰어올라 땅을 내려찍어요' },
-      { id: 'grit', unlock: 17, short: '체력이 적을수록 세져요', soon: true, name: '투지', icon: '투', desc: '체력이 적을수록 공격이 세져요', passive: true },
-      { id: 'counter', unlock: 21, short: '맞는 순간 되받아 베요', soon: true, name: '반격', icon: '반', desc: '맞는 순간 가끔 바로 되받아 베어요', passive: true },
-      { id: 'holy', unlock: 23, short: '번개 칼을 여러 개 꽂아요', soon: true, name: '성검 낙뢰', icon: '성', desc: '(필살) 칼을 하늘로 들어 번개 칼을 여러 개 꽂아요' }
+      // 2차(2026-11-06 넣음): passive.stat 'grit' = 체력이 from(비율) 밑으로 내려가면 물리 공격이 오르기 시작해 full 이하에서 val(최대)
+      //   'counter' = 맞을 때(넘어지지 않는 보통 타, 가까운 적) val 확률로 되받아 베기(SKILLS.knight.counterSlash), reach = 그 적까지 거리
+      { id: 'grit', unlock: 17, short: '체력이 적을수록 검이 세져요', name: '투지', icon: '투', desc: '체력이 90% 밑으로 줄수록 검 공격이 세져요(30% 이하에서 가장 셈). 세지면 발밑에 붉은 기운이 일어요',
+        passive: { stat: 'grit', val: [0.2, 0.25, 0.3, 0.35, 0.4], from: 0.9, full: 0.3 } },
+      { id: 'counter', unlock: 21, short: '맞는 순간 되받아 베요', name: '반격', icon: '반', desc: '맞는 순간(넘어지지 않는 보통 타) 확률로 바로 되받아 베어요. 1.5초에 한 번까지',
+        passive: { stat: 'counter', val: [0.3, 0.35, 0.4, 0.45, 0.5], reach: 140 } },
+      { id: 'holy', unlock: 23, short: '금빛 번개 칼을 내리꽂아요' }
     ],
     mage: [
       { id: 'fireball', unlock: 0, short: '큰 불덩이를 던져요' },
@@ -572,10 +656,14 @@
         passive: { stat: 'mpRegen', val: [0.2, 0.35, 0.5, 0.65, 0.85] } },
       { id: 'ice', unlock: 13, short: '맞은 적은 느려져요' },
       { id: 'meteor', unlock: 15, short: '큰 운석을 떨어뜨려요' },
-      { id: 'blink', unlock: 17, short: '짧게 사라졌다 나타나요', soon: true, name: '순간이동', icon: '이', desc: '앞이나 뒤로 짧게 사라졌다 나타나요(피하기)' },
-      { id: 'shield', unlock: 19, short: '피해를 마나가 대신 받아요', soon: true, name: '마나 방패', icon: '방', desc: '받는 피해 일부를 마나가 대신 받아요', passive: true },
-      { id: 'pillar', unlock: 21, short: '큰 불기둥이 솟아요', soon: true, name: '불기둥', icon: '기', desc: '앞 바닥에서 큰 불기둥이 솟아 그 자리의 적을 크게 태워요(띄우지는 않음)' },
-      { id: 'brand', unlock: 23, short: '맞은 적이 더 아프게 맞아요', soon: true, name: '원소 낙인', icon: '낙', desc: '마법에 맞은 적이 잠깐 더 아프게 맞아요', passive: true }
+      // 2차(2026-11-06 넣음): passive.stat 'shield' = 받는 피해의 val 만큼을 마나가 대신 받음(마나 1 = 피해 1, 마나가 모자라면 있는 만큼)
+      //   'brand' = 기술 마법에 맞은 적에게 ms 동안 낙인 → 그동안 그 적이 받는 모든 공격 +val
+      { id: 'blink', unlock: 17, short: '사라졌다 나타나며 피해요' },
+      { id: 'shield', unlock: 19, short: '피해 일부를 마나가 대신 받아요', name: '마나 방패', icon: '방', desc: '받는 피해 일부를 마나가 대신 받아요. 막을 때 몸 둘레에 파란 방패가 번쩍해요',
+        passive: { stat: 'shield', val: [0.2, 0.25, 0.3, 0.35, 0.4] } },
+      { id: 'pillar', unlock: 21, short: '큰 불기둥이 솟아 태워요' },
+      { id: 'brand', unlock: 23, short: '기술에 맞은 적이 더 아파요', name: '원소 낙인', icon: '낙', desc: '기술 마법에 맞은 적에게 4초 동안 낙인(머리 위 문양)이 찍혀, 그동안 모든 공격에 더 아프게 맞아요',
+        passive: { stat: 'brand', val: [0.1, 0.13, 0.16, 0.19, 0.22], ms: 4000 } }
     ]
   };
 
@@ -974,7 +1062,8 @@
       //   glow = 기술 효과가 나올 때 둘레 빛(더하기) 세기, flashMul = 기술 화면 번쩍 세기 배율. 화면 당기기 = 기술마다 zoom(config SKILLS)
       flashy: { hitBits: 7, glow: 0.55, flashMul: 1.3,
                 cols: { skill_knight: ['#ffffff', '#cfe8ff', '#8fc4ff'], skill_fire: ['#fff4d0', '#ffb040', '#ff5a1e'], skill_bolt: ['#ffffff', '#fff6a0', '#5ae6ff'],
-                        skill_ice: ['#ffffff', '#d8f8ff', '#7fe0ff'], skill_earth: ['#ffffff', '#ead8ff', '#b892ff'] } }
+                        skill_ice: ['#ffffff', '#d8f8ff', '#7fe0ff'], skill_earth: ['#ffffff', '#ead8ff', '#b892ff'],
+                        skill_holy: ['#ffffff', '#fff6c8', '#ffd23f'], skill_arcane: ['#ffffff', '#e8d0ff', '#8ff0ff'] } }
     },
 
     // ---------- 데미지 숫자 모양 (그리는 곳·글꼴 모양: fx.js 의 FONTS) ----------
@@ -1004,6 +1093,18 @@
       // 땅 융기(2026-11-06 밤): 흰색 → 보라(마법진 색)
       skill_earth:  { font: 'giant', scale: 1, bold: true, top: '#ffffff', bottom: '#c8a0ff', outline: '#2a1048', shadow: 'rgba(14,6,30,0.45)',
                       pop: { top: '#ffffff', bottom: '#ead8ff' } },
+      // 2차 기술(2026-11-06): 성검 낙뢰 = 흰색 → 금색 / 순간이동 = 흰색 → 보라
+      skill_holy:   { font: 'giant', scale: 1, bold: true, top: '#ffffff', bottom: '#ffd23f', outline: '#4a3004', shadow: 'rgba(30,20,4,0.45)',
+                      pop: { top: '#ffffff', bottom: '#fff6c8' } },
+      skill_arcane: { font: 'giant', scale: 1, bold: true, top: '#ffffff', bottom: '#c890ff', outline: '#24083e', shadow: 'rgba(16,6,30,0.45)',
+                      pop: { top: '#ffffff', bottom: '#e8d0ff' } },
+      // 늘 켜진 기술 알림 글자(2026-11-06): 「투지!」(붉은 주황) · 「반격!」(금색) · 마나 방패가 막은 마나 「MP -12」(파랑)
+      grit:    { font: 'large', scale: 1, bold: true, top: '#ffe0c8', bottom: '#ff5a2a', outline: '#4a0e04', shadow: 'rgba(30,6,4,0.4)',
+                 pop: { top: '#ffffff', bottom: '#ffb080' } },
+      counter: { font: 'large', scale: 1, bold: true, top: '#fffbe0', bottom: '#ffc030', outline: '#4a2a04', shadow: 'rgba(30,20,4,0.4)',
+                 pop: { top: '#ffffff', bottom: '#fff2a0' } },
+      shield:  { font: 'large', scale: 1, top: '#e0f2ff', bottom: '#5ab0ff', outline: '#0a1e4a', shadow: 'rgba(6,10,30,0.4)',
+                 pop: { top: '#ffffff', bottom: '#b8e4ff' } },
       // 마나가 모자라 기술이 안 나갈 때 머리 위 「MP 부족」(2026-11-06, 작은 파란 글자)
       nomp: { font: 'large', scale: 1, top: '#d8ecff', bottom: '#6aa8ff', outline: '#10204a', shadow: 'rgba(6,10,30,0.4)',
               pop: { top: '#ffffff', bottom: '#cfe4ff' } },
@@ -2940,7 +3041,8 @@
               tree: SKILL_TREE, perLv: 1, maxLv: 5, classLv: 7, slots: [2, 3, 4], moreLv: [9, 13], noMpMs: 500,
               curve: { dmg: [1, 1.2, 1.4, 1.6, 1.85], cd: [1, 0.94, 0.88, 0.82, 0.75], mp: [1, 1.05, 1.1, 1.15, 1.2] },
               test: { pts: 24 },
-              botPlan: { knight: ['dash', 'spin', 'upper', 'mastery', 'skin', 'wave', 'slam'], mage: ['fireball', 'bolt', 'rise', 'amp', 'flow', 'ice', 'meteor'] } },
+              botPlan: { knight: ['dash', 'spin', 'upper', 'mastery', 'skin', 'wave', 'slam', 'grit', 'counter', 'holy'],
+                         mage: ['fireball', 'bolt', 'rise', 'amp', 'flow', 'ice', 'meteor', 'blink', 'shield', 'pillar', 'brand'] } },
 
     // ---------- 기술 효과 그림 (art\stage1\skills\fx 에서 복사 → assets/fx/skill/<이름>_01.png …, 크기·기준점은 fx.json) ----------
     // count = 장 수(0 = 그림 없음 → 기존 그림을 물들여 쓰거나 코드로 그림), fps = 1초에 장 수, pivot = 그림 속 기준점(원래 크기), loop = 반복
@@ -3059,6 +3161,12 @@
       if (once(m)) { mul(m, ['x', 'r', 'depth', 'size'], S); if (m.aim) mul(m.aim, ['range', 'depth'], S); }
       var pl = d.pillar;   // 2026-11-06 밤 땅 융기
       if (once(pl)) { mul(pl, ['x', 'r', 'depth'], S); if (pl.aim) mul(pl.aim, ['range', 'depth'], S); }
+      // 2차 기술(2026-11-06): 성검 낙뢰(blades) · 순간이동(blink) · 불기둥(flame, 높이 h 는 skills.js 가 그릴 때 곱함)
+      var bl = d.blades;
+      if (once(bl)) { arr(bl.x); mul(bl, ['r', 'depth'], S); if (bl.aim) mul(bl.aim, ['range', 'depth'], S); }
+      if (once(d.blink)) mul(d.blink, ['dist', 'r', 'depth'], S);
+      var fl = d.flame;
+      if (once(fl)) { mul(fl, ['x', 'r', 'depth'], S); if (fl.aim) mul(fl.aim, ['range', 'depth'], S); }
       if (d.male) skill2(d.male);
       if (d.female) skill2(d.female);
     }
