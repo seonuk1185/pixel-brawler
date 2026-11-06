@@ -890,7 +890,7 @@
     var HDe = huntPart('death');
     if (HDe && !T.boss && !MQ) e.huntDeath = HDe;   // 중간보스는 보스처럼 그 자리에 쓰러짐(펑 없이)
     e.wave = S.waveIdx;
-    if (elk) ElMob.apply(e, elk);
+    if (elk) ElMob.apply(e, elk, opt.elAmp);   // elAmp = 속성 시련 수호자(능력 강화)
     G.enemies.push(e);
     if (T.boss) S.boss = e;
     return e;
@@ -925,8 +925,9 @@
   }
   // 중간보스 하나 만들기(판 · 던전 같이): L = [잡몹 종류, 이름, 색 변종 또는 null], hp = 체력(판 배율 · 난이도 곱하기 전),
   //   vk = 물들인 그림 변종 이름(variants 에 넣어 둠, tintArt 가 한 번만 구움). 돌려주는 값 = { type, T, vk, baseVk }
-  function midMake(L, hp, vk) {
-    var MB = CFG.midBoss, B = CFG.enemies[L[0]], k = MB.scale || 1;
+  //   o = 덮어쓰기(2026-11-07 속성 시련 수호자): { scale(그림 · 판정 배율, 없으면 midBoss.scale), knockResist(밀림 배율에 더 곱함), rim(테두리), tint(색 값 덮어쓰기), noLaunch(띄우기 안 됨) }
+  function midMake(L, hp, vk, o) {
+    var MB = CFG.midBoss, B = CFG.enemies[L[0]], k = (o && o.scale) || MB.scale || 1;
     var tmp = Object.assign({}, B); delete tmp.anims;
     var T = JSON.parse(JSON.stringify(tmp));
     T.anims = Object.assign({}, B.anims);
@@ -964,15 +965,16 @@
       T.anims[a.anim] = Object.assign({}, A, { playback: pb });
     });
     // 버티기 · 이름 · 보상
-    T.midBoss = true; T.label = L[1]; T.noLaunch = !!(B.boss || B.noLaunch);   // 띄우기(2026-11-06 형님): 잡몹 대장은 뜸, 원래 보스였던 적이 중간보스면 안 뜸
+    T.midBoss = true; T.label = L[1]; T.noLaunch = !!(B.boss || B.noLaunch || (o && o.noLaunch));   // 띄우기(2026-11-06 형님): 잡몹 대장은 뜸, 원래 보스였던 적이 중간보스면 안 뜸. 시련 수호자(o.noLaunch)도 안 뜸
     T.superArmor = !!MB.armor; T.staggerCdMs = MB.staggerCdMs || 0;
     T.poise = { downCdMs: MB.downCdMs || 0 };
-    T.knockResist = (B.knockResist != null ? B.knockResist : 1) * (MB.knockResist != null ? MB.knockResist : 1);
-    T.rim = MB.rim || null;
+    T.knockResist = (B.knockResist != null ? B.knockResist : 1) * (MB.knockResist != null ? MB.knockResist : 1) * (o && o.knockResist != null ? o.knockResist : 1);
+    T.rim = (o && o.rim) || MB.rim || null;   // 수호자 = 속성 색 테두리(o.rim)
     T.hp = hp;
     // 그림 색: 그 판 변종(L[2]) 위에 tint 를 얹은 새 변종을 variants 에 넣어 둠(tintArt 가 한 번만 구움)
     var V0 = L[2] && CFG.variants[L[2]], TN = MB.tint || {};
     CFG.variants[vk] = V0 ? Object.assign({}, V0, { sat: (V0.sat != null ? V0.sat : 1) * (TN.sat != null ? TN.sat : 1), bright: (V0.bright != null ? V0.bright : 1) * (TN.bright != null ? TN.bright : 1) }) : TN;
+    if (o && o.tint) CFG.variants[vk] = Object.assign({}, CFG.variants[vk], o.tint);   // 수호자: 색 덮어쓰기(속성 색을 더 진하게 등)
     return { type: L[0], T: T, vk: vk, baseVk: L[2] || null };
   }
   // 중간보스 등장: 이름 띠 + 으르렁(보스 소리를 높게) + 흔들림
@@ -1014,6 +1016,24 @@
   function dgMid(i) {
     var D = DG(), L = D.mids.list[i % D.mids.list.length], key = 'dg:' + CFG.stage.dgId + ':' + (i % D.mids.list.length);
     return midCache[key] || (midCache[key] = midMake(L, D.mids.hp || 450, 'middg_' + CFG.stage.dgId + '_' + (i % D.mids.list.length)));
+  }
+  // 속성 시련 수호자(2026-11-07, config dungeons.○○.champ): 대장과 같은 방식(midMake)으로 더 크게 · 더 단단하게, 한 번만 만들어 둠
+  function dgChamp() {
+    var D = DG(), C = D && D.champ, key = 'dg:' + CFG.stage.dgId + ':champ'; if (!C || !C.L || D.boss) return null;
+    return midCache[key] || (midCache[key] = midMake(C.L, C.hp || 2600, 'champdg_' + CFG.stage.dgId, { scale: C.scale, knockResist: C.knockResist, rim: C.rim, tint: C.tint, noLaunch: C.noLaunch !== false }));
+  }
+  // 수호자 나옴: 오른쪽 끝에서 걸어 들어옴 + 이름 띠 · 흔들림. 체력 x modes.boss, 공격력 x champ.dmgMul, 능력 = 속성 위에 amp. 보스 막대(S.boss)에 이름
+  function dgSpawnChamp(R, D) {
+    var MQ = dgChamp(), C = D.champ; if (!MQ) return null;
+    var e = spawnEnemy(MQ.type, 'R', { mid: true, mq: MQ, el: D.el, elAmp: C.amp }, 0);
+    e.hp = e.maxHp = Math.round(e.maxHp * dgModeK('boss'));
+    e.dmgMul *= C.dmgMul || 1;
+    e.champ = true; G.stage.boss = e; G.stage.bossDownT = -1;
+    R.boss = e; R.bossAt = R.t; R.addT = C.adds ? C.adds.everyMs : 0;   // 첫 몹 무리 = 나오고 adds.firstMs 뒤
+    banner(josa(e.label, '이', '가') + ' 나타났다!', 'boss');
+    snd('bossRoar', { k: 0.95, v: 0.95 });
+    FX.shake(J.shakePx * 2.4, 600);
+    return e;
   }
   function dgStart() {
     var D = DG(), S = G.stage;
@@ -1161,6 +1181,11 @@
       R.restT -= dt;
       if (R.restT > 0) return;
       if (R.wi + 1 >= NW) {   // 웨이브 다 깸 → 보스(그림이 아직이면 다 받을 때까지 기다림)
+        if (!D.boss) {   // 속성 시련(2026-11-07): 레이드 보스 대신 수호자. 「WARNING」 → champAt 뒤 걸어 들어옴(마지막 웨이브 몹 무리가 가끔 같이)
+          R.phase = 'champ'; R.champAt = R.t + 1300; R.addT = 0;
+          banner('WARNING', 'boss'); snd('bossIntro', { k: 0.85 }); FX.shake(J.shakePx * 1.4, 500);
+          return;
+        }
         if (!Raid.ready()) return;
         R.phase = 'boss'; R.mobs = null; R.camLock = Math.max(0, world.width - LW);
         var e = Raid.spawn(R.camLock); e.maxHp = e.hp = Math.round(D.boss.hp * (CFG.stage.hpMul || 1) * modeVal(Growth.M().hpMul) * dgModeK('boss'));
@@ -1197,6 +1222,7 @@
       }
       return;
     }
+    if (R.phase === 'champ') { dgChampStep(dt, R, D, cnt); return; }
     // 보스
     var B = R.boss; if (!B) return;
     R.bossT += dt;
@@ -1204,11 +1230,39 @@
     if (!B.alive() && R.lootT >= 0) { R.lootT += dt; dgRaidDrops(R, D); if (R.lootT > (D.boss.drop.burstMs || 900) + 600 && (!Enchant.items.length || R.lootT > 6000)) dgFinish('clear'); }
   }
   // 레이드 보스 보상(js/raid.js 가 쓰러지는 그림 끝에 부름): 불 결정 · 강화석이 머리 쪽에서 와르르(burstMs 동안) + 아주 큰 끌어당김 → 전부 빨려 듦
+  // 속성 시련 수호자(2026-11-07): 걸어 들어옴 → 싸움(adds = 가끔 그 속성 몹 무리) → 쓰러짐 = 남은 몹 같이 쓰러짐 → deathMs 뒤 보상 와르르(dgRaidLoot) → 다 빨려 들면 끝
+  function dgChampStep(dt, R, D, cnt) {
+    var C = D.champ, S = G.stage;
+    if (!R.boss) { if (R.t >= R.champAt) dgSpawnChamp(R, D); return; }
+    var B = R.boss;
+    R.bossT += dt;
+    R.maxAlive = Math.max(R.maxAlive, cnt.alive);
+    if (B.alive()) {
+      var A = C.adds;
+      if (A && R.bossT >= (A.firstMs || 0)) {
+        R.addT += dt;
+        var qm = R.queue.filter(function (q) { return !q.mid; }).length, room = Math.min(A.n, (A.max || 8) - cnt.mobs - qm, D.spawn.cap - cnt.alive - qm);
+        if (R.addT >= A.everyMs && room >= Math.min(A.n, 2)) { R.addT = 0; dgPack(D, 0, room, R.t, null); }
+      }
+      return;
+    }
+    if (R.deadAt == null) {   // 클리어 시간 = 수호자가 쓰러진 때. 남은 몹은 같이 쓰러짐
+      R.deadAt = R.t; R.lootT = -1; R.champDeadT = 0; S.bossDownT = 0; R.queue = [];
+      G.hitstop = Math.max(G.hitstop, 200); G.slowT = Math.max(G.slowT, 1100);
+      G.enemies.forEach(function (e) { if (e !== B && e.alive()) { e.noDrop = true; e.takeHit(9999, e.x > B.x ? 1 : -1, 10, true, { force: true }); } });
+    }
+    S.bossDownT += dt;
+    if (R.lootT < 0) { R.champDeadT += dt; if (R.champDeadT >= (C.deathMs || 1400)) dgRaidLoot(B, B.x, B.y); return; }
+    R.lootT += dt; dgRaidDrops(R, D);
+    if (R.lootT > (C.drop.burstMs || 900) + 600 && (!Enchant.items.length || R.lootT > 6000)) dgFinish('clear');
+  }
+  // 레이드 · 시련의 마지막 보상 묶음: 레이드 보스(boss) 또는 수호자(champ). 결정 속성 = drop.el(없으면 던전 el)
+  function dgFinal(D) { return D.boss || D.champ; }
   function dgRaidLoot(e, x, y) {
-    var D = DG(), R = G.stage.dg, DR = D.boss.drop;
+    var D = DG(), R = G.stage.dg, FB = dgFinal(D), DR = FB.drop;
     function rr(a) { return a[0] + Math.random() * (a[1] - a[0]); }
     var nc = sround(rr(DR.crys) * dgModeK('crys')), ns = sround(rr(DR.stones) * dgModeK('stones')), tot = nc + ns, ms = DR.burstMs || 900;
-    Enchant.setMagnet(D.boss.magnet);
+    Enchant.setMagnet(FB.magnet);
     R.drops = [];
     for (var i = 0; i < tot; i++) R.drops.push({ at: Math.round(i / tot * ms), kind: i % 3 === 2 && ns > 0 ? 'stone' : 'crys' });
     var kc = 0, ks = 0;   // 결정 · 강화석을 섞어서(3개 중 하나 강화석), 개수는 정확히
@@ -1225,7 +1279,7 @@
     if (!R.drops || !R.drops.length) return;
     while (R.drops.length && R.drops[0].at <= R.lootT) {
       var q = R.drops.shift(), dir = Math.random() < 0.75 ? -1 : 1, yy = clamp(R.dropAt.y + (Math.random() * 2 - 1) * 34, world.laneTop, world.laneBottom);
-      Enchant.drop(q.kind, q.kind === 'crys' ? D.boss.drop.el : null, R.dropAt.x + (Math.random() * 2 - 1) * 34, yy, dir);
+      Enchant.drop(q.kind, q.kind === 'crys' ? dgFinal(D).drop.el || D.el : null, R.dropAt.x + (Math.random() * 2 - 1) * 34, yy, dir);
     }
   }
   // 끝남: 'clear' = 0초까지 버팀(남은 적은 같이 쓰러짐 · 덤 강화석), 'over' = 쓰러짐. 잠깐 뒤 dgResult
@@ -1235,7 +1289,7 @@
     R.end = kind; R.endT = 0; R.queue = [];
     if (kind === 'clear') {
       R.bonus = Math.max(0, Math.round((D.bonus || 0) * dgModeK('stones')));
-      banner(D.rule === 'raid' ? '토벌 성공!' : '버텼다!', 'boss');
+      banner(D.rule === 'raid' ? (D.boss ? '토벌 성공!' : '시련 돌파!') : '버텼다!', 'boss');
       snd('waveClear');
       G.hitstop = Math.max(G.hitstop, 220); G.slowT = Math.max(G.slowT, 1400);
       Skills.flash({ color: '#fff2c0', alpha: 0.45, ms: 420 });
@@ -1273,15 +1327,16 @@
   }
   // 레이드 결과: 클리어 시간(최고 기록) · 어디까지 갔나(웨이브 / 보스 체력) · 처치 · 얻은 것(강화석 · 불 결정) · 경험치
   function dgRaidResult(R, D, clear, got, stones, NEW) {
-    var B = R.boss, where = clear ? '클리어 시간 <b>' + fmtTime(R.deadAt || R.t) + '</b>' + (R.rec.time ? NEW : '')
-      : B ? '보스 체력 <b>' + Math.ceil(B.hp / B.maxHp * 100) + '%</b> 남음 · ' + Math.max(0, Math.ceil(B.hp / D.boss.lineHp)) + '줄' : '웨이브 <b>' + Math.max(1, R.wi + 1) + '</b> / ' + D.waves.length;
-    document.getElementById('resTitle').textContent = clear ? '토벌 성공!' : '쓰러졌다';
+    var B = R.boss, FB = dgFinal(D), where = clear ? '클리어 시간 <b>' + fmtTime(R.deadAt || R.t) + '</b>' + (R.rec.time ? NEW : '')
+      : B && D.boss ? '보스 체력 <b>' + Math.ceil(B.hp / B.maxHp * 100) + '%</b> 남음 · ' + Math.max(0, Math.ceil(B.hp / D.boss.lineHp)) + '줄'
+      : B ? '수호자 체력 <b>' + Math.ceil(B.hp / B.maxHp * 100) + '%</b> 남음' : '웨이브 <b>' + Math.max(1, R.wi + 1) + '</b> / ' + D.waves.length;
+    document.getElementById('resTitle').textContent = clear ? (D.boss ? '토벌 성공!' : '시련 돌파!') : '쓰러졌다';
     resultEl.className = 'result ' + (clear ? 'clear' : 'over') + ' dgres';
     document.getElementById('resStats').innerHTML =
       '<span class="dgname">' + D.name + ' · ' + Growth.M().name + '</span>' + where + '<br>' +
-      '처치 <b>' + R.kills + '</b> · 대장 처치 <b>' + R.midKills + '</b>' + (clear ? ' · <b>' + D.boss.name + '</b> 토벌' : '') + lootLine() +
+      '처치 <b>' + R.kills + '</b> · 대장 처치 <b>' + R.midKills + '</b>' + (clear ? ' · <b>' + (D.boss ? D.boss.name : FB.L[1]) + '</b> 토벌' : '') + lootLine() +
       '<br>얻은 경험치 <b>' + (G.xpGot || 0) + '</b> · <b>Lv ' + Growth.lv + '</b>' +
-      '<span class="dgbest">최고 기록(' + Growth.M().name + ') · ' + (R.best && R.best.time ? '클리어 <b>' + fmtTime(R.best.time) + '</b> · 토벌 <b>' + R.best.clears + '</b>번' : '아직 토벌 못 함') + '</span>';
+      '<span class="dgbest">최고 기록(' + Growth.M().name + ') · ' + (R.best && R.best.time ? '클리어 <b>' + fmtTime(R.best.time) + '</b> · ' + (D.boss ? '토벌' : '돌파') + ' <b>' + R.best.clears + '</b>번' : D.boss ? '아직 토벌 못 함' : '아직 돌파 못 함') + '</span>';
     encBadges();
     document.getElementById('btnNext').hidden = true;
     document.getElementById('btnSel').textContent = '던전 선택';
@@ -1473,6 +1528,7 @@
   function bakeStageVariants() {
     if (CFG.stage.dg) {
       (CFG.stage.dg.mids ? CFG.stage.dg.mids.list : []).forEach(function (L, i) { var M = dgMid(i); tintArt(M.type, M.vk); });   // 던전: 중간보스 그림(30초에 멈칫하지 않게)
+      var CQ = dgChamp(); if (CQ) tintArt(CQ.type, CQ.vk);   // 속성 시련 수호자
       // 속성 몹 색(2026-11-07): 던전 el = 그 던전 몹 전부, elRand = 이번 도전 속성(elPool) x types
       var D0 = CFG.stage.dg, R0 = G.stage && G.stage.dg, els = D0.el ? [D0.el] : (R0 && R0.elPool) || [];
       var tps = D0.el ? stageEnemies(CFG.stage) : D0.elRand ? D0.elRand.types : [];
@@ -1504,7 +1560,7 @@
       if (E && E.summon) E.summon.forEach(function (q) { add(summonOf(q).type); });
     }
     (st.waves || []).forEach(function (w) { (w.spawn || []).concat(w.placed || []).forEach(function (s) { add(s[0]); }); });
-    if (st.dg) { (st.dg.mobs || []).forEach(function (m) { add(m[0]); }); ((st.dg.mids && st.dg.mids.list) || []).forEach(function (L) { add(L[0]); }); (st.dg.waves || []).forEach(function (w) { (w.mobs || []).forEach(function (m) { add(m[0]); }); }); if (st.dg.boss) add(st.dg.boss.summon.type); }   // 던전(2026-11-07) · 레이드 웨이브 · 부르는 졸개
+    if (st.dg) { (st.dg.mobs || []).forEach(function (m) { add(m[0]); }); ((st.dg.mids && st.dg.mids.list) || []).forEach(function (L) { add(L[0]); }); (st.dg.waves || []).forEach(function (w) { (w.mobs || []).forEach(function (m) { add(m[0]); }); }); if (st.dg.boss) add(st.dg.boss.summon.type); if (st.dg.champ && st.dg.champ.L) add(st.dg.champ.L[0]); }   // 던전(2026-11-07) · 레이드 웨이브 · 부르는 졸개
     return out;
   }
 
@@ -2966,7 +3022,7 @@
       setIf('go', false, function (v) { hud.goPrompt.hidden = !v; });
       raidHud(S);
       if (S.dg.rule === 'raid') {   // 레이드: 「이지 · 불의 화산굴  ·  WAVE 2/5 · 처치 12 · 강화석 3」 / 보스 = 「레이드 보스」
-        var RS0 = S.dg, wtxt = RS0.phase === 'boss' ? '레이드 보스' : 'WAVE ' + Math.max(1, RS0.wi + 1) + '/' + CFG.stage.dg.waves.length;
+        var RS0 = S.dg, wtxt = RS0.phase === 'boss' ? '레이드 보스' : RS0.phase === 'champ' ? '수호자' : 'WAVE ' + Math.max(1, RS0.wi + 1) + '/' + CFG.stage.dg.waves.length;
         setIf('info', 'rd' + Growth.mode() + wtxt + RS0.kills + ':' + (G.loot ? G.loot.stones : 0), function () { hud.stageInfo.textContent = Growth.M().name + ' · ' + CFG.stage.name + '  ·  ' + wtxt + ' · 처치 ' + RS0.kills + ' · 강화석 ' + (G.loot ? G.loot.stones : 0); });
         return;
       }
@@ -3173,6 +3229,7 @@
 
   // 스테이지 고르기 화면: 열린 판만 누를 수 있음(잠긴 판 = 회색). 고르는 동안 게임은 멈춤
   //   던전 탭(2026-11-07): 위 「스테이지 · 던전」 탭으로 목록을 바꿈. 던전 카드 = 이름 · 한 줄 설명 · 지금 난이도 최고 기록(잠김 = 자물쇠 + 여는 법)
+  //     카드 8개(레이드 · 속성 시련 6 · 광산)는 4칸 격자(좁으면 2칸). 속성 색(config color) = 카드 위 띠 · 이름 옆 보석, 시련 = 위에 「레이드 보스 준비 중」 띠(tag)
   //   view = 'stage' / 'dungeon'(없으면 지난번 탭). 난이도 탭은 던전에도 그대로(적 세기 · 강화석 배율)
   var selEl = document.getElementById('stageSel'), selView = 'stage', viewTabFocus = false;
   function openStageSelect(view) {
@@ -3188,10 +3245,12 @@
     var ttl = document.getElementById('selTitle'); if (ttl) ttl.textContent = selView === 'dungeon' ? '던전 선택' : '스테이지 선택';
     if (selView === 'dungeon') ((CFG.dungeons && CFG.dungeons.order) || []).forEach(function (id) {
       var D = CFG.dungeons[id], open = dgOpen(id), best = Growth.dgBest(id), b = document.createElement('button');
-      b.type = 'button'; b.className = 'sbtn dbtn' + (open ? '' : ' locked');
+      b.type = 'button'; b.className = 'sbtn dbtn dg-' + id + (open ? '' : ' locked') + (D.trial ? ' trial' : '');
       b.disabled = !open;
-      b.innerHTML = '<b>' + D.name + '</b><span>' + (open ? D.desc : D.lockHint || '잠김') + '</span>' +
-        (open ? '<small>' + (D.rule === 'raid' ? (best && best.time ? '최고 · 클리어 ' + fmtTime(best.time) + ' · 토벌 ' + best.clears + '번' : best ? '토벌 기록 없음 · 처치 ' + best.kills : '기록 없음')
+      if (D.color) b.style.setProperty('--dc', D.color);
+      var won = D.trial ? '돌파' : '토벌';
+      b.innerHTML = (D.tag ? '<em class="dtag">' + D.tag + '</em>' : '') + '<b>' + D.name + '</b><span>' + (open ? D.desc : D.lockHint || '잠김') + '</span>' +
+        (open ? '<small>' + (D.rule === 'raid' ? (best && best.time ? '최고 · 클리어 ' + fmtTime(best.time) + ' · ' + won + ' ' + best.clears + '번' : best ? won + ' 기록 없음 · 처치 ' + best.kills : '기록 없음')
                                    : best ? '최고 · 처치 ' + best.kills + ' · 강화석 ' + best.stones : '기록 없음') + '</small>' : '');
       b.addEventListener('click', function () { closeMenu(selEl); G.paused = false; goDungeon(id); });
       list.appendChild(b);
@@ -4382,7 +4441,8 @@
     // 레이드 시험(2026-11-07): raidBoss() = 남은 웨이브 건너뛰고 바로 보스, raid() = 보스 상태(js/raid.js Raid.test.state), raidPat('slam') = 그 공격 바로
     raidBoss: function () { var R = G.stage.dg, D = DG(); if (!R || D.rule !== 'raid') return false; G.enemies.forEach(function (e) { if (e.alive()) { e.noDrop = true; e.dgSkip = true; e.takeHit(9999, 1, 10, true, { force: true }); } }); R.queue = []; R.wait = 0; R.wi = D.waves.length - 1; R.phase = 'rest'; R.restT = 0; return true; },
     raidWave: function (i) { var R = G.stage.dg, D = DG(); if (!R || D.rule !== 'raid') return false; G.enemies.forEach(function (e) { if (e.alive()) { e.noDrop = true; e.dgSkip = true; e.takeHit(9999, 1, 10, true, { force: true }); } }); R.queue = []; R.wait = 0; R.wi = i - 1; R.phase = 'rest'; R.restT = 0; return true; },
-    raid: function () { var R = G.stage.dg; var s = Raid.test.state(); if (s && R) { s.phase = R.phase; s.wi = R.wi; s.bossT = Math.round(R.bossT); s.t = Math.round(R.t); s.deadAt = R.deadAt; s.lootN = R.lootN; s.end = R.end; } else if (R) s = { phase: R.phase, wi: R.wi, wsp: R.wsp, t: Math.round(R.t), kills: R.kills }; return s; },
+    raid: function () { var R = G.stage.dg; var s = Raid.test.state(); if (s && R) { s.phase = R.phase; s.wi = R.wi; s.bossT = Math.round(R.bossT); s.t = Math.round(R.t); s.deadAt = R.deadAt; s.lootN = R.lootN; s.end = R.end; } else if (R) { s = { phase: R.phase, wi: R.wi, wsp: R.wsp, t: Math.round(R.t), kills: R.kills, deadAt: R.deadAt, lootN: R.lootN, end: R.end };
+      if (R.boss) { s.hp = R.boss.hp; s.max = R.boss.maxHp; s.champ = R.boss.label; s.bossT = Math.round(R.bossT); s.alive = R.boss.alive(); s.sh = R.boss.elm ? Math.round(R.boss.elm.shT) : 0; } } return s; },
     raidPat: function (n) { Raid.test.pat(n); return true; },
     raidHp: function (k) { Raid.test.hp(k); return true; },
     raidGroggy: function () { Raid.test.groggy(); return true; },
@@ -4471,7 +4531,7 @@
     });
     // 속성 몹(2026-11-07, js/elmobs.js): 효과 그림 불러오기 + 쓰는 도구
     if (window.ElMob) ElMob.init({
-      G: function () { return G; }, snd: snd, push: pushPlayer,
+      G: function () { return G; }, snd: snd, push: pushPlayer, hit: onPlayerHit,
       dmgText: function (p, n, col) { FX.damage(p.x, p.y - (p.z || 0) - 112 * AS, n, false, J, col, null, 'player'); },
       debris: function (x, y, z, n, o) { if (Skills.debris) Skills.debris(x, y, z, n, o); }
     });

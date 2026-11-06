@@ -3,14 +3,15 @@
 //   번개 = 코드로 그린 세로 번개 줄이 몸 둘레를 돌며 지지직 · 가끔 빠른 돌진(전기 잔상, 부딪히면 감전) / 독 = 발밑 독 기운 · 걷다가 독 웅덩이 · 쓰러지면 독가스
 //   바람 = 코드로 그린 꽈배기 바람 줄기(밑 → 위, 반투명) · 빨라짐 · 가까이 있으면 돌풍(밀어냄) / 어둠 = 그림자 연기 · 스르르 나타남 · 가끔 흐려짐 · 체력 빨기
 //   빛 = 은빛 빛기둥 · 가끔 빛 퍼짐(둘레 몹 체력 조금 + 자기 보호막)
-//   main.js 가 쓰는 것: init(도구) · apply(적, 속성) · key(속성) · step(dt) · onPlayerHit(적, 공격, 데미지) · dmgIn(적, 데미지) · playerMods(플레이어) · reset()
+//   main.js 가 쓰는 것: init(도구) · apply(적, 속성, 강화) · key(속성) · step(dt) · onPlayerHit(적, 공격, 데미지) · dmgIn(적, 데미지) · playerMods(플레이어) · reset()
 //                       drawUnder(ctx, camX) · drawOver(ctx, camX) · log(on) · state()
 //   enemies.js 가 쓰는 것: draw(적, ctx, x, 몸 y, 땅 y, 'back' / 'front', 투명도) — Enemy.draw 안에서 몸 앞뒤로
 (function () {
   var H = null;            // main.js 도구(init)
   var ART = {};            // 효과 그림 { 이름: { frames, pv, fps, loop } }
   var haz = [];            // 바닥 · 공중 위험: { kind: 'ground' / 'gas', art, x, y, t, ms, r, depth, st(불탐 · 얼음 · 독), mul, k }
-  var rings = [];          // 빛 퍼짐 고리 { x, y, t, r }
+  var rings = [];          // 빛 퍼짐 고리 { x, y, t, r, gold(심판의 빛) }
+  var warns = [];          // 심판의 빛 예고 { e, t, ms, r, depth }
   var gusts = [];          // 돌풍 줄기 { x, y, dir, t }
   var LOG = null;          // 시험용 기록
   var sndAt = {};          // 소리 너무 자주 안 나게(이름마다 마지막 시각)
@@ -45,9 +46,17 @@
   // ---------- 몹에 속성 얹기 ----------
   // 오라 크기: 몹 키 / auraRef (중간보스는 키가 커서 오라도 큼)
   function sizeOf(e) { var E = C(); return clamp((e.T.height || 30) / (E.auraRef || 34), E.sizeK[0], E.sizeK[1]); }
-  function apply(e, el) {
+  // amp(2026-11-07, 속성 시련 수호자 dungeons.○○.champ.amp) = 이 몹만 능력 값을 덮어씀(config 는 안 바뀜). 예: { dash: { cd: [1900, 3000] } }
+  function merge(a, b) {
+    if (!b) return a;
+    var o = Object.assign({}, a);
+    Object.keys(b).forEach(function (n) { var v = b[n]; o[n] = v && typeof v === 'object' && !Array.isArray(v) && a[n] && typeof a[n] === 'object' && !Array.isArray(a[n]) ? merge(a[n], v) : v; });
+    return o;
+  }
+  function apply(e, el, amp) {
     var E = C(), k = key(el), D = E && E.on && E.els[k];
     if (!D || !e || e.raid) return null;
+    if (amp) D = merge(D, amp);
     var m = e.elm = { k: k, D: D, t: 0, ph: Math.random() * 4000, sz: sizeOf(e), vis: true, dead: false, deadT: 0,
                       cd: D.dash ? rr(D.dash.firstCd) : 0, dash: null, gc: D.gust ? rr(D.gust.firstCd) : 0, pc: D.pulse ? rr(D.pulse.firstCd) : 0, shT: 0,
                       sc: D.stealth ? rr(D.stealth.cd) : 0, st: 0, walkD: 0, wc: 0, lx: e.x, ly: e.y };
@@ -261,6 +270,7 @@
       var busy = e.asleep || e.alertT > 0 || e.dropZ > 0 || !e.entered || e.state === 'down' || e.state === 'air' || e.state === 'hit';
       // 빛: 빛 퍼짐(둘레 몹 체력 + 자기 보호막)
       if (D.pulse && (m.pc -= dt) <= 0 && !busy) { m.pc = rr(D.pulse.cd); pulse(e, list); }
+      if (m.pw > 0 && (m.pw -= dt) <= 0) judge(e);   // 수호자 심판의 빛: 예고 뒤 터짐
       // 바람: 돌풍(가까이 있으면 밀어냄)
       if (D.gust && p && (m.gc -= dt) <= 0) {
         var GU = D.gust;
@@ -283,18 +293,33 @@
     hazStep(dt);
     statusStep(dt);
     for (var r = rings.length - 1; r >= 0; r--) { rings[r].t += dt; if (rings[r].t > 520) rings.splice(r, 1); }
+    for (var w = warns.length - 1; w >= 0; w--) { warns[w].t += dt; if (warns[w].t >= warns[w].ms || !warns[w].e.alive()) warns.splice(w, 1); }
     for (var g = gusts.length - 1; g >= 0; g--) { gusts[g].t += dt; if (gusts[g].t > 360) gusts.splice(g, 1); }
   }
   var LITE = false;
+  // 심판의 빛(2026-11-07, 속성 시련 빛의 수호자 amp pulse.dmg): 빛 퍼짐 예고(warnMs, 발밑 금빛 원이 차오름) 뒤 둘레 r · depth 안 플레이어에게 데미지(dmg x 몹 공격력 배율). 뛰어(z) 있거나 무적이면 안 맞음
+  function judge(e) {
+    var P = e.elm.D.pulse, p = H.G().player;
+    if (!e.alive() || !p) return;
+    rings.push({ x: e.x, y: e.y, t: 0, r: P.r, gold: true });
+    H.debris(e.x, e.y - e.T.height * 0.5, e.y, 10, { cols: ['#ffffff', '#fff2b0', '#ffd860'], glow: true, sp: 150, size: 1.5, ms: 420 });
+    snd('orb', { v: 0.5, k: 0.6 }, 160);
+    if (immune(p) || (p.z || 0) > 10) return;
+    var dx = (p.x - e.x) / P.r, dy = (p.y - e.y) / Math.max(1, P.depth);
+    if (dx * dx + dy * dy > 1) return;
+    if (H.hit(e, { dmg: P.dmg, knock: P.knock || 10, flinchMs: P.flinchMs || 200 })) log('judgeHit');
+  }
   function pulse(e, list) {
     var P = e.elm.D.pulse, n = 0;
     e.elm.shT = P.shieldMs;
     list.forEach(function (o) {
+      if (o === e && P.self === false) return;   // 수호자(amp self: false) = 자기는 안 고침(보호막만)
       if (!o.alive() || o.raid || (o.T && o.T.boss) || Math.abs(o.x - e.x) > P.r || Math.abs(o.y - e.y) > P.depth || o.hp >= o.maxHp) return;
-      var hl = Math.max(1, Math.round(o.maxHp * P.heal)); o.hp = Math.min(o.maxHp, o.hp + hl); n++; log('heal', hl);
+      var hl = Math.max(1, Math.round(o.maxHp * (o.mid && P.midHeal != null ? P.midHeal : P.heal))); o.hp = Math.min(o.maxHp, o.hp + hl); n++; log('heal', hl);
       H.debris(o.x, o.y - o.T.height * 0.5, o.y, 5, { cols: ['#ffffff', '#e8f0ff', '#c8d8f0'], glow: true, sp: 40, size: 1.3, ms: 520, g: -50, spread: 0.6 });
     });
     rings.push({ x: e.x, y: e.y, t: 0, r: P.r });
+    if (P.dmg && H.hit) { e.elm.pw = P.warnMs || 500; warns.push({ e: e, t: 0, ms: P.warnMs || 500, r: P.r, depth: P.depth }); log('judgeWarn'); }   // 수호자(amp pulse.dmg): 금빛 예고 원 → 터짐
     snd('orb', { v: 0.35, k: 0.8 }, 220);
     log('pulse'); log('healed', n);
   }
@@ -403,10 +428,17 @@
       else img = A.frames[i < n - 1 ? i : n - 2 + (i - (n - 1)) % 2];   // 빙결 장판: 1~3 자라남 → 3 · 4 번갈아
       blitK(g, A, img, x, y, q.k, a * (q.burn ? 0.95 : 0.9), q.burn, false);
     });
+    warns.forEach(function (q) {   // 심판의 빛 예고: 발밑 금빛 원(맞는 넓이 그대로)이 안쪽부터 차오름
+      var u = q.t / q.ms, x = Math.round(q.e.x - camX), y = Math.round(q.e.y);
+      g.save(); g.globalCompositeOperation = 'lighter';
+      g.globalAlpha = 0.18 + 0.1 * Math.sin(clock / 50); g.fillStyle = '#ffd860'; g.beginPath(); g.ellipse(x, y, q.r * u, q.depth * u, 0, 0, Math.PI * 2); g.fill();
+      g.globalAlpha = 0.7; g.strokeStyle = '#fff2b0'; g.lineWidth = 1; g.beginPath(); g.ellipse(x, y, q.r, q.depth, 0, 0, Math.PI * 2); g.stroke();
+      g.restore();
+    });
     rings.forEach(function (r) {   // 빛 퍼짐: 발밑에서 퍼지는 은빛 고리
       var u = r.t / 520, rx = 8 + (r.r - 8) * (1 - (1 - u) * (1 - u));
       g.save(); g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.6 * (1 - u);
-      g.strokeStyle = '#f0f6ff'; g.lineWidth = 2; g.beginPath(); g.ellipse(Math.round(r.x - camX), Math.round(r.y), rx, rx * 0.32, 0, 0, Math.PI * 2); g.stroke(); g.restore();
+      g.strokeStyle = r.gold ? '#ffe08a' : '#f0f6ff'; g.lineWidth = r.gold ? 3 : 2; g.beginPath(); g.ellipse(Math.round(r.x - camX), Math.round(r.y), rx, rx * 0.32, 0, 0, Math.PI * 2); g.stroke(); g.restore();
     });
   }
   // ---------- 공중(캐릭터 위): 독가스 · 돌풍 줄기 · 플레이어 상태 표시 ----------
@@ -464,7 +496,7 @@
   }
 
   function reset() {
-    haz = []; rings = []; gusts = [];
+    haz = []; rings = []; gusts = []; warns = [];
     var p = H && H.G().player; if (p) { p.elBurn = p.elChill = p.elShock = null; p.stTint = null; }
   }
 

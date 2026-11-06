@@ -929,6 +929,68 @@
     ceil:   { img: 'assets/bg/dungeon/fire/ceil.png',   w: 202, h: 200, voidColor: '#090404' },
     height: 240, floorY: 156, laneTop: 158, laneBottom: 230
   };
+  // ---------- 속성 시련 배경 6개 (art\dungeon-bg\{ice,thunder,poison,wind,dark,light} 에서 복사, 2026-11-07) ----------
+  // 광산 · 화산굴과 같은 방식(arena: mid = 싸움터 가운데 한 장, far · ground 이어 붙임, ceil = 키 큰 화면 위 천장, 그 위 = voidColor).
+  //   폭 · 바닥 선(floorY) = 그 폴더 layers.json 값. 바람은 다시 그린 것(v2, wind\old 아님)
+  function dgBg(dir, w, midW, floorY, voidColor) {
+    var P = 'assets/bg/dungeon/' + dir + '/';
+    return { arena: true,
+      far:    { img: P + 'far.png',    w: w,    tile: true,  parallax: 0.5 },
+      mid:    { img: P + 'mid.png',    w: midW, tile: false, parallax: 1 },
+      ground: { img: P + 'ground.png', w: w,    tile: true,  parallax: 1.0 },
+      ceil:   { img: P + 'ceil.png',   w: w, h: 200, voidColor: voidColor },
+      height: 240, floorY: floorY, laneTop: 158, laneBottom: 230 };
+  }
+  var BG_DG_ICE     = dgBg('ice',     232, 201, 146, '#070910');   // 얼음 동굴: 빙하 전당 · 큰 고드름 · 가운데 = 얼어붙은 제단 + 눈꽃 문장 얼음 문
+  var BG_DG_THUNDER = dgBg('thunder', 221, 208, 144, '#05060b');   // 번개 첨탑: 쇠 · 돌 탑 · 구리 코일 기둥 · 가운데 = 거대한 테슬라 코일 + 번개 구슬
+  var BG_DG_POISON  = dgBg('poison',  203, 222, 144, '#050706');   // 독 늪지: 이끼 굴 · 점액 · 빛나는 버섯 · 가운데 = 독 웅덩이 속 제단 + 뱀 머리 사당 문
+  var BG_DG_WIND    = dgBg('wind',    172, 259, 151, '#0d1414');   // 바람 협곡(v2): 협곡 속 백옥 신전 · 바람 눈 천창 · 가운데 = 떠 있는 옥돌 고리 + 소용돌이 바람 기둥
+  var BG_DG_DARK    = dgBg('dark',    225, 222, 145, '#030106');   // 어둠 신전: 흑요석 전당 · 사슬 · 보라 불 화로 · 가운데 = 사슬 묶인 가시 공허 문
+  var BG_DG_LIGHT   = dgBg('light',   195, 228, 147, '#1c1814');   // 빛의 성소: 흰 대리석 · 금 대성당 · 장미창 · 가운데 = 빛 내리는 제단 + 칼 든 천사 석상 둘
+
+  // ---------- 속성 시련(rule 'raid', trial) 공통 값 (2026-11-07, 형님 승인) ----------
+  //   레이드 보스 그림이 아직 없어서(빙결의 여왕 등은 나중에) 지금은 「속성 시련」: 웨이브 1~5 = 그 속성 몹 큰 무리 + 대장 → 마지막 = 「OO 수호자」(크게 키운 대장, 속성 능력 강화)
+  //   몹 · 대장 구성 = elMobs.dungeons[속성] 의 mobs · mids(맨 아래 trialFill 이 웨이브로 펼침). 다른 값은 이 틀 + 던전마다 적은 값(덮어씀)
+  //   레이드 보스가 생기면: 그 던전에 boss = { … 불의 화산굴 boss 와 같은 모양 } 을 넣으면 수호자 대신 보스(champ 는 안 씀)
+  function dgTrial(o) {
+    var T = {
+      rule: 'raid', trial: true, unlock: 'class', lockHint: '전직 후 열림', tag: '레이드 보스 준비 중',
+      tier: 5, hpMul: 1.1, dmgMul: 1.1,      // 몹 세기 = 불의 화산굴과 같음(5판쯤). 난이도 배율 = modes(5판 값)
+      arenaMin: 560, startMs: 1200,
+      spawn: { maxAlive: [9, 13], cap: 30, firstMs: 300 },
+      pack: { every: [1700, 1100], size: [4, 6], sizeJit: 1, minRoom: 3, dx: [10, 40], gapMs: 90,
+              mix: { side: [4, 0], pincer: [3, 0], drop: [3, 0], front: [1, 0] }, dropH: 90, dropBack: 0.3, frontH: 34, avoid: 46 },
+      // 웨이브 틀: n = 잡몹 수, mids = [[이 마리 수만큼 나온 뒤, 대장 번호]]. 몹 종류 · 무게 = elMobs.dungeons(마지막 웨이브는 맨 끝 종류 무게 x2)
+      wavePlan: [
+        { n: 16, mids: [] },
+        { n: 20, mids: [[10, 0]] },
+        { n: 22, mids: [[6, 1]] },
+        { n: 24, mids: [[4, 0], [16, 1]] },
+        { n: 28, mids: [[3, 1], [12, 0], [20, 1]] }
+      ],
+      restMs: 1500,
+      mids: { hp: 560 },
+      drop: { mob: 0.05, tough: 0.1, mid: [3, 5] },
+      // 난이도별: stones · crys = 마지막 보상 배율, spawn = 무리 빠르기, alive = 살아 있는 몹 한도, boss = 수호자(보스) 체력 배율(난이도 hpMul 위에 더)
+      modes: { easy: { stones: 1, crys: 1, spawn: 1, alive: 1, boss: 1 }, normal: { stones: 1.5, crys: 1.5, spawn: 1.15, alive: 1.15, boss: 1.1 }, hard: { stones: 2, crys: 2, spawn: 1.3, alive: 1.3, boss: 1.2 } },
+      magnet: { r: 48, depth: 28, delayMs: 400, ms: 520, turns: 1.25, shrink: 0.5 },
+      boss: null,           // 레이드 보스(아직 없음) → 아래 수호자
+      // ----- 수호자(champion): 대장(midMake)과 같은 방식으로 더 크게(scale) · 더 단단하게. 속성 능력 = elMobs.els[속성] 위에 amp 를 덮어씀(강화) -----
+      //   L = [잡몹 종류, 이름, 색 변종(el_속성 = 속성 몹 색)], hp = 체력(판 배율 · 난이도 · modes.boss 곱하기 전), dmgMul = 공격력 더(대장 배율 위에)
+      //   knockResist = 밀림 배율(대장 값 위에 곱함, 작을수록 덜 밀림), rim = 몸 둘레 빛나는 테두리(없으면 던전 color), tint = 색 덮어쓰기(속성 색을 더 진하게 · 밝게), noLaunch: false = 띄우기 기술에 뜸(없으면 안 뜸, 레이드 보스처럼)
+      //   adds = 수호자가 있는 동안 everyMs 마다 그 속성 몹 n 마리 무리(살아 있는 잡몹이 max 마리 아래일 때만, 처음 firstMs 뒤)
+      //   drop = 쓰러지면 그 속성 결정 crys · 강화석 stones 개 [최소, 최대](x 난이도 modes 배율)를 와르르 → 전부 빨려 듦(magnet), deathMs = 쓰러진 뒤 보상까지
+      champ: { scale: 2, hp: 2600, dmgMul: 1.1, knockResist: 0.5, rim: null, tint: { bright: 1.02, colorK: 0.46 },
+               adds: { firstMs: 6000, everyMs: 9000, n: 4, max: 8 },
+               drop: { crys: [18, 24], stones: [6, 9], burstMs: 900 },
+               magnet: { r: 9999, depth: 9999, delayMs: 700, ms: 800, turns: 1.4, shrink: 0.45 },
+               deathMs: 1400 }
+    };
+    var out = Object.assign({}, T, o);
+    out.champ = Object.assign({}, T.champ, o.champ || {});
+    if (!out.champ.rim) out.champ.rim = { color: o.color || '#ffb43a', px: 2, alpha: 0.85 };
+    return out;
+  }
 
   window.CFG = {
     version: 'stage1-proto-2',
@@ -2984,11 +3046,12 @@
                 stealth: { cd: [4500, 7000], ms: 1300, alpha: 0.28, fadeMs: 260 },
                 hit: { drain: 0.6 } },
         // 빛: 은빛 · 흰빛 빛기둥 오라(같은 그림을 은색으로) · cd ms 마다 빛 퍼짐: 둘레 r 도트 안 몹 체력 heal(최대 체력 비율) + 자기는 shieldMs 동안 보호막(받는 데미지 x shield)
+        //   midHeal = 대장 · 수호자는 최대 체력의 이만큼만(2026-11-07 시련 균형: 체력 많은 대장이 8% 씩 차면 안 끝남)
         light: { name: '빛', tint: { label: '빛', hue: 0, sat: 0.55, bright: 1.18, color: '#f2f6ff', colorK: 0.34 },
                 aura: { art: 'holy_glow_silver', alpha: 0.62, add: true, k: 1 },
-                pulse: { cd: [4200, 6200], firstCd: [1500, 3000], r: 70, depth: 26, heal: 0.08, shieldMs: 1600, shield: 0.5 } }
+                pulse: { cd: [4200, 6200], firstCd: [1500, 3000], r: 70, depth: 26, heal: 0.08, midHeal: 0.012, shieldMs: 1600, shield: 0.5 } }
       },
-      // 속성 던전 몹 구성(나중에 던전을 만들 때 씀, 지금은 준비만): mobs = [종류, 무게], mids = 중간보스 [종류, 이름, 색 변종], el = 그 던전 몹 속성
+      // 속성 던전 몹 구성(2026-11-07: 속성 시련 6개 dungeons.ice … light 가 씀, 맨 아래 trialFill 이 웨이브로 펼침): mobs = [종류, 무게], mids = 중간보스 [종류, 이름, 색 변종], el = 그 던전 몹 속성
       //   불(fire)은 이미 있는 dungeons.fire(불의 화산굴) 가 씀
       dungeons: {
         ice:       { el: 'ice',       mobs: [['wolf', 4], ['yeti', 2], ['skeleton', 3], ['bat', 2]],      mids: [['yeti', '얼음 설인 대장', null], ['wolf', '서리 늑대 대장', 'ice']] },
@@ -3045,12 +3108,13 @@
     //       ms 동안 turns 바퀴 빙글 돌며 다가가고 shrink 배까지 작아짐 → 들어가는 순간 작은 반짝. 판(스테이지)은 그대로 밟아서 주움
     //       레이드 보스처럼 한꺼번에 빨아들일 땐 r · depth 를 크게(9999). 다 끝나면 남은 것은 저절로 주움
     dungeons: {
-      order: ['mine', 'fire'],
+      order: ['fire', 'ice', 'lightning', 'poison', 'wind', 'darkness', 'light', 'mine'],   // 던전 탭 카드 순서(2026-11-07: 레이드 · 속성 시련 6 · 광산)
+      //   color = 카드 테두리 · 이름 색(속성 색), tag = 카드 위 작은 띠(속성 시련 = 「레이드 보스 준비 중」)
       // ===== 강화석 광산: 90초 버티기(rule 'timeAttack') =====
       //   양옆에서 몹이 끝없이 나옴(시간이 갈수록 더 자주 · 더 많이). 30초 = 「대장 출현!」 중간보스 2, 60초 = 중간보스 5 + 몹 몰려옴
       //   쓰러지면 끝(그때까지 모은 강화석은 남음), 0초까지 버티면 「버텼다!」 + 덤 강화석. 경험치는 보통처럼(적마다)
       mine: {
-        name: '강화석 광산', desc: '90초 버티기 · 강화석 캐기', rule: 'timeAttack',
+        name: '강화석 광산', desc: '90초 버티기 · 강화석 캐기', rule: 'timeAttack', color: '#c8a0ff',
         unlock: 'class', lockHint: '전직 후 열림',
         tier: 3, hpMul: 1.15, dmgMul: 1.15,    // 3판(늪지대)쯤 세기. 난이도 배율은 modes(이지 1 · 노말 2.0 · 하드 2.95쯤, 3판 값)
         arenaMin: 560,
@@ -3094,7 +3158,7 @@
       //   쓰러뜨리면 불 결정 · 강화석이 와르르 → 전부 빨려 들어옴(끌어당김 아주 크게) → 결과 + 난이도별 최고 클리어 시간. 쓰러지면 끝(모은 것은 남음)
       //   그림 · 부위 상자 · 입 위치 = assets/raid/fire/dragon.json(art\raid-dragon\fire 에서 복사, 1배 그림 점 → actorScale 0.55 배). 그리는 · 규칙 = js/raid.js
       fire: {
-        name: '불의 화산굴', desc: '레이드 · 화염룡 이그니스', rule: 'raid',
+        name: '불의 화산굴', desc: '레이드 · 화염룡 이그니스', rule: 'raid', color: '#ff7a3a',
         unlock: 'class', lockHint: '전직 후 열림',
         tier: 5, hpMul: 1.1, dmgMul: 1.1,      // 몹 세기 = 5판(설산)쯤. 난이도 배율은 modes(이지 · 노말 · 하드, 5판 값)
         el: 'fire',           // 웨이브 몹 · 대장 · 보스가 부르는 졸개 = 전부 불 속성 몹(2026-11-07, config elMobs.els.fire: 금빛 불기둥 · 불탐 · 화염 폭발 · 불타는 바닥)
@@ -3172,7 +3236,32 @@
           magnet: { r: 9999, depth: 9999, delayMs: 700, ms: 800, turns: 1.4, shrink: 0.45 },
           deathMs: 2600         // 쓰러지는 그림 뒤 결과까지
         }
-      }
+      },
+      // ===== 속성 시련 6개 (rule 'raid' + trial, 2026-11-07 형님 승인) — 공통 값 = 위 dgTrial, 몹 · 대장 = elMobs.dungeons =====
+      //   웨이브 1~5 그 속성 몹 큰 무리 + 대장 → 「OO 수호자」(champ: L = 누구 · amp = 능력 강화). 레이드 보스가 생기면 boss 를 넣으면 됨
+      //   amp = 그 속성 능력(elMobs.els)을 이 값으로 덮어씀: 얼음 = 걸으면 빙결 장판 · 번개 = 돌진 자주 · 세게 · 독 = 웅덩이 자주 · 크게 /
+      //         바람 = 돌풍 자주 · 멀리 · 세게 · 어둠 = 체력 빨기 2배 · 자주 흐려짐 · 빛 = 빛 퍼짐 자주 · 넓게 · 보호막 길게(self: false = 자기는 안 고침, 둘레 몹만) + 심판의 빛(dmg: 금빛 예고 원 warnMs 뒤 둘레 데미지, 벗어나거나 뛰면 피함)
+      ice: dgTrial({ name: '얼음 동굴', desc: '속성 시련 · 얼음 수호자', el: 'ice', color: '#8fd8ff', bg: BG_DG_ICE, bgTop: '#070910',
+        champ: { L: ['yeti', '얼음 수호자', 'el_ice'], scale: 1.75, hp: 3200, dmgMul: 3.8, adds: { firstMs: 5000, everyMs: 8000, n: 5, max: 9 },
+                 amp: { walk: { art: 'ice_puddle', every: 50, chance: 0.75, cd: 1500, ms: 4200, r: 24, depth: 9, chill: true, k: 1.05 },
+                        death: { ground: { art: 'ice_puddle', ms: 6000, r: 40, depth: 14, chill: true, k: 1.6 } } } } }),
+      lightning: dgTrial({ name: '번개 첨탑', desc: '속성 시련 · 번개 수호자', el: 'lightning', color: '#ffe14a', bg: BG_DG_THUNDER, bgTop: '#05060b',
+        champ: { L: ['wolf', '번개 수호자', 'el_lightning'], scale: 2.1, dmgMul: 1.5,
+                 amp: { dash: { range: [40, 200], depth: 18, cd: [2400, 3600], firstCd: [1000, 1600], windMs: 400, ms: 420, speedK: 6, dmg: [7, 9], knock: 16, flinchMs: 260, trailMs: 50 } } } }),
+      poison: dgTrial({ name: '독 늪지', desc: '속성 시련 · 독 수호자', el: 'poison', color: '#8cff3a', bg: BG_DG_POISON, bgTop: '#050706',
+        champ: { L: ['lizard', '독 수호자', 'el_poison'], hp: 2200, dmgMul: 1,
+                 amp: { walk: { art: 'poison_puddle', every: 50, chance: 0.65, cd: 1800, ms: 4200, r: 26, depth: 9, poison: true, k: 0.95 },
+                        death: { gas: { art: 'poison_gas', ms: 4000, r: 44, depth: 18, poison: true, k: 1.5 } } } } }),
+      wind: dgTrial({ name: '바람 협곡', desc: '속성 시련 · 바람 수호자', el: 'wind', color: '#9ff5d2', bg: BG_DG_WIND, bgTop: '#0d1414',
+        champ: { L: ['wolf', '바람 수호자', 'el_wind'], scale: 2.1, dmgMul: 1.9,
+                 amp: { speed: 1.2, gust: { range: 96, depth: 22, cd: [1900, 2900], firstCd: [900, 1600], push: 52 }, hit: { push: 28 } } } }),
+      darkness: dgTrial({ name: '어둠 신전', desc: '속성 시련 · 어둠 수호자', el: 'darkness', color: '#b070ff', bg: BG_DG_DARK, bgTop: '#030106',
+        champ: { L: ['soldier', '어둠 수호자', 'el_darkness'], scale: 1.9, hp: 3000, dmgMul: 2.6,
+                 amp: { stealth: { cd: [2600, 4000], ms: 1500, alpha: 0.2, fadeMs: 260 }, hit: { drain: 1.2 } } } }),
+      light: dgTrial({ name: '빛의 성소', desc: '속성 시련 · 빛의 수호자', el: 'light', hpMul: 0.78, color: '#f0c850', bg: BG_DG_LIGHT, bgTop: '#1c1814',
+        champ: { L: ['ghost', '빛의 수호자', 'el_light'], scale: 1.9, hp: 2800, dmgMul: 3.6, adds: { firstMs: 5000, everyMs: 8000, n: 5, max: 9 }, tint: { bright: 1.12, colorK: 0.5 },
+                 amp: { pulse: { cd: [3000, 4200], firstCd: [1500, 2500], r: 110, depth: 34, heal: 0.05, self: false, shieldMs: 1600, shield: 0.55,
+                                 dmg: [3, 4], warnMs: 550, knock: 12, flinchMs: 220 } } } })
     },
 
     // ---------- 소품 그림 (2026-11-04, art\stage1-props 에서 복사 → assets/props/stage1/…, 크기·기준점은 props.json) ----------
@@ -3676,6 +3765,21 @@
         if (M.count > 0) def.anims[m] = { frames: seq(dir + m + '_', M.count), fps: 14, loop: false };
       });
       def.motionAnchors = 'assets/chars/stage1/anchors_motions_' + ch + '.json';
+    });
+  })(window.CFG);
+
+  // ---------- 속성 시련 웨이브 펼치기(2026-11-07): trial 던전 = elMobs.dungeons[속성] 의 mobs · mids 를 wavePlan 웨이브로 ----------
+  //   이미 적어 둔 값(mobs · waves · mids.list)이 있으면 그대로 둠(던전마다 따로 고치고 싶을 때)
+  (function trialFill(C) {
+    var DS = C.dungeons, EM = C.elMobs && C.elMobs.dungeons; if (!DS || !EM) return;
+    Object.keys(DS).forEach(function (id) {
+      var D = DS[id], M = D && D.trial && EM[D.el]; if (!M) return;
+      if (!D.mobs) D.mobs = M.mobs.map(function (m) { return [m[0], m[1], 0]; });
+      if (!D.waves) D.waves = D.wavePlan.map(function (w, i) {
+        var mobs = M.mobs.map(function (m, j) { return [m[0], i === D.wavePlan.length - 1 && j === M.mobs.length - 1 ? m[1] * 2 : m[1]]; });
+        return { n: w.n, mobs: mobs, mids: w.mids };
+      });
+      if (!D.mids.list) D.mids = Object.assign({}, D.mids, { list: M.mids });
     });
   })(window.CFG);
 
