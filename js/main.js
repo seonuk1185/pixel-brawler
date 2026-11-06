@@ -7,7 +7,7 @@
   var CFG = window.CFG, J = CFG.juice;
   var AS = CFG.actorScale || 1;   // 캐릭터 크기: 코드에 바로 적힌 거리·높이와 손맛의 밀림 거리(juice.knockback)에 곱한다
   var params = new URLSearchParams(location.search);
-  var DEBUG = params.get('debug') === '1';
+  var DEBUG = params.get('debug') === '1' && !CFG.demo;   // 친구 시험 모드(?demo=1)엔 시험 화면 없음
   var MODE = params.get('mode') === 'practice' ? 'practice' : 'stage';
   if (params.get('slow')) J.timeScale = +params.get('slow') || 1;
 
@@ -18,6 +18,8 @@
   var STAGES = CFG.stages;
   function stageIndexOfId(id) { for (var i = 0; i < STAGES.length; i++) if (STAGES[i].id === id) return i + 1; return 0; }
   var urlStage = stageIndexOfId(parseInt(params.get('stage'), 10));
+  // 친구 시험 모드(?demo=1): ?stage=N 은 열린 판(1판 · 앞 판을 깬 판)만. 잠금 건너뛰기 없음
+  if (CFG.demo && urlStage > 1 && !Growth.isCleared(STAGES[urlStage - 2].id) && !Growth.isCleared(STAGES[urlStage - 1].id)) urlStage = 0;
   // 깬 판 저장(2026-11-06 난이도): 저장칸에 난이도마다 따로(growth.js Growth.cleared · markCleared). 예전 깬 판 목록(pixelBrawler.clearedIds)은 growth.js 가 이지로 옮김
   //   아래 세 이름은 예전 그대로 = 「지금 난이도」의 깬 판
   function loadCleared() { return Growth.cleared(); }
@@ -221,7 +223,7 @@
     // 콤보 기록(2026-11-06 밤, 시험·결과용): launch = 띄움, air = 공중 타, otg = 누운 적 타, cancel = 캔슬(평타→기술 / 기술→기술), maxAirMs = 가장 오래 뜬 시간
     cstats: { launch: 0, air: 0, otg: 0, cancel: 0, maxAirMs: 0, maxAirHits: 0 }, comboTagTxt: '', comboTagT: 0,
     charKey: 'male', classKey: CFG.defaultClass || 'knight', weaponKey: 'sword', moveSet: 'sword', debug: DEBUG,
-    stage: null, bot: params.get('bot') === '1',
+    stage: null, bot: params.get('bot') === '1' && !CFG.demo,   // 친구 시험 모드엔 자동 조종 없음
     stageNo: startNo, paused: false, props: Props.list
   };
 
@@ -2706,7 +2708,7 @@
   //   2026-11-06 UI A: 남/여 · 직업 · 연습장 = 시험 도구 묶음(#testTools, 오른쪽 위 「시험」 탭) 통째로 시험 기간에만. 연습장 안에서는 돌아갈 길이라 늘 보임
   function bindToggles() {
     var tools = document.getElementById('testTools');
-    if (tools) tools.hidden = !CFG.stagesAllOpen && MODE !== 'practice';
+    if (tools) tools.hidden = CFG.demo || (!CFG.stagesAllOpen && MODE !== 'practice');   // 친구 시험 모드 = 늘 숨김
     document.querySelectorAll('[data-char]').forEach(function (b) {
       b.addEventListener('click', function () { setChar(b.dataset.char); b.blur(); });
     });
@@ -2786,7 +2788,7 @@
   };
   function statBadges() {
     var n = Growth.pts;
-    document.querySelectorAll('.statbtn .badge, .statopen:not(.skopen) .badge').forEach(function (b) { b.hidden = !n; b.textContent = n > 99 ? '99+' : n; });
+    document.querySelectorAll('.statbtn:not(.skbtn):not(.encbtn) .badge, .statopen:not(.skopen):not(.encopen) .badge').forEach(function (b) { b.hidden = !n; b.textContent = n > 99 ? '99+' : n; });
   }
   function renderStats() {
     var rows = document.getElementById('statRows'), focusK = document.activeElement && document.activeElement.dataset && document.activeElement.dataset.k;
@@ -2829,7 +2831,8 @@
     if (B.menu && !B.menu.hidden) openMenu(B.menu, B.menu.querySelector('.statopen'));
   }
   document.getElementById('btnStat').addEventListener('click', function () { openStats(); this.blur(); });
-  document.querySelectorAll('.statopen:not(.skopen)').forEach(function (b) { b.addEventListener('click', function () { openStats(); }); });
+  // 2026-11-07 고침: 강화 버튼(.statopen.encopen)도 여기 걸려 능력치 창이 같이 열렸음 → 기술 · 강화 버튼은 뺌
+  document.querySelectorAll('.statopen:not(.skopen):not(.encopen)').forEach(function (b) { b.addEventListener('click', function () { openStats(); }); });
   document.getElementById('btnStatAuto').addEventListener('click', function () { if (Growth.auto(G.classKey)) { refreshGrowth(); renderStats(); } });
   document.getElementById('btnStatReset').addEventListener('click', function () { Growth.reset(); refreshGrowth(); renderStats(); });
   document.getElementById('btnStatClose').addEventListener('click', closeStats);
@@ -3308,7 +3311,7 @@
 
   // ---------- PC 조작 도움말 한 줄 (2026-11-07): 처음 config help.plays 번 켤 때만(PC 화면으로 켠 횟수), X 로 닫음, 설정 창에서 다시 켬 ----------
   //   저장 = localStorage 'pixelBrawler.help' = { n: PC 로 켠 횟수, off: 닫음, on: 설정에서 켬(횟수 상관없이 보임) }
-  var HELP_KEY = 'pixelBrawler.help', helpSt = { n: 0, off: false, on: false };
+  var HELP_KEY = CFG.demo ? 'pixelBrawler.demo.help' : 'pixelBrawler.help', helpSt = { n: 0, off: false, on: false };
   try { var hs0 = JSON.parse(localStorage.getItem(HELP_KEY) || 'null'); if (hs0 && typeof hs0 === 'object') helpSt = { n: hs0.n | 0, off: !!hs0.off, on: !!hs0.on }; } catch (e) {}
   function helpSave() { try { localStorage.setItem(HELP_KEY, JSON.stringify(helpSt)); } catch (e) {} }
   if (isPc()) { helpSt.n++; helpSave(); }
@@ -3679,7 +3682,7 @@
       document.getElementById('btnRetry').addEventListener('click', function () { closeMenu(resultEl); G.keepRun = true; resetStage(); this.blur(); });
       document.getElementById('btnNext').addEventListener('click', function () { closeMenu(resultEl); G.keepRun = true; goStage(G.stageNo + 1); this.blur(); });
       document.getElementById('btnSel').addEventListener('click', function () { openStageSelect(); this.blur(); });
-      if (params.get('god') === '1') G.player.god = true;
+      if (params.get('god') === '1' && !CFG.demo) G.player.god = true;
       if (pick) openStageSelect();
       else if (needClassChange()) openClassChange(null);   // ?stage=N 으로 바로 시작했는데 전직 안 한 저장(2단계 깸)
     }

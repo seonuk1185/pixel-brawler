@@ -3568,4 +3568,19 @@
     mul(C.props, ['hitAbove'], S);
     if (C.food) { mul(C.food.pickup, ['r', 'depth'], S); mul(C.food, ['hop', 'shadow'], S); }
   })(window.CFG);
+
+  // ---------- 친구 시험 모드(2026-11-07, 형님 승인): 주소 ?demo=1 ----------
+  //   한 번 들어오면 이 브라우저(localStorage 'pixelBrawler.demo')에 기억 → 주소 없이 새로고침해도 그대로. ?demo=0 = 끄기(형님 모드로 돌아감)
+  //   켜지면: 시험 도구(시험 탭 · 남/여 · 견습/기사/법사 · 연습장) · ?debug 화면 숨김, 판 · 난이도는 1판부터 차례로 열림(stagesAllOpen 무시),
+  //   저장은 따로(growth.js 'pixelBrawler.demo.save', main.js 도움말 'pixelBrawler.demo.help') → 형님 개발 저장과 절대 안 섞임
+  (function (C) {
+    var q = new URLSearchParams(location.search), on = false;
+    try {
+      if (q.get('demo') === '1') localStorage.setItem('pixelBrawler.demo', '1');
+      else if (q.get('demo') === '0') localStorage.removeItem('pixelBrawler.demo');
+      on = localStorage.getItem('pixelBrawler.demo') === '1';
+    } catch (e) { on = q.get('demo') === '1'; }
+    C.demo = on;
+    if (on) { C.stagesAllOpen = false; document.documentElement.classList.add('demo'); }
+  })(window.CFG);
 })();

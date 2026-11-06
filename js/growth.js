@@ -21,7 +21,7 @@
 //   시험: 주소 뒤 ?lv=N = 이번 창에서만 LvN(경험치 0, 능력치 0 + 그 레벨 점수)으로 시작, 저장 안 함(저장된 레벨·능력치는 그대로)
 (function () {
   var CFG = window.CFG, GR = CFG.growth, ST = GR.stats;
-  var SAVE_KEY = 'pixelBrawler.save';
+  var SAVE_KEY = CFG.demo ? 'pixelBrawler.demo.save' : 'pixelBrawler.save';   // 친구 시험 모드(?demo=1, config.js) = 따로 저장
   var KEYS = ['str', 'agi', 'vit', 'int', 'wis'];
   var params = new URLSearchParams(location.search);
 
@@ -195,6 +195,7 @@
   // 예전 저장(난이도 전): 깬 판 id 목록 'pixelBrawler.clearedIds' JSON, 더 예전 = 깬 판 「수」 N 'pixelBrawler.cleared'(그때 판 순서 1 2 3 4 6 의 앞 N개)
   function legacyCleared() {
     var out = [];
+    if (CFG.demo) return out;   // 친구 시험 모드: 형님 예전 기록을 안 가져옴
     try {
       var raw = localStorage.getItem('pixelBrawler.clearedIds');
       if (raw) JSON.parse(raw).forEach(function (id) { if (typeof id === 'number' && out.indexOf(id) < 0) out.push(id); });
@@ -212,7 +213,7 @@
   });
   if (cm && ORDER.indexOf(cm.cur) >= 0) MSsaved.cur = cm.cur;
   // ?diff=normal (시험): 이번 창에서만 그 난이도, 잠금 무시. 그동안 깬 판은 이번 창에서만 기억(저장된 목록은 그대로)
-  var urlDiff = ORDER.indexOf(params.get('diff')) >= 0 ? params.get('diff') : null;
+  var urlDiff = !CFG.demo && ORDER.indexOf(params.get('diff')) >= 0 ? params.get('diff') : null;   // 친구 시험 모드(?demo=1) = 무시
   var MS = urlDiff ? JSON.parse(JSON.stringify(MSsaved)) : MSsaved;
   if (!MO[MSsaved.cur] || (ORDER.indexOf(MSsaved.cur) > 0 && !CFG.stagesAllOpen && MSsaved.cleared[ORDER[ORDER.indexOf(MSsaved.cur) - 1]].indexOf(lastId()) < 0)) MSsaved.cur = ORDER[0];   // 잠긴 난이도에 있던 저장(시험 기간이 끝남) → 이지로
   // 난이도만 저장: ?lv=N 시험 중(noSave)에도 깬 판은 예전처럼 저장(레벨·능력치는 저장된 그대로 둠). ?diff 시험 중이면 저장 안 함
@@ -409,7 +410,7 @@
   if (used > ptsFor(G.lv)) { G.stats = zero(); used = 0; }
   G.pts = ptsFor(G.lv) - used;
   // ?lv=N 시험: 이번 창에서만
-  var dbgLv = parseInt(params.get('lv'), 10);
+  var dbgLv = CFG.demo ? 0 : parseInt(params.get('lv'), 10);   // 친구 시험 모드(?demo=1) = 무시
   if (dbgLv > 0) { G.lv = clampLv(dbgLv); G.xp = 0; G.stats = zero(); G.pts = ptsFor(G.lv); G.noSave = true; }
   // 기술 책(2026-11-06): 저장에 있으면 그대로(이상한 값은 버림). 직업은 있는데 기술 책이 없는 예전 저장 = 전직 Lv 를 classLv(7)로 보고
   //   (지금 Lv - 전직 Lv) 점을 안 쓴 채로 줌. 쓴 점수가 받은 점수보다 많으면(저장이 꼬임 · ?lv 로 낮춤) 초기화
