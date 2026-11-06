@@ -555,7 +555,7 @@
   //   독처럼 체력 1 아래로는 안 내려감(불길에서 비키면 그만). 넘어짐·잡힘·기술 무적·쓰러짐 중에는 안 탐
   function burnPlayer(e, spec) {
     var p = G.player;
-    if (!spec.burn || p.state === 'dead' || p.state === 'down' || p.state === 'held') return;
+    if (!spec.burn || p.state === 'dead' || p.state === 'down' || p.state === 'held' || p.dodgeInvT > 0) return;   // 회피 무적 중엔 안 탐
     if (p.state === 'skill' && Skills.invulnerable(p)) return;
     var n = guardDmg(Math.max(1, Math.round(rand(spec.burn[0], spec.burn[1]) * (e.dmgMul || 1))));
     if (!p.god) { n = Math.min(n, p.hp - 1); if (n <= 0) return; p.hp -= n; }
@@ -567,7 +567,7 @@
   // 잡을 수 있나: 쓰러짐·넘어짐·이미 잡힘·무적(깜빡임·기술 무적)·공중이면 못 잡음(헛손질)
   function grabPlayer(e, spec) {
     var p = G.player;
-    if (p.state === 'dead' || p.state === 'down' || p.state === 'held' || p.invulnT > 0 || (p.z || 0) > 4) return false;
+    if (p.state === 'dead' || p.state === 'down' || p.state === 'held' || p.invulnT > 0 || p.dodgeInvT > 0 || (p.z || 0) > 4) return false;   // dodgeInvT = 회피 무적
     if (p.state === 'skill' && Skills.invulnerable(p)) return false;
     p.state = 'held'; p.heldBy = e; p.animT = 0; p.vx = 0;
     p.atk = null; p.sk = null; p.jp = null; p.ratk = null; p.comboStep = 0;
@@ -1826,7 +1826,8 @@
     //   점프로 overBodyZ 넘게 뜨면 적 몸 위로 넘어감(밀어내기에서 뺌). 달리며 공격으로 밀고 가는 중이면 잡몹을 앞으로 밀어냄(주인공은 안 밀림)
     var overZ = (CFG.move && CFG.move.jump.overBodyZ) || 10;
     var pushing = p.state === 'runatk' && p.ratk && p.ratk.phase !== 'recover';
-    if (p.state !== 'dead' && !(p.state === 'skill' && Skills.passThrough(p)) && !((p.z || 0) > overZ)) list.push({ o: p, r: CFG.hero.radius, m: 1, hero: true });
+    //   회피(2026-11-07) 중에도 적 몸을 뚫고 빠져나감(몹에 둘러싸였을 때 빠지는 기술)
+    if (p.state !== 'dead' && p.state !== 'dodge' && !(p.state === 'skill' && Skills.passThrough(p)) && !((p.z || 0) > overZ)) list.push({ o: p, r: CFG.hero.radius, m: 1, hero: true });
     G.enemies.forEach(function (e) {
       if (!e.alive() || e.state === 'down' || e.hidden || e.airborne() || e.faded()) return;   // 넘어진 적은 밟고 지나갈 수 있음, 땅속(전갈 왕)·공중(두꺼비 배치기)·옅어진 유령 기사도 지나감
       var charging = e.state === 'attack' && e.atk && e.atk.spec.type === 'charge';
@@ -1983,6 +1984,24 @@
     dustAt(p.x + p.dir * 20 * AS, p.y, -p.dir, 0.55);
   }
   function landFx(p) { dustAt(p.x, p.y, p.dir, 0.4); }
+  // 회피(2026-11-07): 시작·끝 발밑 먼지(가는 반대쪽으로 날림) + 길 따라 잔상(직업 색, 새 그림 없이 지금 그림을 한 색으로 칠해 남김)
+  function dodgeFx(p, ev) {
+    var D = CFG.move.dodge, col = D.colors[G.classKey] || D.colors.novice;
+    if (ev.dodge && ev.dodge.start) { var sx = ev.dodge.nx || -p.dir; dustAt(p.x, p.y, sx > 0 ? -1 : 1, D.dust); G.dodgeDir = sx; }
+    if (ev.dodgeGhost) Skills.ghost(p, col, D.ghostMs, D.ghostAlpha);
+    if (ev.dodge && ev.dodge.end) dustAt(p.x, p.y, (G.dodgeDir || p.dir) > 0 ? 1 : -1, D.dust * 0.8);
+  }
+  // 회피 버튼(폰): 쿨타임 중엔 시계 방향으로 어두움(--cd 1 → 0) / PC 아래 글자 칩도 같이
+  var dodgeEls = null, dodgeLast = -1;
+  function dodgeUi() {
+    var p = G.player, D = CFG.move.dodge;
+    if (!p || !D) return;
+    if (!dodgeEls) dodgeEls = [document.getElementById('btnDodge'), document.getElementById('dodgeChip')].filter(Boolean);
+    var f = Math.round(Math.max(0, Math.min(1, (p.dodgeCd || 0) / D.cdMs)) * 50) / 50;
+    if (f === dodgeLast) return;
+    dodgeLast = f;
+    dodgeEls.forEach(function (el) { el.style.setProperty('--cd', f); el.classList.toggle('cool', f > 0); });
+  }
 
   // ---------- 갱신 ----------
   function step(realMs) {
@@ -2050,6 +2069,7 @@
     }
     if (ev.moveSwing) moveSwingFx(p, ev.moveSwing.kind);
     if (ev.land) landFx(p);
+    if (ev.dodge || ev.dodgeGhost) dodgeFx(p, ev);
     // 날아가는 마법탄: 처음 맞은 대상(또는 끝까지 날아간 곳)에서 터짐
     Projectiles.update(dt, hitTargets(), function (pr, t) { explode(pr.x, pr.y, pr.z, pr.st, pr.dir, pr.wk, t); });
     if (MODE === 'stage') {
@@ -2158,6 +2178,7 @@
     if (DEBUG) drawDebug(camX);
     if (MODE === 'stage') updateHud();
     if (Skills.ui(G)) controlPad = measureControlPad();   // 기술 버튼이 생기거나 사라지면 버튼 자리 다시 재기
+    dodgeUi();                                    // 회피 버튼 쿨타임
   }
 
   function rectStroke(b, camX, col) {

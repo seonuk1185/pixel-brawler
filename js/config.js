@@ -949,7 +949,26 @@
       },
       // 공중 공격: 1·2장이 판정. reachDown = 판정 상자를 아래로 더 늘림(원래 크기 도트, 내려치기가 땅 위 적에게 닿게)
       //   hitsDown = 떨어지며 내려치기라 누운 적도 맞음(ai.otg)
-      jumpAttack: { dmg: 1.2, hitstop: 1.1, knock: 1.3, shake: 1.2, spark: 0.9, knockdown: true, reachDown: 34, depth: 10, hitsDown: true }
+      jumpAttack: { dmg: 1.2, hitstop: 1.1, knock: 1.3, shake: 1.2, spark: 0.9, knockdown: true, reachDown: 34, depth: 10, hitsDown: true },
+      // 회피(2026-11-07 형님 요청): 몹이 몰릴 때 빠르게 빠져나가는 짧은 대시. 공격 아님(판정 없음) · 마나 없음 · 무적
+      //   방향 = 지금 누르는(미는) 쪽 8방향. 아무것도 안 누르면 뒤로(바라보는 반대쪽, 바라보는 방향은 그대로 = 뒤로 빠지기)
+      //   서 있기·걷기·달리기 중, 그리고 평타·기술·달리며 공격·착지의 끝무렵(캔슬)에서 나감. 넘어짐·움찔·공중·붙잡힘 중에는 안 됨
+      //   그림 = 있는 그림 재사용(앞으로 = 달리며 공격 첫 장, 뒤·위아래 = 점프 웅크림 → 끝에 착지 웅크림) + 코드로 그린 잔상(직업 색) + 시작·끝 먼지
+      dodge: {
+        dist: 80,           // 가는 거리(화면 도트, actorScale 로 안 줄임). 좌우 기준
+        depthMul: 0.55,     // 위아래(안쪽)로 갈 때 = dist x 이 값 (달리기 위아래 배율과 같게)
+        ms: 220,            // 걸리는 시간. 처음 빠르고 끝에 느려짐(ease-out)
+        ease: 2,            // 느려지는 정도(2 = 보통 ease-out, 클수록 처음에 확 나감)
+        graceMs: 60,        // 무적 = 회피 내내 + 끝나고 이만큼 더(깜빡임 없음)
+        cdMs: 1800,         // 쿨타임(폰 버튼이 시계 방향으로 어두워졌다 밝아짐)
+        bufferMs: 150,      // 미리 눌러 둔 회피 기억 시간(공격 끝무렵에 눌러 두면 끊고 나감)
+        endPose: 0.62,      // 이 비율부터 착지 웅크림 그림
+        ghosts: 5,          // 잔상 개수(길 따라 고르게)
+        ghostMs: 300,       // 잔상 하나가 사라지는 시간
+        ghostAlpha: 0.6,    // 잔상 처음 진하기
+        colors: { novice: '#fff0c0', knight: '#6ab8ff', mage: '#c890ff' },   // 잔상 색(직업별). 없는 직업 = novice
+        dust: 0.45          // 시작·끝 먼지 크기
+      }
     },
 
     // ---------- 직업 (위쪽 버튼) ----------
@@ -3059,7 +3078,9 @@
       skillC: ['KeyO', 'KeyB'],
       skillD: ['KeyP', 'KeyN'],
       // 각성(2026-11-06 밤, 분노 100%): 오른손 = J·K 옆 L, 왼손 = F
-      awaken: ['KeyL', 'KeyF']
+      awaken: ['KeyL', 'KeyF'],
+      // 회피(2026-11-07): Shift(왼손·오른손 둘 다) + 오른손 J K L 옆 ; (K 는 이미 점프라 안 씀)
+      dodge: ['ShiftLeft', 'ShiftRight', 'Semicolon']
     },
 
     // ---------- 직업 기술 (위 SKILLS 설명 참고) ----------

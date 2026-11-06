@@ -131,7 +131,7 @@
     </div>
   </div>
   <div class="combo" id="combo" hidden></div>
-  <div class="keyhint">이동 ←↑↓→ / WASD · 달리기 ←← / →→ · 점프 K / X / Space · 공격 J / Z (연타 3타)<span class="skkeys"> · 기술 <span class="skchip" data-skill="A" hidden><kbd>U</kbd><span class="ic"></span><b class="sec"></b></span><span class="skchip" data-skill="B" hidden><kbd>I</kbd><span class="ic"></span><b class="sec"></b></span><span class="skchip" data-skill="C" hidden><kbd>O</kbd><span class="ic"></span><b class="sec"></b></span><span class="skchip" data-skill="D" hidden><kbd>P</kbd><span class="ic"></span><b class="sec"></b></span><span class="alt">(왼손 C V B N)</span></span><span class="awkchip" id="awkChip"> · <b>각성</b> <kbd>L</kbd> / <kbd>F</kbd></span></div>
+  <div class="keyhint">이동 ←↑↓→ / WASD · 달리기 ←← / →→ · 점프 K / X / Space · 공격 J / Z (연타 3타)<span class="dgchip" id="dodgeChip"> · <b>회피</b> <kbd>Shift</kbd> / <kbd>;</kbd></span><span class="skkeys"> · 기술 <span class="skchip" data-skill="A" hidden><kbd>U</kbd><span class="ic"></span><b class="sec"></b></span><span class="skchip" data-skill="B" hidden><kbd>I</kbd><span class="ic"></span><b class="sec"></b></span><span class="skchip" data-skill="C" hidden><kbd>O</kbd><span class="ic"></span><b class="sec"></b></span><span class="skchip" data-skill="D" hidden><kbd>P</kbd><span class="ic"></span><b class="sec"></b></span><span class="alt">(왼손 C V B N)</span></span><span class="awkchip" id="awkChip"> · <b>각성</b> <kbd>L</kbd> / <kbd>F</kbd></span></div>
 
   <!-- 폰 조작 -->
   <div class="joyzone" id="joyZone">
@@ -140,6 +140,8 @@
   <div class="btns">
     <button type="button" class="btn jump" id="btnJump" aria-label="점프">점프</button>
     <button type="button" class="btn atk" id="btnAtk" aria-label="공격">공격</button>
+    <!-- 회피(2026-11-07): 점프 왼쪽 아래 작은 동그라미. 쿨타임 중엔 시계 방향으로 어두움(--cd, main.js dodgeUi) -->
+    <button type="button" class="btn dodge" id="btnDodge" aria-label="회피"><i class="sweep"></i><span>회피</span></button>
     <!-- 기술 칸 A~D (기사·법사만, 견습은 숨김. 3번 칸 Lv9 · 4번 칸 Lv13 부터). 네모 도트 액자 + 기술 그림(js/icons.js), 공격 버튼 둘레 반달(2026-11-06 폰 UI).
          쿨타임 중엔 시계 방향으로 어두움 + 남은 초, 마나가 모자라면 회색 그림 + 밑에 「MP n」 (skills.js 의 ui) -->
     <button type="button" class="btn sk skA" id="btnSkA" data-skill="A" hidden aria-label="기술 1"><span class="ic"></span><i class="sweep"></i><b class="sec"></b><small class="mp"></small></button>

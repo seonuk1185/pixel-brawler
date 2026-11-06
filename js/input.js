@@ -1,4 +1,4 @@
-// 조작: PC 키보드 + 폰 가상 조이스틱 / 공격·점프·기술 버튼
+// 조작: PC 키보드 + 폰 가상 조이스틱 / 공격·점프·회피·기술 버튼
 // 달리기(2026-11-03): 키보드 = 같은 쪽(←/→)을 빠르게 두 번 → 누르고 있는 동안 달림.
 //   폰 = 조이스틱을 가로로 같은 쪽으로 잠깐(CFG.move.joyHoldMs) 계속 밀거나, 손을 뗐다가 바로(joyFlickMs) 같은 쪽으로 다시 밀면 달림
 (function () {
@@ -6,6 +6,7 @@
   var attackQueued = 0;   // 누른 순간 기록(시각)
   var jumpQueued = 0;     // 점프 누른 순간
   var awakenQueued = 0;   // 각성 누른 순간(2026-11-06 밤, 분노 100%)
+  var dodgeQueued = 0;    // 회피 누른 순간(2026-11-07)
   var skillQueued = { A: 0, B: 0, C: 0, D: 0 };   // 기술 칸 A~D 누른 순간 (C·D = 2026-11-06 성장 4단계, Lv13 부터 보임)
   var SLOTS = ['A', 'B', 'C', 'D'];
   var joy = { x: 0, y: 0, active: false, id: null };
@@ -24,9 +25,9 @@
     CF = cfg;
     var K = cfg.keys;
     window.addEventListener('keydown', function (e) {
-      var sk = [], jp = K.jump || [], aw = K.awaken || [];
+      var sk = [], jp = K.jump || [], aw = K.awaken || [], dg = K.dodge || [];
       SLOTS.forEach(function (k) { sk = sk.concat(K['skill' + k] || []); });
-      if (e.repeat) { if (matches(e.code, K.attack) || matches(e.code, sk) || matches(e.code, jp)) e.preventDefault(); return; }
+      if (e.repeat) { if (matches(e.code, K.attack) || matches(e.code, sk) || matches(e.code, jp) || matches(e.code, dg)) e.preventDefault(); return; }
       // 달리기: 같은 쪽을 doubleTapMs 안에 다시 누름(그 쪽 키를 모두 뗐다가). 반대쪽을 누르면 달리기 끝
       var d = matches(e.code, K.left) ? -1 : matches(e.code, K.right) ? 1 : 0;
       if (d) {
@@ -39,8 +40,9 @@
       if (matches(e.code, K.attack)) attackQueued = performance.now();
       if (matches(e.code, jp)) jumpQueued = performance.now();
       if (matches(e.code, aw)) awakenQueued = performance.now();
+      if (matches(e.code, dg)) dodgeQueued = performance.now();
       SLOTS.forEach(function (k) { if (matches(e.code, K['skill' + k] || [])) skillQueued[k] = performance.now(); });
-      if ([].concat(K.left, K.right, K.up, K.down, K.attack, jp, sk, aw).indexOf(e.code) >= 0) e.preventDefault();
+      if ([].concat(K.left, K.right, K.up, K.down, K.attack, jp, sk, aw, dg).indexOf(e.code) >= 0) e.preventDefault();
     });
     window.addEventListener('keyup', function (e) {
       keysDown[e.code] = false;
@@ -121,6 +123,7 @@
     btn('btnJump', function () { jumpQueued = performance.now(); });
     SLOTS.forEach(function (k) { btn('btnSk' + k, function () { skillQueued[k] = performance.now(); }); });
     btn('btnAwk', function () { awakenQueued = performance.now(); });   // 각성 버튼(폰)
+    btn('btnDodge', function () { dodgeQueued = performance.now(); });  // 회피 버튼(폰, 2026-11-07)
   }
 
   var override = null;   // 시험용 자동 조종(?bot=1)이 넣는 방향 { x, y, run }
@@ -171,6 +174,9 @@
     // 각성(2026-11-06 밤): 버퍼 안에 눌렸으면 꺼내 씀
     takeAwaken: function (bufferMs) { if (fresh(awakenQueued, bufferMs)) { awakenQueued = 0; return true; } return false; },
     pressAwaken: function () { awakenQueued = performance.now(); },   // 시험용(자동 조종)
+    // 회피(2026-11-07): 버퍼 안에 눌렸으면 꺼내 씀
+    takeDodge: function (bufferMs) { if (fresh(dodgeQueued, bufferMs)) { dodgeQueued = 0; return true; } return false; },
+    pressDodge: function () { dodgeQueued = performance.now(); },     // 시험용
     setOverride: function (ax) { override = ax; },                   // 시험용(자동 조종). null 이면 원래대로
     state: function () { return { runKey: runKey, joyRun: joyRun, joyFlick: joyFlick, joy: { x: joy.x, y: joy.y, active: joy.active } }; }   // 시험용
   };

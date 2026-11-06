@@ -631,6 +631,16 @@ button.cpick { cursor: pointer; }
     background: radial-gradient(circle at 38% 32%, #a8f07cb3, #2e9a2eb3 55%, #145a18b3);
     box-shadow: 0 0 0 2px #f2c14eb0, 0 0 0 4px #140a0488, inset 0 -4px 0 #0004; }
   .btn.jump.down { transform: scale(.9); background: radial-gradient(circle at 38% 32%, #c8ffa0e0, #3ab83ae0 55%, #1a6a1ee0); }
+  /* 회피(2026-11-07): 점프 왼쪽 아래 작은 하늘색 동그라미. 쿨타임 = 시계 방향으로 어두움(--cd 1 → 0, main.js dodgeUi) */
+  .btn.dodge { right: calc(184px * var(--k)); bottom: calc(-9px * var(--k)); width: calc(42px * var(--k)); height: calc(42px * var(--k)); padding: 0; overflow: hidden;
+    font: 400 14px/1 var(--ui14); color: #eaf6ff; text-shadow: 2px 2px 0 var(--ink);
+    background: radial-gradient(circle at 38% 32%, #9ad8ffb3, #2a78c8b3 55%, #123e78b3);
+    box-shadow: 0 0 0 2px #f2c14eb0, 0 0 0 4px #140a0488, inset 0 -4px 0 #0004; }
+  .btn.dodge span { position: relative; z-index: 1; }
+  .btn.dodge .sweep { position: absolute; inset: 0; z-index: 0; pointer-events: none; border-radius: 50%;
+    background: conic-gradient(#000b calc(var(--cd, 0) * 360deg), transparent 0); }
+  .btn.dodge.cool span { color: #c8d8e8; }
+  .btn.dodge.down { transform: scale(.9); background: radial-gradient(circle at 38% 32%, #c0e8ffe0, #3a90e0e0 55%, #1a4a8ae0); }
   /* 기술 칸 4개: 네모 도트 액자 그림(.ic 안 캔버스, skills.js ui). 쿨타임 = 액자 안이 시계 방향으로 어두움(--cd = 남은 비율 1 → 0) + 남은 초,
      마나 모자람 = 회색 그림 + 밑에 「MP n」. 살짝 반투명(밑의 캐릭터가 보이게), 누르면 진하게 */
   .btn.sk {
@@ -694,6 +704,9 @@ button.cpick { cursor: pointer; }
 .awkchip kbd { font-size: 11px; color: #cfe0ff; }
 .awkchip.ready b, .awkchip.ready kbd { color: #ffb040; text-shadow: 0 0 6px #ff9a2a; }
 .awkchip.on b { color: #ff6a4a; }
+/* PC: 아래 조작 글자 「회피 Shift / ;」 — 쿨타임 중엔 흐리게(main.js dodgeUi 가 .cool) */
+.dgchip kbd { font-size: 11px; color: #cfe0ff; }
+.dgchip.cool b, .dgchip.cool kbd { opacity: .45; }
 
 /* ---------- 세로 화면(폰 세로): 게임 화면은 위, 조작은 아래 빈 곳 (main.js 가 body 에 portrait 를 붙임) ----------
    플레이어 판은 게임 화면 밑(빈 곳)으로 → 게임 화면을 안 가림 */
@@ -715,6 +728,9 @@ button.cpick { cursor: pointer; }
   .portrait .btns { --k: 1.3; bottom: 56px; right: 24px; }
   .portrait .btn.atk { background: radial-gradient(circle at 38% 32%, #ff7a5a, #b8261c 55%, #6a1010); box-shadow: 0 0 0 4px var(--gold), 0 0 0 6px var(--ink), inset 0 -6px 0 #0004; }
   .portrait .btn.jump { background: radial-gradient(circle at 38% 32%, #a8f07c, #2e9a2e 55%, #145a18); }
+  /* 세로 화면: 점프 왼쪽은 조이스틱 자리(왼쪽 아래 엄지)라 → 점프와 공격 사이 아래로 */
+  .portrait .btn.dodge { right: calc(85px * var(--k)); bottom: calc(-36px * var(--k)); width: calc(36px * var(--k)); height: calc(36px * var(--k));
+    background: radial-gradient(circle at 38% 32%, #9ad8ff, #2a78c8 55%, #123e78); }
   .portrait .btn.sk, .portrait .btn.awk { opacity: 1; }
 }
 
