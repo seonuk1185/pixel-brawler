@@ -42,7 +42,9 @@
     return d;
   }
   // ---------- 기술 책 (2026-11-06, 성장 4단계. 수치 = config skills: tree·perLv·maxLv·slots·moreLv·test) ----------
-  //   저장되는 것 sk = { clsLv = 전직한 Lv, lv = { 기술 id: 기술 점수로 올린 수 }, bar = [칸 1~4 에 끼운 기술 id] }
+  //   저장되는 것 sk = { clsLv = 전직한 Lv, lv = { 기술 id: 기술 점수로 올린 수 }, bar = [칸 1~10 에 끼운 기술 id] }
+  //     칸(2026-11-07 PC 아래 막대): PC · 폰이 같은 순서 하나. 폰 = 앞 5칸(slots()), PC = 10칸(slots(true), 위 줄 6~10 은 pcLv 에 열림)
+  //     'dodge' = 회피(PC 기술 창에서 아무 칸에나 끼움, 누르면 회피). 예전 저장(칸 4개) = 그대로 1~4번 칸
   //   기술 Lv = 열렸으면 1 + 올린 수(최고 maxLv), 안 열렸으면 0. 기술 점수 = (지금 Lv - 전직 Lv) x perLv - 쓴 점수
   var SK = CFG.skills || {};
   var realBook = null, testBooks = {};
@@ -71,26 +73,33 @@
       },
       // 초기화(공짜): 쓴 기술 점수 전부 돌려받음 → 열린 기술은 모두 Lv1
       reset: function () { st.lv = {}; B.save(); },
-      // 칸 수: 시험 책 = 늘 가장 많이, 저장 책 = moreLv 마다 하나씩 늘어남(2026-11-06 밤: [2, 3, 4] / Lv10 · Lv13, 2026-11-06 Lv9 → 10)
-      slots: function () {
+      // 칸 수: 시험 책 = 늘 가장 많이, 저장 책 = moreLv 마다 하나씩 늘어남(2026-11-06 밤: [2, 3, 4] / Lv10 · Lv13, 2026-11-06 Lv9 → 10,
+      //   2026-11-07: [2, 3, 4, 5] / Lv10 · Lv13 · Lv15). pc = PC 아래 막대: pcLv 부터 pcSlots(10)칸, 그 전엔 폰과 같음
+      slots: function (pc) {
         var S = SK.slots || [2, 4], M = [].concat(SK.moreLv || 13), n = S[0];
+        if (pc && SK.pcSlots && (test || G.lv >= (SK.pcLv || 0))) return SK.pcSlots;
         if (test) return S[S.length - 1];
         M.forEach(function (lv, k) { if (G.lv >= lv && S[k + 1] != null) n = S[k + 1]; });
         return n;
       },
-      // i 번째 칸(0부터)이 열리는 레벨(처음부터 있으면 0) — 기술 창 「LvN에 열림」
+      // 칸이 가장 많을 때 수(잠긴 칸까지 그리는 곳): 폰 = slots 끝, PC = pcSlots
+      maxSlots: function (pc) { var S = SK.slots || [2, 4]; return pc && SK.pcSlots ? SK.pcSlots : S[S.length - 1]; },
+      // i 번째 칸(0부터)이 열리는 레벨(처음부터 있으면 0) — 기술 창 「LvN에 열림」. 폰 칸(앞 5칸)을 넘으면 PC 위 줄 = pcLv
       slotLv: function (i) {
         var S = SK.slots || [2, 4], M = [].concat(SK.moreLv || 13);
         if (i < S[0]) return 0;
+        if (i >= S[S.length - 1]) return SK.pcLv || M[M.length - 1];
         for (var k = 0; k < M.length; k++) if (i < S[k + 1]) return M[k];
         return M[M.length - 1];
       },
-      // i 번째 칸(0부터)에 끼운 기술 id (안 보이는 칸·안 열린 기술이면 null)
-      at: function (i) { var id = i < B.slots() ? st.bar[i] : null; return id && B.unlocked(id) && B.isActive(id) ? id : null; },
-      bar: function () { var a = []; for (var i = 0; i < B.slots(); i++) a.push(B.at(i)); return a; },
+      // 칸에 끼울 수 있나: 쓰는 기술(열림) 또는 회피('dodge')
+      canPut: function (id) { return id === 'dodge' || (B.isActive(id) && B.unlocked(id)); },
+      // i 번째 칸(0부터)에 끼운 기술 id 또는 'dodge' (열린 칸(PC 기준)이 아니거나 안 열린 기술이면 null)
+      at: function (i) { var id = i < B.slots(true) ? st.bar[i] : null; return id && B.canPut(id) ? id : null; },
+      bar: function (pc) { var a = []; for (var i = 0; i < B.slots(pc); i++) a.push(B.at(i)); return a; },
       // i 번째 칸에 끼우기. 다른 칸에 이미 있으면 서로 자리 바꿈
       put: function (i, id) {
-        if (i < 0 || i >= B.slots() || !B.isActive(id) || !B.unlocked(id)) return false;
+        if (i < 0 || i >= B.slots(true) || !B.canPut(id)) return false;
         var j = st.bar.indexOf(id);
         if (j === i) return true;
         if (j >= 0) st.bar[j] = st.bar[i] || null;
@@ -101,8 +110,8 @@
       fill: function () {
         var changed = false;
         L.forEach(function (e) {
-          if (!B.isActive(e.id) || !B.unlocked(e.id) || B.bar().indexOf(e.id) >= 0) return;
-          for (var i = 0; i < B.slots(); i++) if (!B.at(i)) { var j = st.bar.indexOf(e.id); if (j >= 0) st.bar[j] = null; st.bar[i] = e.id; changed = true; return; }
+          if (!B.isActive(e.id) || !B.unlocked(e.id) || B.bar(true).indexOf(e.id) >= 0) return;
+          for (var i = 0; i < B.slots(true); i++) if (!B.at(i)) { var j = st.bar.indexOf(e.id); if (j >= 0) st.bar[j] = null; st.bar[i] = e.id; changed = true; return; }
         });
         if (changed) B.save();
       },
@@ -350,7 +359,7 @@
         if (!any) break;
       }
       var o = {}; treeOf(cls).forEach(function (e) { if (b.unlocked(e.id)) o[e.id] = b.lv(e.id); });
-      return { lv: o, pts: b.pts(), bar: b.bar() };
+      return { lv: o, pts: b.pts(), bar: b.bar(true) };
     },
     save: function () {
       if (G.noSave) return;
@@ -411,7 +420,8 @@
       G.sk.clsLv = clampLv(cs.clsLv || 1);
       // 아직 안 열린 기술에 올려 둔 점수는 돌려받음(2026-11-06 열림 순서 바꿈: 예전 Lv9 저장의 올려베기·땅 융기는 이제 Lv10 에 열림)
       if (cs.lv && typeof cs.lv === 'object') L0.forEach(function (e) { var n = cs.lv[e.id] | 0; if (n > 0 && G.lv >= (e.unlock || 0)) G.sk.lv[e.id] = Math.min((SK.maxLv || 5) - 1, n); });
-      if (Array.isArray(cs.bar)) G.sk.bar = cs.bar.slice(0, 4).map(function (id) { return typeof id === 'string' ? id : null; });
+      // 칸(2026-11-07 10칸): 예전 저장(4칸) = 그대로 1~4번 칸, 늘어난 칸은 아래 fill 이 열린 기술로 채움
+      if (Array.isArray(cs.bar)) G.sk.bar = cs.bar.slice(0, SK.pcSlots || 10).map(function (id) { return typeof id === 'string' ? id : null; });
     } else G.sk.clsLv = Math.min(G.lv, SK.classLv || 7);
     var bk = G.book(G.cls);
     if (bk.used() > bk.total()) G.sk.lv = {};

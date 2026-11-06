@@ -370,6 +370,27 @@
       g.outline();
       [[12, 1], [1, 12], [22, 12], [12, 22]].forEach(function (p) { g.px(p[0], p[1], K.f0); });
       g.spark(20, 3, false);
+    },
+    // ===== 모든 직업 (2026-11-07 PC 아래 막대: 회피 칸 · 평타 · 점프 칸) =====
+    dodge: function (g) {                   // 회피: 몸을 굴려 피하는 하늘색 반원 화살표 + 뒤로 남는 속도 줄 + 먼지
+      g.ring(11, 15, 6, 9, 185, 345, function (t) { return t < 0.3 ? K.i3 : t < 0.65 ? K.i2 : K.i1; });
+      g.map(15, 13, ['aaaaaaa', '.abbba.', '..aba..', '...a...'], { a: K.i1, b: K.i0 });
+      g.outline();
+      g.ring(11, 15, 8, 8.6, 220, 320, function () { return K.i0; });
+      g.line(1, 9, 4, 9, K.i1); g.line(0, 12, 3, 12, K.i2); g.line(1, 15, 3, 15, K.i1);
+      g.px(4, 21, K.e1); g.px(6, 22, K.e2); g.px(19, 21, K.e1); g.px(17, 22, K.e2); g.px(12, 22, K.e1);
+    },
+    atk: function (g) {                     // 평타: 비스듬한 칼 + 하얀 칼바람
+      diagSword(g, 20, 2, 12, 1);
+      g.outline();
+      g.ring(10, 13, 9, 10.4, 200, 300, function (t) { return t < 0.5 ? K.s1 : K.wht; });
+      g.spark(5, 4, false);
+    },
+    jump: function (g) {                    // 점프: 위로 솟는 금빛 화살표 + 땅 + 먼지
+      g.poly([[12, 1.5], [20, 10], [15, 10], [15, 17], [9, 17], [9, 10], [4, 10]], function (x, y) { return x < 11 ? K.g0 : x < 13 ? K.g1 : K.g2; });
+      g.outline();
+      g.rect(3, 20, 18, 2, K.e1); g.rect(3, 21, 18, 1, K.e2);
+      g.px(5, 18, K.e0); g.px(19, 18, K.e0); g.px(7, 17, K.e1); g.px(17, 17, K.e1);
     }
   };
 
@@ -381,7 +402,8 @@
     fireball: ['화염구', 'mage', 'active', 'fire'], bolt: ['번개', 'mage', 'active', 'storm'], rise: ['땅 융기', 'mage', 'active', 'earth'],
     amp: ['원소 증폭', 'mage', 'passive', 'arcane'], flow: ['마나 순환', 'mage', 'passive', 'ice'], ice: ['얼음창', 'mage', 'active', 'ice'],
     meteor: ['메테오', 'mage', 'active', 'fire'], blink: ['순간이동', 'mage', 'active', 'arcane'], shield: ['마나 방패', 'mage', 'passive', 'ice'],
-    pillar: ['불기둥', 'mage', 'active', 'fire'], brand: ['원소 낙인', 'mage', 'passive', 'arcane']
+    pillar: ['불기둥', 'mage', 'active', 'fire'], brand: ['원소 낙인', 'mage', 'passive', 'arcane'],
+    dodge: ['회피', 'all', 'active', 'ice'], atk: ['평타', 'all', 'active', 'steel'], jump: ['점프', 'all', 'active', 'earth']
   };
   var meta = {}; Object.keys(META).forEach(function (k) { var m = META[k]; meta[k] = { name: m[0], cls: m[1], kind: m[2], theme: m[3] }; });
 

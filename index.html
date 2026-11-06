@@ -127,7 +127,7 @@
       <div class="skbar" id="skBar"></div>
     </div>
   </div>
-  <!-- 기술 칸 열림 알림 (2026-11-06): Lv10 · Lv13 에 새 기술 칸이 열리면 한 번. 칸 줄(새 칸 = 빛남) + 확인. 여는 동안 게임 멈춤(main.js openUnlock) -->
+  <!-- 기술 칸 열림 알림 (2026-11-06): Lv10 · Lv13 · Lv15 에 새 기술 칸이 열리면 한 번(PC = Lv15 에 위 줄 6~10번 칸도). 칸 줄(새 칸 = 빛남) + 확인. 여는 동안 게임 멈춤(main.js openUnlock) -->
   <div class="statpanel unlockpop" id="unlockPop" hidden>
     <div class="box">
       <h2>축하합니다!</h2>
@@ -171,7 +171,52 @@
     </div>
   </div>
   <div class="combo" id="combo" hidden></div>
-  <div class="keyhint">이동 ←↑↓→ / WASD · 달리기 ←← / →→ · 점프 K / X / Space · 공격 J / Z (연타 3타)<span class="dgchip" id="dodgeChip"> · <b>회피</b> <kbd>Shift</kbd> / <kbd>;</kbd></span><span class="skkeys"> · 기술 <span class="skchip" data-skill="A" hidden><kbd>U</kbd><span class="ic"></span><b class="sec"></b></span><span class="skchip" data-skill="B" hidden><kbd>I</kbd><span class="ic"></span><b class="sec"></b></span><span class="skchip" data-skill="C" hidden><kbd>O</kbd><span class="ic"></span><b class="sec"></b></span><span class="skchip" data-skill="D" hidden><kbd>P</kbd><span class="ic"></span><b class="sec"></b></span><span class="alt">(왼손 C V B N)</span></span><span class="awkchip" id="awkChip"> · <b>각성</b> <kbd>L</kbd> / <kbd>F</kbd></span></div>
+  <!-- PC 조작 도움말(2026-11-07): 아래 막대 바로 위 한 줄. 처음 몇 번(config help.plays)만 보임, X 로 닫음 → 설정 창에서 다시 켬 (main.js helpUi) -->
+  <div class="keyhint" id="keyHint" hidden>이동 <kbd>←↑↓→</kbd>/<kbd>WASD</kbd> · 달리기 두 번 · 점프 <kbd>Space</kbd> · 평타 <kbd>J</kbd> · 회피 <kbd>Shift</kbd> · 기술 <kbd>1</kbd>~<kbd>0</kbd> (<kbd>U</kbd> <kbd>I</kbd> <kbd>O</kbd> <kbd>P</kbd>) · 각성 <kbd>L</kbd><button type="button" class="khx" id="btnHelpX" aria-label="도움말 닫기" title="도움말 닫기">X</button></div>
+
+  <!-- PC 아래 막대(2026-11-07, 형님 승인): 위 체력 판과 같은 나무판 + 금테. PC 화면(body.pcui)에서만 보임, 게임 화면은 이 막대 위까지(main.js resize)
+       왼쪽 = 행동 칸(큰 각성 L · 평타 J · 점프 Space), 가운데 = 기술 칸 10개(아래 줄 1~5 · 위 줄 6~0, main.js 가 만듦),
+       오른쪽 = 창 버튼(능력치 C · 기술 V · 강화 B · 설정 Esc · 소리 M). 칸을 마우스로 눌러도 씀 -->
+  <div class="pcbar" id="pcBar">
+    <div class="pcb pact">
+      <!-- 각성: 분노만큼 아래부터 물처럼 차오름(--rg), 가득 = 번쩍 + L 깜빡, 각성 중 = 직업 색으로 남은 시간만큼 -->
+      <div class="pslot pawk" id="pcAwk" role="button" aria-label="각성"><i class="liq"></i><span class="nm">각성</span><b class="pct" id="pcAwkPct">0%</b><kbd>L</kbd></div>
+      <div class="pcol">
+        <div class="pslot pbase" id="pcAtk" role="button" aria-label="평타"><span class="ic"></span><kbd>J</kbd><small>평타</small></div>
+        <div class="pslot pbase" id="pcJump" role="button" aria-label="점프"><span class="ic"></span><kbd>Space</kbd><small>점프</small></div>
+      </div>
+    </div>
+    <div class="pcb psk" id="pcSkills"></div>
+    <div class="pcb pfns">
+      <button type="button" class="pfn statopen" id="pcStat" aria-label="능력치 (C)" title="능력치 (C)"><i class="fi"></i><span>능력치</span><kbd>C</kbd><b class="badge" hidden></b></button>
+      <button type="button" class="pfn skopen" id="pcSkill" aria-label="기술 (V)" title="기술 (V)" hidden><i class="fi"></i><span>기술</span><kbd>V</kbd><b class="badge" hidden></b></button>
+      <button type="button" class="pfn encopen" id="pcEnc" aria-label="강화 (B)" title="강화 (B)" hidden><i class="fi"></i><span>강화</span><kbd>B</kbd><b class="badge enb" hidden></b></button>
+      <button type="button" class="pfn setopen" id="pcSet" aria-label="설정 (Esc)" title="설정 (Esc)"><i class="fi"></i><span>설정</span><kbd>Esc</kbd></button>
+      <!-- 소리: js/sfx.js 가 .sndbtn 을 찾아 누름·끔 표시(off)를 맡음 -->
+      <button type="button" class="pfn sndbtn" id="pcSnd" aria-label="소리 끄기" aria-pressed="false"><i class="fi"></i><span>소리</span><kbd>M</kbd></button>
+    </div>
+  </div>
+  <!-- 경험치 줄(2026-11-07): 화면 맨 아래 가로 꽉. PC = 「Lv · EXP %」 글자 + 레벨업 직전(90%~) 빛남, 폰 = 얇은 줄만 (main.js xpUi) -->
+  <div class="xpline" id="xpLine"><i id="xpFill"></i><span id="xpTxt"></span></div>
+  <!-- 설정 창(2026-11-07, PC Esc · 아래 막대 「설정」): 소리 · 조작 도움말 켜고 끄기 + 키 안내. 여는 동안 게임 멈춤(main.js openSet) -->
+  <div class="statpanel setpanel" id="setPanel" hidden>
+    <div class="box">
+      <h2>설정</h2>
+      <div class="setrows">
+        <div class="setrow"><b>소리</b><button type="button" class="wbtn" id="btnSetSnd">켜짐</button><span>M 키로도 켜고 꺼요</span></div>
+        <div class="setrow"><b>조작 도움말</b><button type="button" class="wbtn" id="btnSetHelp">보이기</button><span>화면 아래 키 안내 한 줄</span></div>
+      </div>
+      <dl class="keymap">
+        <dt>이동</dt><dd><kbd>←↑↓→</kbd> / <kbd>WASD</kbd> · 같은 쪽 두 번 = 달리기</dd>
+        <dt>점프 · 평타</dt><dd><kbd>Space</kbd> (<kbd>K</kbd> <kbd>X</kbd>) · <kbd>J</kbd> (<kbd>Z</kbd>)</dd>
+        <dt>회피</dt><dd><kbd>Shift</kbd> (<kbd>;</kbd>) · 기술 창에서 칸에 끼워도 돼요</dd>
+        <dt>기술 칸</dt><dd>아래 줄 <kbd>1</kbd>~<kbd>5</kbd> · 위 줄 <kbd>6</kbd>~<kbd>0</kbd> · <kbd>U</kbd> <kbd>I</kbd> <kbd>O</kbd> <kbd>P</kbd> = 1~4번 칸 · 마우스로 눌러도 써요</dd>
+        <dt>각성</dt><dd><kbd>L</kbd> (<kbd>F</kbd>) · 분노 100%</dd>
+        <dt>창</dt><dd>능력치 <kbd>C</kbd> · 기술 <kbd>V</kbd> · 강화 <kbd>B</kbd> · 설정 <kbd>Esc</kbd> · 소리 <kbd>M</kbd></dd>
+      </dl>
+      <div class="rbtns"><button type="button" id="btnSetClose">계속하기</button></div>
+    </div>
+  </div>
 
   <!-- 폰 조작 -->
   <div class="joyzone" id="joyZone">
@@ -182,12 +227,14 @@
     <button type="button" class="btn atk" id="btnAtk" aria-label="공격">공격</button>
     <!-- 회피(2026-11-07): 점프 왼쪽 아래 작은 동그라미. 쿨타임 중엔 시계 방향으로 어두움(--cd, main.js dodgeUi) -->
     <button type="button" class="btn dodge" id="btnDodge" aria-label="회피"><i class="sweep"></i><span>회피</span></button>
-    <!-- 기술 칸 A~D (기사·법사만, 견습은 숨김. 3번 칸 Lv10 · 4번 칸 Lv13 부터). 네모 도트 액자 + 기술 그림(js/icons.js), 공격 버튼 둘레 반달(2026-11-06 폰 UI).
+    <!-- 기술 칸 A~E (기사·법사만, 견습은 숨김. 3번 칸 Lv10 · 4번 칸 Lv13 · 5번 칸 Lv15(2026-11-07) 부터). 네모 도트 액자 + 기술 그림(js/icons.js), 공격 버튼 둘레 반달(2026-11-06 폰 UI).
+         칸 순서는 PC 아래 막대와 하나(폰 = 앞 5칸). PC 에서 회피를 끼운 칸은 회피 그림 + 누르면 회피
          쿨타임 중엔 시계 방향으로 어두움 + 남은 초, 마나가 모자라면 회색 그림 + 밑에 「MP n」 (skills.js 의 ui) -->
     <button type="button" class="btn sk skA" id="btnSkA" data-skill="A" hidden aria-label="기술 1"><span class="ic"></span><i class="sweep"></i><b class="sec"></b><small class="mp"></small></button>
     <button type="button" class="btn sk skB" id="btnSkB" data-skill="B" hidden aria-label="기술 2"><span class="ic"></span><i class="sweep"></i><b class="sec"></b><small class="mp"></small></button>
     <button type="button" class="btn sk skC" id="btnSkC" data-skill="C" hidden aria-label="기술 3"><span class="ic"></span><i class="sweep"></i><b class="sec"></b><small class="mp"></small></button>
     <button type="button" class="btn sk skD" id="btnSkD" data-skill="D" hidden aria-label="기술 4"><span class="ic"></span><i class="sweep"></i><b class="sec"></b><small class="mp"></small></button>
+    <button type="button" class="btn sk skE" id="btnSkE" data-skill="E" hidden aria-label="기술 5"><span class="ic"></span><i class="sweep"></i><b class="sec"></b><small class="mp"></small></button>
     <!-- 각성(2026-11-06 밤 → 2026-11-06 폰 UI 마름모): 기술 반달 위 끝. 분노 100% 면 금빛으로 빛남(.ready), 각성 중 = 직업 색(.on).
          안쪽 차오름 = 분노(--rg), 왼쪽 글자 = 분노 %(pct). 걷는 길 밖이라 main.js controlPad 에 안 들어감 -->
     <button type="button" class="btn awk" id="btnAwk" aria-label="각성"><i class="dia"></i><i class="fill"></i><span>각성</span><b class="pct" id="awkPct"></b></button>

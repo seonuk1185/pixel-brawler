@@ -929,6 +929,9 @@
       targetH: 240,        // 논리 화면 높이 목표(도트 기준). 실제 배율은 정수로만
       minLandW: 360,       // 가로 화면 최소 폭(도트). 폴드 펼친 화면처럼 정사각형에 가까우면 배율을 낮춰 옆을 넓게(캐릭터가 너무 커지지 않게, 남는 위쪽은 하늘)
 
+      // PC 아래 막대(2026-11-07): 막대만큼 게임 화면 아래를 비우고(캐릭터 크기 = 배율은 그대로) 하늘 위쪽을 잘라 냄.
+      //   잘린 뒤 화면 높이가 minPcH 도트보다 낮아지면 배율을 한 단계 낮춤(아주 낮은 창)
+      minPcH: 196,
       portraitTargetW: 280,// 세로 화면(폰 세로)일 때: 가로 폭을 이 도트 수 근처로 맞추고 게임 화면은 위쪽, 조작은 아래쪽
       bg: '#14121c'
     },
@@ -3313,26 +3316,41 @@
       left: ['ArrowLeft', 'KeyA'], right: ['ArrowRight', 'KeyD'],
       up: ['ArrowUp', 'KeyW'], down: ['ArrowDown', 'KeyS'],
       attack: ['KeyJ', 'KeyZ'],
-      jump: ['KeyK', 'KeyX', 'Space'], // 점프 (2026-11-03). 달리기 = 좌/우를 빠르게 두 번(CFG.move.doubleTapMs)
-      // 기술 (2026-11-03): WASD 이동·J 공격·K 점프와 안 겹치게 J/K 바로 위 U/I, 왼손은 Z(공격)·X(점프) 옆 C/V
-      skillA: ['KeyU', 'KeyC'],
-      skillB: ['KeyI', 'KeyV'],
-      // 기술 3·4번 칸 (2026-11-06, Lv13 부터): 오른손은 U·I 옆 O·P, 왼손은 C·V 옆 B·N
-      skillC: ['KeyO', 'KeyB'],
-      skillD: ['KeyP', 'KeyN'],
+      // 점프 (2026-11-03). 달리기 = 좌/우를 빠르게 두 번(CFG.move.doubleTapMs). 2026-11-07 PC 아래 막대: Space 가 대표(첫 키), K·X 도 그대로
+      jump: ['Space', 'KeyK', 'KeyX'],
+      // 기술 칸 1~10 (2026-11-07 PC 아래 막대, 형님 승인): 숫자 1~5 = 아래 줄 1~5번 칸, 6 7 8 9 0 = 위 줄 6~10번 칸. 첫 키 = 막대에 쓰는 글자
+      //   예전 U I O P 는 1~4번 칸에 그대로(오른손). 예전 왼손 C V B N 은 뺌 → C · V · B 는 능력치 · 기술 · 강화 창(아래 stat · skill · enc)
+      skillA: ['Digit1', 'Numpad1', 'KeyU'],
+      skillB: ['Digit2', 'Numpad2', 'KeyI'],
+      skillC: ['Digit3', 'Numpad3', 'KeyO'],
+      skillD: ['Digit4', 'Numpad4', 'KeyP'],
+      skillE: ['Digit5', 'Numpad5'],
+      skillF: ['Digit6', 'Numpad6'],
+      skillG: ['Digit7', 'Numpad7'],
+      skillH: ['Digit8', 'Numpad8'],
+      skillI: ['Digit9', 'Numpad9'],
+      skillJ: ['Digit0', 'Numpad0'],
       // 각성(2026-11-06 밤, 분노 100%): 오른손 = J·K 옆 L, 왼손 = F
       awaken: ['KeyL', 'KeyF'],
       // 회피(2026-11-07): Shift(왼손·오른손 둘 다) + 오른손 J K L 옆 ; (K 는 이미 점프라 안 씀)
-      dodge: ['ShiftLeft', 'ShiftRight', 'Semicolon']
+      dodge: ['ShiftLeft', 'ShiftRight', 'Semicolon'],
+      // 창 열기(2026-11-07 PC 아래 막대 오른쪽 버튼): 능력치 C · 기술 V · 강화 B (왼손 Z·X 옆, 움직이기·싸우기 키와 안 겹침) · 설정 Esc.
+      //   소리 끄기/켜기 = M (js/sfx.js). 같은 키를 다시 누르면 그 창이 닫힘
+      stat: ['KeyC'], skill: ['KeyV'], enc: ['KeyB'], menu: ['Escape']
     },
+    // PC 아래 도움말 글자(2026-11-07): 처음 plays 번 켤 때만 보임(× 로 닫으면 안 보임). 설정 창에서 다시 켬
+    help: { plays: 3 },
 
     // ---------- 직업 기술 (위 SKILLS 설명 참고) ----------
     // bufferMs = 미리 눌러 둔 기술 입력 기억 시간, cancelAfterHit = 보통 콤보 타의 판정이 끝난 장부터 기술로 끊을 수 있음
     // 성장 4단계(2026-11-06): 기술 = 마나 + 쿨타임. 기술 창(main.js)에서 기술 점수로 Lv1 → 5, 칸에 끼움. 계산·저장 = growth.js 의 기술 책(Growth.book)
     //   tree = 직업마다 기술 10개(위 SKILL_TREE). 전직하면 unlock 0 기술이 Lv1, 레벨이 오르면 저절로 열림(Lv1), 점수로 Lv5 까지
     //   perLv = 전직 뒤 레벨마다 기술 점수(예전 저장 = 지금 Lv - 전직 Lv, 전직 Lv 를 모르면 classLv). maxLv = 기술 최고 Lv
-    //   slots = 기술 칸 수 [처음, moreLv[0] 부터, moreLv[1] 부터] (폰 동그라미 · 키보드 U I O P)
+    //   slots = 기술 칸 수 [처음, moreLv[0] 부터, moreLv[1] 부터, …] (폰 = 공격 둘레 반달 동그라미, PC = 아래 막대 아래 줄 1~5)
     //     2026-11-06 밤 콤보: Lv10 에 3번째 칸(띄우기 기술 올려베기·땅 융기가 열리면서 바로 끼워짐, 2026-11-06 Lv9 → 10), Lv13 에 4번째 칸
+    //     2026-11-07(형님 승인): Lv15 에 5번째 칸(대지 내려찍기·메테오가 열리는 Lv). 폰 = 5칸까지
+    //   pcSlots · pcLv = PC 아래 막대 위 줄(6~10번 칸): Lv15(5번째 칸과 같이)에 한꺼번에 열림 → PC 는 10칸.
+    //     1~5번 칸은 폰과 같은 Lv 에 열림. 칸 순서는 PC · 폰이 하나(폰은 앞 5칸만 보임). PC 는 회피도 칸에 끼울 수 있음(Shift 는 늘 회피)
     //   cancel = 캔슬(콤보, 2026-11-06 밤): 평타 1·2·3타는 판정 장에 들어선 뒤(이미 맞힌 뒤)부터 기술로 끊고 나감(fromActive).
     //     기술 끝무렵(그 기술의 마지막 판정·발사 + padMs 부터, 기술마다 chainFrom = 장 번호로 바꿀 수 있음)에 다른 기술로 이어짐.
     //     한 번 이어지는 동안 같은 기술은 한 번만 → 같은 기술로 되돌아가는 무한 반복 없음(쿨타임도 있음). 점프 착지 웅크림에서도 기술 나감
@@ -3344,7 +3362,7 @@
     //   botPlan = 시험용(GAME.test.skillSetup): 기술 점수를 이 순서로 돌아가며 1점씩
     skills: { bufferMs: 300, cancelAfterHit: true, knight: SKILLS.knight, mage: SKILLS.mage,
               cancel: { fromActive: true, padMs: 60 },
-              tree: SKILL_TREE, perLv: 1, maxLv: 5, classLv: 7, slots: [2, 3, 4], moreLv: [10, 13], noMpMs: 500,
+              tree: SKILL_TREE, perLv: 1, maxLv: 5, classLv: 7, slots: [2, 3, 4, 5], moreLv: [10, 13, 15], pcSlots: 10, pcLv: 15, noMpMs: 500,
               curve: { dmg: [1, 1.2, 1.4, 1.6, 1.85], cd: [1, 0.94, 0.88, 0.82, 0.75], mp: [1, 1.05, 1.1, 1.15, 1.2] },
               test: { pts: 24 },
               botPlan: { knight: ['dash', 'spin', 'upper', 'mastery', 'skin', 'wave', 'slam', 'grit', 'storm', 'counter', 'holy'],

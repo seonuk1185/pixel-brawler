@@ -49,20 +49,25 @@
   // ---------- 화면 크기: 논리 화면(도트)은 예전처럼 정수 배율 기준(보이는 범위·캐릭터 크기 그대로), 캔버스 점은 그 RS 배 ----------
   // 가로 화면: 높이를 240도트 근처로 맞춤. 세로 화면(폰 세로): 폭을 portraitTargetW 근처로 맞추고
   // 게임 화면은 위쪽(고르기 버튼 아래), 조이스틱·공격 버튼은 아래 빈 곳에 둔다.
+  //   PC 아래 막대(2026-11-07): 가로 화면이면 막대 + 경험치 줄 높이(padB)만큼 게임 화면 아래를 비움. 배율(캐릭터 크기)은 창 전체 높이로 정하고
+  //   남은 높이만 보여 줌 → 배경 위쪽 하늘이 조금 잘림(applyStageWorld 의 bgOff 가 0 밑으로). 남은 높이가 minPcH 도트보다 낮으면 배율 한 단계 낮춤
   function resize() {
     var dpr = window.devicePixelRatio || 1;
     var cw = window.innerWidth, ch = window.innerHeight;
     var pw = Math.round(cw * dpr), ph = Math.round(ch * dpr);
     var portrait = ch > cw * 1.05;
     document.body.classList.toggle('portrait', portrait);
-    var topCss = 0;
+    var topCss = 0, padB = portrait ? 0 : pcBarPx();
+    document.documentElement.style.setProperty('--pcbarH', padB + 'px');
     if (portrait) {
       SCALE = Math.max(1, Math.floor(pw / CFG.view.portraitTargetW));
       LW = Math.ceil(pw / SCALE); LH = CFG.view.targetH;
       topCss = 52;
     } else {
       SCALE = Math.max(1, Math.min(Math.floor(ph / CFG.view.targetH), Math.floor(pw / (CFG.view.minLandW || 1))));
-      LW = Math.ceil(pw / SCALE); LH = Math.ceil(ph / SCALE);
+      var phUse = ph - Math.round(padB * dpr);
+      if (padB) while (SCALE > 1 && phUse / SCALE < (CFG.view.minPcH || 196)) SCALE--;
+      LW = Math.ceil(pw / SCALE); LH = Math.ceil(phUse / SCALE);
     }
     canvas.width = Math.round(LW * RS); canvas.height = Math.round(LH * RS);
     document.body.classList.toggle('smooth', RS > 1);
@@ -96,7 +101,7 @@
   function applyStageWorld() {
     var B = CFG.bg;
     world.width = CFG.stage.width;
-    world.bgOff = Math.max(0, LH - B.height);          // 화면이 240보다 높으면 배경을 바닥에 붙이고 위는 하늘로 채움
+    world.bgOff = LH - B.height;   // 화면이 240보다 높으면 배경을 바닥에 붙이고 위는 하늘로 채움. 낮으면(PC 아래 막대, 2026-11-07) 0 밑 = 하늘 위쪽이 잘림
     world.laneTop = world.bgOff + B.laneTop;
     world.laneBottom = Math.min(LH - 8, world.bgOff + B.laneBottom);
   }
@@ -620,7 +625,7 @@
     var n = 0, ms = 400;
     if (Input.takeAttack(ms)) n++;
     if (Input.takeJump(ms)) n++;
-    Skills.slots.forEach(function (k) { if (Input.takeSkill(k, ms)) n++; });   // 기술 칸 A~D
+    Skills.slots.forEach(function (k) { if (Input.takeSkill(k, ms)) n++; });   // 기술 칸 A~J
     if (n && G.player.state === 'held') FX.shake(J.shakePx * 0.25, 60);   // 버둥: 화면이 살짝 떨림
     return n;
   }
@@ -1895,7 +1900,7 @@
     if (LU.flash) Skills.flash(LU.flash);
     FX.impact(p.x, p.y - (p.z || 0) - 60 * AS, p.dir, LU.sparkCol || '#ffe066', Math.round(J.sparkCount * 1.4), true, G.assets.fx && G.assets.fx.impact, 1);
 
-    checkUnlock(up);   // 기술 칸이 늘었으면(Lv10 · Lv13) 「축하합니다!」 알림(아래 openUnlock)
+    checkUnlock(up);   // 기술 칸이 늘었으면(Lv10 · Lv13 · Lv15, PC 는 Lv15 에 10칸) 「축하합니다!」 알림(아래 openUnlock)
   }
 
   function onBossDown(boss) {
@@ -2192,7 +2197,7 @@
   function dodgeUi() {
     var p = G.player, D = CFG.move.dodge;
     if (!p || !D) return;
-    if (!dodgeEls) dodgeEls = [document.getElementById('btnDodge'), document.getElementById('dodgeChip')].filter(Boolean);
+    if (!dodgeEls) dodgeEls = [document.getElementById('btnDodge')].filter(Boolean);   // PC 회피 글자(dodgeChip)는 2026-11-07 아래 막대로 바뀌며 없어짐
     var f = Math.round(Math.max(0, Math.min(1, (p.dodgeCd || 0) / D.cdMs)) * 50) / 50;
     if (f === dodgeLast) return;
     dodgeLast = f;
@@ -2385,6 +2390,7 @@
     if (MODE === 'stage') updateHud();
     if (Skills.ui(G)) controlPad = measureControlPad();   // 기술 버튼이 생기거나 사라지면 버튼 자리 다시 재기
     dodgeUi();                                    // 회피 버튼 쿨타임
+    pcBarUi();                                    // PC 아래 막대 기술 칸(2026-11-07)
   }
 
   function rectStroke(b, camX, col) {
@@ -2408,7 +2414,7 @@
 
   // ---------- HUD (체력 막대, 보스 막대, GO, 알림) ----------
   var hud = {};
-  ['pHp', 'pHpLag', 'pHpNum', 'pMp', 'pMpNum', 'pFull', 'pRage', 'pRageNum', 'btnAwk', 'awkPct', 'awkChip', 'pLv', 'pXp', 'bossBar', 'bHp', 'bHpLag', 'bossName', 'midBar', 'mHp', 'mHpLag', 'midName', 'goPrompt', 'banner', 'stageInfo'].forEach(function (k) { hud[k] = document.getElementById(k); });
+  ['pHp', 'pHpLag', 'pHpNum', 'pMp', 'pMpNum', 'pFull', 'pRage', 'pRageNum', 'btnAwk', 'awkPct', 'pcAwk', 'pcAwkPct', 'xpLine', 'xpFill', 'xpTxt', 'pLv', 'pXp', 'bossBar', 'bHp', 'bHpLag', 'bossName', 'midBar', 'mHp', 'mHpLag', 'midName', 'goPrompt', 'banner', 'stageInfo'].forEach(function (k) { hud[k] = document.getElementById(k); });
   var lastHud = {};
   function setIf(key, val, fn) { if (lastHud[key] !== val) { lastHud[key] = val; fn(val); } }
   function updateHud() {
@@ -2423,15 +2429,19 @@
     var EW = wpn();   // 강화 버튼(2026-11-06): 직업 무기가 있을 때만, 강화할 수 있으면 가진 강화석 수
     setIf('enc', EW ? G.classKey + EW.lv() + ':' + Growth.stones + ':' + EW.canEnhance() : '', encBadges);
     setIf('pfull', Math.ceil(G.full || 0), function (v) { hud.pFull.textContent = '포만감 ' + v + '%'; hud.pFull.classList.toggle('empty', v <= 0); });
-    // 분노 막대(2026-11-06 밤): 평소 = 분노 %(가득 = 빛남), 각성 중 = 남은 시간(직업 색) + 각성 이름. 각성 버튼(폰)·글자(PC)도 같이
+    // 분노 막대(2026-11-06 밤): 평소 = 분노 %(가득 = 빛남), 각성 중 = 남은 시간(직업 색) + 각성 이름. 각성 버튼(폰)·PC 아래 막대 각성 칸도 같이
     var A = G.awk, rg = A ? Math.max(0, 1 - A.t / A.ms) : (G.rage || 0) / 100, rs = A ? 'awk awk-' + A.cls : rg >= 1 ? 'full' : '';
     setIf('prg', Math.round(rg * 200) / 200, function (v) { hud.pRage.style.width = (v * 100) + '%'; });
     setIf('prgn', A ? '각성 ' + Math.max(0, Math.ceil((A.ms - A.t) / 1000)) + '초' : Math.floor(G.rage || 0) + '%', function (v) { hud.pRageNum.textContent = v; });
     setIf('prgc', rs, function (v) {
       hud.pRage.parentNode.parentNode.className = 'prg ' + v;
       var ready = v === 'full';
-      [hud.btnAwk, hud.awkChip].forEach(function (el) { if (el) { el.classList.toggle('ready', ready); el.classList.toggle('on', !!A); } });
+      [hud.btnAwk, hud.pcAwk].forEach(function (el) { if (el) { el.classList.toggle('ready', ready); el.classList.toggle('on', !!A); } });
+      if (hud.pcAwk) ['knight', 'mage', 'novice'].forEach(function (c) { hud.pcAwk.classList.toggle('awk-' + c, !!A && A.cls === c); });
     });
+    // PC 각성 칸(2026-11-07): 물 높이 = 분노(각성 중 = 남은 시간), 글자 = 분노 % / 각성 중 남은 초 / 가득 = 「준비!」
+    setIf('pcawk', Math.round(rg * 100) / 100, function (v) { if (hud.pcAwk) { hud.pcAwk.style.setProperty('--rg', v); hud.pcAwk.classList.toggle('has', v > 0 && v < 1); } });
+    setIf('pcawkp', A ? Math.max(0, Math.ceil((A.ms - A.t) / 1000)) + '초' : rg >= 1 ? '준비!' : Math.floor(G.rage || 0) + '%', function (v) { if (hud.pcAwkPct) hud.pcAwkPct.textContent = v; });
     setIf('pawkf', A ? 1 : Math.floor((G.rage || 0) / 5) / 20, function (v) { if (hud.btnAwk) hud.btnAwk.style.setProperty('--rg', v); });
     setIf('pawkp', A ? '' : Math.floor(G.rage || 0) + '%', function (v) { if (hud.awkPct) hud.awkPct.textContent = v; });   // 폰 각성 마름모 왼쪽 분노 %(가득·각성 중엔 CSS 가 숨김)
     // 레벨 + 경험치 막대(성장). 최고 레벨이면 「Lv 60 MAX」(최고 레벨 = config growth.maxLv) + 막대 가득
@@ -2442,6 +2452,16 @@
       lastHud.plvSeen = v;
     });
     setIf('pxp', Growth.isMax() ? 1 : Growth.xp / Growth.need(), function (v) { hud.pXp.style.width = (v * 100) + '%'; });
+    // 경험치 줄(2026-11-07, 화면 맨 아래): 0.1% 단위. 90% 넘으면 빛남(레벨업 직전), 최고 Lv = 가득 + MAX
+    setIf('xpl', Growth.isMax() ? 'max' : Math.floor(Growth.xp / Growth.need() * 1000) / 10, function (v) {
+      if (!hud.xpLine) return;
+      var mx = v === 'max', f = mx ? 100 : v;
+      hud.xpFill.style.width = f + '%';
+      hud.xpTxt.textContent = 'Lv ' + Growth.lv + (mx ? '  MAX' : '  ·  EXP ' + f.toFixed(1) + '%');
+      hud.xpLine.classList.toggle('near', !mx && f >= 90);
+      hud.xpLine.classList.toggle('max', mx);
+    });
+    setIf('xplv', Growth.lv, function (v) { if (hud.xpTxt && !Growth.isMax()) hud.xpTxt.textContent = 'Lv ' + v + '  ·  EXP ' + (Math.floor(Growth.xp / Growth.need() * 1000) / 10).toFixed(1) + '%'; });
     setIf('face', p.char && p.char.anims.idle && p.char.anims.idle[0], drawFace);   // 얼굴 액자: 옷·성별이 바뀔 때만 다시 그림
     setIf('club', !!(Growth.club && G.classKey === 'novice'), drawClubIcon);   // 몽둥이(2026-11-06): 얼굴 액자 오른쪽 아래 작은 그림
     setIf('pts', Growth.pts, statBadges);   // 안 쓴 능력치 점수 표시
@@ -2823,11 +2843,13 @@
   //   아래 띠 = 기술 칸(열린 칸 + 잠긴 칸은 자물쇠 · 열리는 Lv). 끼우기 = 쓰는 기술을 누르고(고름) → 칸을 누름(다른 칸에 있으면 자리 바꿈)
   //     고른 게 없을 때 찬 칸을 누르면 그 칸 기술을 고름(→ 다른 칸을 누르면 옮김). + = 기술 점수 1점으로 Lv +1(최고 5), 초기화 = 기술 점수 전부 돌려받음(공짜)
   var skEl = document.getElementById('skillPanel'), skBack = null, skSel = null;   // skSel = 칸에 끼우려고 고른 쓰는 기술 id
-  // 칸 i 의 이름: 키보드 = config keys.skillA~D 의 첫 키(KeyU → U), 손가락 화면(폰) = 1~4
+  // 칸 i 의 이름: PC 화면 = config keys.skillA~J 의 첫 키(Digit1 → 1), 폰 화면(touchui) = 1~5 (2026-11-07)
   function slotKey(i) {
-    if (window.matchMedia && matchMedia('(pointer: coarse)').matches) return String(i + 1);
-    var k = CFG.keys['skill' + Skills.slots[i]]; return k && k[0] ? k[0].replace(/^Key/, '') : '';
+    if (!isPc()) return String(i + 1);
+    return keyLabel(CFG.keys['skill' + Skills.slots[i]]);
   }
+  // 칸에 끼운 것의 이름(회피 = 「회피」, 2026-11-07)
+  function slotName(S, id) { return id === 'dodge' ? '회피' : (S[id] && S[id].name) || ''; }
   function skillBadges() {
     var bk = Growth.book(G.classKey), n = bk ? bk.pts() : 0;
     document.querySelectorAll('.skbtn, .skopen').forEach(function (b) { b.hidden = !bk; });
@@ -2867,8 +2889,9 @@
     var bk = Growth.book(G.classKey);
     if (!bk) { if (!skEl.hidden) closeSkills(); return; }
     var focusK = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.sk : null;
-    var max = CFG.skills.maxLv || 5, S = CFG.skills[bk.cls], pts = bk.pts(), slots = bk.slots(), bar = bk.bar();
-    if (skSel && !(bk.isActive(skSel) && bk.unlocked(skSel))) skSel = null;
+    var pc = isPc(), max = CFG.skills.maxLv || 5, S = CFG.skills[bk.cls], pts = bk.pts(), slots = bk.slots(pc), bar = bk.bar(pc);
+    if (skSel && !bk.canPut(skSel)) skSel = null;
+    if (skSel === 'dodge' && !pc) skSel = null;
     document.getElementById('skPts').textContent = pts;
     document.getElementById('skSum').textContent = 'Lv ' + Growth.lv + ' · ' + ((CFG.classes[G.classKey] || {}).label || '') +
       (bk.test ? ' · 시험 기술(저장 안 함)' : '');
@@ -2899,23 +2922,37 @@
       if (at >= 0) c.insertAdjacentHTML('beforeend', '<span class="eq">' + slotKey(at) + '</span>');   // 끼운 칸 번호
       (e.passive ? pasEl : actEl).appendChild(c);
     });
+    // PC(2026-11-07): 쓰는 기술 맨 끝에 「회피」 — 칸에 끼우면 그 칸 키로도 회피(Shift 는 늘 회피). 점수로 안 올림
+    if (pc) {
+      var dc = document.createElement('div'), dp = document.createElement('button'), dat = bar.indexOf('dodge');
+      dc.className = 'cell dodgecell' + (skSel === 'dodge' ? ' sel' : '');
+      dc.title = '회피 — 구르며 잠깐 무적. Shift 로 늘 쓸 수 있고, 칸에 끼우면 그 칸 키로도 써요';
+      dp.type = 'button'; dp.className = 'cpick'; dp.dataset.sk = 'dodge:pick'; dp.setAttribute('aria-label', '회피 고르기');
+      dp.appendChild(skIcon('dodge', 40));
+      dp.insertAdjacentHTML('beforeend', '<span class="nm"><span class="l1"><b>회피</b><span class="lvl">Shift</span></span><span class="sd">칸에 끼우면 그 키로도 회피</span></span>');
+      dc.appendChild(dp);
+      dc.insertAdjacentHTML('beforeend', '<span class="plusph"></span>' + (dat >= 0 ? '<span class="eq">' + slotKey(dat) + '</span>' : ''));
+      actEl.appendChild(dc);
+    }
     // 아래 띠: 기술 칸(열린 칸 = 누를 수 있음, 잠긴 칸 = 자물쇠 + 열리는 Lv) + 도움말
-    var bEl = document.getElementById('skBar'), all = CFG.skills.slots || [2, 4];
+    // PC(2026-11-07) = 10칸 두 줄(위 6~0 · 아래 1~5, 아래 막대와 같은 순서), 폰 = 5칸 한 줄
+    var bEl = document.getElementById('skBar'), nAll = bk.maxSlots(pc), gEl = document.createElement('div');
     bEl.innerHTML = '<b class="bl">기술 칸</b>';
-    for (var i = 0; i < all[all.length - 1]; i++) {
+    gEl.className = 'bgrid'; bEl.appendChild(gEl);
+    slotOrder(nAll, pc).forEach(function (i) {
       var id = bk.at(i), locked = i >= slots, b = document.createElement('button');
       b.type = 'button'; b.dataset.sk = ':s' + i; b.disabled = locked;
       b.className = 'bslot' + (locked ? ' locked' : !id ? ' empty' : '') + (skSel && !locked ? ' tgt' : '') + (id && id === skSel ? ' cur' : '');
-      b.setAttribute('aria-label', (i + 1) + '번 칸' + (id ? ' ' + S[id].name : ''));
+      b.setAttribute('aria-label', (i + 1) + '번 칸' + (id ? ' ' + slotName(S, id) : ''));
       b.innerHTML = '<kbd>' + slotKey(i) + '</kbd>';
       if (id) b.appendChild(skIcon(id, 32));
       else b.insertAdjacentHTML('beforeend', '<i class="bph"></i>');
-      b.insertAdjacentHTML('beforeend', '<small>' + (id ? S[id].name : locked ? 'Lv' + bk.slotLv(i) : '빈 칸') + '</small>');
-      bEl.appendChild(b);
-    }
+      b.insertAdjacentHTML('beforeend', '<small>' + (id ? slotName(S, id) : locked ? 'Lv' + bk.slotLv(i) : '빈 칸') + '</small>');
+      gEl.appendChild(b);
+    });
     var sd = skSel && S[skSel], sL = sd && Skills.lvStat(sd, bk.lv(skSel));
-    bEl.insertAdjacentHTML('beforeend', '<span class="hint">' + (sd ? '<b>' + sd.name + '</b> MP ' + sL.mp + ' · 쿨타임 ' + secTxt(sL.cd) : '기술을 고르고') +
-      '<br><em>칸을 누르면 끼워져요</em></span>');
+    bEl.insertAdjacentHTML('beforeend', '<span class="hint">' + (sd ? '<b>' + sd.name + '</b> MP ' + sL.mp + ' · 쿨타임 ' + secTxt(sL.cd) :
+      skSel === 'dodge' ? '<b>회피</b> 쿨타임 ' + secTxt(CFG.move.dodge.cdMs) : '기술을 고르고') + '<br><em>칸을 누르면 끼워져요</em></span>');
     skEl.querySelectorAll('.spread button[data-sk], .skbar button[data-sk]').forEach(function (b) {
       b.addEventListener('click', function () {
         var a = b.dataset.sk.split(':'), bk2 = Growth.book(G.classKey);
@@ -3134,33 +3171,36 @@
   window.addEventListener('keydown', function (e) { if (e.code === 'Escape' && !encEl.hidden) { e.preventDefault(); if (encSlot >= 0) closePick(); else closeEnc(); } });
   G.openEnc = openEnc; G.closeEnc = closeEnc; G.encEnhance = doEnhance; G.encPick = openPick;
 
-  // ---------- 기술 칸 열림 알림 (2026-11-06 폰 UI): 레벨업으로 기술 칸이 늘면(config skills.moreLv = Lv10 · Lv13) 한 번 ----------
+  // ---------- 기술 칸 열림 알림 (2026-11-06 폰 UI): 레벨업으로 기술 칸이 늘면(config skills.moreLv = Lv10 · Lv13 · Lv15) 한 번 ----------
   //   「축하합니다!」 + 칸 줄(새로 열린 칸 = 빛남, 아직 잠긴 칸 = 자물쇠) + 확인. 여는 동안 게임 멈춤(다른 창처럼), 닫으면 원래대로.
   //   저장된 직업의 기술 책만(시험 버튼으로 입은 다른 직업 = 늘 4칸이라 안 뜸). 시험 자동 조종(G.bot)은 안 띄움(멈추지 않게)
   var upEl = document.getElementById('unlockPop'), upBack = null;
-  function slotsAtLv(lv) {
+  //   2026-11-07: PC 화면이면 PC 칸 수(Lv15 에 위 줄 6~10번 칸까지 한꺼번에)
+  function slotsAtLv(lv, pc) {
     var S = CFG.skills.slots || [2, 4], M = [].concat(CFG.skills.moreLv || 13), n = S[0];
+    if (pc && CFG.skills.pcSlots && lv >= (CFG.skills.pcLv || 0)) return CFG.skills.pcSlots;
     M.forEach(function (l, k) { if (lv >= l && S[k + 1] != null) n = S[k + 1]; });
     return n;
   }
   function checkUnlock(up) {
-    var bk = Growth.book(G.classKey);
+    var bk = Growth.book(G.classKey), pc = isPc();
     if (!bk || bk.test || MODE !== 'stage' || G.bot) return;
-    var before = slotsAtLv(Growth.lv - up), now = bk.slots();
+    var before = slotsAtLv(Growth.lv - up, pc), now = bk.slots(pc);
     if (now > before) openUnlock(before, now);
   }
   function openUnlock(from, to) {
-    var bk = Growth.book(G.classKey), S = CFG.skills[bk.cls], all = CFG.skills.slots || [2, 4], row = document.getElementById('upSlots');
+    var bk = Growth.book(G.classKey), S = CFG.skills[bk.cls], pc = isPc(), nAll = bk.maxSlots(pc), row = document.getElementById('upSlots');
     document.getElementById('upLv').textContent = 'Lv ' + Growth.lv;
     row.innerHTML = '';
-    for (var i = 0; i < all[all.length - 1]; i++) {
+    row.classList.toggle('ten', nAll > 5);
+    slotOrder(nAll, pc).forEach(function (i) {
       var id = bk.at(i), c = document.createElement('div');
       c.className = 'upslot' + (i >= to ? ' locked' : i >= from ? ' new' : '') + (id ? '' : ' empty');
       c.innerHTML = '<kbd>' + slotKey(i) + '</kbd>';
       if (id) c.appendChild(skIcon(id, 48)); else c.insertAdjacentHTML('beforeend', '<i class="bph"></i>');
-      c.insertAdjacentHTML('beforeend', '<small>' + (i >= to ? 'Lv' + bk.slotLv(i) : id ? S[id].name : '빈 칸') + '</small>');
+      c.insertAdjacentHTML('beforeend', '<small>' + (i >= to ? 'Lv' + bk.slotLv(i) : id ? slotName(S, id) : '빈 칸') + '</small>');
       row.appendChild(c);
-    }
+    });
     if (!upEl.hidden) return;
     snd('unlock');
     upBack = { menu: menuEl && !menuEl.hidden ? menuEl : null, paused: G.paused };
@@ -3177,6 +3217,164 @@
   document.getElementById('btnUpOk').addEventListener('click', function () { closeUnlock(); this.blur(); });
   window.addEventListener('keydown', function (e) { if (e.code === 'Escape' && !upEl.hidden) { e.preventDefault(); closeUnlock(); } });
   G.openUnlock = openUnlock;
+  // ---------- PC 아래 막대 (2026-11-07, 형님 승인) ----------
+  //   body.pcui(input.js 가 붙임) 일 때 화면 맨 아래 띠: 행동 칸(각성 L · 평타 J · 점프 Space) | 기술 칸 10개(위 줄 6~0 · 아래 줄 1~5) |
+  //   창 버튼(능력치 C · 기술 V · 강화 B · 설정 Esc · 소리 M). 게임 화면은 이 띠 위까지(resize 의 pcBarPx)
+  //   칸 = 기술 책(growth.js)의 칸 순서 그대로(폰은 앞 5칸만). 칸을 마우스로 눌러도 씀(Input.pressSlot: 회피를 끼운 칸이면 회피)
+  //   칸 열림: 1~5번 = 폰과 같은 Lv(2칸 → Lv10 · 13 · 15), 6~10번 = Lv15 에 한꺼번에(config skills.pcSlots · pcLv). 견습 = 다 잠김
+  function isPc() { return Input.mode() === 'pc'; }
+  // 키 이름: Digit1 → 1, KeyU → U, Numpad1 → 1, Escape → Esc, Space 그대로
+  function keyLabel(list) {
+    var k = list && list[0];
+    if (!k) return '';
+    return k === 'Escape' ? 'Esc' : k.replace(/^(Key|Digit|Numpad)/, '');
+  }
+  // 칸을 그리는 순서: PC 10칸 = 위 줄(6~10번) 먼저 → 아래 줄(1~5번). 그 밖 = 1번부터
+  function slotOrder(n, pc) {
+    var a = [], i;
+    if (pc && n > 5) { for (i = 5; i < n; i++) a.push(i); for (i = 0; i < 5; i++) a.push(i); }
+    else for (i = 0; i < n; i++) a.push(i);
+    return a;
+  }
+  // 게임 화면 밑에서 비울 높이(css px): PC 화면이면 아래 막대 + 경험치 줄. 폰은 0(경험치 줄은 얇게 겹침)
+  function pcBarPx() {
+    var x = document.getElementById('xpLine'), xh = x ? x.offsetHeight : 0, b = document.getElementById('pcBar');
+    document.documentElement.style.setProperty('--xph', (isPc() ? xh : 0) + 'px');
+    return isPc() && b ? b.offsetHeight + xh : 0;
+  }
+  var pcSlotsEl = [], pcLast = {}, pcCool = {};
+  var pcAtkEl = document.getElementById('pcAtk'), pcJumpEl = document.getElementById('pcJump'), pcAwkEl = document.getElementById('pcAwk');
+  // 마우스로 누름(손가락이어도 됨): 누르는 순간 한 번 + 눌린 모습
+  function pcPress(el, fn) {
+    if (!el) return;
+    el.addEventListener('pointerdown', function (e) {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      e.preventDefault(); fn(); el.classList.add('down');
+    });
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (t) { el.addEventListener(t, function () { el.classList.remove('down'); }); });
+  }
+  (function buildPcBar() {
+    var wrap = document.getElementById('pcSkills');
+    if (!wrap) return;
+    slotOrder(Skills.slots.length, true).forEach(function (i) {
+      var k = Skills.slots[i], s = document.createElement('div');
+      s.className = 'pslot psl'; s.dataset.pslot = k; s.setAttribute('role', 'button'); s.setAttribute('aria-label', (i + 1) + '번 칸');
+      s.innerHTML = '<span class="ic"></span><i class="sweep"></i><b class="sec"></b><kbd>' + keyLabel(CFG.keys['skill' + k]) + '</kbd><small class="mp"></small>';
+      wrap.appendChild(s); pcSlotsEl[i] = s;
+      pcPress(s, function () { if (!s.classList.contains('locked') && !s.classList.contains('empty')) Input.pressSlot(k); });
+    });
+    pcPress(pcAtkEl, function () { Input.pressAttack(); });
+    pcPress(pcJumpEl, function () { Input.pressJump(); });
+    pcPress(pcAwkEl, function () { Input.pressAwaken(); });
+    [[pcAtkEl, 'attack'], [pcJumpEl, 'jump'], [pcAwkEl, 'awaken']].forEach(function (a) { var kb = a[0] && a[0].querySelector('kbd'); if (kb) kb.textContent = keyLabel(CFG.keys[a[1]]); });
+  })();
+  // 칸 그림(js/icons.js 금테 액자): 칸 크기(기기 점)에 가장 가까운 정수 배. 같은 그림 · 같은 크기면 다시 안 그림
+  function pcIcon(el, id) {
+    var ic = el && el.querySelector('.ic');
+    if (!ic) return;
+    if (!id || !window.PixelIcons) { if (ic.dataset.icon) { ic.dataset.icon = ''; ic.textContent = ''; } return; }
+    var sc = Math.max(1, Math.round((el.offsetWidth || 40) * (window.devicePixelRatio || 1) / 32)), key = id + '@' + sc;
+    if (ic.dataset.icon === key) return;
+    ic.dataset.icon = key; ic.textContent = '';
+    ic.appendChild(PixelIcons.canvas(id, sc, { frame: true }));
+  }
+  // 매 장(render): 바뀐 칸만 다시 그림. 쿨타임 = --cd + 남은 초, 마나 모자람 = nomp, 쿨타임이 끝나는 순간 = 번쩍(ready)
+  function pcBarUi() {
+    if (!isPc() || !G.player) return;
+    pcIcon(pcAtkEl, 'atk'); pcIcon(pcJumpEl, 'jump');
+    var bk = Growth.book(G.classKey), n = bk ? bk.slots(true) : 0;
+    for (var i = 0; i < pcSlotsEl.length; i++) {
+      var el = pcSlotsEl[i];
+      if (!el) continue;
+      var locked = i >= n, st = locked ? null : Skills.slotState(G, i);
+      var key = locked ? 'L' + (bk ? bk.slotLv(i) : 0) : !st ? 'E' : st.id + '|' + st.frac + '|' + Math.ceil(st.rem / 100) + '|' + st.nomp + '|' + st.cost;
+      if (pcLast[i] === key) continue;
+      pcLast[i] = key;
+      var cool = !!st && st.rem > 0, was = pcCool[i];
+      pcCool[i] = cool ? st.id : null;
+      el.classList.toggle('locked', locked); el.classList.toggle('empty', !locked && !st);
+      el.classList.toggle('cool', cool); el.classList.toggle('nomp', !!st && st.nomp);
+      el.style.setProperty('--cd', st ? st.frac : 0);
+      pcIcon(el, st ? st.id : null);
+      el.querySelector('.sec').textContent = cool ? (st.rem >= 1000 ? Math.ceil(st.rem / 1000) : (st.rem / 1000).toFixed(1)) : '';
+      var mp = el.querySelector('small');
+      mp.className = locked ? 'lk' : 'mp';
+      mp.textContent = locked ? (bk ? 'Lv' + bk.slotLv(i) : '') : st && !st.dodge ? st.cost : '';
+      el.title = locked ? (bk ? (i + 1) + '번 칸 · Lv' + bk.slotLv(i) + ' 에 열려요' : '전직하면 기술 칸이 열려요') :
+        st ? st.name + (st.dodge ? ' (Shift 로도)' : ' · MP ' + st.cost) : (i + 1) + '번 칸 · 비었어요 (기술 창 V 에서 끼워요)';
+      if (was && !cool && st && was === st.id) { el.classList.remove('ready'); void el.offsetWidth; el.classList.add('ready'); }
+    }
+  }
+
+  // ---------- PC 조작 도움말 한 줄 (2026-11-07): 처음 config help.plays 번 켤 때만(PC 화면으로 켠 횟수), X 로 닫음, 설정 창에서 다시 켬 ----------
+  //   저장 = localStorage 'pixelBrawler.help' = { n: PC 로 켠 횟수, off: 닫음, on: 설정에서 켬(횟수 상관없이 보임) }
+  var HELP_KEY = 'pixelBrawler.help', helpSt = { n: 0, off: false, on: false };
+  try { var hs0 = JSON.parse(localStorage.getItem(HELP_KEY) || 'null'); if (hs0 && typeof hs0 === 'object') helpSt = { n: hs0.n | 0, off: !!hs0.off, on: !!hs0.on }; } catch (e) {}
+  function helpSave() { try { localStorage.setItem(HELP_KEY, JSON.stringify(helpSt)); } catch (e) {} }
+  if (isPc()) { helpSt.n++; helpSave(); }
+  function helpShown() { return !helpSt.off && (helpSt.on || helpSt.n <= ((CFG.help && CFG.help.plays) || 3)); }
+  function helpUi() { var h = document.getElementById('keyHint'); if (h) h.hidden = !(isPc() && helpShown()); }
+  document.getElementById('btnHelpX').addEventListener('click', function () { helpSt.off = true; helpSt.on = false; helpSave(); helpUi(); this.blur(); });
+
+  // ---------- 설정 창 (2026-11-07, PC Esc · 아래 막대 「설정」): 소리 · 조작 도움말 켜고 끄기 + 키 안내. 여는 동안 게임 멈춤 ----------
+  var setEl = document.getElementById('setPanel'), setBack = null;
+  function setUi() {
+    var m = !!(window.SFX && SFX.isMuted && SFX.isMuted()), h = helpShown(), sb = document.getElementById('btnSetSnd'), hb = document.getElementById('btnSetHelp');
+    sb.textContent = m ? '꺼짐' : '켜짐'; sb.classList.toggle('on', !m);
+    hb.textContent = h ? '켜짐' : '꺼짐'; hb.classList.toggle('on', h);
+  }
+  function openSet() {
+    if (!setEl.hidden) return;
+    setBack = { menu: menuEl && !menuEl.hidden ? menuEl : null, paused: G.paused };
+    G.paused = true; Input.setOverride(null);
+    setUi();
+    openMenu(setEl, document.getElementById('btnSetClose'));
+  }
+  function closeSet() {
+    if (setEl.hidden) return;
+    closeMenu(setEl);
+    var B = setBack || {}; setBack = null;
+    G.paused = !!B.paused;
+    if (B.menu && !B.menu.hidden) openMenu(B.menu, B.menu.querySelector('button:not([hidden])'));
+  }
+  document.getElementById('btnSetClose').addEventListener('click', closeSet);
+  document.getElementById('btnSetSnd').addEventListener('click', function () { if (window.SFX && SFX.toggle) SFX.toggle(); setUi(); });
+  document.getElementById('btnSetHelp').addEventListener('click', function () {
+    if (helpShown()) { helpSt.off = true; helpSt.on = false; } else { helpSt.off = false; helpSt.on = true; }
+    helpSave(); helpUi(); setUi();
+  });
+  document.getElementById('pcSet').addEventListener('click', function () { openSet(); this.blur(); });
+  G.openSet = openSet; G.closeSet = closeSet;
+
+  // ---------- 창 키 (2026-11-07, config keys.stat · skill · enc · menu = C · V · B · Esc) ----------
+  //   창이 없을 때 누르면 그 창을 엶, 같은 키를 다시 누르면 닫음. 다른 창 · 전직 화면이 열려 있으면 안 열림(Esc 는 각 창이 먼저 받아 닫음)
+  window.addEventListener('keydown', function (e) {
+    if (e.code === 'KeyM' && !setEl.hidden) setTimeout(setUi, 0);   // 설정 창이 열린 채 M(소리) → 글자 맞춤
+    if (e.repeat || e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented) return;
+    var K = CFG.keys, c = e.code;
+    function is(l) { return !!l && l.indexOf(c) >= 0; }
+    var w = is(K.stat) ? 'stat' : is(K.skill) ? 'skill' : is(K.enc) ? 'enc' : is(K.menu) ? 'menu' : null;
+    if (!w || (classEl && !classEl.hidden)) return;
+    var own = { stat: statEl, skill: skEl, enc: encEl, menu: setEl }[w];
+    var open = [statEl, skEl, encEl, upEl, setEl].filter(function (p) { return p && !p.hidden; })[0];
+    if (open) {
+      if (open === own) { e.preventDefault(); ({ stat: closeStats, skill: closeSkills, enc: closeEnc, menu: closeSet })[w](); }
+      return;
+    }
+    e.preventDefault();
+    ({ stat: openStats, skill: openSkills, enc: openEnc, menu: openSet })[w]();
+  });
+  // 칸에 회피를 끼웠나(input.js 가 칸 누름을 회피로 바꿈)
+  Input.setSlotDodge(function (k) { var bk = Growth.book(G.classKey); return !!bk && bk.at(Skills.slots.indexOf(k)) === 'dodge'; });
+  // 화면 갈래가 바뀜(손가락 ↔ 키보드·마우스): 게임 화면 크기 다시(아래 막대만큼) · 폰 버튼 그림 다시 · 도움말 · 기술 창 칸 수
+  Input.onMode(function () {
+    pcLast = {};
+    helpUi();
+    window.dispatchEvent(new Event('resize'));
+    if (!skEl.hidden) renderSkills();
+  });
+  helpUi();
+
   // 마나가 모자라 기술이 안 나감: 머리 위 「MP 부족」(파란 작은 글자) + 그 칸 버튼이 잠깐 흔들림 (skills.js pick 이 부름, 너무 자주는 안 띄움)
   function noMp(slot) {
     var p = G.player;
@@ -3345,6 +3543,10 @@
     // 기술 바로 쓰기(쿨타임 무시): GAME.test.skill('A')
     //   slot = 'A'~'D' 또는 0~3, noCd = 쿨타임 무시, 마나는 그대로 듦(GAME.test.mp(999) 로 채움)
     skill: function (slot, noCd) { if (noCd) G.player.skillCd = {}; Input.pressSkill(typeof slot === 'number' ? Skills.slots[slot] : slot || 'A'); },
+    // PC 아래 막대 시험(2026-11-07): 화면 갈래 바꾸기('pc' / 'touch') · 칸에 끼우기(i = 0~9, id = 기술 id 또는 'dodge') · 칸 상태
+    uiMode: function (m) { if (m) Input.setMode(m); return Input.mode(); },
+    put: function (i, id) { var bk = Growth.book(G.classKey), ok = !!(bk && bk.put(i, id)); pcLast = {}; return ok; },
+    slots: function () { var bk = Growth.book(G.classKey); return bk ? { pc: bk.slots(true), phone: bk.slots(), bar: bk.bar(true) } : null; },
     mp: function (n) { var p = G.player; p.mp = Math.max(0, Math.min(p.maxMp, n == null ? p.maxMp : n)); return p.mp; },
     // 기술 책 시험(2026-11-06, ?lv=N 일 때만): 이번 창에서만 그 직업으로 전직한 저장처럼 + 기술 점수를 계획(config skills.botPlan)대로
     skillSetup: function (cls, clsLv, plan) { var r = Growth.testSetup(cls, clsLv, plan); refreshGrowth(); return r; },

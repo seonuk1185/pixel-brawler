@@ -27,7 +27,7 @@
   //   크기는 기술 진행의 area(LV_GROW, start 참고)로 커짐 → 판정도 같이(보이는 크기 = 맞는 크기)
   var curLv = 1, LV_GROW = 0.06;
   function atLv(lv, fn) { var o = curLv; curLv = lv || 1; try { fn(); } finally { curLv = o; } }
-  var SLOTS = ['A', 'B', 'C', 'D'];
+  var SLOTS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];   // 기술 칸 1~10 (2026-11-07: 폰 = 앞 5칸, PC 아래 막대 = 10칸)
   function SM() { return ((CFG && CFG.view.renderScale) || 1) > 1; }   // 매끈한 화면이면 코드로 그린 효과도 부드럽게
   // 충격파: x,y = 가운데, r = 끝 반지름(도트), flat = 세로 비율(땅 고리 0.3, 공중 1), w = 굵기, ms, color, ground = 캐릭터 밑에 그림
   function wave(x, y, r, o) {
@@ -141,7 +141,7 @@
     return { lv: lv || 1, mp: Math.round((d.mp || 0) * at(C.mp)), cd: Math.round(d.cooldownMs * at(C.cd) / 100) * 100,
              dmg: at(C.dmg), lv5: lv >= (CFG.skills.maxLv || 5) ? (d.lv5 || {}) : null };
   }
-  // 그 칸(0~3)에 끼운 기술: { d = 정의, L = Lv 값 } 또는 null
+  // 그 칸(0~9)에 끼운 기술: { d = 정의, L = Lv 값 } 또는 null (회피를 끼운 칸 = null → 회피는 input.js 가 칸 누름을 회피로 바꿈)
   function slotSkill(p, i) {
     var bk = bookOf(p.classKey), id = bk && bk.at(i), d = defFor(p, id);
     return d ? { d: d, L: lvStat(d, bk.lv(id)) } : null;
@@ -181,7 +181,7 @@
   function snd(name, opts) { if (window.SFX) SFX.play(name, opts); }
 
   // ---------- 시작 ----------
-  // 눌린 칸(A~D) 중 쓸 수 있는 기술(쿨타임 끝남 + 마나 넉넉) 하나 → { d, L }. 빈 칸·안 보이는 칸은 입력을 버림.
+  // 눌린 칸(A~J) 중 쓸 수 있는 기술(쿨타임 끝남 + 마나 넉넉) 하나 → { d, L }. 빈 칸·안 보이는 칸은 입력을 버림.
   //   쿨타임 중이면 입력을 잠깐 기억(버퍼). 마나가 모자라면 입력을 버리고 머리 위 「MP 부족」(H.noMp)
   //   skip = 이번에 이어지는 동안(chain) 이미 쓴 기술 id 목록(그 칸의 입력은 그대로 둠 → 다른 칸이 나갈 수 있음)
   function pick(p, skip) {
@@ -1757,10 +1757,25 @@
     });
   }
 
-  // ---------- 버튼 표시 (폰: 공격 버튼 둘레 반달의 네모 도트 칸 + 기술 그림 / PC: 아래 글자 옆 작은 칸) ----------
-  // 쿨타임 중이면 어둡게 + 시계 방향으로 밝아지는 부채꼴(--cd = 남은 비율) + 남은 초. 빈 칸·안 보이는 칸(Lv13 전 3·4번)은 숨김.
+  // ---------- 버튼 표시 (폰: 공격 버튼 둘레 반달의 네모 도트 칸 + 기술 그림. PC 아래 막대는 main.js pcBarUi 가 slotState 로 그림) ----------
+  // 쿨타임 중이면 어둡게 + 시계 방향으로 밝아지는 부채꼴(--cd = 남은 비율) + 남은 초. 빈 칸·안 보이는 칸(Lv15 전 5번 등)은 숨김.
   //   마나가 모자라면 회색(nomp) + 버튼 밑에 「MP 드는 마나」. G.player 가 없으면(처음) 다 숨김
   var uiLast = {};
+  // 칸 하나의 지금 모습(2026-11-07, 폰 버튼 · PC 아래 막대가 같이 씀) → null(빈 칸) 또는
+  //   { id, key, name, icon, rem = 남은 쿨타임(ms), cd = 쿨타임 전체, frac = 남은 비율(0~1), cost = 드는 마나, nomp = 마나 모자람, dodge = 회피 칸 }
+  //   회피 칸: 쿨타임 = 플레이어 회피 쿨타임(config move.dodge.cdMs), 마나 안 듦
+  function slotState(G, i) {
+    var p = G.player, bk = p ? bookOf(G.classKey) : null, id = bk && bk.at(i);
+    if (!p || !id) return null;
+    if (id === 'dodge') {
+      var D = CFG.move && CFG.move.dodge, r = Math.max(0, p.dodgeCd || 0), all = (D && D.cdMs) || 1;
+      return { id: 'dodge', key: 'dodge', name: '회피', icon: '회', rem: r, cd: all, frac: Math.round(Math.min(1, r / all) * 100) / 100, cost: 0, nomp: false, dodge: true };
+    }
+    var q = slotSkill({ classKey: G.classKey, gender: G.charKey }, i), d = q && q.d;
+    if (!d) return null;
+    var rem = p.skillCd ? Math.max(0, p.skillCd[d.key] || 0) : 0, cost = mpCost(p, q.L), cd = cdOf(p, q.L);
+    return { id: d.id, key: d.key, name: d.name, icon: d.icon, rem: rem, cd: cd, frac: Math.round(Math.min(1, rem / cd) * 100) / 100, cost: cost, nomp: (p.mp || 0) < cost };
+  }
   // 폰 기술 버튼 그림(2026-11-06 폰 UI): js/icons.js 의 32칸 액자 그림을 버튼 크기(기기 점)에 가장 가까운 정수 배로 → CSS 가 버튼 크기에 맞춤.
   //   같은 기술·같은 크기면 다시 안 그림. 화면 크기가 바뀌면(폴드 펴기 등) 다시 그림
   function setIcon(el, ic, id) {
@@ -1773,9 +1788,7 @@
   function ui(G) {
     var changed = false, p = G.player;
     SLOTS.forEach(function (slot, i) {
-      var q = p ? slotSkill({ classKey: G.classKey, gender: G.charKey }, i) : null, d = q && q.d;
-      var rem = d && p.skillCd ? Math.max(0, p.skillCd[d.key] || 0) : 0, cost = d ? mpCost(p, q.L) : 0;
-      var frac = d ? Math.round(Math.min(1, rem / cdOf(p, q.L)) * 100) / 100 : 0, nomp = !!d && (p.mp || 0) < cost;
+      var d = slotState(G, i), rem = d ? d.rem : 0, cost = d ? d.cost : 0, frac = d ? d.frac : 0, nomp = !!d && d.nomp;
       var key = d ? d.key + '|' + d.icon + '|' + frac + '|' + Math.ceil(rem / 100) + '|' + nomp + '|' + cost : 'none';
       if (uiLast[slot] === key) return;
       var wasHidden = !uiLast[slot] || uiLast[slot] === 'none';
@@ -1787,7 +1800,7 @@
         el.classList.toggle('cool', rem > 0);
         el.classList.toggle('nomp', nomp);
         el.style.setProperty('--cd', frac);
-        el.title = d.name + ' (MP ' + cost + ')';
+        el.title = d.name + (d.dodge ? '' : ' (MP ' + cost + ')');
         el.setAttribute('aria-label', d.name);
         var ic = el.querySelector('.ic'), sec = el.querySelector('.sec'), mp = el.querySelector('.mp');
         if (ic) {
@@ -1795,14 +1808,14 @@
           else if (ic.textContent !== d.icon) ic.textContent = d.icon;                                            // PC 아래 글자 = 글자 하나
         }
         if (sec) sec.textContent = rem > 0 ? (rem >= 1000 ? Math.ceil(rem / 1000) : (rem / 1000).toFixed(1)) : '';
-        if (mp) mp.textContent = 'MP ' + cost;
+        if (mp) mp.textContent = d.dodge ? '' : 'MP ' + cost;
       });
     });
     return changed;
   }
   // 마나가 모자라 안 나간 칸 버튼을 잠깐 흔듦(main.js 의 noMp 가 부름)
   function shakeSlot(slot) {
-    document.querySelectorAll('[data-skill="' + slot + '"]').forEach(function (el) {
+    document.querySelectorAll('[data-skill="' + slot + '"], [data-pslot="' + slot + '"]').forEach(function (el) {   // 폰 버튼 + PC 아래 막대 칸
       el.classList.remove('nompHit'); void el.offsetWidth; el.classList.add('nompHit');
     });
   }
@@ -1823,7 +1836,7 @@
     addEnts: addEnts,
     update: update, tickReal: tickReal,
     drawBackdrop: drawBackdrop, drawUnder: drawUnder, drawGhosts: drawGhosts, drawOver: drawOver, drawFlash: drawFlash, drawDebug: drawDebug,
-    ui: ui, shakeSlot: shakeSlot, slots: SLOTS, lvStat: lvStat, slotSkill: slotSkill,
+    ui: ui, shakeSlot: shakeSlot, slots: SLOTS, lvStat: lvStat, slotSkill: slotSkill, slotState: slotState,
     _meteors: function () { return meteors; },   // 시험용
     // 떨어지는 중인 운석 자리(2026-11-06 무기 속성: 운석에도 속성 꼬리, js/enchant.js)
     meteorsNow: function () { return meteors.filter(function (m) { return !m.boom && m.t >= m.M.markMs; }).map(function (m) { return meteorPos(m, clamp((m.t - m.M.markMs) / m.M.fallMs, 0, 1)); }); },

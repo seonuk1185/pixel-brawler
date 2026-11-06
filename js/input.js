@@ -1,4 +1,7 @@
 // 조작: PC 키보드 + 폰 가상 조이스틱 / 공격·점프·회피·기술 버튼
+// 화면 갈래(2026-11-07 PC 아래 막대): body 에 pcui(PC 아래 막대) 또는 touchui(폰 조이스틱·버튼)를 붙임.
+//   처음 = 손가락 화면(pointer: coarse)이면 touchui, 아니면 pcui. 그 뒤 손가락으로 누르면 touchui, 키보드·마우스를 쓰면 pcui (둘 다 되는 기기)
+//   main.js 가 Input.onMode(fn) 로 바뀜을 받아 화면 크기를 다시 잼
 // 달리기(2026-11-03): 키보드 = 같은 쪽(←/→)을 빠르게 두 번 → 누르고 있는 동안 달림.
 //   폰 = 조이스틱을 가로로 같은 쪽으로 잠깐(CFG.move.joyHoldMs) 계속 밀거나, 손을 뗐다가 바로(joyFlickMs) 같은 쪽으로 다시 밀면 달림
 (function () {
@@ -7,8 +10,31 @@
   var jumpQueued = 0;     // 점프 누른 순간
   var awakenQueued = 0;   // 각성 누른 순간(2026-11-06 밤, 분노 100%)
   var dodgeQueued = 0;    // 회피 누른 순간(2026-11-07)
-  var skillQueued = { A: 0, B: 0, C: 0, D: 0 };   // 기술 칸 A~D 누른 순간 (C·D = 2026-11-06 성장 4단계, Lv13 부터 보임)
-  var SLOTS = ['A', 'B', 'C', 'D'];
+  // 기술 칸 A~J 누른 순간 (C·D = 2026-11-06 성장 4단계, E = 2026-11-07 폰 5번째 칸, F~J = 2026-11-07 PC 아래 막대 위 줄)
+  var SLOTS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
+  var skillQueued = {}; SLOTS.forEach(function (k) { skillQueued[k] = 0; });
+  // 칸에 회피를 끼웠나(main.js 가 넣는 함수, 칸 글자 → true/false): 그 칸을 누르면 기술 대신 회피(2026-11-07)
+  var slotIsDodge = null;
+  function pressSlot(k) {
+    if (slotIsDodge && slotIsDodge(k)) dodgeQueued = performance.now();
+    else skillQueued[k] = performance.now();
+  }
+  // ---------- 화면 갈래(pcui / touchui) ----------
+  var uiMode = null, modeCbs = [];
+  function setMode(m) {
+    if (m === uiMode) return;
+    uiMode = m;
+    document.body.classList.toggle('touchui', m === 'touch');
+    document.body.classList.toggle('pcui', m === 'pc');
+    modeCbs.forEach(function (fn) { fn(m); });
+  }
+  var coarse = window.matchMedia && matchMedia('(pointer: coarse)').matches;
+  setMode(coarse || (!window.matchMedia && navigator.maxTouchPoints > 0) ? 'touch' : 'pc');
+  // 손가락 = 폰 화면, 마우스(실제로 움직임)·펜·키보드 = PC 화면. 잡는 단계(capture)라 버튼이 먼저 막아도 받음
+  window.addEventListener('pointerdown', function (e) { setMode(e.pointerType === 'touch' ? 'touch' : 'pc'); }, true);
+  window.addEventListener('touchstart', function () { setMode('touch'); }, { capture: true, passive: true });
+  window.addEventListener('pointermove', function (e) { if (e.pointerType === 'mouse' && (e.movementX || e.movementY)) setMode('pc'); }, true);
+  window.addEventListener('keydown', function (e) { if (!e.isComposing && e.code) setMode('pc'); }, true);
   var joy = { x: 0, y: 0, active: false, id: null };
   var CF = null;
   // 달리기: runKey = 키보드로 정한 달리는 쪽(-1/1, 0 = 아님), tap = 마지막으로 누른 좌/우와 시각
@@ -41,8 +67,8 @@
       if (matches(e.code, jp)) jumpQueued = performance.now();
       if (matches(e.code, aw)) awakenQueued = performance.now();
       if (matches(e.code, dg)) dodgeQueued = performance.now();
-      SLOTS.forEach(function (k) { if (matches(e.code, K['skill' + k] || [])) skillQueued[k] = performance.now(); });
-      if ([].concat(K.left, K.right, K.up, K.down, K.attack, jp, sk, aw, dg).indexOf(e.code) >= 0) e.preventDefault();
+      SLOTS.forEach(function (k) { if (matches(e.code, K['skill' + k] || [])) pressSlot(k); });   // 회피를 끼운 칸이면 회피
+      if ([].concat(K.left, K.right, K.up, K.down, K.attack, jp, sk, aw, dg).indexOf(e.code) >= 0 && !e.ctrlKey && !e.metaKey && !e.altKey) e.preventDefault();
     });
     window.addEventListener('keyup', function (e) {
       keysDown[e.code] = false;
@@ -110,7 +136,7 @@
     zone.addEventListener('pointerup', end);
     zone.addEventListener('pointercancel', end);
 
-    // ----- 공격·점프 버튼 + 기술 버튼 4개 -----
+    // ----- 공격·점프 버튼 + 기술 버튼 5개 -----
     function btn(id, onDown) {
       var b = document.getElementById(id);
       if (!b) return;
@@ -121,7 +147,7 @@
     }
     btn('btnAtk', function () { attackQueued = performance.now(); });
     btn('btnJump', function () { jumpQueued = performance.now(); });
-    SLOTS.forEach(function (k) { btn('btnSk' + k, function () { skillQueued[k] = performance.now(); }); });
+    SLOTS.forEach(function (k) { btn('btnSk' + k, function () { pressSlot(k); }); });
     btn('btnAwk', function () { awakenQueued = performance.now(); });   // 각성 버튼(폰)
     btn('btnDodge', function () { dodgeQueued = performance.now(); });  // 회피 버튼(폰, 2026-11-07)
   }
@@ -163,7 +189,7 @@
     pressAttack: function () { attackQueued = performance.now(); }, // 시험용
     takeJump: function (bufferMs) { if (fresh(jumpQueued, bufferMs)) { jumpQueued = 0; return true; } return false; },
     pressJump: function () { jumpQueued = performance.now(); },     // 시험용
-    // 기술: slot = 'A' ~ 'D'. 버퍼 안에 눌린 기술이 있으면 꺼내 씀
+    // 기술: slot = 'A' ~ 'J'. 버퍼 안에 눌린 기술이 있으면 꺼내 씀
     takeSkill: function (slot, bufferMs) {
       if (fresh(skillQueued[slot], bufferMs)) { skillQueued[slot] = 0; return true; }
       return false;
@@ -171,6 +197,13 @@
     peekSkill: function (slot, bufferMs) { return fresh(skillQueued[slot], bufferMs); },
     clearSkill: function (slot) { skillQueued[slot] = 0; },
     pressSkill: function (slot) { skillQueued[slot] = performance.now(); },   // 시험용
+    // 칸 누름(PC 아래 막대를 마우스로 누름 · 시험용): 회피를 끼운 칸이면 회피(2026-11-07)
+    pressSlot: pressSlot,
+    setSlotDodge: function (fn) { slotIsDodge = fn; },
+    // 화면 갈래(2026-11-07): mode() = 'pc' / 'touch', setMode = 시험용, onMode(fn) = 바뀔 때 부름
+    mode: function () { return uiMode; },
+    setMode: setMode,
+    onMode: function (fn) { modeCbs.push(fn); },
     // 각성(2026-11-06 밤): 버퍼 안에 눌렸으면 꺼내 씀
     takeAwaken: function (bufferMs) { if (fresh(awakenQueued, bufferMs)) { awakenQueued = 0; return true; } return false; },
     pressAwaken: function () { awakenQueued = performance.now(); },   // 시험용(자동 조종)
