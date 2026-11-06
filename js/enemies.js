@@ -199,6 +199,7 @@
   // 지금 땅에서 떠 있는 높이(그림·몸 판정을 그만큼 위로, 그림자는 땅에)
   //   띄워진 잡몹(state 'air')·공중에서 쓰러진 잡몹(떨어지는 중)은 az
   Enemy.prototype.flyZ = function () {
+    if (this.dropZ > 0) { if (this.state === 'walk' || this.state === 'idle') return this.dropZ; this.dropZ = 0; }   // 뛰어내리는 중(던전 몹 떼). 맞으면 바로 땅
     if (this.az > 0 && (this.state === 'air' || this.state === 'dead')) return this.az;
     var a = this.atk; return this.state === 'attack' && a && a.spec.type === 'dive' ? a.z || 0 : 0;
   };
@@ -388,6 +389,18 @@
     this.animT += dtMs;
     this.clock += dtMs;
     if (this.rageT != null) this.rageT += dtMs;   // 분노 연출 시계(2026-11-06 밤, main.js 가 화날 때 0)
+    // 뒤 벽에서 뛰어내림(2026-11-07 던전 몹 떼, main.js dgPack): dropZ 높이에서 중력으로 떨어짐 → 땅에 닿으면 먼지 + 살짝 흔들림.
+    //   떨어지는 동안은 걷기 · 공격 안 함(맞으면 flyZ 가 바로 땅으로 내림)
+    if (this.dropZ > 0 && (this.state === 'walk' || this.state === 'idle')) {
+      this.dropV = (this.dropV || 0) + this.cfg.ai.air.g * AS() * dt;
+      this.dropZ = Math.max(0, this.dropZ - this.dropV * dt);
+      if (this.dropZ <= 0) {
+        this.dropV = 0;
+        if (ctx.dust) { ctx.dust(this.x - 8 * AS(), this.y, -1); ctx.dust(this.x + 8 * AS(), this.y, 1); }
+        if (ctx.shake) ctx.shake(0.25);
+      }
+      return;
+    }
     if (T.walkStride) this.stepWalk(dtMs);
     if (this.flashT > 0) this.flashT -= dtMs;
     if (this.staggerCd > 0) this.staggerCd -= dtMs;

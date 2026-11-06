@@ -990,7 +990,7 @@
     S.locked = true;   // 웨이브 판의 「화면 고정」과 같은 뜻(자동 조종이 오른쪽으로 걸어가지 않게)
     S.dg = { rule: D.rule, t: 0, wait: D.startMs || 0, acc: 0, queue: [], ev: 0, side: Math.random() < 0.5 ? 0 : 1, midN: 0,
              kills: 0, midKills: 0, end: null, endT: 0, bonus: 0, rec: null, best: null, maxAlive: 0 };
-    if (D.spawn) S.dg.acc = D.spawn.every[0] - (D.spawn.firstMs || 0);   // 첫 몹 = 시작하고 firstMs 뒤
+    if (D.spawn) S.dg.acc = (D.pack ? D.pack.every[0] : D.spawn.every[0]) - (D.spawn.firstMs || 0);   // 첫 몹(무리) = 시작하고 firstMs 뒤
   }
   // 몹 하나 뽑기: config mobs [종류, 무게, 이 초부터]
   function dgPick(D, sec) {
@@ -1004,13 +1004,59 @@
   function dgSpawnMob(type, side, off) { var e = spawnEnemy(type, side, null, off || 0); e.dgMob = true; return e; }
   function dgSpawnMid(i, side) { var MQ = dgMid(i), e = spawnEnemy(MQ.type, side, { mid: true, mq: MQ }, 0); G.stage.mid = e; return e; }
   function dgQueue(q) { G.stage.dg.queue.push(q); }
+  // ---------- 몹 떼(2026-11-07 형님: 한 줄로 오는 느낌 → 무리로, config pack) ----------
+  //   한 번에 3~6마리 무리: 옆 간격 pack.dx 도트씩 엇갈리고, 깊이(위아래)는 걷는 길 전체에 고르게 퍼짐(순서는 섞음)
+  //   종류(pack.mix 무게 · 이 초부터): side = 한쪽 끝 · pincer = 양쪽 끝 동시 · drop = 뒤 벽 쪽에서 뛰어내림(먼지) · front = 앞(화면 아래)에서 뛰어듦
+  function dgPackKind(mix, sec) {
+    var L = Object.keys(mix).filter(function (k) { return sec >= (mix[k][1] || 0); }), tot = 0, r;
+    L.forEach(function (k) { tot += mix[k][0]; });
+    r = Math.random() * tot;
+    for (var i = 0; i < L.length; i++) { r -= mix[L[i]][0]; if (r < 0) return L[i]; }
+    return 'side';
+  }
+  function dgPack(D, sec, n, at0, kind) {
+    var PK = D.pack, R = G.stage.dg, p = G.player;
+    kind = kind || dgPackKind(PK.mix, sec);
+    var lt = world.laneTop, lb = world.laneBottom, lh = lb - lt, ys = [], i;
+    for (i = 0; i < n; i++) ys.push(lt + (i + 0.2 + Math.random() * 0.6) / n * lh);
+    for (i = ys.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), t = ys[i]; ys[i] = ys[j]; ys[j] = t; }
+    var side = kind === 'side' ? dgSide(R) : null, ox = { L: 0, R: 0 };
+    var vx0 = G.camX + 30 * AS, vx1 = G.camX + LW - controlPad - 30 * AS;   // 보이는 싸움터(뛰어내림 · 앞)
+    for (var k = 0; k < n; k++) {
+      var type = dgPick(D, sec), T = CFG.enemies[type], q = { type: type, at: at0 + k * (PK.gapMs || 90) + Math.random() * 60, kind: kind };
+      if (kind === 'side' || kind === 'pincer') {
+        var s = side || (k % 2 ? 'L' : 'R');
+        ox[s] += k < 2 && kind === 'pincer' ? 0 : rand(PK.dx[0], PK.dx[1]);
+        q.side = s; q.x = s === 'L' ? -T.radius - 30 - ox[s] : world.width + T.radius + 30 + ox[s]; q.y = ys[k];
+      } else {
+        var x = vx0 + (k + 0.5) / n * (vx1 - vx0) + (Math.random() * 2 - 1) * PK.dx[1];
+        if (Math.abs(x - p.x) < (PK.avoid || 46)) x = p.x + (x < p.x ? -1 : 1) * (PK.avoid || 46);   // 플레이어 바로 위에는 안 떨어짐
+        q.x = clamp(x, vx0, vx1);
+        if (kind === 'drop') { q.y = lt + Math.random() * lh * (PK.dropBack || 0.3); q.drop = (PK.dropH || 90) * (0.8 + Math.random() * 0.4); }
+        else { q.y = lb - Math.random() * lh * 0.15; q.drop = PK.frontH || 34; }
+      }
+      dgQueue(q);
+    }
+    R.packs = (R.packs || 0) + 1; (R.packLog || (R.packLog = [])).push(kind + ':' + n);   // 시험용 기록
+    return kind;
+  }
+  // 줄 선 무리 하나 내보내기: 정한 자리(x, y) · 뛰어내림(drop = 높이)이면 들어온 것으로(entered)
+  function dgPlace(q) {
+    var e = makeEnemy(q.type, q.x, clamp(q.y, world.laneTop, world.laneBottom));
+    e.dgMob = true; e.dir = q.x < G.player.x ? 1 : -1;
+    if (q.drop) { e.dropZ = q.drop; e.entered = true; }
+    return e;
+  }
   // 시간 사건(config events): 큰 글자 + 중간보스 + 몹 몰려옴
   function dgEvent(ev, R, D) {
     if (ev.banner) banner(ev.banner, 'boss');
     snd('bossRoar', { k: 1.25, v: 0.85 });
     FX.shake(J.shakePx * 1.8, 460);
     for (var i = 0; i < (ev.mids || 0); i++) dgQueue({ mid: true, idx: R.midN++, side: i % 2 ? 'L' : 'R', at: R.t + 500 + i * (ev.gapMs || 500) });
-    if (ev.rush) for (var k = 0; k < ev.rush.n; k++) dgQueue({ type: dgPick(D, ev.at), side: k % 2 ? 'L' : 'R', at: R.t + 300 + k * ev.rush.ms / ev.rush.n, off: Math.floor(k / 2) % 3 });
+    if (ev.rush && D.pack) {   // 몰려옴 = 무리 여러 개(첫 무리 = 양쪽 동시, 나머지 = 섞어서)
+      var np = Math.ceil(ev.rush.n / (D.pack.size[1] || 6)), left = ev.rush.n;
+      for (var j = 0; left > 0; j++) { var m = Math.min(left, Math.ceil(ev.rush.n / np)); dgPack(D, ev.at, m, R.t + 300 + j * ev.rush.ms / np, j === 0 ? 'pincer' : null); left -= m; }
+    } else if (ev.rush) for (var k = 0; k < ev.rush.n; k++) dgQueue({ type: dgPick(D, ev.at), side: k % 2 ? 'L' : 'R', at: R.t + 300 + k * ev.rush.ms / ev.rush.n, off: Math.floor(k / 2) % 3 });
   }
   function dgStep(dt) {
     var S = G.stage, R = S.dg, D = DG(), p = G.player;
@@ -1035,13 +1081,22 @@
     for (var i = 0; i < R.queue.length; i++) {
       var q = R.queue[i];
       if (q.at > R.t || (!q.mid && alive >= SP.cap)) continue;
-      if (q.mid) dgSpawnMid(q.idx, q.side); else { dgSpawnMob(q.type, q.side, q.off); mobs++; }
+      if (q.mid) dgSpawnMid(q.idx, q.side); else { if (q.x != null) dgPlace(q); else dgSpawnMob(q.type, q.side, q.off); mobs++; }
       alive++; R.queue.splice(i--, 1);
     }
     // 늘 나오는 몹: every ms 마다 batch 마리(양옆 번갈아), 살아 있는 몹이 maxAlive 보다 적을 때만
+    //   몹 떼(config pack, 2026-11-07): pack.every ms 마다 size 마리 무리 하나(dgPack). 자리가 minRoom 마리보다 적으면 자리가 날 때까지 기다림
     R.acc += dt * dgModeK('spawn');
     var every = lerp(SP.every[0], SP.every[1], u), maxA = Math.round(lerp(SP.maxAlive[0], SP.maxAlive[1], u) * dgModeK('alive'));
-    if (R.acc >= every) {
+    if (D.pack) {
+      var PK = D.pack, pe = lerp(PK.every[0], PK.every[1], u), qm = R.queue.filter(function (q) { return !q.mid; }).length;
+      var room = Math.min(maxA - mobs - qm, SP.cap - alive - qm);
+      if (R.acc >= pe) {
+        var want = clamp(Math.round(lerp(PK.size[0], PK.size[1], u) + (Math.random() * 2 - 1) * (PK.sizeJit || 0)), PK.size[0], PK.size[1]);
+        if (room >= Math.min(want, PK.minRoom || 3)) { R.acc = 0; dgPack(D, sec, Math.min(want, room), R.t, null); }
+        else R.acc = pe;
+      }
+    } else if (R.acc >= every) {
       R.acc = Math.min(R.acc - every, every);
       var b = lerp(SP.batch[0], SP.batch[1], u), n = Math.floor(b) + (Math.random() < b % 1 ? 1 : 0);
       for (var k = 0; k < n && mobs < maxA && alive < SP.cap; k++) { dgSpawnMob(dgPick(D, sec), dgSide(R), Math.floor(k / 2)); mobs++; alive++; }

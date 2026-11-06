@@ -2973,6 +2973,13 @@
         //   every = 몇 ms 마다 한 번 나옴 [처음, 끝], batch = 한 번에 몇 마리 [처음, 끝](소수 = 가끔 하나 더),
         //   maxAlive = 살아 있는 몹 최대 [처음, 끝](넘으면 쓰러질 때까지 기다림), cap = 어떤 경우에도 넘지 않는 살아 있는 적 수(중간보스 포함, 성능)
         spawn: { every: [1500, 550], batch: [1, 2.6], maxAlive: [6, 18], rampSec: 80, cap: 34, firstMs: 300 },
+        // 몹 떼(2026-11-07 형님: 한 줄로 오는 느낌 → 무리로). 있으면 위 every · batch 대신 이것(maxAlive · cap · rampSec 는 그대로 지킴)
+        //   every = 무리 사이 ms [처음, 끝], size = 무리 마리 수 [처음, 끝](sizeJit = ±흔들림), minRoom = 자리가 이만큼 나야 다음 무리
+        //   dx = 무리 안 옆 간격(도트, 엇갈림 [최소, 최대]), gapMs = 한 마리씩 나오는 틈. 깊이(위아래)는 늘 걷는 길 전체에 고르게
+        //   mix = 무리 종류 { 이름: [무게, 이 초부터] }: side = 한쪽 끝 · pincer = 양쪽 끝 동시 · drop = 뒤 벽 쪽에서 뛰어내림(dropH 높이, 뒤쪽 dropBack 만큼) ·
+        //   front = 앞(화면 아래)에서 뛰어듦(frontH 높이). avoid = 플레이어 바로 옆(도트)에는 안 떨어짐. 시간 사건 rush 도 무리로(첫 무리 = 양쪽 동시)
+        pack: { every: [2600, 1250], size: [3, 6], sizeJit: 1, minRoom: 3, dx: [10, 40], gapMs: 90,
+                mix: { side: [4, 0], pincer: [2, 8], drop: [3, 4], front: [1, 15] }, dropH: 90, dropBack: 0.3, frontH: 34, avoid: 46 },
         // 중간보스(midBoss 와 같은 방식으로 키운 잡몹): list 를 돌아가며. hp = 체력(판 배율 · 난이도 곱하기 전, 2판 해골 대장 ≈ 470)
         mids: { hp: 470, list: [['goblin', '광산 고블린 대장', null], ['skeleton', '광부 해골 대장', null], ['lizard', '굴 도마뱀 대장', null]] },
         // 시간 사건: at = 지난 초. banner = 큰 글자, mids = 중간보스 수(양옆 번갈아 gapMs 씩), rush = 몹 n 마리 몰려옴(rushMs 동안, maxAlive 무시 · cap 은 지킴)
