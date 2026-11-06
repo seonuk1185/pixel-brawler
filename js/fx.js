@@ -2,6 +2,7 @@
 (function () {
   var list = [];          // 떠 있는 효과들
   var shake = { t: 0, dur: 1, mag: 0, x: 0, y: 0 };
+  var shakeMul = 1;       // 화면 흔들림 배율(2026-11-07 설정 창 「화면 흔들림」 끄기 = 0)
   // 캐릭터 크기(config actorScale): 불똥 튀는 거리·코드로 그린 번쩍 크기·데미지 숫자 떠오르는 높이에 곱한다(숫자 글자 모양·크기는 config damageText)
   function AS() { return (window.CFG && window.CFG.actorScale) || 1; }
 
@@ -252,7 +253,11 @@
     drawPixelText: drawPixelText,
     whiteSilhouette: whiteSilhouette,
 
+    // 흔들림 배율(main.js 설정 창이 넣음): 0 = 안 흔들림(흔들리던 것도 바로 멈춤), 1 = 그대로
+    setShakeMul: function (k) { shakeMul = k > 0 ? k : 0; if (!shakeMul) { shake.t = 0; shake.mag = 0; shake.x = shake.y = 0; } },
     shake: function (mag, ms) {
+      mag *= shakeMul;
+      if (!(mag > 0)) return;
       if (mag >= shake.mag * (shake.t / shake.dur || 0)) { shake.mag = mag; shake.t = ms; shake.dur = ms; }
     },
     // 흔들림은 히트스톱 중에도 진짜 시간으로 돈다

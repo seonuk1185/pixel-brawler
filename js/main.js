@@ -2619,14 +2619,22 @@
   function closeMenu(el) { el.hidden = true; if (menuEl === el) menuEl = null; }
   function menuButtons() { return Array.prototype.slice.call(menuEl.querySelectorAll('button:not([hidden]):not([disabled]), a[href]')); }
   window.addEventListener('keydown', function (e) {
-    if (!menuEl || menuEl.hidden) return;
+    if (!menuEl || menuEl.hidden || keyWait) return;   // 키 설정에서 「키를 누르세요」 중 = 그쪽이 받음
+    // 고르기: 바꾼 키(config keys · js/keys.js) + 화살표는 늘 됨(2026-11-07 키 설정)
     var K = CFG.keys, c = e.code, btns = menuButtons();
-    var prev = K.left.concat(K.up).indexOf(c) >= 0, next = K.right.concat(K.down).indexOf(c) >= 0;
+    var up = K.up.indexOf(c) >= 0 || c === 'ArrowUp', down = K.down.indexOf(c) >= 0 || c === 'ArrowDown';
+    var prev = up || K.left.indexOf(c) >= 0 || c === 'ArrowLeft', next = down || K.right.indexOf(c) >= 0 || c === 'ArrowRight';
     var push = c === 'Enter' || c === 'NumpadEnter' || c === 'Space' || K.attack.indexOf(c) >= 0;
     if (!prev && !next && !push) return;
     e.preventDefault(); e.stopPropagation();   // 게임 조작(input.js)으로 안 넘김
     if (!btns.length || e.repeat) return;
     var i = btns.indexOf(document.activeElement);
+    // 키 표 칸(.kc): 위·아래 = 같은 줄의 위·아랫칸(data-c 같은 것), 없으면 그냥 앞·뒤
+    var ae = document.activeElement;
+    if ((up || down) && ae && ae.dataset && ae.dataset.c != null) {
+      var to = menuEl.querySelector('.kc[data-c="' + ae.dataset.c + '"][data-r="' + (+ae.dataset.r + (down ? 1 : -1)) + '"]:not([disabled])');
+      if (to) { to.focus(); return; }
+    }
     if (prev || next) { i = i < 0 ? 0 : (i + (next ? 1 : -1) + btns.length) % btns.length; btns[i].focus(); return; }
     if (performance.now() - menuOpenAt < 400) return;
     (i >= 0 ? btns[i] : btns[0]).click();
@@ -2929,10 +2937,10 @@
     if (pc) {
       var dc = document.createElement('div'), dp = document.createElement('button'), dat = bar.indexOf('dodge');
       dc.className = 'cell dodgecell' + (skSel === 'dodge' ? ' sel' : '');
-      dc.title = '회피 — 구르며 잠깐 무적. Shift 로 늘 쓸 수 있고, 칸에 끼우면 그 칸 키로도 써요';
+      dc.title = '회피 — 구르며 잠깐 무적. ' + Keys.lab('dodge') + ' 로 늘 쓸 수 있고, 칸에 끼우면 그 칸 키로도 써요';
       dp.type = 'button'; dp.className = 'cpick'; dp.dataset.sk = 'dodge:pick'; dp.setAttribute('aria-label', '회피 고르기');
       dp.appendChild(skIcon('dodge', 40));
-      dp.insertAdjacentHTML('beforeend', '<span class="nm"><span class="l1"><b>회피</b><span class="lvl">Shift</span></span><span class="sd">칸에 끼우면 그 키로도 회피</span></span>');
+      dp.insertAdjacentHTML('beforeend', '<span class="nm"><span class="l1"><b>회피</b><span class="lvl">' + Keys.lab('dodge') + '</span></span><span class="sd">칸에 끼우면 그 키로도 회피</span></span>');
       dc.appendChild(dp);
       dc.insertAdjacentHTML('beforeend', '<span class="plusph"></span>' + (dat >= 0 ? '<span class="eq">' + slotKey(dat) + '</span>' : ''));
       actEl.appendChild(dc);
@@ -3226,12 +3234,8 @@
   //   칸 = 기술 책(growth.js)의 칸 순서 그대로(폰은 앞 5칸만). 칸을 마우스로 눌러도 씀(Input.pressSlot: 회피를 끼운 칸이면 회피)
   //   칸 열림: 1~5번 = 폰과 같은 Lv(2칸 → Lv10 · 13 · 15), 6~10번 = Lv15 에 한꺼번에(config skills.pcSlots · pcLv). 견습 = 다 잠김
   function isPc() { return Input.mode() === 'pc'; }
-  // 키 이름: Digit1 → 1, KeyU → U, Numpad1 → 1, Escape → Esc, Space 그대로
-  function keyLabel(list) {
-    var k = list && list[0];
-    if (!k) return '';
-    return k === 'Escape' ? 'Esc' : k.replace(/^(Key|Digit|Numpad)/, '');
-  }
+  // 키 이름(첫 키): Digit1 → 1, KeyU → U, Escape → Esc, ShiftLeft → Shift … (이름표 = js/keys.js Keys.label, 키 설정에서 바꾼 키)
+  function keyLabel(list) { return Keys.label(list && list[0]); }
   // 칸을 그리는 순서: PC 10칸 = 위 줄(6~10번) 먼저 → 아래 줄(1~5번). 그 밖 = 1번부터
   function slotOrder(n, pc) {
     var a = [], i;
@@ -3304,7 +3308,7 @@
       mp.className = locked ? 'lk' : 'mp';
       mp.textContent = locked ? (bk ? 'Lv' + bk.slotLv(i) : '') : st && !st.dodge ? st.cost : '';
       el.title = locked ? (bk ? (i + 1) + '번 칸 · Lv' + bk.slotLv(i) + ' 에 열려요' : '전직하면 기술 칸이 열려요') :
-        st ? st.name + (st.dodge ? ' (Shift 로도)' : ' · MP ' + st.cost) : (i + 1) + '번 칸 · 비었어요 (기술 창 V 에서 끼워요)';
+        st ? st.name + (st.dodge ? ' (' + Keys.lab('dodge') + ' 로도)' : ' · MP ' + st.cost) : (i + 1) + '번 칸 · 비었어요 (기술 창 ' + Keys.lab('skill') + ' 에서 끼워요)';
       if (was && !cool && st && was === st.id) { el.classList.remove('ready'); void el.offsetWidth; el.classList.add('ready'); }
     }
   }
@@ -3320,21 +3324,165 @@
   document.getElementById('btnHelpX').addEventListener('click', function () { helpSt.off = true; helpSt.on = false; helpSave(); helpUi(); this.blur(); });
 
   // ---------- 설정 창 (2026-11-07, PC Esc · 아래 막대 「설정」): 소리 · 조작 도움말 켜고 끄기 + 키 안내. 여는 동안 게임 멈춤 ----------
+  //   2026-11-07 키 설정 · 화면 설정(형님 승인): 효과음 크기 · 화면 흔들림 · 전체화면 + 키 설정 표(js/keys.js). 친구 시험 모드(?demo=1)도 같은 창
+  //   저장 = localStorage 'pixelBrawler.opts' = { vol: 0~10, shake: 켬/끔 } (친구 시험 모드 = 'pixelBrawler.demo.opts'). 전체화면은 저장 안 함(브라우저 규칙: 누를 때만)
   var setEl = document.getElementById('setPanel'), setBack = null;
+  var OPT_KEY = CFG.demo ? 'pixelBrawler.demo.opts' : 'pixelBrawler.opts', opt = { vol: 10, shake: true };
+  try { var op0 = JSON.parse(localStorage.getItem(OPT_KEY) || 'null'); if (op0 && typeof op0 === 'object') opt = { vol: op0.vol >= 0 && op0.vol <= 10 ? Math.round(op0.vol) : 10, shake: op0.shake !== false }; } catch (e) {}
+  function optSave() { try { localStorage.setItem(OPT_KEY, JSON.stringify(opt)); } catch (e) {} }
+  // 효과음 크기: js/sfx.js 는 고치지 않음 → 그 파일이 보는 config audio.master(전체 크기)를 바꾸고, 켜져 있으면 SFX.setMuted(false) 로 다시 맞춤
+  var AU = CFG.audio || (CFG.audio = {}), VOL0 = AU.master != null ? AU.master : 0.8;
+  function volApply(live) {
+    AU.master = VOL0 * opt.vol / 10;
+    if (live && window.SFX && SFX.isMuted && !SFX.isMuted() && SFX.setMuted) SFX.setMuted(false);
+  }
+  function shakeApply() { FX.setShakeMul(opt.shake ? 1 : 0); }
+  volApply(false); shakeApply();
+  // 전체화면(Fullscreen API): 안 되는 브라우저(아이폰 등) = 버튼 잠금, 거절되면 글자로 알림
+  var DE = document.documentElement;
+  function fsOn() { return !!(document.fullscreenElement || document.webkitFullscreenElement); }
+  function fsCan() { return !!(DE.requestFullscreen || DE.webkitRequestFullscreen) && document.fullscreenEnabled !== false && document.webkitFullscreenEnabled !== false; }
+  var fsFail = '';
+  function fsToggle() {
+    fsFail = '';
+    function bad() { fsFail = '전체화면을 쓸 수 없어요 (브라우저가 막음, F11 을 써 보세요)'; setUi(); }
+    try {
+      var r;
+      if (fsOn()) r = (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+      else r = (DE.requestFullscreen || DE.webkitRequestFullscreen).call(DE);
+      if (r && r.catch) r.catch(bad);
+    } catch (e) { bad(); }
+  }
+  ['fullscreenchange', 'webkitfullscreenchange'].forEach(function (t) { document.addEventListener(t, function () { if (!setEl.hidden) setUi(); }); });
   function setUi() {
     var m = !!(window.SFX && SFX.isMuted && SFX.isMuted()), h = helpShown(), sb = document.getElementById('btnSetSnd'), hb = document.getElementById('btnSetHelp');
     sb.textContent = m ? '꺼짐' : '켜짐'; sb.classList.toggle('on', !m);
     hb.textContent = h ? '켜짐' : '꺼짐'; hb.classList.toggle('on', h);
+    var kb = document.getElementById('btnSetShake'); kb.textContent = opt.shake ? '켜짐' : '꺼짐'; kb.classList.toggle('on', opt.shake);
+    var fb = document.getElementById('btnSetFull'), f = fsOn(), can = fsCan();
+    fb.textContent = f ? '켜짐' : '꺼짐'; fb.classList.toggle('on', f); fb.disabled = !can;
+    document.getElementById('fullTip').textContent = !can ? '이 브라우저에서는 쓸 수 없어요' : fsFail || (f ? 'Esc 로도 나가요' : '화면을 꽉 채워요');
+    var vb = document.getElementById('volBar');
+    vb.style.setProperty('--v', opt.vol / 10); vb.setAttribute('aria-valuenow', opt.vol);
+    document.getElementById('volTxt').textContent = (opt.vol * 10) + '%';
+    document.getElementById('btnVolDn').disabled = opt.vol <= 0; document.getElementById('btnVolUp').disabled = opt.vol >= 10;
+    document.getElementById('setSndTip').textContent = Keys.lab('sound') ? Keys.lab('sound') + ' 키로도 켜고 꺼요' : '';
   }
+  function setVol(v) { v = Math.max(0, Math.min(10, Math.round(v))); if (v === opt.vol) return; opt.vol = v; optSave(); volApply(true); setUi(); }
+  document.getElementById('btnVolDn').addEventListener('click', function () { setVol(opt.vol - 1); if (this.disabled) document.getElementById('btnVolUp').focus(); });
+  document.getElementById('btnVolUp').addEventListener('click', function () { setVol(opt.vol + 1); if (this.disabled) document.getElementById('btnVolDn').focus(); });
+  // 막대를 누르거나 끌면 그 자리 크기(10칸)
+  (function () {
+    var vb = document.getElementById('volBar'), drag = false;
+    function at(e) { var r = vb.getBoundingClientRect(); setVol(Math.ceil(Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * 10 - 0.25)); }
+    vb.addEventListener('pointerdown', function (e) { drag = true; try { vb.setPointerCapture(e.pointerId); } catch (x) {} at(e); e.preventDefault(); });
+    vb.addEventListener('pointermove', function (e) { if (drag) at(e); });
+    ['pointerup', 'pointercancel'].forEach(function (t) { vb.addEventListener(t, function () { drag = false; }); });
+  })();
+  document.getElementById('btnSetShake').addEventListener('click', function () { opt.shake = !opt.shake; optSave(); shakeApply(); setUi(); });
+  document.getElementById('btnSetFull').addEventListener('click', function () { fsToggle(); setTimeout(setUi, 0); });
+
+  // ---------- 키 설정 표 (2026-11-07, js/keys.js) ----------
+  //   왼쪽 = 움직이기 · 싸우기 · 창 · 소리, 오른쪽 = 기술 1~10번 칸. 칸(기본 키 · 보조 키)을 누르면 「키를 누르세요」 → 다음 키로 바뀜
+  //   Esc = 취소, Backspace · Delete = 그 칸 비우기. 다른 곳에 쓰던 키면 「이미 ○○에 쓰는 키입니다」 + 서로 바꿈. 설정 창 기본 키 Esc 는 못 바꿈
+  var keyWait = null;   // { act, i, t } = 키를 기다리는 칸
+  var keyTblEl = document.getElementById('keyTbl'), keyMsgEl = document.getElementById('keyMsg');
+  function keyMsg(s) { keyMsgEl.textContent = s || ''; }
+  function keyCell(a, i, r, c) {
+    var l = Keys.get(a.id), code = l[i], lab = Keys.label(code), ex = i === 1 ? l.slice(2).filter(Boolean).map(Keys.label) : [];
+    var w = keyWait && keyWait.act === a.id && keyWait.i === i;
+    return '<button type="button" class="kc' + (code ? '' : ' none') + (w ? ' wait' : '') + '" data-act="' + a.id + '" data-i="' + i + '" data-r="' + r + '" data-c="' + c + '"' +
+      (a.fixed0 && i === 0 ? ' disabled title="설정 창 Esc 는 바꿀 수 없어요"' : '') +
+      ' aria-label="' + a.name + ' ' + (i ? '보조 키' : '기본 키') + ' ' + (lab || '없음') + '">' +
+      (w ? '키를 누르세요' : (lab || '없음') + (ex.length ? ' <small>+' + ex.join(' ') + '</small>' : '')) + '</button>';
+  }
+  function keyTable() {
+    var cols = [Keys.ACT.filter(function (a) { return !a.slot; }), Keys.ACT.filter(function (a) { return a.slot; })];
+    keyTblEl.innerHTML = cols.map(function (list, ci) {
+      return '<div class="kcol"><span class="kh">' + (ci ? '기술 칸' : '행동') + '</span><span class="kh">기본 키</span><span class="kh">보조 키</span>' +
+        list.map(function (a, r) { return '<span class="kn" title="' + a.name + '">' + a.name + '</span>' + keyCell(a, 0, r, ci * 2) + keyCell(a, 1, r, ci * 2 + 1); }).join('') + '</div>';
+    }).join('');
+  }
+  // 아래 막대 글자 · 창 버튼 이름표 · 도움말 한 줄 · 소리 버튼 이름표: 바꾼 키로 (한 곳 = Keys)
+  function kbd(s) { return s ? '<kbd>' + s + '</kbd>' : ''; }
+  function hintHtml() {
+    var mv = ['up', 'left', 'down', 'right'], A = Keys.ACT.filter(function (a) { return a.slot; });
+    var p = mv.map(function (id) { return Keys.label(Keys.get(id)[0]); }).join(''), q = mv.map(function (id) { return Keys.label(Keys.get(id)[1]); }).join('');
+    var sk = Keys.isDefaultSlots() ? kbd(Keys.lab(A[0].id)) + '~' + kbd(Keys.lab(A[A.length - 1].id)) : A.map(function (a) { return kbd(Keys.lab(a.id)); }).join(' ');
+    var alt = A.map(function (a) { return Keys.label(Keys.get(a.id)[1]); }).filter(Boolean);
+    return '이동 ' + kbd(p) + (q ? '/' + kbd(q) : '') + ' · 달리기 두 번 · 점프 ' + kbd(Keys.lab('jump')) + ' · 평타 ' + kbd(Keys.lab('attack')) +
+      ' · 회피 ' + kbd(Keys.lab('dodge')) + ' · 기술 ' + sk + (alt.length ? ' (' + alt.map(kbd).join(' ') + ')' : '') + ' · 각성 ' + kbd(Keys.lab('awaken'));
+  }
+  function sndTitle() {
+    var m = !!(window.SFX && SFX.isMuted && SFX.isMuted()), k = Keys.lab('sound');
+    document.querySelectorAll('.sndbtn').forEach(function (b) { b.title = (m ? '소리 켜기' : '소리 끄기') + (k ? ' (' + k + ')' : ''); });
+    var kb = document.querySelector('#pcSnd kbd'); if (kb) kb.textContent = k;
+  }
+  function keysUi() {
+    pcSlotsEl.forEach(function (s, i) { var kb = s && s.querySelector('kbd'); if (kb) kb.textContent = keyLabel(CFG.keys['skill' + Skills.slots[i]]); });
+    [[pcAtkEl, 'attack'], [pcJumpEl, 'jump'], [pcAwkEl, 'awaken']].forEach(function (a) { var kb = a[0] && a[0].querySelector('kbd'); if (kb) kb.textContent = Keys.lab(a[1]); });
+    [['pcStat', 'stat', '능력치'], ['pcSkill', 'skill', '기술'], ['pcEnc', 'enc', '강화'], ['pcSet', 'menu', '설정']].forEach(function (a) {
+      var b = document.getElementById(a[0]), k = Keys.lab(a[1]);
+      if (!b) return;
+      b.querySelector('kbd').textContent = k;
+      b.title = a[2] + (k ? ' (' + k + ')' : ''); b.setAttribute('aria-label', b.title);
+    });
+    sndTitle();
+    var ht = document.getElementById('keyHintTxt'); if (ht) ht.innerHTML = hintHtml();
+    pcLast = {};   // 칸 풍선 글자(회피 키 · 기술 창 키) 다시
+    if (!setEl.hidden) { keyTable(); setUi(); }
+    if (!skEl.hidden) renderSkills();
+  }
+  Keys.onChange(keysUi);
+  function keyFocus(act, i) { var b = keyTblEl.querySelector('.kc[data-act="' + act + '"][data-i="' + i + '"]'); if (b) try { b.focus({ preventScroll: false }); } catch (e) { b.focus(); } return b; }
+  function keyEnd(msg, ok) {
+    var w = keyWait; keyWait = null;
+    keyTable(); keyMsg(msg);
+    if (!w) return;
+    var b = keyFocus(w.act, w.i);
+    if (b && ok) b.classList.add('flash');
+  }
+  function keyStart(b) {
+    if (!b || b.disabled) return;
+    keyWait = { act: b.dataset.act, i: +b.dataset.i, t: performance.now() };
+    keyTable(); keyFocus(keyWait.act, keyWait.i);
+    keyMsg(Keys.name(keyWait.act) + ' ' + (keyWait.i ? '보조 키' : '기본 키') + ' — 키를 누르세요 (Esc 취소 · Backspace 지우기)');
+  }
+  keyTblEl.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('.kc');
+    if (!b) return;
+    if (keyWait && keyWait.act === b.dataset.act && keyWait.i === +b.dataset.i) { keyEnd(''); return; }   // 같은 칸 다시 누름 = 취소
+    keyStart(b);
+  });
+  // 기다리는 동안 창의 다른 곳을 누르면 취소
+  setEl.addEventListener('pointerdown', function (e) { if (keyWait && !(e.target.closest && e.target.closest('.kc'))) keyEnd(''); }, true);
+  // 키를 기다리는 동안: 맨 먼저 받아서 다른 곳(게임 조작 · 창 키 · 고르기)으로 안 넘김. 칸을 누른 그 키(Enter 등)는 무시
+  window.addEventListener('keydown', function (e) {
+    if (!keyWait || e.timeStamp < keyWait.t) return;
+    e.preventDefault(); e.stopImmediatePropagation(); e.stopPropagation();
+    if (e.repeat) return;
+    var c = e.code, w = keyWait;
+    if (!c) return;
+    if (c === 'Escape') { keyEnd(''); return; }
+    if (c === 'Backspace' || c === 'Delete') { var cr = Keys.clear(w.act, w.i); keyEnd(cr.ok ? '' : cr.msg || '', cr.ok); return; }
+    var r = Keys.set(w.act, w.i, c);
+    if (!r.ok) { keyMsg(r.msg || ''); return; }   // 못 쓰는 키 = 계속 기다림
+    keyEnd(r.msg || '', true);
+  }, true);
+  document.getElementById('btnKeyReset').addEventListener('click', function () { keyWait = null; Keys.reset(); keyTable(); keyMsg('기본 키로 돌렸어요'); });
+  setTimeout(keysUi, 0);   // js/sfx.js 가 소리 버튼 이름표를 그린 뒤(DOMContentLoaded)에도 맞춤
+  document.querySelectorAll('.sndbtn').forEach(function (b) { b.addEventListener('click', function () { setTimeout(sndTitle, 0); }); });
   function openSet() {
     if (!setEl.hidden) return;
     setBack = { menu: menuEl && !menuEl.hidden ? menuEl : null, paused: G.paused };
     G.paused = true; Input.setOverride(null);
+    keyWait = null; keyMsg(''); keyTable();
     setUi();
     openMenu(setEl, document.getElementById('btnSetClose'));
   }
   function closeSet() {
     if (setEl.hidden) return;
+    keyWait = null;
     closeMenu(setEl);
     var B = setBack || {}; setBack = null;
     G.paused = !!B.paused;
@@ -3352,7 +3500,15 @@
   // ---------- 창 키 (2026-11-07, config keys.stat · skill · enc · menu = C · V · B · Esc) ----------
   //   창이 없을 때 누르면 그 창을 엶, 같은 키를 다시 누르면 닫음. 다른 창 · 전직 화면이 열려 있으면 안 열림(Esc 는 각 창이 먼저 받아 닫음)
   window.addEventListener('keydown', function (e) {
-    if (e.code === 'KeyM' && !setEl.hidden) setTimeout(setUi, 0);   // 설정 창이 열린 채 M(소리) → 글자 맞춤
+    // 소리 끄기/켜기(2026-11-07 키 설정 「소리」, 기본 M): js/sfx.js 대신 여기서(M 은 js/keys.js 가 sfx.js 로 안 가게 돌려 보냄)
+    if (Keys.is('sound', e.code) && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      var tg = e.target && e.target.tagName;
+      if (!((tg === 'INPUT' || tg === 'TEXTAREA') && e.target.id !== 'keysRelay') && window.SFX && SFX.toggle) {
+        SFX.toggle(); sndTitle();
+        if (!setEl.hidden) setUi();
+      }
+      return;
+    }
     if (e.repeat || e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented) return;
     var K = CFG.keys, c = e.code;
     function is(l) { return !!l && l.indexOf(c) >= 0; }
