@@ -1721,7 +1721,7 @@
     if (LU.flash) Skills.flash(LU.flash);
     FX.impact(p.x, p.y - (p.z || 0) - 60 * AS, p.dir, LU.sparkCol || '#ffe066', Math.round(J.sparkCount * 1.4), true, G.assets.fx && G.assets.fx.impact, 1);
 
-    checkUnlock(up);   // 기술 칸이 늘었으면(Lv9 · Lv13) 「축하합니다!」 알림(아래 openUnlock)
+    checkUnlock(up);   // 기술 칸이 늘었으면(Lv10 · Lv13) 「축하합니다!」 알림(아래 openUnlock)
   }
 
   function onBossDown(boss) {
@@ -2251,7 +2251,7 @@
     });
     setIf('pawkf', A ? 1 : Math.floor((G.rage || 0) / 5) / 20, function (v) { if (hud.btnAwk) hud.btnAwk.style.setProperty('--rg', v); });
     setIf('pawkp', A ? '' : Math.floor(G.rage || 0) + '%', function (v) { if (hud.awkPct) hud.awkPct.textContent = v; });   // 폰 각성 마름모 왼쪽 분노 %(가득·각성 중엔 CSS 가 숨김)
-    // 레벨 + 경험치 막대(성장). 최고 레벨이면 「Lv 30 MAX」 + 막대 가득
+    // 레벨 + 경험치 막대(성장). 최고 레벨이면 「Lv 60 MAX」(최고 레벨 = config growth.maxLv) + 막대 가득
     setIf('plv', Growth.lv, function (v) {
       hud.pLv.textContent = 'Lv ' + v + (Growth.isMax() ? ' MAX' : '');
       var box = hud.pLv.parentNode; box.classList.toggle('max', Growth.isMax());
@@ -2724,7 +2724,7 @@
   window.addEventListener('keydown', function (e) { if (e.code === 'Escape' && !skEl.hidden) { e.preventDefault(); closeSkills(); } });
   G.openSkills = openSkills; G.closeSkills = closeSkills;
 
-  // ---------- 기술 칸 열림 알림 (2026-11-06 폰 UI): 레벨업으로 기술 칸이 늘면(config skills.moreLv = Lv9 · Lv13) 한 번 ----------
+  // ---------- 기술 칸 열림 알림 (2026-11-06 폰 UI): 레벨업으로 기술 칸이 늘면(config skills.moreLv = Lv10 · Lv13) 한 번 ----------
   //   「축하합니다!」 + 칸 줄(새로 열린 칸 = 빛남, 아직 잠긴 칸 = 자물쇠) + 확인. 여는 동안 게임 멈춤(다른 창처럼), 닫으면 원래대로.
   //   저장된 직업의 기술 책만(시험 버튼으로 입은 다른 직업 = 늘 4칸이라 안 뜸). 시험 자동 조종(G.bot)은 안 띄움(멈추지 않게)
   var upEl = document.getElementById('unlockPop'), upBack = null;

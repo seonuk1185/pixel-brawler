@@ -341,6 +341,14 @@
   var FLAME_HIT = { dmg: 2.0, hitstop: 1.6, knock: 0.5, shake: 2.4, spark: 1.4, big: true, hitsDown: true, noJuggle: true,
                     flash: { color: '#ffb060', alpha: 0.35, ms: 150 }, slowMs: 180 };
   var FLAME_TICK = { dmg: 0.45, hitstop: 0.35, knock: 0.05, shake: 0.5, spark: 0.8, hitsDown: true, noJuggle: true, noRage: true };
+  // ---------- 칼날 폭풍(기사 Lv19 사냥 기술, 2026-11-06) ----------
+  // 세 바퀴 도는 동안 둘레를 여섯 번 벰(STORM_HIT): pull = 바깥쪽이 아니라 기사 쪽으로 살짝 끌어당김(몹 떼가 한데 모임).
+  //   여러 번 맞아 분노가 너무 빨리 차지 않게 noRage(불기둥 tick 처럼). 마지막(STORM_LAST) = 크게 터지며 둘레를 밀어 넘어뜨림
+  var STORM_REACH = { x0: -125, x1: 125, yTop: -112, yBot: -4, depth: 40 };   // 위아래 폭은 회전베기(20)보다 넓게(몹 떼가 위아래로 퍼져 있어서)
+  var STORM_HIT = { reach: STORM_REACH, pull: true, dmg: 0.55, hitstop: 0.45, knock: 0.5, shake: 0.9, spark: 1.0, hitY: -60, hitsDown: true, noRage: true };
+  var STORM_LAST = { reach: { x0: -140, x1: 140, yTop: -118, yBot: -4, depth: 46 }, away: true, hitsDown: true,
+                     dmg: 1.9, hitstop: 2.0, knock: 2.6, shake: 3.2, knockdown: true, spark: 1.6, big: true, hitY: -60,
+                     flash: { color: '#e6f2ff', alpha: 0.5, ms: 170 }, slowMs: 300 };
   var SKILLS = {
     knight: {
       // 돌진베기: 1~2장 동안 앞으로 약 120도트 미끄러지며 길 위의 적을 한 번씩 벤다(무적), 베는 장 다음 장에 「쾅」 멈춤
@@ -459,6 +467,47 @@
         placeholder: { anims: ['attack3', 'attack2', 'attack2', 'attack2'], f: [0, 3, 3, 4], d: [90, 70, 150, 170] },
         female: {
           placeholder: { anims: ['jump', 'motion_dash', 'motion_dash', 'attack3'], f: [0, 2, 3, 5], d: [90, 70, 150, 170] }
+        }
+      },
+      // 칼날 폭풍(2026-11-06, Lv19 사냥 기술): 회전베기 동작 그림(motion_spin)의 한 바퀴(1~4장)를 세 번 되풀이 → 13장 마무리 베기 → 14장 가드.
+      //   motionSeq = 기술 장 번호 → 동작 그림 장 번호(같은 그림을 되풀이해서 씀), motionMs = 기술 장마다 시간(hits·fx 의 frame 은 기술 장 번호)
+      //   도는 동안 걸을 수 있음(walk). 한 바퀴에 두 번씩 여섯 번 베며 둘레 적을 끌어당기고(STORM_HIT pull), 마지막에 크게 터뜨려 넘어뜨림.
+      //   효과 = 있는 회전 고리 그림(spin_ring)을 바퀴마다 + 코드로 그린 회오리(whirl: 바람 고리·강철 파편·빛). 새 그림 없음
+      //   sfx = 쓰기 시작 소리(sfx.js 의 기술 소리 표에 없는 기술), fx 'sound' = 그 장에 있는 소리(바퀴마다 skSpin, 마지막 skSlam)
+      storm: {
+        name: '칼날 폭풍', icon: '폭', mp: 20, cooldownMs: 12000, damageStyle: 'skill_knight', motion: 'motion_spin', sfx: 'skSpin',
+        walk: true,
+        desc: '칼을 휘두르며 세 바퀴 돌아 둘레의 적을 끌어당기며 여섯 번 베고, 마지막에 크게 터뜨려 넘어뜨려요. 도는 동안 걸을 수 있어요(누운 적도 맞아요)',
+        lv5: { area: 1.3, say: '폭풍 크기 +30%' },
+        darken: { ms: 1000, alpha: 0.45 },
+        iframes: { frames: [0, 13] },
+        motionSeq: [0, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 5, 6],
+        motionMs: [120, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 130, 180],
+        hits: [ merge(STORM_HIT, { frame: 1 }), merge(STORM_HIT, { frame: 3 }), merge(STORM_HIT, { frame: 5 }),
+                merge(STORM_HIT, { frame: 7 }), merge(STORM_HIT, { frame: 9 }), merge(STORM_HIT, { frame: 11 }),
+                merge(STORM_LAST, { frame: 13 }) ],
+        trail: { frames: [1, 13], everyMs: 40, lifeMs: 220, alpha: 0.32, color: '#cfe8ff' },
+        zoom: { k: 1.05, ms: 900, lv5: true },
+        fx: [
+          { frame: 1, type: 'art', fx: 'spin_ring', x: 0, y: -50, follow: true, split: true, alpha: 0.75, scale: 0.85,
+            ph: { type: 'ring', y: -58, r: 72, ms: 260, color: '#cfe8ff' } },
+          { frame: 5, type: 'art', fx: 'spin_ring', x: 0, y: -50, follow: true, split: true, alpha: 0.8, scale: 0.9,
+            ph: { type: 'ring', y: -58, r: 78, ms: 260, color: '#cfe8ff' } },
+          { frame: 9, type: 'art', fx: 'spin_ring', x: 0, y: -50, follow: true, split: true, alpha: 0.85, scale: 0.95,
+            ph: { type: 'ring', y: -58, r: 84, ms: 260, color: '#cfe8ff' } },
+          { frame: 1, type: 'whirl', r: 70 }, { frame: 5, type: 'whirl', r: 76 }, { frame: 9, type: 'whirl', r: 82 },
+          { frame: 5, type: 'sound', name: 'skSpin' }, { frame: 9, type: 'sound', name: 'skSpin' },
+          { frame: 13, type: 'ring', y: -56, r: 86, ms: 260, color: '#ffffff' },
+          { frame: 13, type: 'whirl', r: 90, big: true },
+          { frame: 13, type: 'sound', name: 'skSlam' },
+          { frame: 13, type: 'dust' }
+        ],
+        placeholder: { anim: 'attack2', f: [0, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, 4],
+                       d: [120, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 130, 180], spin: [120, 780], everyMs: 55 },
+        female: {
+          motionMs: [80, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 100, 150],
+          placeholder: { anim: 'attack2', f: [0, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 4, 4],
+                         d: [80, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 100, 150], spin: [80, 620], everyMs: 45 }
         }
       },
       // 성검 낙뢰(2차 필살, 2026-11-06): 웅크렸다(0장) 칼을 하늘로 들고(1~2장, 칼끝에서 하늘로 금빛 줄기) 버티는 동안
@@ -617,23 +666,25 @@
     }
   };
 
-  // ---------- 기술 책 (성장 4단계, 2026-11-06, 기획\성장시스템-설계안.md) : 직업마다 10개 = 쓰는 기술(active) 6 + 늘 켜진 기술(passive) 4 ----------
-  // 순서 = 기술 창에 나오는 순서. unlock = 그 레벨이 되면 열림(0 = 전직 즉시). 전직 뒤 대략 2레벨마다 하나 → Lv23 에 10개 다 열림
+  // ---------- 기술 책 (성장 4단계, 2026-11-06, 기획\성장시스템-설계안.md) : 직업마다 11개 = 쓰는 기술(active) 7 + 늘 켜진 기술(passive) 4 (2026-11-06 기사 칼날 폭풍 넣음) ----------
+  // 순서 = 기술 창에 나오는 순서. unlock = 그 레벨이 되면 열림(0 = 전직 즉시). 전직 뒤 대략 2레벨마다 하나 → Lv23 에 다 열림(기사·법사 11개)
   //   두 번째 쓰는 기술은 Lv8(전직 바로 다음 레벨): 3판(도착 Lv7) 도중에 열려 「기술이 생겼다」를 빨리 느끼게(자동 조종 시험으로 정함)
   //   쓰는 기술 = SKILLS[직업][id] (위). passive = 늘 켜진 기술 { stat = 무엇이 오르나, val = 기술 Lv1~5 값 }
   //     stat: 'phys' = 물리 공격 +% (검 콤보·기사 기술) / 'magic' = 마법 공격 +% / 'guard' = 받는 피해 -% / 'mpRegen' = 마나 회복 +%
   //   soon = 아직 안 만든 기술(2차, 기술 창에 「준비 중」 자물쇠로만 보임). 만들면 soon 을 지우고 SKILLS 에 동작을 넣으면 됨
   //   메모(2026-11-06): 메테오(필살)는 지금 만든 기술이라 Lv15 에 둠. 2차로 순간이동·불기둥이 생기면 Lv23 으로 옮기는 것도 생각(숫자 하나)
   // 예비 후보(아직 목록에 없음): 집중 · 마력 폭주 · 서리 갑옷 · 회오리(법사, 적을 빨아들여 띄우는 바람 — 2026-11-06 밤 형님 「나중 후보」)
-  // 2026-11-06 밤 콤보: 띄우기 기술 올려베기(기사)·땅 융기(법사)를 Lv9 로 앞당김(3번째 칸이 Lv9 에 열림 → 바로 끼워짐). 불기둥은 2차 그대로(띄우지 않는 큰 한 방)
+  // 2026-11-06 밤 콤보: 띄우기 기술 올려베기(기사)·땅 융기(법사)를 앞당김(3번째 칸이 열리는 레벨에 같이 열림 → 바로 끼워짐). 불기둥은 2차 그대로(띄우지 않는 큰 한 방)
+  // 2026-11-06 순서 바꿈: 늘 켜진 기술이 쓰는 기술 사이에 끼게 = Lv9 늘 켜진 기술(검 숙련·원소 증폭) → Lv10 띄우기 기술(+3번째 칸) → Lv11 늘 켜진 기술
+  //   + 기사 Lv19 칼날 폭풍(사냥 기술, 비어 있던 Lv19 자리) → 기사도 11개(쓰는 기술 7 + 늘 켜진 기술 4)
   //   short = 기술 창(책 모양, 2026-11-06 폰 UI) 칸에 쓰는 짧은 설명 한 줄(긴 설명 desc 는 칸에 손을 올리면 · 고르면 보임)
   var SKILL_TREE = {
     knight: [
       { id: 'dash', unlock: 0, short: '앞으로 미끄러지며 베요' },
       { id: 'spin', unlock: 8, short: '한 바퀴 돌며 세 번 베요' },
-      { id: 'upper', unlock: 9, short: '적을 공중에 띄워요' },   // 2026-11-06 밤 콤보: 2차(Lv19)에서 앞당김. Lv9 = 3번째 칸이 열리면서 바로 끼워짐
-      { id: 'mastery', unlock: 10, short: '검 공격이 세져요', name: '검 숙련', icon: '숙', desc: '검으로 하는 모든 공격(콤보·기술)이 세져요',
+      { id: 'mastery', unlock: 9, short: '검 공격이 세져요', name: '검 숙련', icon: '숙', desc: '검으로 하는 모든 공격(콤보·기술)이 세져요',
         passive: { stat: 'phys', val: [0.08, 0.12, 0.16, 0.2, 0.25] } },
+      { id: 'upper', unlock: 10, short: '적을 공중에 띄워요' },   // 2026-11-06 밤 콤보: 2차(Lv19)에서 앞당김. Lv10 = 3번째 칸이 열리면서 바로 끼워짐(2026-11-06 Lv9 → 10)
       { id: 'skin', unlock: 11, short: '받는 피해가 줄어요', name: '강철 피부', icon: '피', desc: '적에게 받는 피해가 줄어요',
         passive: { stat: 'guard', val: [0.05, 0.08, 0.11, 0.14, 0.18] } },
       { id: 'wave', unlock: 13, short: '초승달 검기를 날려요' },
@@ -642,6 +693,7 @@
       //   'counter' = 맞을 때(넘어지지 않는 보통 타, 가까운 적) val 확률로 되받아 베기(SKILLS.knight.counterSlash), reach = 그 적까지 거리
       { id: 'grit', unlock: 17, short: '체력이 적을수록 검이 세져요', name: '투지', icon: '투', desc: '체력이 90% 밑으로 줄수록 검 공격이 세져요(30% 이하에서 가장 셈). 세지면 발밑에 붉은 기운이 일어요',
         passive: { stat: 'grit', val: [0.2, 0.25, 0.3, 0.35, 0.4], from: 0.9, full: 0.3 } },
+      { id: 'storm', unlock: 19, short: '세 바퀴 돌며 끌어모아 베요' },   // 2026-11-06 사냥 기술(몹 떼를 끌어모아 쓸어 버림)
       { id: 'counter', unlock: 21, short: '맞는 순간 되받아 베요', name: '반격', icon: '반', desc: '맞는 순간(넘어지지 않는 보통 타) 확률로 바로 되받아 베어요. 1.5초에 한 번까지',
         passive: { stat: 'counter', val: [0.3, 0.35, 0.4, 0.45, 0.5], reach: 140 } },
       { id: 'holy', unlock: 23, short: '금빛 번개 칼을 내리꽂아요' }
@@ -649,9 +701,9 @@
     mage: [
       { id: 'fireball', unlock: 0, short: '큰 불덩이를 던져요' },
       { id: 'bolt', unlock: 8, short: '번개 세 줄기를 내리꽂아요' },
-      { id: 'rise', unlock: 9, short: '돌기둥으로 적을 띄워요' },    // 2026-11-06 밤 콤보: 땅 융기(띄우기). 2차 「불기둥」 자리를 대신해 앞당김
-      { id: 'amp', unlock: 10, short: '모든 마법이 세져요', name: '원소 증폭', icon: '증', desc: '모든 마법(지팡이 타·마법탄·기술)이 세져요',
+      { id: 'amp', unlock: 9, short: '모든 마법이 세져요', name: '원소 증폭', icon: '증', desc: '모든 마법(지팡이 타·마법탄·기술)이 세져요',
         passive: { stat: 'magic', val: [0.08, 0.12, 0.16, 0.2, 0.25] } },
+      { id: 'rise', unlock: 10, short: '돌기둥으로 적을 띄워요' },    // 2026-11-06 밤 콤보: 땅 융기(띄우기). 2차 「불기둥」 자리를 대신해 앞당김(2026-11-06 Lv9 → 10)
       { id: 'flow', unlock: 11, short: '마나가 더 빨리 차요', name: '마나 순환', icon: '순', desc: '마나가 더 빨리 차요',
         passive: { stat: 'mpRegen', val: [0.2, 0.35, 0.5, 0.65, 0.85] } },
       { id: 'ice', unlock: 13, short: '맞은 적은 느려져요' },
@@ -1111,8 +1163,8 @@
       //   한 마리 체력 = 원래 x 배수^-hpExp (2배 → 0.4), 경험치 = 원래 / 배수 → 판 전체 경험치 그대로. 배수 1 이면 원래 그대로
       horde: { on: true, mul: 2, stageMul: { 1: 1, 2: 1.15, 3: 1.3, 4: 1.4, 5: 1.5, 6: 1.6, 7: 1.7, 8: 1.8, 9: 1.9, 10: 2 }, hpExp: 1.32, hpMul: 0.4, dmgMul: 1.0, xpMul: 0.5, bothSides: true, gapMs: 180, xOff: 34, placedDx: 30, placedDy: 0.2,
                maxAttackers: 99, attackGapMs: 120 },   // 2026-11-06 형님: 동시 공격 제한 없음
-      // 넓은 범위: 기술 판정·효과 크기 배율(기술 Lv 크기 area 에 곱함). 회전베기 · 대지 내려찍기 · 메테오 · 불기둥
-      aoe: { on: true, spin: 1.25, slam: 1.25, meteor: 1.25, pillar: 1.25 },
+      // 넓은 범위: 기술 판정·효과 크기 배율(기술 Lv 크기 area 에 곱함). 회전베기 · 대지 내려찍기 · 메테오 · 불기둥 · 칼날 폭풍
+      aoe: { on: true, spin: 1.25, slam: 1.25, meteor: 1.25, pillar: 1.25, storm: 1.25 },   // storm = 칼날 폭풍(2026-11-06)
       // 여러 마리 한꺼번에: 한 장면(한 번의 공격)에 맞은 적이 from 마리 이상이면 화면 흔들림 1 + shake x (마리 - 1) 배(최대 shakeCap 배)
       //   + 멈춤 stopMs x (마리 - 1) 더함(최대 stopCap ms). 기술로 bloomAt 마리 이상 맞히면 맞은 무리 가운데 큰 빛(bloom) + 짧은 화면 번쩍
       multiHit: { on: true, from: 2, shake: 0.22, shakeCap: 2.4, stopMs: 7, stopCap: 45,
@@ -1238,7 +1290,8 @@
     },
 
     // ---------- 성장: 레벨·경험치 (2026-11-05, 기획\성장시스템-설계안.md 1·2단계. 계산·저장은 growth.js) ----------
-    // 다음 레벨까지 필요한 경험치 = needBase + needPerLv × 지금 레벨 (Lv1→2 = 50, Lv29→30 = 1170). 최고 maxLv
+    // 다음 레벨까지 필요한 경험치 = needBase + needPerLv × 지금 레벨 (Lv1→2 = 50, Lv29→30 = 1170, Lv59→60 = 2370). 최고 maxLv
+    //   2026-11-06 최고 레벨 30 → 60: 레벨마다 몫(체력·공격·능력치 점수 3·기술 점수 1)은 그대로 60까지 이어짐. 판 균형은 안 바꿈
     // 레벨당 최대 체력 +hpPerLv (hero.hp 150 기준), 공격력 +atkPerLv (플레이어의 모든 타·기술 데미지에 곱함: Lv10 = 1.09배, 2026-11-06 전엔 1.18배) + 능력치(아래 stats)
     //   레벨업 하면 늘어난 체력만큼 바로 회복. 죽어도 경험치는 안 잃음. 깬 판을 다시 해도 경험치를 그대로 줌
     // 적 경험치 = 종류 기본값(xp) × 판 배율(1 + stageMul × 목록 순서(0부터)) → 1판 1.0배 … 10판 2.62배. 반올림
@@ -1251,7 +1304,7 @@
     //   보스가 부른 졸개 · 보스가 쓰러질 때 같이 쓰러진 졸개도 똑같이 줌
     // 시험: 주소 뒤 ?lv=N = 이번 창에서만 LvN(경험치 0)으로 시작. 그동안 얻은 경험치는 저장 안 함(저장된 레벨은 그대로)
     growth: {
-      maxLv: 30,
+      maxLv: 60,
       needBase: 10, needPerLv: 40,
       // 레벨마다 저절로 오르는 몫(2026-11-06 반으로 줄임: 예전 +5 / +2%). 나머지는 능력치 점수(아래 stats)로 고름
       hpPerLv: 2.5,
@@ -3099,7 +3152,7 @@
     //   tree = 직업마다 기술 10개(위 SKILL_TREE). 전직하면 unlock 0 기술이 Lv1, 레벨이 오르면 저절로 열림(Lv1), 점수로 Lv5 까지
     //   perLv = 전직 뒤 레벨마다 기술 점수(예전 저장 = 지금 Lv - 전직 Lv, 전직 Lv 를 모르면 classLv). maxLv = 기술 최고 Lv
     //   slots = 기술 칸 수 [처음, moreLv[0] 부터, moreLv[1] 부터] (폰 동그라미 · 키보드 U I O P)
-    //     2026-11-06 밤 콤보: Lv9 에 3번째 칸(띄우기 기술 올려베기·땅 융기가 열리면서 바로 끼워짐), Lv13 에 4번째 칸
+    //     2026-11-06 밤 콤보: Lv10 에 3번째 칸(띄우기 기술 올려베기·땅 융기가 열리면서 바로 끼워짐, 2026-11-06 Lv9 → 10), Lv13 에 4번째 칸
     //   cancel = 캔슬(콤보, 2026-11-06 밤): 평타 1·2·3타는 판정 장에 들어선 뒤(이미 맞힌 뒤)부터 기술로 끊고 나감(fromActive).
     //     기술 끝무렵(그 기술의 마지막 판정·발사 + padMs 부터, 기술마다 chainFrom = 장 번호로 바꿀 수 있음)에 다른 기술로 이어짐.
     //     한 번 이어지는 동안 같은 기술은 한 번만 → 같은 기술로 되돌아가는 무한 반복 없음(쿨타임도 있음). 점프 착지 웅크림에서도 기술 나감
@@ -3111,10 +3164,10 @@
     //   botPlan = 시험용(GAME.test.skillSetup): 기술 점수를 이 순서로 돌아가며 1점씩
     skills: { bufferMs: 300, cancelAfterHit: true, knight: SKILLS.knight, mage: SKILLS.mage,
               cancel: { fromActive: true, padMs: 60 },
-              tree: SKILL_TREE, perLv: 1, maxLv: 5, classLv: 7, slots: [2, 3, 4], moreLv: [9, 13], noMpMs: 500,
+              tree: SKILL_TREE, perLv: 1, maxLv: 5, classLv: 7, slots: [2, 3, 4], moreLv: [10, 13], noMpMs: 500,
               curve: { dmg: [1, 1.2, 1.4, 1.6, 1.85], cd: [1, 0.94, 0.88, 0.82, 0.75], mp: [1, 1.05, 1.1, 1.15, 1.2] },
               test: { pts: 24 },
-              botPlan: { knight: ['dash', 'spin', 'upper', 'mastery', 'skin', 'wave', 'slam', 'grit', 'counter', 'holy'],
+              botPlan: { knight: ['dash', 'spin', 'upper', 'mastery', 'skin', 'wave', 'slam', 'grit', 'storm', 'counter', 'holy'],
                          mage: ['fireball', 'bolt', 'rise', 'amp', 'flow', 'ice', 'meteor', 'blink', 'shield', 'pillar', 'brand'] } },
 
     // ---------- 기술 효과 그림 (art\stage1\skills\fx 에서 복사 → assets/fx/skill/<이름>_01.png …, 크기·기준점은 fx.json) ----------

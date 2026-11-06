@@ -154,7 +154,7 @@
     if (half) for (var j = 0; j < 10; j++) for (var i = 6; i < 11; i++) if (g.get(x0 + i, y0 + j)) g.px(x0 + i, y0 + j, j % 2 === i % 2 ? K.r2 : '#4a0a10');
   }
 
-  // ---------- 아이콘 21개 (growth/config SKILL_TREE 순서) ----------
+  // ---------- 아이콘 22개 (growth/config SKILL_TREE 순서, 2026-11-06 칼날 폭풍 +1) ----------
   var ART = {
     // ===== 기사 =====
     dash: function (g) {                    // 돌진베기: 오른쪽으로 내지르는 칼 + 뒤로 남는 바람 줄
@@ -238,6 +238,19 @@
       g.outline();
       g.map(13, 14, ['aa..', 'a.a.', 'a..a', '...a'], { a: K.r0 }); g.map(19, 15, ['.b', 'bb', '.b'], { b: K.r0 });
       g.spark(21, 2, true);
+    },
+    storm: function (g) {                   // 칼날 폭풍(2026-11-06): 아래로 좁아지는 회오리(칼바람 띠) + 휩쓸려 도는 작은 칼 두 자루
+      var C = [K.wht, K.i0, K.i1, K.i2, K.i1, K.i2, K.i3];
+      for (var i = 6; i >= 0; i--) {   // 아래(좁음)부터 그려서 위 띠가 앞에 보이게
+        var cy = 3.5 + i * 2.9, rx = 10.5 - i * 1.35, cx = 12 + (i % 2 ? 1 : -1) * (i * 0.25);
+        g.ellipse(cx, cy, rx, 1.9, C[i]);
+        g.line(Math.round(cx - rx + 1), Math.round(cy + 1), Math.round(cx + rx - 1), Math.round(cy + 1), i < 2 ? K.i1 : K.i3);
+      }
+      g.outline();
+      // 휩쓸려 도는 작은 칼(왼쪽 위 · 오른쪽 아래)
+      g.line(1, 10, 4, 7, K.s0); g.line(2, 10, 5, 7, K.s2); g.px(1, 11, K.g1); g.px(0, 12, K.b1);
+      g.line(19, 20, 22, 17, K.s0); g.line(20, 20, 23, 17, K.s2); g.px(19, 21, K.g1); g.px(18, 22, K.b1);
+      g.spark(21, 3, false, K.i1); g.spark(3, 19, false, K.i1);
     },
     holy: function (g) {                    // 성검 낙뢰(필살): 금빛 성검 + 양옆 번개
       g.disc(12, 7, 6, function (d) { return d > 4.5 ? null : d > 2.5 ? '#f8e0a0' : K.f0; });
@@ -364,7 +377,7 @@
     dash: ['돌진베기', 'knight', 'active', 'steel'], spin: ['회전베기', 'knight', 'active', 'steel'], upper: ['올려베기', 'knight', 'active', 'steel'],
     mastery: ['검 숙련', 'knight', 'passive', 'steel'], skin: ['강철 피부', 'knight', 'passive', 'steel'], wave: ['검기 날리기', 'knight', 'active', 'steel'],
     slam: ['대지 내려찍기', 'knight', 'active', 'earth'], grit: ['투지', 'knight', 'passive', 'blood'], counter: ['반격', 'knight', 'passive', 'blood'],
-    holy: ['성검 낙뢰', 'knight', 'active', 'holy'],
+    storm: ['칼날 폭풍', 'knight', 'active', 'steel'], holy: ['성검 낙뢰', 'knight', 'active', 'holy'],
     fireball: ['화염구', 'mage', 'active', 'fire'], bolt: ['번개', 'mage', 'active', 'storm'], rise: ['땅 융기', 'mage', 'active', 'earth'],
     amp: ['원소 증폭', 'mage', 'passive', 'arcane'], flow: ['마나 순환', 'mage', 'passive', 'ice'], ice: ['얼음창', 'mage', 'active', 'ice'],
     meteor: ['메테오', 'mage', 'active', 'fire'], blink: ['순간이동', 'mage', 'active', 'arcane'], shield: ['마나 방패', 'mage', 'passive', 'ice'],

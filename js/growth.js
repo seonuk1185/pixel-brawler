@@ -62,7 +62,7 @@
       },
       // 초기화(공짜): 쓴 기술 점수 전부 돌려받음 → 열린 기술은 모두 Lv1
       reset: function () { st.lv = {}; B.save(); },
-      // 칸 수: 시험 책 = 늘 가장 많이, 저장 책 = moreLv 마다 하나씩 늘어남(2026-11-06 밤: [2, 3, 4] / Lv9 · Lv13)
+      // 칸 수: 시험 책 = 늘 가장 많이, 저장 책 = moreLv 마다 하나씩 늘어남(2026-11-06 밤: [2, 3, 4] / Lv10 · Lv13, 2026-11-06 Lv9 → 10)
       slots: function () {
         var S = SK.slots || [2, 4], M = [].concat(SK.moreLv || 13), n = S[0];
         if (test) return S[S.length - 1];
@@ -249,7 +249,8 @@
     var cs = cur.skills, L0 = treeOf(G.cls) || [];
     if (cs && typeof cs === 'object') {
       G.sk.clsLv = clampLv(cs.clsLv || 1);
-      if (cs.lv && typeof cs.lv === 'object') L0.forEach(function (e) { var n = cs.lv[e.id] | 0; if (n > 0) G.sk.lv[e.id] = Math.min((SK.maxLv || 5) - 1, n); });
+      // 아직 안 열린 기술에 올려 둔 점수는 돌려받음(2026-11-06 열림 순서 바꿈: 예전 Lv9 저장의 올려베기·땅 융기는 이제 Lv10 에 열림)
+      if (cs.lv && typeof cs.lv === 'object') L0.forEach(function (e) { var n = cs.lv[e.id] | 0; if (n > 0 && G.lv >= (e.unlock || 0)) G.sk.lv[e.id] = Math.min((SK.maxLv || 5) - 1, n); });
       if (Array.isArray(cs.bar)) G.sk.bar = cs.bar.slice(0, 4).map(function (id) { return typeof id === 'string' ? id : null; });
     } else G.sk.clsLv = Math.min(G.lv, SK.classLv || 7);
     var bk = G.book(G.cls);

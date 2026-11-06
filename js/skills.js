@@ -225,7 +225,7 @@
       debris(p.x, p.y - 40 * AS(), p.y, 10, { cols: ['#ffffff', '#d8b0ff', '#5ae6ff'], glow: true, sp: 160, size: 1.5, ms: 420, g: -60, spread: 1.6 });
     }
     casts[d.id] = (casts[d.id] || 0) + 1;
-    if (window.SFX) SFX.cast(d.id);
+    if (window.SFX) { if (d.sfx) snd(d.sfx); else SFX.cast(d.id); }   // sfx = sfx.js 기술 소리 표에 없는 기술의 시작 소리(칼날 폭풍, 2026-11-06)
     if (H.onCast && !d.auto) H.onCast(d);   // 포만감이 조금 더 줆(main.js, 2026-11-06 밤). 반격(저절로)은 안 줆
     if (d.strikes) {
       var K = s.K = boltsFor(d.strikes, L);
@@ -418,7 +418,8 @@
   }
   function frame(p) {
     var s = p.sk, d = s.d, A = p.char.anims;
-    if (usingArt(p)) return { anim: d.motion, idx: Math.min(A[d.motion].length - 1, seqIdx(d.frameMs, s.t)) };
+    // motionSeq(칼날 폭풍, 2026-11-06) = 기술 장 번호 → 동작 그림 장 번호(같은 그림을 되풀이)
+    if (usingArt(p)) { var mi = seqIdx(d.frameMs, s.t); if (d.motionSeq) mi = d.motionSeq[Math.min(d.motionSeq.length - 1, mi)]; return { anim: d.motion, idx: Math.min(A[d.motion].length - 1, mi) }; }
     var ph = d.placeholder;
     if (!ph) return { anim: 'idle', idx: 0 };
     var i = seqIdx(ph.d, s.t);
@@ -473,6 +474,7 @@
       done[id] = true;
       var dir = p.dir;
       if (h.away && Math.abs(t.x - p.x) > 2) dir = t.x > p.x ? 1 : -1;   // 몸에서 바깥쪽으로(뒤에 있는 적은 뒤로)
+      if (h.pull && Math.abs(t.x - p.x) > 2) dir = t.x > p.x ? -1 : 1;   // 칼날 폭풍(2026-11-06): 기사 쪽으로 끌어당김
       var first = !s.hitWin[i];
       s.hitWin[i] = true; s.hitAny = true;
       H.onHit(stOf(h, d), t, { dir: dir, wk: p.weaponKey, x: p.x + dir * 24 * AS(), y: p.y + (h.hitY != null ? h.hitY : -56 * AS()), mul: s.mul });
@@ -548,6 +550,17 @@
     }
     if (f.type === 'arc') {   // 코드로 그린 초승달 베기(그림 없이): 빛나는 활 모양이 앞으로 휘둘러지며 사라짐
       arcs.push({ x: x, y: y, dir: dir, r: (f.r || 44) * ((p.sk && p.sk.area) || 1), t: 0, life: f.ms || 220, color: f.color || '#ffe08a' });
+      return;
+    }
+    if (f.type === 'sound') { snd(f.name); return; }   // 그 장에 소리(sfx.js 에 있는 소리 이름, 2026-11-06)
+    if (f.type === 'whirl') {   // 칼날 폭풍(2026-11-06, 우리 코드): 발밑 바람 고리 + 둘레로 튀는 강철 파편 + 빛. big = 마지막 터짐
+      var wk = (p.sk && p.sk.area) || 1, wr = (f.r || 70) * wk, cy = p.y - 50 * AS();   // r = 판정과 같은 크기(도트)
+      wave(p.x, p.y, wr, { flat: 0.3, w: f.big ? 5 : 3, ms: f.big ? 420 : 300, color: '#e8f4ff', glow: '#7fb8ff', ground: true, r0: wr * 0.3 });
+      glow(p.x, cy, wr * (f.big ? 0.6 : 0.4), f.big ? '#e6f2ff' : '#cfe8ff', f.big ? 300 : 200, f.big ? 0.6 : 0.35);
+      for (var wi = 0; wi < 2; wi++)   // 양옆으로 튀는 강철 파편·바람 불티
+        debris(p.x + (wi ? 1 : -1) * wr * 0.5, cy + 10 * AS(), p.y, f.big ? 12 : 6,
+               { cols: ['#ffffff', '#cfe8ff', '#8e9cb4'], glow: true, sp: f.big ? 240 : 170, size: 1.5, ms: f.big ? 520 : 360, spread: 1.5 });
+      if (f.big) wave(p.x, cy, wr * 0.8, { flat: 0.9, w: 3, ms: 260, color: '#ffffff', glow: '#9cc8ff' });
       return;
     }
     if (f.type === 'sparkup') {   // 올려베기(2026-11-06 밤): 위로 솟는 빛 줄기 + 불티

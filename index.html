@@ -122,11 +122,11 @@
       <div class="skbar" id="skBar"></div>
     </div>
   </div>
-  <!-- 기술 칸 열림 알림 (2026-11-06): Lv9 · Lv13 에 새 기술 칸이 열리면 한 번. 칸 줄(새 칸 = 빛남) + 확인. 여는 동안 게임 멈춤(main.js openUnlock) -->
+  <!-- 기술 칸 열림 알림 (2026-11-06): Lv10 · Lv13 에 새 기술 칸이 열리면 한 번. 칸 줄(새 칸 = 빛남) + 확인. 여는 동안 게임 멈춤(main.js openUnlock) -->
   <div class="statpanel unlockpop" id="unlockPop" hidden>
     <div class="box">
       <h2>축하합니다!</h2>
-      <p class="uptxt"><b id="upLv">Lv 9</b> 기술 칸이 열렸어요!</p>
+      <p class="uptxt"><b id="upLv">Lv 10</b> 기술 칸이 열렸어요!</p>
       <div class="upslots" id="upSlots"></div>
       <p class="upsub">새 칸에 기술을 끼워서 버튼으로 눌러요</p>
       <div class="rbtns"><button type="button" id="btnUpOk">확인</button></div>
@@ -144,7 +144,7 @@
     <button type="button" class="btn atk" id="btnAtk" aria-label="공격">공격</button>
     <!-- 회피(2026-11-07): 점프 왼쪽 아래 작은 동그라미. 쿨타임 중엔 시계 방향으로 어두움(--cd, main.js dodgeUi) -->
     <button type="button" class="btn dodge" id="btnDodge" aria-label="회피"><i class="sweep"></i><span>회피</span></button>
-    <!-- 기술 칸 A~D (기사·법사만, 견습은 숨김. 3번 칸 Lv9 · 4번 칸 Lv13 부터). 네모 도트 액자 + 기술 그림(js/icons.js), 공격 버튼 둘레 반달(2026-11-06 폰 UI).
+    <!-- 기술 칸 A~D (기사·법사만, 견습은 숨김. 3번 칸 Lv10 · 4번 칸 Lv13 부터). 네모 도트 액자 + 기술 그림(js/icons.js), 공격 버튼 둘레 반달(2026-11-06 폰 UI).
          쿨타임 중엔 시계 방향으로 어두움 + 남은 초, 마나가 모자라면 회색 그림 + 밑에 「MP n」 (skills.js 의 ui) -->
     <button type="button" class="btn sk skA" id="btnSkA" data-skill="A" hidden aria-label="기술 1"><span class="ic"></span><i class="sweep"></i><b class="sec"></b><small class="mp"></small></button>
     <button type="button" class="btn sk skB" id="btnSkB" data-skill="B" hidden aria-label="기술 2"><span class="ic"></span><i class="sweep"></i><b class="sec"></b><small class="mp"></small></button>
