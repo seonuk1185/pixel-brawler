@@ -669,6 +669,8 @@
       var ak = this.wArt && weaponImgs[this.wArt] ? this.wArt : this.weaponKey;
       wDef = this.cfg.art.weapons[ak];
       wImg = weaponImgs[ak];
+      // +10 신화 칼 전용 손 위치 · 각도(2026-11-08, 손 위치 json 의 mythic): 그 장에 적혀 있으면 그것으로(층 · 주먹 칸은 그대로)
+      if (anc && anc.my && wDef && wDef.mythic) anc = { x: anc.my.x, y: anc.my.y, angle: anc.my.angle, layer: anc.layer, fist: anc.fist, hide: false };
     }
     var back = anc && wImg && (anc.layer ? anc.layer === 'back' : wDef.layer === 'back');
     var k = (img && img._k) || 1;   // 그림 점 → 도트 (HD 0.5, 예전 도트 그림 1). 손 위치·기준점은 그림 점 단위

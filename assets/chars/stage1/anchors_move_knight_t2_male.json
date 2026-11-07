@@ -346,6 +346,13 @@
     "match0": 0.811,
     "note": "auto shift hit the search limit (cape covers the hand area) -> 1st-tier hand kept",
     "v2": "2026-11-07 new shoulder-bash art (run_attack_v2): sword held at the waist like before, re-anchored to the waist fist"
+   },
+   "mythic": {
+    "hand": [
+     70,
+     80
+    ],
+    "angle": 163
    }
   },
   "run_attack_02": {
@@ -368,14 +375,21 @@
     "match0": 0.834,
     "note": "auto shift hit the search limit (cape covers the hand area) -> 1st-tier hand kept",
     "v2": "2026-11-07 new shoulder-bash art (run_attack_v2): sword held at the waist like before, re-anchored to the waist fist"
+   },
+   "mythic": {
+    "hand": [
+     80,
+     78
+    ],
+    "angle": 165
    }
   },
   "run_attack_03": {
    "hand": [
-    88,
-    82
+    66,
+    90
    ],
-   "angle": 160,
+   "angle": 155,
    "layer": "back",
    "check": {
     "fromTier1": [
@@ -389,12 +403,20 @@
     "match": 0.965,
     "match0": 0.91,
     "v2": "2026-11-07 new shoulder-bash art (run_attack_v2): sword held at the waist like before, re-anchored to the waist fist"
-   }
+   },
+   "mythic": {
+    "hand": [
+     67,
+     90
+    ],
+    "angle": 168
+   },
+   "fix": "2026-11-08 shoulder-bash sword fix: 03 hand moved to the rear hip so the blade tip shows under the cape (was fully hidden -> flicker), 04 hand toward body (hilt no longer peeks in front of the belt). mythic = +10 sword only (longer 44-dot blade): flatter angle so the tip stays off the ground, hand toward body so grip/glow does not poke out in front"
   },
   "run_attack_04": {
    "hand": [
-    86,
-    82
+    83,
+    83
    ],
    "angle": 165,
    "layer": "back",
@@ -411,6 +433,13 @@
     "match0": 0.854,
     "note": "auto shift hit the search limit (cape covers the hand area) -> 1st-tier hand kept",
     "v2": "2026-11-07 new shoulder-bash art (run_attack_v2): sword held at the waist like before, re-anchored to the waist fist"
+   },
+   "mythic": {
+    "hand": [
+     70,
+     86
+    ],
+    "angle": 168
    }
   },
   "run_attack_05": {

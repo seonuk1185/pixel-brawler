@@ -157,8 +157,10 @@
       var x = a.hand ? a.hand[0] : a.x, y = a.hand ? a.hand[1] : a.y;   // {hand:[x,y]} 또는 {x,y}
       // hide = 이 장에서는 무기를 안 그림(넘어져서 손에서 놓침)
       // fist = [x, y, w, h] 주먹 칸(2026-11-07): 칼을 몸 앞(front)에 그린 뒤 이 칸의 몸 그림을 한 번 더 덮어 그림 → 주먹이 손잡이를 감싼 것처럼
+      // mythic = { hand:[x,y], angle } (2026-11-08): +10 신화 칼(칼날이 훨씬 김)일 때만 쓰는 손 위치 · 각도(어깨빵에서 땅에 끌리거나 손잡이가 몸 앞으로 삐죽 나오지 않게)
+      var M = a.mythic, my = M && M.hand ? { x: +M.hand[0], y: +M.hand[1], angle: deg ? (+M.angle || 0) * Math.PI / 180 : +M.angle || 0 } : null;
       return { x: +x, y: +y, angle: deg ? ang * Math.PI / 180 : ang, layer: a.layer || a.z || null, hide: !!a.hide,
-               fist: Array.isArray(a.fist) && a.fist.length === 4 ? a.fist.map(Number) : null };
+               fist: Array.isArray(a.fist) && a.fist.length === 4 ? a.fist.map(Number) : null, my: my };
     }
     Object.keys(anims).forEach(function (name) {
       var v = src[name];
@@ -243,6 +245,7 @@
         c.anchors[n].forEach(function (a) {
           if (!a) return;
           var q = map(a.x, a.y); a.x = q[0]; a.y = q[1];
+          if (a.my) { var qm = map(a.my.x, a.my.y); a.my.x = qm[0]; a.my.y = qm[1]; }   // 신화 칼 전용 손 위치도 같은 방식으로
           if (a.fist) {   // 주먹 칸도 같은 방식으로 (HD = x f, 예전 도트 = 줄인 배율 + 민 양)
             var f0 = map(a.fist[0], a.fist[1]), f1 = map(a.fist[0] + a.fist[2], a.fist[1] + a.fist[3]);
             a.fist = [f0[0], f0[1], f1[0] - f0[0], f1[1] - f0[1]];

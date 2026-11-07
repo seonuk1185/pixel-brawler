@@ -318,6 +318,13 @@
      0
     ],
     "iou": 0.979
+   },
+   "mythic": {
+    "hand": [
+     70,
+     80
+    ],
+    "angle": 163
    }
   },
   "run_attack_02": {
@@ -337,14 +344,21 @@
      0
     ],
     "iou": 0.982
+   },
+   "mythic": {
+    "hand": [
+     80,
+     78
+    ],
+    "angle": 165
    }
   },
   "run_attack_03": {
    "hand": [
-    88,
-    82
+    66,
+    90
    ],
-   "angle": 160,
+   "angle": 155,
    "layer": "back",
    "check": {
     "fromPaladin": [
@@ -356,12 +370,20 @@
      0
     ],
     "iou": 0.984
-   }
+   },
+   "mythic": {
+    "hand": [
+     67,
+     90
+    ],
+    "angle": 168
+   },
+   "fix": "2026-11-08 shoulder-bash sword fix: 03 hand moved to the rear hip so the blade tip shows under the cape (was fully hidden -> flicker), 04 hand toward body (hilt no longer peeks in front of the belt). mythic = +10 sword only (longer 44-dot blade): flatter angle so the tip stays off the ground, hand toward body so grip/glow does not poke out in front"
   },
   "run_attack_04": {
    "hand": [
-    86,
-    82
+    83,
+    83
    ],
    "angle": 165,
    "layer": "back",
@@ -375,6 +397,13 @@
      0
     ],
     "iou": 0.986
+   },
+   "mythic": {
+    "hand": [
+     70,
+     86
+    ],
+    "angle": 168
    }
   },
   "run_attack_05": {
