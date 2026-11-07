@@ -84,16 +84,20 @@
   def('swingFist', { cap: 3, gap: 45, vary: 0.12 }, function (x, o, t, k) {
     noise(x, o, t, k, { ft: 'bandpass', f: 1400, f2: 600, q: 1.4, d: 0.09, v: 0.5 });
   });
+  // 2026-11-06 형님: 칼 소리가 어색(얇은 「칙」+「삐」) → 「휙~」 바람 가르는 소리: 낮은 데서 높이 쓸어 올라가는 바람 + 내려오는 꼬리 + 아주 작은 쇳바람. 삐 소리 뺌
   def('swingSword', { cap: 3, gap: 45, vary: 0.1 }, function (x, o, t, k) {
-    noise(x, o, t, k, { ft: 'bandpass', f: 3200, f2: 900, q: 2.2, d: 0.14, v: 0.42, a: 0.015 });
-    tone(x, o, t, k, { w: 'triangle', f: 1900, f2: 1500, d: 0.05, v: 0.025, at: 0.01 });
+    noise(x, o, t, k, { ft: 'bandpass', f: 520, f2: 2300, fd: 0.08, q: 0.7, d: 0.17, v: 0.55, a: 0.045 });
+    noise(x, o, t, k, { ft: 'bandpass', f: 2400, f2: 700, q: 0.9, d: 0.12, v: 0.3, a: 0.02, at: 0.06 });
+    noise(x, o, t, k, { ft: 'highpass', f: 5000, d: 0.05, v: 0.05, a: 0.01, at: 0.04 });
   });
   def('swingStaff', { cap: 3, gap: 45, vary: 0.1 }, function (x, o, t, k) {
     noise(x, o, t, k, { ft: 'bandpass', f: 900, f2: 380, q: 1.2, d: 0.16, v: 0.45, a: 0.02 });
     tone(x, o, t, k, { w: 'sine', f: 1300, f2: 1900, d: 0.09, v: 0.035, at: 0.02 });
   });
+  // 큰 휘두르기: 더 길고 낮은 「후웅~」(올라가는 바람 + 긴 꼬리)
   def('swingHeavy', { cap: 2, gap: 60, vary: 0.08 }, function (x, o, t, k) {
-    noise(x, o, t, k, { ft: 'bandpass', f: 2200, f2: 350, q: 1.6, d: 0.22, v: 0.34, a: 0.02 });
+    noise(x, o, t, k, { ft: 'bandpass', f: 300, f2: 1700, fd: 0.11, q: 0.6, d: 0.26, v: 0.6, a: 0.07 });
+    noise(x, o, t, k, { ft: 'bandpass', f: 1700, f2: 380, q: 0.8, d: 0.2, v: 0.32, a: 0.03, at: 0.1 });
   });
   // 법사 평타 마법탄 쏨: 작은 「퓻」
   def('magicShot', { cap: 2, gap: 60, vary: 0.08 }, function (x, o, t, k) {
