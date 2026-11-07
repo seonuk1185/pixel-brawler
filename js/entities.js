@@ -198,7 +198,8 @@
   };
   // 보이는 그림(2026-11-07): 미끄러지는 동안(push) pushHold 장 하나로 고정(기사 = 1장, 무릎이 오르내리지 않게). 판정 · 시간은 위 runAttackFrame 그대로
   Player.prototype.runAttackShowFrame = function () {
-    var a = this.ratk, R = this.mv().run_attack;
+    var a = this.ratk, R = this.mv().run_attack, D = this.char && this.char.def.raShow;
+    if (a.phase === 'push' && D) return a.pt < D.pushFirstMs ? D.pushFirst : D.pushHold;   // 그림 묶음이 따로 정한 순서(성기사 어깨빵 v2)
     if (a.phase === 'push' && R.pushHold != null) return R.pushHold;
     if (a.phase === 'finish' && R.finishShow != null) return R.finishShow;   // 기사 여: 마무리 다리 들기 장 대신 미끄러지는 자세 그대로
     return this.runAttackFrame();

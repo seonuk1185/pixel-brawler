@@ -840,6 +840,9 @@
     });
     knightT2Male.moveAnchors = 'assets/chars/stage1/anchors_move_knight_t2_male.json';
     knightT2Male.t2Dir = T2DIR;
+    // 달리며 공격 새 그림(2026-11-07 어깨빵 v2): 미끄러지는 동안 = 2장(어깨 내밈)을 pushFirstMs 잠깐 → 3장(몸 틀어 등 · 망토가 보임) 계속.
+    //   마무리 = 4장(어깨 충돌), 회복 = 5장. 보이는 그림만 바꿈(시간 · 판정 · 데미지는 기사 남 자료 그대로)
+    knightT2Male.raShow = { pushFirst: 1, pushFirstMs: 90, pushHold: 2 };
   }
   var characters = { male: male, female: female };
   if (knightMale) { characters.knight_male = knightMale; characters.knight_female = knightFemale; }

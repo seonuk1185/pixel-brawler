@@ -328,8 +328,8 @@
   },
   "run_attack_01": {
    "hand": [
-    43,
-    78
+    70,
+    80
    ],
    "angle": 150,
    "layer": "back",
@@ -344,13 +344,14 @@
     ],
     "match": 0.847,
     "match0": 0.811,
-    "note": "auto shift hit the search limit (cape covers the hand area) -> 1st-tier hand kept"
+    "note": "auto shift hit the search limit (cape covers the hand area) -> 1st-tier hand kept",
+    "v2": "2026-11-07 new shoulder-bash art (run_attack_v2): sword held at the waist like before, re-anchored to the waist fist"
    }
   },
   "run_attack_02": {
    "hand": [
-    49,
-    85
+    80,
+    78
    ],
    "angle": 160,
    "layer": "back",
@@ -365,13 +366,14 @@
     ],
     "match": 0.862,
     "match0": 0.834,
-    "note": "auto shift hit the search limit (cape covers the hand area) -> 1st-tier hand kept"
+    "note": "auto shift hit the search limit (cape covers the hand area) -> 1st-tier hand kept",
+    "v2": "2026-11-07 new shoulder-bash art (run_attack_v2): sword held at the waist like before, re-anchored to the waist fist"
    }
   },
   "run_attack_03": {
    "hand": [
-    53,
-    86
+    88,
+    82
    ],
    "angle": 160,
    "layer": "back",
@@ -385,13 +387,14 @@
      0
     ],
     "match": 0.965,
-    "match0": 0.91
+    "match0": 0.91,
+    "v2": "2026-11-07 new shoulder-bash art (run_attack_v2): sword held at the waist like before, re-anchored to the waist fist"
    }
   },
   "run_attack_04": {
    "hand": [
-    62,
-    67
+    86,
+    82
    ],
    "angle": 165,
    "layer": "back",
@@ -406,13 +409,14 @@
     ],
     "match": 0.95,
     "match0": 0.854,
-    "note": "auto shift hit the search limit (cape covers the hand area) -> 1st-tier hand kept"
+    "note": "auto shift hit the search limit (cape covers the hand area) -> 1st-tier hand kept",
+    "v2": "2026-11-07 new shoulder-bash art (run_attack_v2): sword held at the waist like before, re-anchored to the waist fist"
    }
   },
   "run_attack_05": {
    "hand": [
-    108,
-    74
+    104,
+    76
    ],
    "angle": -40,
    "layer": "back",
@@ -426,7 +430,8 @@
      -1
     ],
     "match": 0.962,
-    "match0": 0.947
+    "match0": 0.947,
+    "v2": "2026-11-07 new shoulder-bash art (run_attack_v2): sword held at the waist like before, re-anchored to the waist fist"
    }
   },
   "jump_attack_01": {
