@@ -1254,12 +1254,27 @@
     var T = d.tornado, lv = s.L.lv || 1, c = tornadoCols(p, T);
     tornados.push({ x: p.x + p.dir * T.x, z: p.y, dir: p.dir, t: 0, life: T.ms * (1 + (T.msPerLv || 0) * (lv - 1)), next: T.firstMs || 120,
                     k: s.area, mul: s.mul, wk: p.weaponKey, d: d, T: T, lv: curLv, col: c[0], col2: c[1], burst: false, seed: Math.random() * 6.28 });
+    tornadoLook(tornados[tornados.length - 1], p, s.L.lv || 1);
     glow(p.x + p.dir * T.x, p.y - 50 * AS(), T.r * s.area, c[1], 220, 0.6);
+  }
+  // 회오리 모습 재료(2026-11-07 v2 형님: 「동그란 줄 몇 개」 → 진짜 바람 회오리 + 진짜 칼): 그림만, 판정 · 데미지는 그대로
+  //   streaks = 깔때기를 따라 감겨 오르는 얇은 바람 줄(높이 · 빠르기 제각각), swords = 기사가 지금 든 칼 그림(강화 단계 그림) 6~10자루(Lv 마다 +1),
+  //   bits = 휩쓸려 도는 잎 · 불티, dust = 바닥에서 튀는 흙먼지(개수 상한). 폰(매끈 화면 아님)은 줄 · 조각을 줄임
+  function tornadoLook(o, p, lv) {
+    var A = window.GAME && GAME.assets && GAME.assets.weapons, ak = A && (p.wArt && A[p.wArt] ? p.wArt : p.weaponKey), sm = SM(), i, R = Math.random;
+    o.img = A && A[ak] || null;
+    o.streaks = []; o.swords = []; o.bits = []; o.dust = []; o.dustT = 0;
+    var nS = sm ? 30 : 18, nW = clamp(5 + lv, 6, 10), nB = sm ? 7 : 4;
+    for (i = 0; i < nS; i++) o.streaks.push({ u: (i + R() * 0.6) / nS, ph: R() * 6.28, sp: 0.75 + R() * 0.6, len: 2.2 + R() * 2.2, rise: 0.03 + R() * 0.05,
+      w: 0.9 + R() * 1.4, up: 0.05 + R() * 0.12, c: i % 3 });
+    for (i = 0; i < nW; i++) o.swords.push({ u: 0.16 + 0.72 * (i + 0.5) / nW, ph: i * 2.399 + R() * 0.4, sp: 0.8 + R() * 0.45, rot: R() * 6.28, rs: (R() < 0.5 ? -1 : 1) * (7 + R() * 6), bob: R() * 6.28 });
+    for (i = 0; i < nB; i++) o.bits.push({ u: R(), ph: R() * 6.28, sp: 0.9 + R() * 0.7, spark: i % 3 === 2, rot: R() * 6.28, c: ['#7fae3e', '#b58a3a', '#5e8a2c'][i % 3] });
   }
   function tornadoStep(dt) {
     for (var i = tornados.length - 1; i >= 0; i--) {
       var o = tornados[i], T = o.T;
       o.t += dt;
+      if (o.dust) tornadoDust(o, dt);   // 바닥 흙먼지(그림만)
       if (!o.burst) {
         o.x += o.dir * T.speed * dt / 1000;
         tornadoPull(o, dt);
@@ -1304,25 +1319,115 @@
     if (h.flash) doFlash(h.flash);
     if (any && h.slowMs) H.slow(h.slowMs);
   }
-  // 회오리 그림(코드): 아래 좁고 위 넓은 깔때기 = 높이마다 돌아가는 칼날 줄(초승달 호) 여러 겹 + 바닥 고리 + 가운데 빛. 처음 · 끝은 커졌다 작아짐
+  // 회오리 그림(코드, 2026-11-07 v2): 아래 좁고 위 넓은 깔때기(위로 갈수록 확 퍼짐 · 몸통이 살짝 휘청)
+  //   뒤쪽 바람 줄 → 뒤쪽 칼 → 반투명 몸통 → 잎 · 불티 → 앞쪽 칼 → 앞쪽 바람 줄 순서(돌며 앞뒤가 바뀜 = 입체). 처음 · 끝은 커졌다 작아짐, 끝 터짐 때 칼이 바깥으로 흩어짐
+  var TEY = 0.28;   // 깔때기 고리 납작한 정도(위아래 / 좌우)
+  function tfun(o, u, x, z, H0, rb, rt) {
+    var r = rb + (rt - rb) * Math.pow(u, 1.35), now = o.t / 1000;
+    return { x: x + Math.sin(now * 2.3 + u * 3.2 + o.seed) * rt * 0.12 * u, y: z - H0 * u, r: r };
+  }
+  function tornadoDust(o, dt) {
+    var D = o.dust, T = o.T, i, cap = SM() ? 26 : 14;
+    for (i = D.length - 1; i >= 0; i--) { var q = D[i]; q.t += dt; if (q.t >= q.life) { D.splice(i, 1); continue; } var f = dt / 1000; q.x += q.vx * f; q.h += q.vh * f; q.vh -= 60 * f; q.vx *= 0.97; }
+    if (o.burst) return;
+    o.dustT += dt;
+    while (o.dustT >= 45) {
+      o.dustT -= 45;
+      if (D.length >= cap) continue;
+      var sd = Math.random() < 0.5 ? -1 : 1, rr = T.r * o.k * 0.3;
+      D.push({ x: o.x + sd * rr * (0.4 + Math.random() * 0.6), zo: (Math.random() - 0.5) * T.depth * 0.6 * o.k, h: 2, vx: sd * (40 + Math.random() * 70) + o.dir * T.speed * 0.5,
+               vh: 30 + Math.random() * 60, t: 0, life: 420 + Math.random() * 360, s: (4 + Math.random() * 6) * AS(), c: Math.random() < 0.5 ? '#b8a688' : '#d6c9ad' });
+    }
+  }
   function drawTornado(ctx, camX, o) {
-    var T = o.T, x = o.x - camX, z = o.z, k = o.k;
+    if (!o.streaks) return;
+    var T = o.T, x = o.x - camX, z = o.z, k = o.k, P2 = Math.PI * 2;
     var grow = o.burst ? 1 + o.bt / 160 : Math.min(1, o.t / 180), fade = o.burst ? Math.max(0, 1 - o.bt / 260) : Math.min(1, (o.life - o.t) / 200 + 0.6);
-    var H0 = T.h * k * grow, r0 = T.r * k * 0.35 * grow, r1 = T.r * k * 1.05 * grow, spin = o.t / 1000 * 13 + o.seed, n = 9;
-    ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.9 * fade; ctx.lineCap = 'round';
-    var g = ctx.createRadialGradient(x, z - H0 * 0.45, 0, x, z - H0 * 0.45, r1);
-    g.addColorStop(0, 'rgba(255,255,255,0.28)'); g.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = g; ctx.fillRect(x - r1, z - H0 - 6, r1 * 2, H0 + 12);
-    ctx.strokeStyle = o.col; ctx.lineWidth = 2 * AS(); ctx.beginPath(); ctx.ellipse(x, z, r1 * 0.75, r1 * 0.2, 0, 0, Math.PI * 2); ctx.stroke();
-    for (var i = 0; i < n; i++) {
-      var u = (i + 0.5) / n, hy = z - H0 * u, r = r0 + (r1 - r0) * u, a0 = spin * (1 + u * 0.4) + i * 2.1;
-      [[o.col, 9, 0.85], [o.col2, 3, 0.6], ['#ffffff', 1.2, 0.8]].forEach(function (L, j) {
-        ctx.globalCompositeOperation = j ? 'lighter' : 'source-over';   // 굵은 바깥 줄은 그냥 칠함(밝은 하늘에서도 보이게), 안쪽 빛 줄은 더하기
-        ctx.globalAlpha = L[2] * fade; ctx.strokeStyle = L[0]; ctx.lineWidth = L[1] * AS();
-        ctx.beginPath(); ctx.ellipse(x, hy, r, r * 0.26, 0, a0, a0 + 1.5); ctx.stroke();
-        ctx.beginPath(); ctx.ellipse(x, hy, r, r * 0.26, 0, a0 + Math.PI, a0 + Math.PI + 1.1); ctx.stroke();
+    var H0 = T.h * k * grow, rb = T.r * k * 0.16 * grow, rt = T.r * k * 1.1 * grow, now = o.t / 1000, spin = now * 9 + o.seed;
+    var segs = SM() ? 7 : 5, sw = AS();
+    ctx.save(); ctx.lineCap = 'round';
+    // 바닥 흙먼지(세계 자리에 남음 → 회오리가 지나간 자리에 먼지가 퍼짐)
+    o.dust.forEach(function (q) {
+      var a = 1 - q.t / q.life; ctx.globalAlpha = 0.6 * a * Math.min(1, q.t / 80); ctx.fillStyle = q.c;
+      ctx.beginPath(); ctx.arc(q.x - camX, z + q.zo - q.h, q.s * (1 + q.t / q.life), 0, P2); ctx.fill();
+    });
+    // 뒤 빛 + 바닥 소용돌이 고리(가운데만 살짝)
+    ctx.globalCompositeOperation = 'lighter';
+    var gm = tfun(o, 0.5, x, z, H0, rb, rt), g = ctx.createRadialGradient(gm.x, gm.y, 0, gm.x, gm.y, rt);
+    g.addColorStop(0, 'rgba(255,255,255,' + (0.16 * fade) + ')'); g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.globalAlpha = 1; ctx.fillStyle = g; ctx.fillRect(gm.x - rt, z - H0 - 6, rt * 2, H0 + 12);
+    ctx.globalAlpha = 0.5 * fade; ctx.strokeStyle = o.col2; ctx.lineWidth = 1.5 * sw;
+    ctx.beginPath(); ctx.ellipse(x, z, rb * 2.6, rb * 2.6 * TEY, 0, spin, spin + 2.4); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(x, z, rb * 2.6, rb * 2.6 * TEY, 0, spin + Math.PI, spin + Math.PI + 2.0); ctx.stroke();
+    // 바람 줄: front = false 면 뒤쪽 반(sin < 0)만, true 면 앞쪽 반만
+    var cols = ['#ffffff', '#dcefff', o.col2];
+    function streaks(front) {
+      o.streaks.forEach(function (S) {
+        var u0 = (S.u + now * S.up) % 1, a0 = S.ph + spin * S.sp * (1.35 - 0.5 * u0), last = null;
+        for (var j = 0; j <= segs; j++) {
+          var f = j / segs, u = Math.min(1, u0 + S.rise * f * S.len), a = a0 + S.len * f, F = tfun(o, u, x, z, H0, rb, rt);
+          var pt = { x: F.x + Math.cos(a) * F.r, y: F.y + Math.sin(a) * F.r * TEY, s: Math.sin(a) };
+          if (last && (pt.s >= 0) === front) {
+            var tap = Math.sin(Math.PI * (j - 0.5) / segs), top = u0 > 0.92 ? (1 - u0) / 0.08 : 1, al = (front ? 0.85 : 0.4) * tap * top * fade;
+            ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = al * 0.5; ctx.strokeStyle = o.col; ctx.lineWidth = (S.w * 2.4 + 1) * sw * tap;   // 바깥 = 속성 색(밝은 하늘에서도 보이게 그냥 칠함)
+            ctx.beginPath(); ctx.moveTo(last.x, last.y); ctx.lineTo(pt.x, pt.y); ctx.stroke();
+            ctx.globalAlpha = al * 0.9; ctx.strokeStyle = cols[S.c]; ctx.lineWidth = S.w * sw * tap;   // 안 = 흰 · 옅은 하늘색 바람
+            ctx.beginPath(); ctx.moveTo(last.x, last.y); ctx.lineTo(pt.x, pt.y); ctx.stroke();
+          }
+          last = pt;
+        }
       });
     }
+    // 칼(기사가 든 칼 그림): 높이 u 의 고리를 따라 돌며 제자리에서도 빙글빙글. 앞 = 크게 · 밝게, 뒤 = 작게 · 흐리게 + 짧은 꼬리
+    var img = o.img, cxp = img ? (img._ox || 0) + img.width / 2 : 0, cyp = img ? (img._oy || 0) + img.height / 2 : 0;
+    var spread = o.burst ? 1 + o.bt / 70 : 1;
+    function swords(front) {
+      if (!img) return;
+      o.swords.forEach(function (W) {
+        var u = W.u + Math.sin(now * 2 + W.bob) * 0.04, a = W.ph + now * 7.5 * W.sp, F = tfun(o, u, x, z, H0, rb, rt), s = Math.sin(a);
+        if ((s >= 0) !== front) return;
+        var rr = F.r * 0.82 * spread, px = F.x + Math.cos(a) * rr, py = F.y + Math.sin(a) * rr * TEY - (o.burst ? o.bt * 0.15 : 0);
+        var sc = 0.95 * Math.sqrt(k) * (0.78 + 0.24 * s), al = (front ? 1 : 0.55) * fade, rot = W.rot + now * W.rs;
+        // 꼬리: 지나온 고리 길(얇게 사라지는 줄 3토막)
+        ctx.globalCompositeOperation = 'lighter';
+        for (var j = 0; j < 3; j++) {
+          var b0 = a - 0.22 * j, b1 = a - 0.22 * (j + 1);
+          ctx.globalAlpha = al * 0.5 * (1 - j / 3); ctx.strokeStyle = j ? o.col2 : '#ffffff'; ctx.lineWidth = (3.2 - j) * sw * sc;
+          ctx.beginPath(); ctx.moveTo(F.x + Math.cos(b0) * rr, F.y + Math.sin(b0) * rr * TEY); ctx.lineTo(F.x + Math.cos(b1) * rr, F.y + Math.sin(b1) * rr * TEY); ctx.stroke();
+        }
+        if (front && SM()) {   // 칼 둘레 옅은 빛(속성 있으면 그 색)
+          ctx.globalAlpha = 0.28 * fade; ctx.fillStyle = o.col; ctx.beginPath(); ctx.arc(px, py, 9 * sw * sc, 0, P2); ctx.fill();
+        }
+        ctx.globalCompositeOperation = 'source-over';
+        // 잔상 하나(조금 전 각도 · 회전) + 칼
+        ctx.save(); ctx.translate(F.x + Math.cos(a - 0.3) * rr, F.y + Math.sin(a - 0.3) * rr * TEY); ctx.rotate(rot - W.rs * 0.03); ctx.scale(sc, sc);
+        ctx.globalAlpha = al * 0.28; Assets.blit(ctx, img, cxp, cyp); ctx.restore();
+        ctx.save(); ctx.translate(px, py); ctx.rotate(rot); ctx.scale(sc, sc);
+        ctx.globalAlpha = al; Assets.blit(ctx, img, cxp, cyp); ctx.restore();
+      });
+    }
+    streaks(false);
+    swords(false);
+    // 반투명 몸통(깔때기 모양으로 칠함 → 뒤 칼이 조금 가려져 안쪽에 있는 듯)
+    var L = [], Rt = [], j;
+    for (j = 0; j <= 8; j++) { var F = tfun(o, j / 8, x, z, H0, rb, rt); L.push([F.x - F.r, F.y]); Rt.push([F.x + F.r, F.y]); }
+    var bg = ctx.createLinearGradient(x - rt, 0, x + rt, 0);
+    bg.addColorStop(0, 'rgba(200,220,240,0)'); bg.addColorStop(0.18, 'rgba(205,225,245,0.30)'); bg.addColorStop(0.5, 'rgba(240,248,255,0.16)'); bg.addColorStop(0.82, 'rgba(205,225,245,0.30)'); bg.addColorStop(1, 'rgba(200,220,240,0)');
+    ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = fade; ctx.fillStyle = bg; ctx.beginPath(); ctx.moveTo(L[0][0], L[0][1]);
+    for (j = 1; j < L.length; j++) ctx.lineTo(L[j][0], L[j][1]);
+    for (j = Rt.length - 1; j >= 0; j--) ctx.lineTo(Rt[j][0], Rt[j][1]);
+    ctx.closePath(); ctx.fill();
+    // 잎 · 불티(깔때기를 따라 감겨 오름)
+    o.bits.forEach(function (B) {
+      var u = (B.u + now * 0.35 * B.sp) % 1, a = B.ph + now * 8 * B.sp, F = tfun(o, u, x, z, H0, rb, rt), px = F.x + Math.cos(a) * F.r * 1.05, py = F.y + Math.sin(a) * F.r * TEY;
+      var al = (Math.sin(a) >= 0 ? 0.9 : 0.4) * fade * Math.min(1, u * 6, (1 - u) * 6);
+      ctx.save(); ctx.translate(px, py);
+      if (B.spark) { ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = al; ctx.fillStyle = o.col2; ctx.fillRect(-1.5 * sw, -1.5 * sw, 3 * sw, 3 * sw); }
+      else { ctx.rotate(B.rot + now * 11 * B.sp); ctx.globalAlpha = al; ctx.fillStyle = B.c; ctx.beginPath(); ctx.ellipse(0, 0, 3.4 * sw, 1.5 * sw, 0, 0, P2); ctx.fill(); }
+      ctx.restore();
+    });
+    swords(true);
+    streaks(true);
     ctx.restore();
   }
 
