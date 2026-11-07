@@ -200,6 +200,7 @@
   Player.prototype.runAttackShowFrame = function () {
     var a = this.ratk, R = this.mv().run_attack;
     if (a.phase === 'push' && R.pushHold != null) return R.pushHold;
+    if (a.phase === 'finish' && R.finishShow != null) return R.finishShow;   // 기사 여: 마무리 다리 들기 장 대신 미끄러지는 자세 그대로
     return this.runAttackFrame();
   };
   // ---------- 회피 (2026-11-07, config move.dodge) ----------
@@ -676,7 +677,17 @@
     var els = anc && wImg ? this.els : null;   // 무기 속성 오라(js/enchant.js)
     if (back) drawWeapon(ctx, def, anc, wDef, wImg, k, els);
     if (img) Assets.blit(ctx, body, def.pivot.x, def.pivot.y);
-    if (anc && wImg && !back) drawWeapon(ctx, def, anc, wDef, wImg, k, els);
+    if (anc && wImg && !back) {
+      drawWeapon(ctx, def, anc, wDef, wImg, k, els);
+      // 주먹 덮기(2026-11-07): 몸 앞에 그린 칼 위에 주먹 칸(anc.fist)의 몸 그림만 한 번 더 → 손잡이를 쥔 것처럼
+      if (anc.fist && img) {
+        var F = anc.fist;
+        ctx.save(); ctx.beginPath();
+        ctx.rect((F[0] - def.pivot.x) * k, (F[1] - def.pivot.y) * k, F[2] * k, F[3] * k); ctx.clip();
+        Assets.blit(ctx, body, def.pivot.x, def.pivot.y);
+        ctx.restore();
+      }
+    }
     if (img && L && L.white > 0) {   // 변신 순간 흰 번쩍
       ctx.globalAlpha = Math.min(1, L.white); Assets.blit(ctx, img, def.pivot.x, def.pivot.y, FX.whiteSilhouette(img, 0, 0, img.width, img.height, 1)); ctx.globalAlpha = 1;
     }

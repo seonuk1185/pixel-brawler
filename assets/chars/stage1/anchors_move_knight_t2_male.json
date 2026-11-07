@@ -13,6 +13,12 @@
    ],
    "angle": 139,
    "layer": "front",
+   "fist": [
+    50,
+    78,
+    9,
+    9
+   ],
    "check": {
     "fromTier1": [
      52,
@@ -35,6 +41,12 @@
    ],
    "angle": 163,
    "layer": "front",
+   "fist": [
+    46,
+    80,
+    9,
+    9
+   ],
    "check": {
     "fromTier1": [
      48,
@@ -56,6 +68,12 @@
    ],
    "angle": 160,
    "layer": "front",
+   "fist": [
+    47,
+    75,
+    9,
+    9
+   ],
    "check": {
     "fromTier1": [
      48,
@@ -78,6 +96,12 @@
    ],
    "angle": 154,
    "layer": "front",
+   "fist": [
+    48,
+    67,
+    9,
+    9
+   ],
    "check": {
     "fromTier1": [
      52,
@@ -100,6 +124,12 @@
    ],
    "angle": 143,
    "layer": "front",
+   "fist": [
+    50,
+    76,
+    9,
+    9
+   ],
    "check": {
     "fromTier1": [
      52,
@@ -122,6 +152,12 @@
    ],
    "angle": 157,
    "layer": "front",
+   "fist": [
+    47,
+    78,
+    9,
+    9
+   ],
    "check": {
     "fromTier1": [
      50,
@@ -143,6 +179,12 @@
    ],
    "angle": 159,
    "layer": "front",
+   "fist": [
+    48,
+    75,
+    9,
+    9
+   ],
    "check": {
     "fromTier1": [
      50,
@@ -164,6 +206,12 @@
    ],
    "angle": 155,
    "layer": "front",
+   "fist": [
+    49,
+    68,
+    9,
+    9
+   ],
    "check": {
     "fromTier1": [
      53,

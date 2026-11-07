@@ -756,6 +756,8 @@
     },
     "pushHold": 1,
     "pushHoldNote": "2026-11-07: while sliding/charging show only frame 1 (firm planted lean) instead of cycling 1-2 (knee pumping). Display only: reach/hitbox/timing still use the 1-2 loop.",
+    "finishShow": 1,
+    "finishShowNote": "2026-11-07: female slide finish shows frame 1 (feet down) instead of frame 3 (leg raised). Display only: finish hit/reach/timing unchanged.",
     "ms": {
      "entry": 70,
      "pushLoop": 90,

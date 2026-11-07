@@ -12,6 +12,12 @@
    ],
    "angle": 139,
    "layer": "front",
+   "fist": [
+    49,
+    80,
+    9,
+    9
+   ],
    "check": {
     "manual": true,
     "runFix": "fist centre measured 2026-11-07, layer front so the hilt shows at the fist, angle follows the arm"
@@ -24,6 +30,12 @@
    ],
    "angle": 163,
    "layer": "front",
+   "fist": [
+    45,
+    81,
+    9,
+    9
+   ],
    "check": {
     "manual": true,
     "runFix": "fist centre measured 2026-11-07, layer front so the hilt shows at the fist, angle follows the arm"
@@ -36,6 +48,12 @@
    ],
    "angle": 160,
    "layer": "front",
+   "fist": [
+    45,
+    76,
+    9,
+    9
+   ],
    "check": {
     "manual": true,
     "runFix": "fist centre measured 2026-11-07, layer front so the hilt shows at the fist, angle follows the arm"
@@ -48,6 +66,12 @@
    ],
    "angle": 154,
    "layer": "front",
+   "fist": [
+    47,
+    68,
+    9,
+    9
+   ],
    "check": {
     "manual": true,
     "runFix": "fist centre measured 2026-11-07, layer front so the hilt shows at the fist, angle follows the arm"
@@ -60,6 +84,12 @@
    ],
    "angle": 143,
    "layer": "front",
+   "fist": [
+    49,
+    78,
+    9,
+    9
+   ],
    "check": {
     "manual": true,
     "runFix": "fist centre measured 2026-11-07, layer front so the hilt shows at the fist, angle follows the arm"
@@ -72,6 +102,12 @@
    ],
    "angle": 157,
    "layer": "front",
+   "fist": [
+    46,
+    79,
+    9,
+    9
+   ],
    "check": {
     "manual": true,
     "runFix": "fist centre measured 2026-11-07, layer front so the hilt shows at the fist, angle follows the arm"
@@ -84,6 +120,12 @@
    ],
    "angle": 159,
    "layer": "front",
+   "fist": [
+    46,
+    74,
+    9,
+    9
+   ],
    "check": {
     "manual": true,
     "runFix": "fist centre measured 2026-11-07, layer front so the hilt shows at the fist, angle follows the arm"
@@ -96,6 +138,12 @@
    ],
    "angle": 155,
    "layer": "front",
+   "fist": [
+    48,
+    69,
+    9,
+    9
+   ],
    "check": {
     "manual": true,
     "runFix": "fist centre measured 2026-11-07, layer front so the hilt shows at the fist, angle follows the arm"
