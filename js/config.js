@@ -810,6 +810,8 @@
   // 성기사(남) 그림이 있는 묶음 = 기사 남과 같은 16개 전부(art\knight-t2\male, 82장). 여기 없는 묶음은 기사(1차) 그림을 씀
   var KNIGHT_T2_MALE_ANIMS = ['idle', 'walk', 'attack1', 'attack2', 'attack3', 'hurt', 'hurt2', 'knockdown', 'getup',
                               'run', 'jump', 'run_attack', 'jump_attack', 'motion_dash', 'motion_spin', 'motion_upper'];
+  // 성기사(여) 그림이 있는 묶음 = 기사 여와 같은 16개 전부(art\knight-t2\female, 81장, 보라 망토 · 2026-11-07)
+  var KNIGHT_T2_FEMALE_ANIMS = KNIGHT_T2_MALE_ANIMS;
   // 어떤 그림 묶음을 쓸지: 기본 stage1, 주소 뒤에 ?art=novice 를 붙이면 예전 견습(칼 박힌 그림)
   var artSet = /[?&]art=novice/.test(location.search) ? 'novice' : 'stage1';
   var male, female, knightMale = null, knightFemale = null;
@@ -829,7 +831,7 @@
     var mageMale = stage1('male', 'assets/chars/stage1/anchors_mage_male.json', 'mage');
     var mageFemale = stage1('female', 'assets/chars/stage1/anchors_mage_female.json', 'mage');
   }
-  // 성기사 옷 (2026-11-07, 기사 2차 · classes.knight.tier2): 남자만. 그림 = assets/chars/stage1/knight_t2_male (art\knight-t2\male 에서 복사).
+  // 성기사 옷 (2026-11-07, 기사 2차 · classes.knight.tier2): 남자(여자는 아래 knightT2Female). 그림 = assets/chars/stage1/knight_t2_male (art\knight-t2\male 에서 복사).
   //   파일 이름·장 수·발 위치가 기사(1차) 그림과 똑같아서 기사 남 묶음을 그대로 쓰고 그림 폴더·손 위치 json 만 바꾼다
   //   (콤보·보폭·달리기 수치 moveWho · 기술 동작 시간 = 기사 남 그대로. 그림이 없는 묶음이 생기면 그 묶음만 기사 그림을 씀)
   var knightT2Male = null;
@@ -846,9 +848,24 @@
     //   마무리 = 4장(어깨 충돌), 회복 = 5장. 보이는 그림만 바꿈(시간 · 판정 · 데미지는 기사 남 자료 그대로)
     knightT2Male.raShow = { pushFirst: 1, pushFirstMs: 90, pushHold: 2 };
   }
+  // 성기사 여 옷 (2026-11-07, 기사 2차 · 여자): 그림 = assets/chars/stage1/knight_t2_female (art\knight-t2\female 에서 복사, 보라 + 금).
+  //   기사 여 묶음을 그대로 쓰고 그림 폴더 · 손 위치 json 만 바꾼다(콤보 · 보폭 · 달리기 수치 · 기술 동작 시간 = 기사 여 그대로).
+  //   달리며 공격은 기사 여처럼 미끄러지기 그대로 보여 줌(raShow 없음 → 슬라이딩 끝에 발이 땅에 붙어 있음)
+  var knightT2Female = null;
+  if (knightFemale) {
+    knightT2Female = stage1('female', 'assets/chars/stage1/anchors_knight_t2_female.json', 'knight');
+    var T2FDIR = 'assets/chars/stage1/knight_t2_female/';
+    Object.keys(knightT2Female.anims).forEach(function (n) {
+      var A = knightT2Female.anims[n];
+      if (KNIGHT_T2_FEMALE_ANIMS.indexOf(n) >= 0) A.frames = A.frames.map(function (f) { return f.replace('assets/chars/stage1/knight_female/', T2FDIR); });
+    });
+    knightT2Female.moveAnchors = 'assets/chars/stage1/anchors_move_knight_t2_female.json';
+    knightT2Female.t2Dir = T2FDIR;
+  }
   var characters = { male: male, female: female };
   if (knightMale) { characters.knight_male = knightMale; characters.knight_female = knightFemale; }
   if (knightT2Male) characters.knight_t2_male = knightT2Male;
+  if (knightT2Female) characters.knight_t2_female = knightT2Female;
   if (mageMale) { characters.mage_male = mageMale; characters.mage_female = mageFemale; }
 
   // ---------- 적 그림 (art\stage1-enemies 에서 복사, 그림은 전부 「왼쪽을 봄」) ----------
@@ -3862,6 +3879,16 @@
         T2.anims[m] = { frames: seq(dir + m + '_', K1[m].count), fps: 14, loop: false };
       });
       T2.motionAnchors = 'assets/chars/stage1/anchors_motions_knight_t2_male.json';
+    }
+    // 성기사(여, 2026-11-07): 같은 방식. 기술 동작 = 기사 여와 같은 동작 · 시간, 그림만 성기사 여 폴더
+    var T2F = C.art.characters.knight_t2_female, K1F = C.motions.knight_female;
+    if (T2F && K1F) {
+      Object.keys(K1F).forEach(function (m) {
+        if (!(K1F[m].count > 0)) return;
+        var dir = KNIGHT_T2_FEMALE_ANIMS.indexOf(m) >= 0 ? T2F.t2Dir : 'assets/chars/stage1/knight_female/';
+        T2F.anims[m] = { frames: seq(dir + m + '_', K1F[m].count), fps: 14, loop: false };
+      });
+      T2F.motionAnchors = 'assets/chars/stage1/anchors_motions_knight_t2_female.json';
     }
   })(window.CFG);
 
