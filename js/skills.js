@@ -1930,30 +1930,74 @@
     ctx.beginPath(); ctx.ellipse(x, y, rx + 3, ry + 2, 0, a0, a0 + 1.8); ctx.stroke();
     ctx.restore();
   }
-  // 신성 가호(늘 켜진 기술): 몸 뒤 옅은 금빛(숨쉬듯) + 발밑 납작한 금빛. 눈에 거슬리지 않게 아주 옅게(Lv 마다 조금 진하게)
+  // 신성 가호(늘 켜진 기술) — 2026-11-08 다시 그림: 예전 것은 밝은 숲 땅에서 거의 안 보였음
+  //   뒤(캐릭터 그리기 전, drawAegis): 몸 모양 금빛 후광(숨쉬듯 = 몸 가장자리가 은은히 빛나는 테두리처럼 보임) + 발밑 바닥 빛 + 금빛 고리 뒤쪽 반
+  //   앞(캐릭터 그린 뒤, drawAegisFront): 금빛 고리 앞쪽 반 + 발밑에서 머리 위로 천천히 오르는 금빛 반짝이
+  //   전부 'lighter'(더하기 빛, 다른 성스러운 효과와 같음). 몸 한가운데는 안 덮음. Lv 1~5 마다 진하기 · 반짝이 수 · 고리 눈금이 늘어남
+  var AP2 = Math.PI * 2;
+  function aegisK(q) { return 0.62 + 0.095 * q.lv; }   // Lv1 0.72 … Lv5 1.1
+  function aegisRing(ctx, x, y, rx, ry, a0, a1, k, br, s) {   // 고리 한 토막(a0~a1): 넓고 옅은 빛 + 가는 밝은 심
+    ctx.strokeStyle = '#ffc93a'; ctx.globalAlpha = Math.min(1, 0.32 * k * br); ctx.lineWidth = 4.5 * s;
+    ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, a0, a1); ctx.stroke();
+    ctx.strokeStyle = '#fff1a8'; ctx.globalAlpha = Math.min(1, 0.85 * k * br); ctx.lineWidth = 1.3 * s;
+    ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, a0, a1); ctx.stroke();
+  }
   function drawAegis(ctx, camX, p) {
     var q = pasOf(p, 'aegis');
     if (!q || p.state === 'dead' || hidden(p)) return;
-    var br = 0.85 + 0.15 * Math.sin(performance.now() / 420), lk = 0.8 + 0.05 * q.lv, x = p.x - camX, y = p.y - (p.z || 0) - 48 * AS(), R = 58 * AS(), F = 34 * AS();
+    var now = performance.now() / 1000, s = AS() / 0.55, k = aegisK(q), br = 0.8 + 0.2 * Math.sin(now * 2.6);
+    var x = p.x - camX, by = p.y - (p.z || 0) - 46 * AS(), gy = p.y;
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
-    var g = ctx.createRadialGradient(x, y, 2, x, y, R);
-    g.addColorStop(0, 'rgba(255,236,170,' + (0.22 * br * lk).toFixed(3) + ')'); g.addColorStop(0.6, 'rgba(255,210,90,' + (0.1 * br * lk).toFixed(3) + ')'); g.addColorStop(1, 'rgba(255,190,60,0)');
-    ctx.fillStyle = g; ctx.fillRect(x - R, y - R, R * 2, R * 2);
-    ctx.translate(x, p.y); ctx.scale(1, 0.3);
-    var f = ctx.createRadialGradient(0, 0, 0, 0, 0, F);
-    f.addColorStop(0, 'rgba(255,230,150,' + (0.3 * br * lk).toFixed(3) + ')'); f.addColorStop(1, 'rgba(255,190,60,0)');
-    ctx.fillStyle = f; ctx.fillRect(-F, -F, F * 2, F * 2);
+    // 몸 후광: 세로로 긴 타원(몸 모양). 가운데는 캐릭터가 가리고 가장자리만 금빛 테두리처럼 남음
+    ctx.save(); ctx.translate(x, by); ctx.scale(1, 1.75);
+    var R = 33 * s * (0.97 + 0.03 * br), g = ctx.createRadialGradient(0, 0, R * 0.2, 0, 0, R);
+    g.addColorStop(0, 'rgba(255,240,180,' + (0.5 * k * br).toFixed(3) + ')');
+    g.addColorStop(0.55, 'rgba(255,215,90,' + (0.3 * k * br).toFixed(3) + ')');
+    g.addColorStop(1, 'rgba(255,190,50,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, R, 0, AP2); ctx.fill();
     ctx.restore();
-    // 밝은 땅에서도 보이게: 발밑 얇은 금빛 고리 + 몸 둘레를 천천히 도는 금빛 점 3개(뒤쪽은 흐리게)
-    var now = performance.now() / 1000, rr = 26 * AS() / 0.55 * (0.96 + 0.04 * Math.sin(now * 3));
-    ctx.save();
-    ctx.globalAlpha = 0.45 * br * lk; ctx.strokeStyle = '#ffd86a'; ctx.lineWidth = 1.2;
-    ctx.beginPath(); ctx.ellipse(x, p.y, rr * 0.75, rr * 0.22, 0, 0, Math.PI * 2); ctx.stroke();
-    for (var i = 0; i < 3; i++) {
-      var an = now * 1.6 + i * Math.PI * 2 / 3, ox = Math.cos(an) * rr * 0.7, oy = y + 6 * AS() + Math.sin(now * 2 + i) * 14 * AS(), back = Math.sin(an) < 0;
-      ctx.globalAlpha = (back ? 0.35 : 0.85) * lk; ctx.fillStyle = back ? '#ffd23f' : '#fff6c8';
-      ctx.fillRect(x + ox - 1, oy - 1, 2, 2);
-      if (!back) { ctx.globalAlpha = 0.4 * lk; ctx.fillRect(x + ox - 2, oy - 0.5, 4, 1); ctx.fillRect(x + ox - 0.5, oy - 2, 1, 4); }
+    // 발밑 바닥 빛(납작한 원)
+    ctx.save(); ctx.translate(x, gy); ctx.scale(1, 0.3);
+    var F = 44 * s, f = ctx.createRadialGradient(0, 0, 0, 0, 0, F);
+    f.addColorStop(0, 'rgba(255,232,150,' + (0.55 * k * br).toFixed(3) + ')'); f.addColorStop(0.6, 'rgba(255,200,70,' + (0.22 * k * br).toFixed(3) + ')'); f.addColorStop(1, 'rgba(255,190,60,0)');
+    ctx.fillStyle = f; ctx.beginPath(); ctx.arc(0, 0, F, 0, AP2); ctx.fill();
+    ctx.restore();
+    // 금빛 고리 뒤쪽 반(발 뒤) + Lv 마다 늘어나는 눈금(천천히 돎, 뒤쪽 것만)
+    var rx = 34 * s * (0.97 + 0.03 * br), ry = rx * 0.28;
+    aegisRing(ctx, x, gy, rx, ry, Math.PI, AP2, k, br, s);
+    aegisTicks(ctx, x, gy, rx, ry, q.lv, now, true, k, s);
+    ctx.restore();
+  }
+  function aegisTicks(ctx, x, y, rx, ry, lv, now, back, k, s) {   // 고리 위 작은 빛 눈금(Lv+2 개)
+    var n = lv + 2;
+    ctx.fillStyle = '#fff6c8';
+    for (var i = 0; i < n; i++) {
+      var an = now * 0.7 + i * AP2 / n, sn = Math.sin(an);
+      if ((sn < 0) !== back) continue;
+      ctx.globalAlpha = Math.min(1, (back ? 0.55 : 0.95) * k);
+      var px = x + Math.cos(an) * rx, py = y + sn * ry;
+      ctx.fillRect(px - 1.2 * s, py - 1.2 * s, 2.4 * s, 2.4 * s);
+    }
+  }
+  function drawAegisFront(ctx, camX, p) {
+    var q = pasOf(p, 'aegis');
+    if (!q || p.state === 'dead' || hidden(p)) return;
+    var now = performance.now() / 1000, s = AS() / 0.55, k = aegisK(q), br = 0.8 + 0.2 * Math.sin(now * 2.6);
+    var x = p.x - camX, gy = p.y, z = p.z || 0, rx = 34 * s * (0.97 + 0.03 * br), ry = rx * 0.28;
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    aegisRing(ctx, x, gy, rx, ry, 0, Math.PI, k * 0.9, br, s);   // 고리 앞쪽 반(발 앞, 조금 옅게 = 발을 안 가림)
+    aegisTicks(ctx, x, gy, rx, ry, q.lv, now, false, k, s);
+    // 오르는 반짝이: 3+Lv 개, 저마다 다른 때 · 자리에서 발밑 → 머리 위로(좌우로 살짝 흔들림), 처음 · 끝은 흐리게
+    var n = 3 + q.lv;
+    for (var i = 0; i < n; i++) {
+      var T = 1.9 + (i % 3) * 0.35, t = ((now + i * 0.618 * T) % T) / T;
+      var side = i % 2 ? 1 : -1, ox = side * (14 + ((i * 7) % 13)) * s + Math.sin(now * 2 + i) * 3 * s;
+      var py = gy - z - (4 + t * 92) * s, fa = Math.sin(t * Math.PI) * k;
+      var c = 1.2 * s * (0.7 + 0.3 * Math.sin(now * 9 + i * 2));
+      ctx.globalAlpha = Math.min(1, 0.95 * fa); ctx.fillStyle = '#fff8d8';
+      ctx.fillRect(x + ox - c, py - c, c * 2, c * 2);
+      ctx.globalAlpha = Math.min(1, 0.55 * fa); ctx.fillStyle = '#ffd23f';   // 십자 반짝
+      ctx.fillRect(x + ox - c * 2.6, py - 0.5 * s, c * 5.2, 1 * s); ctx.fillRect(x + ox - 0.5 * s, py - c * 2.6, 1 * s, c * 5.2);
     }
     ctx.restore();
   }
@@ -2453,7 +2497,7 @@
     wave: wave,
     addEnts: addEnts,
     update: update, tickReal: tickReal,
-    drawBackdrop: drawBackdrop, drawUnder: drawUnder, drawGhosts: drawGhosts, drawOver: drawOver, drawFlash: drawFlash, drawDebug: drawDebug,
+    drawBackdrop: drawBackdrop, drawUnder: drawUnder, drawGhosts: drawGhosts, drawAegisFront: drawAegisFront, drawOver: drawOver, drawFlash: drawFlash, drawDebug: drawDebug,
     armored: armored, ui: ui, shakeSlot: shakeSlot, slots: SLOTS, lvStat: lvStat, slotSkill: slotSkill, slotState: slotState,
     _meteors: function () { return meteors; },   // 시험용
     // 떨어지는 중인 운석 자리(2026-11-06 무기 속성: 운석에도 속성 꼬리, js/enchant.js)

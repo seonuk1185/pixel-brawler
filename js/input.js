@@ -156,6 +156,8 @@
   }
 
   var override = null;   // 시험용 자동 조종(?bot=1)이 넣는 방향 { x, y, run }
+  // 게임패드(2026-11-08, js/gamepad.js 가 매 프레임 넣음): { x, y, run } (막대 · 십자키, 달리기 쪽 -1/1/0). null = 안 씀
+  var pad = null;
   function axis(cfg) {
     if (override) return { x: override.x, y: override.y };
     var K = cfg.keys, x = 0, y = 0;
@@ -168,6 +170,7 @@
       x = Math.abs(joy.x) > dz ? joy.x : 0;
       y = Math.abs(joy.y) > dz ? joy.y : 0;
     }
+    if (pad && !joy.active) { if (!x) x = pad.x || 0; if (!y) y = pad.y || 0; }   // 키보드를 안 누른 쪽만 게임패드로(2026-11-08)
     var len = Math.hypot(x, y);
     if (len > 1) { x /= len; y /= len; }
     return { x: x, y: y };
@@ -178,6 +181,7 @@
     if (joy.active) { if (joyRunTick) joyRunTick(); return joyRun; }   // 손가락이 멈춰 있어도 「계속 밀고 있는 시간」을 매 프레임 확인
     var K = cfg.keys;
     if (runKey && anyHeld(runKey < 0 ? K.left : K.right) && !anyHeld(runKey < 0 ? K.right : K.left)) return runKey;
+    if (pad && pad.run && !anyHeld(K.left) && !anyHeld(K.right)) return pad.run;   // 게임패드 달리기(2026-11-08)
     return 0;
   }
   function fresh(t, bufferMs) { return !!t && performance.now() - t <= bufferMs; }
@@ -214,6 +218,7 @@
     // 회피(2026-11-07): 버퍼 안에 눌렸으면 꺼내 씀
     takeDodge: function (bufferMs) { if (fresh(dodgeQueued, bufferMs)) { dodgeQueued = 0; return true; } return false; },
     pressDodge: function () { dodgeQueued = performance.now(); },     // 시험용
+    setPad: function (p) { pad = p; },                               // 게임패드(2026-11-08, js/gamepad.js). null 이면 안 씀
     setOverride: function (ax) { override = ax; },                   // 시험용(자동 조종). null 이면 원래대로
     state: function () { return { runKey: runKey, joyRun: joyRun, joyFlick: joyFlick, joy: { x: joy.x, y: joy.y, active: joy.active } }; }   // 시험용
   };

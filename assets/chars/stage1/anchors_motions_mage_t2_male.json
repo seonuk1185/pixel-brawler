@@ -1,0 +1,253 @@
+{
+ "note": "2nd-job male mage (archmage, \ub300\ub9c8\ubc95\uc0ac). Same format as anchors_motions_mage_male.json: hand = [x,y] grip in the 176x136 frame, angle deg (0 = right, + = clockwise), layer back. Values = 1st-job anchors, hand nudged to the archmage hand by local silhouette matching; check.manual = read by eye.",
+ "weapon": "staff",
+ "frameSize": [
+  176,
+  136
+ ],
+ "frames": {
+  "motion_cast_forward_01": {
+   "hand": [
+    84,
+    70
+   ],
+   "angle": -80,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     84,
+     70
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.985,
+    "match0": 0.979
+   }
+  },
+  "motion_cast_forward_02": {
+   "hand": [
+    44,
+    32
+   ],
+   "angle": -110,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     44,
+     32
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.951,
+    "match0": 0.947
+   }
+  },
+  "motion_cast_forward_03": {
+   "hand": [
+    26,
+    25
+   ],
+   "angle": -140,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     27,
+     26
+    ],
+    "shift": [
+     -1,
+     -1
+    ],
+    "match": 0.965,
+    "match0": 0.901
+   }
+  },
+  "motion_cast_forward_04": {
+   "hand": [
+    146,
+    65
+   ],
+   "angle": 0,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     146,
+     65
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.971,
+    "match0": 0.971
+   }
+  },
+  "motion_cast_forward_05": {
+   "hand": [
+    136,
+    65
+   ],
+   "angle": 0,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     133,
+     65
+    ],
+    "shift": [
+     2,
+     0
+    ],
+    "match": 0.989,
+    "match0": 0.93,
+    "manual": true
+   }
+  },
+  "motion_cast_forward_06": {
+   "hand": [
+    102,
+    74
+   ],
+   "angle": -75,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     96,
+     75
+    ],
+    "shift": [
+     2,
+     -2
+    ],
+    "match": 0.958,
+    "match0": 0.846,
+    "manual": true
+   }
+  },
+  "motion_cast_sky_01": {
+   "hand": [
+    94,
+    86
+   ],
+   "angle": -60,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     93,
+     86
+    ],
+    "shift": [
+     1,
+     0
+    ],
+    "match": 0.988,
+    "match0": 0.962
+   }
+  },
+  "motion_cast_sky_02": {
+   "hand": [
+    95,
+    18
+   ],
+   "angle": -90,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     95,
+     14
+    ],
+    "shift": [
+     0,
+     4
+    ],
+    "match": 0.979,
+    "match0": 0.885
+   }
+  },
+  "motion_cast_sky_03": {
+   "hand": [
+    84,
+    12
+   ],
+   "angle": -90,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     86,
+     8
+    ],
+    "shift": [
+     -2,
+     4
+    ],
+    "match": 0.944,
+    "match0": 0.821
+   }
+  },
+  "motion_cast_sky_04": {
+   "hand": [
+    124,
+    101
+   ],
+   "angle": 30,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     124,
+     101
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.958,
+    "match0": 0.958
+   }
+  },
+  "motion_cast_sky_05": {
+   "hand": [
+    122,
+    101
+   ],
+   "angle": 30,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     122,
+     101
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.965,
+    "match0": 0.965
+   }
+  },
+  "motion_cast_sky_06": {
+   "hand": [
+    101,
+    75
+   ],
+   "angle": -75,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     98,
+     76
+    ],
+    "shift": [
+     0,
+     -1
+    ],
+    "match": 0.972,
+    "match0": 0.942,
+    "manual": true
+   }
+  }
+ }
+}

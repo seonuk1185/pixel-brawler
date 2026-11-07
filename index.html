@@ -222,7 +222,8 @@
         <div class="setrow touchonly joyrow"><b>조이스틱 범위</b><span class="seg3" id="joySeg"><button type="button" class="wbtn" data-joy="wide">넓게</button><button type="button" class="wbtn" data-joy="mid">보통</button><button type="button" class="wbtn" data-joy="narrow">좁게</button></span><span>왼쪽 누르는 곳 넓이</span></div>
         <div class="setrow touchonly"><b>버튼 위치</b><button type="button" class="wbtn" id="btnSetLay">바꾸기</button><span id="layTip">버튼을 끌어서 옮겨요</span></div>
         <div class="setrow touchonly padrow"><b>콤보 버튼</b><span>준비 중</span></div>
-        <div class="setrow padrow"><b>게임패드</b><span>준비 중</span></div>
+        <!-- 게임패드(2026-11-08, js/gamepad.js): 연결 상태 + 버튼 안내를 그 파일이 씀 -->
+        <div class="setrow padrow"><b>게임패드</b><span>패드를 꽂고 아무 버튼이나 누르세요</span></div>
         <!-- 던전 도전 중에만(2026-11-07, main.js openSet): 누르면 게임 안 확인 창(dgConfirm) -->
         <div class="setrow dgrow" id="dgExitRow" hidden><b>던전</b><button type="button" class="wbtn" id="btnDgExit">나가기</button><span>모은 강화석은 남아요</span></div>
       </div>
@@ -319,5 +320,7 @@
 <script src="js/debug.js"></script>
 <script src="js/padlayout.js"></script>
 <script src="js/main.js"></script>
+<!-- 게임패드(2026-11-08): main.js 뒤(도움말 한 줄을 main.js 가 그린 다음 패드 글로 바꿈) -->
+<script src="js/gamepad.js"></script>
 </body>
 </html>

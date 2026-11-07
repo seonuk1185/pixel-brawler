@@ -929,6 +929,11 @@
                               'run', 'jump', 'run_attack', 'jump_attack', 'motion_dash', 'motion_spin', 'motion_upper'];
   // 성기사(여) 그림이 있는 묶음 = 기사 여와 같은 16개 전부(art\knight-t2\female, 81장, 보라 망토 · 2026-11-07)
   var KNIGHT_T2_FEMALE_ANIMS = KNIGHT_T2_MALE_ANIMS;
+  // 대마법사(남) 그림이 있는 묶음 = 법사 남과 같은 15개 전부(art\mage-t2\male, 70장, 흰색 + 금 · 2026-11-08). 여기 없는 묶음은 법사(1차) 그림을 씀
+  var MAGE_T2_MALE_ANIMS = ['idle', 'walk', 'attack1', 'attack2', 'attack3', 'hurt', 'hurt2', 'knockdown', 'getup',
+                            'run', 'jump', 'run_attack', 'jump_attack', 'motion_cast_forward', 'motion_cast_sky'];
+  // 대마법사(여) 그림이 있는 묶음 = 법사 여와 같은 15개 전부(art\mage-t2\female, 74장, 흰색 + 금 · 2026-11-08)
+  var MAGE_T2_FEMALE_ANIMS = MAGE_T2_MALE_ANIMS;
   // 어떤 그림 묶음을 쓸지: 기본 stage1, 주소 뒤에 ?art=novice 를 붙이면 예전 견습(칼 박힌 그림)
   var artSet = /[?&]art=novice/.test(location.search) ? 'novice' : 'stage1';
   var male, female, knightMale = null, knightFemale = null;
@@ -979,11 +984,40 @@
     knightT2Female.moveAnchors = 'assets/chars/stage1/anchors_move_knight_t2_female.json';
     knightT2Female.t2Dir = T2FDIR;
   }
+  // 대마법사 옷 (2026-11-08, 법사 2차 · classes.mage.tier2): 남자. 그림 = assets/chars/stage1/mage_t2_male (art\mage-t2\male 에서 복사, 흰색 + 금).
+  //   법사 남 묶음을 그대로 쓰고 그림 폴더 · 손 위치 json 만 바꾼다(콤보 · 보폭 · 달리기 수치 moveWho · 기술 동작 시간 = 법사 남 그대로).
+  //   여자 = 아래 mageT2Female
+  var mageT2Male = null;
+  if (mageMale) {
+    mageT2Male = stage1('male', 'assets/chars/stage1/anchors_mage_t2_male.json', 'mage');
+    var MT2DIR = 'assets/chars/stage1/mage_t2_male/';
+    Object.keys(mageT2Male.anims).forEach(function (n) {
+      var A = mageT2Male.anims[n];
+      if (MAGE_T2_MALE_ANIMS.indexOf(n) >= 0) A.frames = A.frames.map(function (f) { return f.replace('assets/chars/stage1/mage_male/', MT2DIR); });
+    });
+    mageT2Male.moveAnchors = 'assets/chars/stage1/anchors_move_mage_t2_male.json';
+    mageT2Male.t2Dir = MT2DIR;
+  }
+  // 대마법사 여 옷 (2026-11-08, 법사 2차 · 여자): 그림 = assets/chars/stage1/mage_t2_female (art\mage-t2\female 에서 복사, 흰색 + 금).
+  //   법사 여 묶음을 그대로 쓰고 그림 폴더 · 손 위치 json 만 바꾼다(콤보 · 보폭 · 기술 동작 시간 · 무기 wand = 법사 여 그대로)
+  var mageT2Female = null;
+  if (mageFemale) {
+    mageT2Female = stage1('female', 'assets/chars/stage1/anchors_mage_t2_female.json', 'mage');
+    var MT2FDIR = 'assets/chars/stage1/mage_t2_female/';
+    Object.keys(mageT2Female.anims).forEach(function (n) {
+      var A = mageT2Female.anims[n];
+      if (MAGE_T2_FEMALE_ANIMS.indexOf(n) >= 0) A.frames = A.frames.map(function (f) { return f.replace('assets/chars/stage1/mage_female/', MT2FDIR); });
+    });
+    mageT2Female.moveAnchors = 'assets/chars/stage1/anchors_move_mage_t2_female.json';
+    mageT2Female.t2Dir = MT2FDIR;
+  }
   var characters = { male: male, female: female };
   if (knightMale) { characters.knight_male = knightMale; characters.knight_female = knightFemale; }
   if (knightT2Male) characters.knight_t2_male = knightT2Male;
   if (knightT2Female) characters.knight_t2_female = knightT2Female;
   if (mageMale) { characters.mage_male = mageMale; characters.mage_female = mageFemale; }
+  if (mageT2Male) characters.mage_t2_male = mageT2Male;
+  if (mageT2Female) characters.mage_t2_female = mageT2Female;
 
   // ---------- 적 그림 (art\stage1-enemies 에서 복사, 그림은 전부 「왼쪽을 봄」) ----------
   // playback = 그림 번호(1부터) 재생 순서, fps = 1초에 몇 칸. 순서를 늘리면 그 장면이 길어진다(예: 몽둥이 치켜든 장면 = 예고)
@@ -1332,7 +1366,8 @@
       // tier2 = 2차 옷(2026-11-07, 2026-11-08 기사 Lv30 → 25 = 성기사 전직 · 2차 기술도 이 Lv 부터): 레벨이 lv 이상이면 outfit 대신 이 옷(characters 의 「옷_성별」, 그 성별 그림이 없으면 1차 옷 그대로). 그림만 바뀜
       knight: { label: '기사(검)',   weapon: 'sword', moves: 'sword', outfit: 'knight', tier2: { lv: 25, outfit: 'knight_t2', name: '성기사' } },
       // 법사: 무기가 성별마다 다름(남 지팡이 staff / 여 짧은 지팡이 wand)
-      mage:   { label: '법사(지팡이)', weapon: { male: 'staff', female: 'wand' }, moves: 'magic', outfit: 'mage' }
+      //   법사 2차(2026-11-08) = Lv25 대마법사: 남 = mage_t2_male, 여 = mage_t2_female
+      mage:   { label: '법사(지팡이)', weapon: { male: 'staff', female: 'wand' }, moves: 'magic', outfit: 'mage', tier2: { lv: 25, outfit: 'mage_t2', name: '대마법사' } }
       // , axe: { label: '도끼', weapon: 'axe', moves: 'sword' }
     },
     defaultClass: 'novice',
@@ -4006,6 +4041,26 @@
         T2F.anims[m] = { frames: seq(dir + m + '_', K1F[m].count), fps: 14, loop: false };
       });
       T2F.motionAnchors = 'assets/chars/stage1/anchors_motions_knight_t2_female.json';
+    }
+    // 대마법사(남, 2026-11-08): 같은 방식. 기술 동작 = 법사 남과 같은 동작 · 시간, 그림만 대마법사 폴더, 손 위치 = anchors_motions_mage_t2_male.json
+    var MT2 = C.art.characters.mage_t2_male, M1 = C.motions.mage_male;
+    if (MT2 && M1) {
+      Object.keys(M1).forEach(function (m) {
+        if (!(M1[m].count > 0)) return;
+        var dir = MAGE_T2_MALE_ANIMS.indexOf(m) >= 0 ? MT2.t2Dir : 'assets/chars/stage1/mage_male/';
+        MT2.anims[m] = { frames: seq(dir + m + '_', M1[m].count), fps: 14, loop: false };
+      });
+      MT2.motionAnchors = 'assets/chars/stage1/anchors_motions_mage_t2_male.json';
+    }
+    // 대마법사(여): 같은 방식(법사 여 동작 · 시간, 그림만 대마법사 여 폴더, 손 위치 = anchors_motions_mage_t2_female.json)
+    var MT2F = C.art.characters.mage_t2_female, M1F = C.motions.mage_female;
+    if (MT2F && M1F) {
+      Object.keys(M1F).forEach(function (m) {
+        if (!(M1F[m].count > 0)) return;
+        var dir = MAGE_T2_FEMALE_ANIMS.indexOf(m) >= 0 ? MT2F.t2Dir : 'assets/chars/stage1/mage_female/';
+        MT2F.anims[m] = { frames: seq(dir + m + '_', M1F[m].count), fps: 14, loop: false };
+      });
+      MT2F.motionAnchors = 'assets/chars/stage1/anchors_motions_mage_t2_female.json';
     }
   })(window.CFG);
 

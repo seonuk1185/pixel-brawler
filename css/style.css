@@ -1244,3 +1244,13 @@ body.layedit .btns .btn.lesel { outline: 3px dashed #ffe896; outline-offset: 3px
 .rotic { position: relative; width: 38px; height: 62px; margin: 8px 0; background: #2a1608; border: 4px solid #f5e0a8; box-shadow: 0 0 0 2px var(--ink), inset 0 0 0 2px var(--ink); animation: rotph 2.2s ease-in-out infinite; }
 .rotic::after { content: ''; position: absolute; left: 50%; bottom: 3px; width: 8px; height: 4px; margin-left: -4px; background: #f5e0a8; }
 @keyframes rotph { 0%, 30% { transform: rotate(0); } 50%, 85% { transform: rotate(-90deg); } 100% { transform: rotate(0); } }
+
+/* ---------- 게임패드 (2026-11-08, js/gamepad.js): 꽂으면 「게임패드 연결됨」 작은 알림(위 가운데), 설정 창 「게임패드」 줄 = 연결됨이면 밝게 ---------- */
+.padtoast { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 45; pointer-events: none; white-space: nowrap;
+  font: 700 12px/1 var(--ui); color: #fff3c0; padding: 7px 12px; background: #2a1608e8; border: 2px solid var(--ink); box-shadow: inset 0 0 0 1px var(--gold3); }
+.padtoast[hidden] { display: none; }
+.padtoast.show { animation: padtoast 2.2s ease-out forwards; }
+@keyframes padtoast { 0% { opacity: 0; transform: translate(-50%, -6px); } 10%, 80% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; } }
+.setpanel .padrow.padon { opacity: 1; }
+.setpanel .padrow.padon span { font-size: 11px; line-height: 1.35; text-align: left; }
+.setpanel .padrow.padon kbd { font: 700 11px/1 var(--ui); color: #3a1606; }

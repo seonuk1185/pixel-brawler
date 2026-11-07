@@ -2946,8 +2946,8 @@
     if (MODE === 'stage') Enchant.drawUnder(ctx, camX);     // 강화석 · 결정 그림자(2026-11-06)
     Skills.drawUnder(ctx, camX, G.player);        // 번개 떨어질 자리 표시
     drawAwkUnder(camX);                           // 각성: 발밑 마법진·불빛
-    // 깊이 순서(아래쪽 = 앞쪽). 각성 법사 룬은 몸 뒤 반 · 앞 반
-    var ents = [{ y: G.player.y, d: function () { Skills.drawGhosts(ctx, camX); drawRunes(camX, true); G.player.draw(ctx, camX, G.assets.weapons, DEBUG); drawRunes(camX, false); } }];
+    // 깊이 순서(아래쪽 = 앞쪽). 각성 법사 룬은 몸 뒤 반 · 앞 반 · 신성 가호 금빛 고리 앞 반 · 반짝이 = 캐릭터 바로 앞(2026-11-08)
+    var ents = [{ y: G.player.y, d: function () { Skills.drawGhosts(ctx, camX); drawRunes(camX, true); G.player.draw(ctx, camX, G.assets.weapons, DEBUG); Skills.drawAegisFront(ctx, camX, G.player); drawRunes(camX, false); } }];
     if (G.dummy) ents.push({ y: G.dummy.y, d: function () { G.dummy.draw(ctx, camX, DEBUG); } });
     G.enemies.forEach(function (e) { ents.push({ y: e.y + (e.alive() ? 0 : -0.5), d: function () { e.draw(ctx, camX, DEBUG); } }); });
     if (MODE === 'stage') Props.addDraw(ents, ctx, camX, LW, DEBUG);

@@ -1,0 +1,463 @@
+{
+ "frameSize": [
+  176,
+  136
+ ],
+ "weapon": "wand",
+ "note": "2nd-job female mage (archmage, \ub300\ub9c8\ubc95\uc0ac). Same format as anchors_move_mage_female.json: hand = [x,y] grip in the 176x136 frame, angle deg (0 = right, + = clockwise), layer back. Values = 1st-job anchors, hand nudged to the archmage hand by local silhouette matching; check.manual = read by eye.",
+ "frames": {
+  "run_01": {
+   "hand": [
+    51,
+    80
+   ],
+   "angle": 150,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     51,
+     80
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.921,
+    "match0": 0.83,
+    "note": "auto shift hit the search limit (cape covers the hand area) -> 1st-tier hand kept"
+   }
+  },
+  "run_02": {
+   "hand": [
+    51,
+    80
+   ],
+   "angle": 150,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     51,
+     80
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.818,
+    "match0": 0.728,
+    "note": "auto shift hit the search limit (cape covers the hand area) -> 1st-tier hand kept"
+   }
+  },
+  "run_03": {
+   "hand": [
+    53,
+    80
+   ],
+   "angle": 150,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     53,
+     80
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.841,
+    "match0": 0.621,
+    "note": "auto shift hit the search limit (cape covers the hand area) -> 1st-tier hand kept"
+   }
+  },
+  "run_04": {
+   "hand": [
+    53,
+    79
+   ],
+   "angle": 150,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     54,
+     78
+    ],
+    "shift": [
+     -6,
+     4
+    ],
+    "match": 0.93,
+    "match0": 0.829,
+    "manual": true
+   }
+  },
+  "run_05": {
+   "hand": [
+    52,
+    81
+   ],
+   "angle": 150,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     52,
+     81
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.907,
+    "match0": 0.805,
+    "note": "auto shift hit the search limit (cape covers the hand area) -> 1st-tier hand kept"
+   }
+  },
+  "run_06": {
+   "hand": [
+    53,
+    81
+   ],
+   "angle": 150,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     53,
+     81
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.902,
+    "match0": 0.797,
+    "note": "auto shift hit the search limit (cape covers the hand area) -> 1st-tier hand kept"
+   }
+  },
+  "run_07": {
+   "hand": [
+    53,
+    80
+   ],
+   "angle": 150,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     53,
+     80
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.933,
+    "match0": 0.816,
+    "note": "auto shift hit the search limit (cape covers the hand area) -> 1st-tier hand kept"
+   }
+  },
+  "run_08": {
+   "hand": [
+    52,
+    75
+   ],
+   "angle": 150,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     52,
+     75
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.866,
+    "match0": 0.789,
+    "note": "auto shift hit the search limit (cape covers the hand area) -> 1st-tier hand kept"
+   }
+  },
+  "jump_01": {
+   "hand": [
+    100,
+    77
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     95,
+     74
+    ],
+    "shift": [
+     5,
+     3
+    ],
+    "match": 0.946,
+    "match0": 0.758
+   }
+  },
+  "jump_02": {
+   "hand": [
+    109,
+    36
+   ],
+   "angle": -50,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     96,
+     28
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.855,
+    "match0": 0.661,
+    "note": "auto shift hit the search limit (cape covers the hand area) -> 1st-tier hand kept",
+    "manual": true
+   }
+  },
+  "jump_03": {
+   "hand": [
+    92,
+    73
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     89,
+     73
+    ],
+    "shift": [
+     3,
+     0
+    ],
+    "match": 0.967,
+    "match0": 0.869
+   }
+  },
+  "jump_04": {
+   "hand": [
+    98,
+    61
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     97,
+     58
+    ],
+    "shift": [
+     -2,
+     4
+    ],
+    "match": 0.96,
+    "match0": 0.851,
+    "manual": true
+   }
+  },
+  "jump_05": {
+   "hand": [
+    99,
+    72
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     94,
+     73
+    ],
+    "shift": [
+     5,
+     -1
+    ],
+    "match": 0.924,
+    "match0": 0.867
+   }
+  },
+  "run_attack_01": {
+   "hand": [
+    100,
+    90
+   ],
+   "angle": -30,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     99,
+     91
+    ],
+    "shift": [
+     1,
+     -1
+    ],
+    "match": 0.959,
+    "match0": 0.922
+   }
+  },
+  "run_attack_02": {
+   "hand": [
+    93,
+    92
+   ],
+   "angle": 0,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     93,
+     94
+    ],
+    "shift": [
+     0,
+     -2
+    ],
+    "match": 0.968,
+    "match0": 0.907
+   }
+  },
+  "run_attack_03": {
+   "hand": [
+    94,
+    93
+   ],
+   "angle": 0,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     94,
+     93
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.97,
+    "match0": 0.968
+   }
+  },
+  "run_attack_04": {
+   "hand": [
+    89,
+    60
+   ],
+   "angle": -70,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     86,
+     65
+    ],
+    "shift": [
+     3,
+     -5
+    ],
+    "match": 0.955,
+    "match0": 0.827
+   }
+  },
+  "run_attack_05": {
+   "hand": [
+    93,
+    76
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     93,
+     77
+    ],
+    "shift": [
+     0,
+     -1
+    ],
+    "match": 0.974,
+    "match0": 0.963
+   }
+  },
+  "jump_attack_01": {
+   "hand": [
+    72,
+    9
+   ],
+   "angle": -120,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     73,
+     33
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.575,
+    "match0": 0.496,
+    "note": "auto shift hit the search limit (cape covers the hand area) -> 1st-tier hand kept",
+    "manual": true
+   }
+  },
+  "jump_attack_02": {
+   "hand": [
+    98,
+    91
+   ],
+   "angle": 30,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     103,
+     91
+    ],
+    "shift": [
+     -5,
+     0
+    ],
+    "match": 0.97,
+    "match0": 0.81
+   }
+  },
+  "jump_attack_03": {
+   "hand": [
+    93,
+    95
+   ],
+   "angle": 60,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     93,
+     95
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.948,
+    "match0": 0.941
+   }
+  },
+  "jump_attack_04": {
+   "hand": [
+    88,
+    51
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     85,
+     53
+    ],
+    "shift": [
+     3,
+     -2
+    ],
+    "match": 0.972,
+    "match0": 0.85
+   }
+  }
+ }
+}

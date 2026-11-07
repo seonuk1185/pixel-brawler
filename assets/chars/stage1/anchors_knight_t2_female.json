@@ -87,10 +87,10 @@
   },
   "walk_01": {
    "hand": [
-    95,
-    73
+    93,
+    65
    ],
-   "angle": -37,
+   "angle": -38,
    "layer": "back",
    "check": {
     "fromTier1": [
@@ -98,18 +98,18 @@
      66
     ],
     "shift": [
-     5,
-     6
+     3,
+     -2
     ],
-    "match": 0.904,
-    "match0": 0.662,
+    "match": 0.94,
+    "match0": 0.842,
     "manual": true
    }
   },
   "walk_02": {
    "hand": [
-    94,
-    73
+    92,
+    66
    ],
    "angle": -38,
    "layer": "back",
@@ -119,17 +119,18 @@
      68
     ],
     "shift": [
-     5,
-     5
+     3,
+     -2
     ],
-    "match": 0.908,
-    "match0": 0.686
+    "match": 0.938,
+    "match0": 0.805,
+    "manual": true
    }
   },
   "walk_03": {
    "hand": [
-    95,
-    70
+    91,
+    65
    ],
    "angle": -38,
    "layer": "back",
@@ -139,19 +140,20 @@
      67
     ],
     "shift": [
-     5,
-     3
+     3,
+     -1
     ],
-    "match": 0.93,
-    "match0": 0.694
+    "match": 0.929,
+    "match0": 0.838,
+    "manual": true
    }
   },
   "walk_04": {
    "hand": [
-    99,
-    74
+    92,
+    65
    ],
-   "angle": -37,
+   "angle": -38,
    "layer": "back",
    "check": {
     "fromTier1": [
@@ -159,21 +161,20 @@
      66
     ],
     "shift": [
-     0,
+     -2,
      0
     ],
-    "match": 0.885,
-    "match0": 0.634,
-    "note": "auto shift hit the search limit (cape covers the hand area) -> 1st-tier hand kept",
+    "match": 0.946,
+    "match0": 0.915,
     "manual": true
    }
   },
   "walk_05": {
    "hand": [
-    95,
-    72
+    93,
+    66
    ],
-   "angle": -39,
+   "angle": -38,
    "layer": "back",
    "check": {
     "fromTier1": [
@@ -181,19 +182,20 @@
      69
     ],
     "shift": [
-     3,
-     3
+     2,
+     -1
     ],
-    "match": 0.917,
-    "match0": 0.787
+    "match": 0.921,
+    "match0": 0.853,
+    "manual": true
    }
   },
   "walk_06": {
    "hand": [
     93,
-    72
+    66
    ],
-   "angle": -39,
+   "angle": -38,
    "layer": "back",
    "check": {
     "fromTier1": [
@@ -201,17 +203,18 @@
      69
     ],
     "shift": [
-     2,
-     3
+     3,
+     -3
     ],
-    "match": 0.93,
-    "match0": 0.835
+    "match": 0.931,
+    "match0": 0.794,
+    "manual": true
    }
   },
   "walk_07": {
    "hand": [
-    96,
-    72
+    93,
+    66
    ],
    "angle": -38,
    "layer": "back",
@@ -221,19 +224,20 @@
      67
     ],
     "shift": [
-     5,
-     5
+     3,
+     0
     ],
-    "match": 0.911,
-    "match0": 0.651
+    "match": 0.926,
+    "match0": 0.83,
+    "manual": true
    }
   },
   "walk_08": {
    "hand": [
-    99,
-    72
+    94,
+    66
    ],
-   "angle": -36,
+   "angle": -38,
    "layer": "back",
    "check": {
     "fromTier1": [
@@ -241,11 +245,11 @@
      65
     ],
     "shift": [
-     4,
-     6
+     -1,
+     1
     ],
-    "match": 0.921,
-    "match0": 0.672,
+    "match": 0.932,
+    "match0": 0.909,
     "manual": true
    }
   },
