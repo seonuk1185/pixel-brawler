@@ -1,5 +1,5 @@
 {
- "note": "Motion-library anchors (2026-11-03), same format as art/stage1/knight_male/anchors_knight_male.json. hand=[x,y] grip position in the 176x136 frame (feet baseline y=130, facing right); angle degrees, 0 = weapon pointing right, positive = clockwise on screen; layer back = draw weapon before the character. Hands read off 4x grid zooms of the finished frames, angles chosen for the intended swing (check.manual=true).",
+ "note": "1st-job male knight NEW look (2026-11-07, art/stage1/knight_male_flow). hand = [x,y] in the 176x136 frame, angle deg (0 = right, + = clockwise). The new art uses the paladin poses (silhouette IoU 0.92-0.99), so values = paladin anchors (already hand-checked) moved by the best silhouette shift; idle/walk = front gauntlet centre measured on the new frames; frames that match the paladin less well keep the old-knight transfer.",
  "weapon": "sword",
  "frameSize": [
   176,
@@ -14,7 +14,15 @@
    "angle": 160,
    "layer": "back",
    "check": {
-    "manual": true
+    "fromPaladin": [
+     54,
+     78
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "iou": 0.955
    }
   },
   "motion_dash_02": {
@@ -25,7 +33,15 @@
    "angle": 165,
    "layer": "back",
    "check": {
-    "manual": true
+    "fromPaladin": [
+     83,
+     82
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "iou": 0.948
    }
   },
   "motion_dash_03": {
@@ -36,51 +52,91 @@
    "angle": 165,
    "layer": "back",
    "check": {
-    "manual": true
+    "fromPaladin": [
+     81,
+     82
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "iou": 0.946
    }
   },
   "motion_dash_04": {
    "hand": [
     144,
-    66
+    65
    ],
    "angle": 0,
    "layer": "back",
    "check": {
-    "manual": true
+    "fromPaladin": [
+     144,
+     65
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "iou": 0.944
    }
   },
   "motion_dash_05": {
    "hand": [
-    77,
-    67
+    76,
+    66
    ],
    "angle": 175,
    "layer": "back",
    "check": {
-    "manual": true
+    "fromPaladin": [
+     76,
+     66
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "iou": 0.943
    }
   },
   "motion_dash_06": {
    "hand": [
-    103,
-    73
+    105,
+    75
    ],
    "angle": -40,
    "layer": "back",
    "check": {
-    "manual": true
+    "fromPaladin": [
+     104,
+     75
+    ],
+    "shift": [
+     1,
+     0
+    ],
+    "iou": 0.952
    }
   },
   "motion_spin_01": {
    "hand": [
-    41,
+    42,
     73
    ],
    "angle": 175,
    "layer": "back",
    "check": {
-    "manual": true
+    "fromPaladin": [
+     41,
+     73
+    ],
+    "shift": [
+     1,
+     0
+    ],
+    "iou": 0.936
    }
   },
   "motion_spin_02": {
@@ -91,62 +147,112 @@
    "angle": 0,
    "layer": "back",
    "check": {
-    "manual": true
+    "fromPaladin": [
+     115,
+     58
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "iou": 0.943
    }
   },
   "motion_spin_03": {
    "hand": [
-    111,
-    58
+    113,
+    57
    ],
    "angle": 15,
    "layer": "back",
    "check": {
-    "manual": true
+    "fromPaladin": [
+     113,
+     57
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "iou": 0.947
    }
   },
   "motion_spin_04": {
    "hand": [
-    30,
-    58
+    29,
+    57
    ],
    "angle": 180,
    "layer": "back",
    "check": {
-    "manual": true
+    "fromPaladin": [
+     29,
+     57
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "iou": 0.939
    }
   },
   "motion_spin_05": {
    "hand": [
-    107,
-    56
+    108,
+    55
    ],
    "angle": 0,
    "layer": "back",
    "check": {
-    "manual": true
+    "fromTier1": [
+     107,
+     56
+    ],
+    "shift": [
+     1,
+     -1
+    ],
+    "match": 0.965,
+    "match0": 0.938,
+    "note": "paladin match 0.92 too low -> old-knight transfer kept"
    }
   },
   "motion_spin_06": {
    "hand": [
     125,
-    74
+    73
    ],
    "angle": 5,
    "layer": "back",
    "check": {
-    "manual": true
+    "fromPaladin": [
+     125,
+     73
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "iou": 0.931
    }
   },
   "motion_spin_07": {
    "hand": [
-    97,
-    61
+    99,
+    74
    ],
    "angle": -40,
    "layer": "back",
    "check": {
-    "manual": true
+    "fromPaladin": [
+     99,
+     74
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "iou": 0.938
    }
   },
   "motion_upper_01": {
@@ -157,8 +263,15 @@
    "angle": 160,
    "layer": "back",
    "check": {
-    "manual": true,
-    "src": "motion_upper_01"
+    "fromPaladin": [
+     64,
+     104
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "iou": 0.944
    }
   },
   "motion_upper_02": {
@@ -169,8 +282,15 @@
    "angle": 15,
    "layer": "back",
    "check": {
-    "manual": true,
-    "src": "motion_upper_02"
+    "fromPaladin": [
+     114,
+     96
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "iou": 0.953
    }
   },
   "motion_upper_03": {
@@ -181,8 +301,15 @@
    "angle": -55,
    "layer": "back",
    "check": {
-    "manual": true,
-    "src": "motion_upper_03"
+    "fromPaladin": [
+     113,
+     35
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "iou": 0.947
    }
   },
   "motion_upper_04": {
@@ -193,8 +320,15 @@
    "angle": -27,
    "layer": "back",
    "check": {
-    "manual": true,
-    "src": "motion_upper_06"
+    "fromPaladin": [
+     112,
+     72
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "iou": 0.955
    }
   }
  }

@@ -823,6 +823,8 @@
     // 기사 옷 (직업 「기사(검)」을 고르면 이 그림 + 기사 손 위치로 바뀐다)
     knightMale = stage1('male', 'assets/chars/stage1/anchors_knight_male.json', 'knight');
     knightFemale = stage1('female', 'assets/chars/stage1/anchors_knight_female.json', 'knight');
+    // 기사 남 달리며 공격 새 그림(2026-11-07 어깨빵 v2, 성기사와 같은 동작): 2장 잠깐 → 3장 계속. 기사 여 슬라이딩은 그대로
+    knightMale.raShow = { pushFirst: 1, pushFirstMs: 90, pushHold: 2 };
     // 법사 옷 (직업 「법사(지팡이)」): 걷기 보폭 남녀 모두 84 (MAGE.<성별>.stride)
     var mageMale = stage1('male', 'assets/chars/stage1/anchors_mage_male.json', 'mage');
     var mageFemale = stage1('female', 'assets/chars/stage1/anchors_mage_female.json', 'mage');

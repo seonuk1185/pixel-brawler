@@ -1,5 +1,5 @@
 {
- "note": "hand=[x,y] grip position in frame pixels (176x136 frame, feet baseline y=130); angle in degrees, 0 = weapon pointing right, positive = clockwise on screen (y down); draw weapon so its grip pixel lands on hand, rotated by angle; layer back = draw weapon before the character, front = after",
+ "note": "1st-job male knight NEW look (2026-11-07, art/stage1/knight_male_flow). hand = [x,y] in the 176x136 frame, angle deg (0 = right, + = clockwise). The new art uses the paladin poses (silhouette IoU 0.92-0.99), so values = paladin anchors (already hand-checked) moved by the best silhouette shift; idle/walk = front gauntlet centre measured on the new frames; frames that match the paladin less well keep the old-knight transfer.",
  "frameSize": [
   176,
   136
@@ -13,7 +13,7 @@
    "angle": -35,
    "layer": "back",
    "check": {
-    "fromNovice": [
+    "fromPaladin": [
      98,
      78
     ],
@@ -21,8 +21,7 @@
      0,
      0
     ],
-    "match": 0.976,
-    "match0": 0.976
+    "iou": 0.972
    }
   },
   "attack_02": {
@@ -33,7 +32,7 @@
    "angle": -35,
    "layer": "back",
    "check": {
-    "fromNovice": [
+    "fromPaladin": [
      62,
      31
     ],
@@ -41,159 +40,152 @@
      0,
      0
     ],
-    "match": 0.954,
-    "match0": 0.954
+    "iou": 0.971
    }
   },
   "attack_03": {
    "hand": [
-    106,
+    107,
     65
    ],
    "angle": -138,
    "layer": "back",
    "check": {
-    "fromNovice": [
+    "fromPaladin": [
      106,
      65
     ],
     "shift": [
-     0,
+     1,
      0
     ],
-    "match": 0.995,
-    "match0": 0.995
+    "iou": 0.957
    }
   },
   "attack_04": {
    "hand": [
-    124,
+    125,
     82
    ],
    "angle": 15,
    "layer": "back",
    "check": {
-    "fromNovice": [
+    "fromPaladin": [
      124,
      82
     ],
     "shift": [
-     0,
+     1,
      0
     ],
-    "match": 0.997,
-    "match0": 0.997
+    "iou": 0.957
    }
   },
   "attack_05": {
    "hand": [
-    96,
+    97,
     78
    ],
    "angle": -37,
    "layer": "back",
    "check": {
-    "fromNovice": [
-     96,
+    "fromPaladin": [
+     97,
      78
     ],
     "shift": [
      0,
      0
     ],
-    "match": 0.971,
-    "match0": 0.971
+    "iou": 0.973
    }
   },
   "hurt_01": {
    "hand": [
-    95,
-    63
+    94,
+    71
    ],
    "angle": -40,
    "layer": "back",
    "check": {
-    "fromNovice": [
-     95,
-     63
+    "fromPaladin": [
+     94,
+     71
     ],
     "shift": [
      0,
      0
     ],
-    "match": 0.942,
-    "match0": 0.942
+    "iou": 0.987
    }
   },
   "hurt_02": {
    "hand": [
-    95,
-    86
+    101,
+    64
    ],
    "angle": 25,
    "layer": "back",
    "check": {
-    "fromNovice": [
-     96,
-     87
+    "fromPaladin": [
+     101,
+     64
     ],
     "shift": [
-     -1,
-     -1
+     0,
+     0
     ],
-    "match": 0.888,
-    "match0": 0.874
+    "iou": 0.985
    }
   },
   "hurt_03": {
    "hand": [
-    98,
-    84
+    101,
+    76
    ],
    "angle": 28,
    "layer": "back",
    "check": {
-    "fromNovice": [
-     98,
-     86
+    "fromPaladin": [
+     101,
+     76
     ],
     "shift": [
      0,
-     -2
+     0
     ],
-    "match": 0.904,
-    "match0": 0.875
+    "iou": 0.97
    }
   },
   "idle_01": {
    "hand": [
     96,
-    77
+    76
    ],
    "angle": -40,
    "layer": "back",
    "check": {
-    "fromNovice": [
+    "fromPaladin": [
      96,
-     77
+     76
     ],
     "shift": [
      0,
      0
     ],
-    "match": 0.969,
-    "match0": 0.965
+    "iou": 0.932,
+    "measured": "front gauntlet centre (new frame)"
    }
   },
   "idle_02": {
    "hand": [
-    97,
+    96,
     77
    ],
    "angle": -39,
    "layer": "back",
    "check": {
-    "fromNovice": [
+    "fromPaladin": [
      97,
      76
     ],
@@ -201,95 +193,153 @@
      0,
      1
     ],
-    "match": 0.964,
-    "match0": 0.931
+    "iou": 0.931,
+    "measured": "front gauntlet centre (new frame)"
    }
   },
   "idle_03": {
    "hand": [
-    96,
-    78
+    97,
+    77
    ],
    "angle": -40,
    "layer": "back",
    "check": {
-    "fromNovice": [
-     95,
+    "fromPaladin": [
+     97,
      77
     ],
     "shift": [
      1,
      0
     ],
-    "match": 0.962,
-    "match0": 0.942
+    "iou": 0.934,
+    "measured": "front gauntlet centre (new frame)"
    }
   },
   "idle_04": {
    "hand": [
     96,
-    77
+    76
    ],
    "angle": -40,
    "layer": "back",
    "check": {
-    "fromNovice": [
+    "fromPaladin": [
      97,
-     74
+     76
     ],
     "shift": [
      0,
-     1
+     0
     ],
-    "match": 0.956,
-    "match0": 0.942
+    "iou": 0.936,
+    "measured": "front gauntlet centre (new frame)"
    }
   },
   "walk_01": {
    "hand": [
-    97,
-    60
+    94,
+    72
    ],
-   "angle": -32,
+   "angle": -40,
    "layer": "back",
    "check": {
-    "walk3": "2026-11-03 legs redrawn (v3): hand = front gauntlet centre"
+    "fromTier1": [
+     97,
+     60
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.813,
+    "match0": 0.658,
+    "note": "paladin match 0.93 too low -> old-knight transfer kept",
+    "measured": "front gauntlet centre (new frame)"
    }
   },
   "walk_02": {
    "hand": [
-    95,
+    96,
     64
    ],
-   "angle": -35,
+   "angle": -36,
    "layer": "back",
    "check": {
-    "walk3": "2026-11-03 legs redrawn (v3): hand = front gauntlet centre"
+    "fromPaladin": [
+     96,
+     64
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "iou": 0.959,
+    "measured": "front gauntlet centre (new frame)"
    }
   },
   "walk_03": {
    "hand": [
     95,
-    62
+    61
    ],
    "angle": -34,
    "layer": "back",
    "check": {
-    "walk3": "2026-11-03 legs redrawn (v3): hand = front gauntlet centre"
+    "fromPaladin": [
+     96,
+     61
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "iou": 0.963,
+    "measured": "front gauntlet centre (new frame)"
    }
   },
   "walk_04": {
    "hand": [
     100,
-    60
+    59
    ],
    "angle": -32,
    "layer": "back",
    "check": {
-    "walk3": "2026-11-03 legs redrawn (v3): hand = front gauntlet centre"
+    "fromPaladin": [
+     100,
+     59
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "iou": 0.97,
+    "measured": "front gauntlet centre (new frame)"
    }
   },
   "walk_05": {
+   "hand": [
+    97,
+    61
+   ],
+   "angle": -34,
+   "layer": "back",
+   "check": {
+    "fromPaladin": [
+     98,
+     61
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "iou": 0.957,
+    "measured": "front gauntlet centre (new frame)"
+   }
+  },
+  "walk_06": {
    "hand": [
     97,
     62
@@ -297,40 +347,56 @@
    "angle": -34,
    "layer": "back",
    "check": {
-    "walk3": "2026-11-03 legs redrawn (v3): hand = front gauntlet centre"
-   }
-  },
-  "walk_06": {
-   "hand": [
-    96,
-    62
-   ],
-   "angle": -34,
-   "layer": "back",
-   "check": {
-    "walk3": "2026-11-03 legs redrawn (v3): hand = front gauntlet centre"
+    "fromPaladin": [
+     97,
+     62
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "iou": 0.966,
+    "measured": "front gauntlet centre (new frame)"
    }
   },
   "walk_07": {
    "hand": [
-    94,
+    96,
     60
    ],
-   "angle": -32,
+   "angle": -33,
    "layer": "back",
    "check": {
-    "walk3": "2026-11-03 legs redrawn (v3): hand = front gauntlet centre"
+    "fromPaladin": [
+     95,
+     60
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "iou": 0.97,
+    "measured": "front gauntlet centre (new frame)"
    }
   },
   "walk_08": {
    "hand": [
     100,
-    62
+    59
    ],
-   "angle": -34,
+   "angle": -32,
    "layer": "back",
    "check": {
-    "walk3": "2026-11-03 legs redrawn (v3): hand = front gauntlet centre"
+    "fromPaladin": [
+     101,
+     59
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "iou": 0.968,
+    "measured": "front gauntlet centre (new frame)"
    }
   },
   "attack2_01": {
@@ -341,16 +407,15 @@
    "angle": 45,
    "layer": "back",
    "check": {
-    "fromNovice": [
-     109,
-     102
+    "fromPaladin": [
+     108,
+     100
     ],
     "shift": [
-     -1,
-     -2
+     0,
+     0
     ],
-    "match": 0.945,
-    "match0": 0.912
+    "iou": 0.969
    }
   },
   "attack2_02": {
@@ -361,97 +426,91 @@
    "angle": 150,
    "layer": "back",
    "check": {
-    "fromNovice": [
-     57,
-     78
+    "fromPaladin": [
+     54,
+     76
     ],
     "shift": [
-     -3,
-     -2
+     0,
+     0
     ],
-    "match": 0.736,
-    "match0": 0.67
+    "iou": 0.968
    }
   },
   "attack2_03": {
    "hand": [
-    108,
+    109,
     72
    ],
    "angle": -30,
    "layer": "back",
    "check": {
-    "fromNovice": [
+    "fromPaladin": [
      108,
      72
     ],
     "shift": [
-     0,
+     1,
      0
     ],
-    "match": 0.972,
-    "match0": 0.966
+    "iou": 0.966
    }
   },
   "attack2_04": {
    "hand": [
-    104,
+    103,
     21
    ],
    "angle": -85,
    "layer": "back",
    "check": {
-    "fromNovice": [
-     105,
-     20
+    "fromPaladin": [
+     104,
+     21
     ],
     "shift": [
      -1,
-     1
+     0
     ],
-    "match": 0.992,
-    "match0": 0.962
+    "iou": 0.971
    }
   },
   "attack2_05": {
    "hand": [
-    99,
-    71
+    101,
+    76
    ],
    "angle": -40,
    "layer": "back",
    "check": {
-    "fromNovice": [
-     99,
-     71
+    "fromPaladin": [
+     101,
+     76
     ],
     "shift": [
      0,
      0
     ],
-    "match": 0.949,
-    "match0": 0.949
+    "iou": 0.959
    }
   },
   "attack3_01": {
    "hand": [
-    50,
-    90
+    51,
+    87
    ],
    "angle": 160,
    "layer": "back",
    "check": {
-    "fromNovice": [
-     50,
-     92
+    "fromPaladin": [
+     51,
+     87
     ],
     "shift": [
-     -4,
-     7
+     0,
+     0
     ],
-    "match": 0.896,
-    "match0": 0.787,
-    "manual": true
+    "iou": 0.946
    }
   },
   "attack3_02": {
@@ -462,7 +521,7 @@
    "angle": 120,
    "layer": "back",
    "check": {
-    "fromNovice": [
+    "fromPaladin": [
      52,
      31
     ],
@@ -470,8 +529,7 @@
      0,
      0
     ],
-    "match": 0.974,
-    "match0": 0.97
+    "iou": 0.97
    }
   },
   "attack3_03": {
@@ -482,16 +540,15 @@
    "angle": 180,
    "layer": "back",
    "check": {
-    "fromNovice": [
+    "fromPaladin": [
      72,
-     22
+     24
     ],
     "shift": [
      0,
-     2
+     0
     ],
-    "match": 0.987,
-    "match0": 0.933
+    "iou": 0.966
    }
   },
   "attack3_04": {
@@ -502,36 +559,34 @@
    "angle": -60,
    "layer": "back",
    "check": {
-    "fromNovice": [
+    "fromPaladin": [
      100,
-     48
-    ],
-    "shift": [
-     0,
-     1
-    ],
-    "match": 0.983,
-    "match0": 0.957
-   }
-  },
-  "attack3_05": {
-   "hand": [
-    114,
-    125
-   ],
-   "angle": 3,
-   "layer": "back",
-   "check": {
-    "fromNovice": [
-     114,
-     125
+     49
     ],
     "shift": [
      0,
      0
     ],
-    "match": 0.99,
-    "match0": 0.99
+    "iou": 0.967
+   }
+  },
+  "attack3_05": {
+   "hand": [
+    113,
+    125
+   ],
+   "angle": 3,
+   "layer": "back",
+   "check": {
+    "fromPaladin": [
+     114,
+     125
+    ],
+    "shift": [
+     -1,
+     0
+    ],
+    "iou": 0.966
    }
   },
   "attack3_06": {
@@ -542,7 +597,7 @@
    "angle": 10,
    "layer": "back",
    "check": {
-    "fromNovice": [
+    "fromPaladin": [
      111,
      121
     ],
@@ -550,48 +605,47 @@
      0,
      0
     ],
-    "match": 0.997,
-    "match0": 0.997
+    "iou": 0.968
    }
   },
   "getup_03": {
    "hand": [
-    98,
-    82
+    96,
+    83
    ],
    "angle": -40,
    "layer": "back",
    "check": {
-    "fromNovice": [
-     98,
+    "fromPaladin": [
+     96,
      83
-    ],
-    "shift": [
-     0,
-     -1
-    ],
-    "match": 0.977,
-    "match0": 0.965
-   }
-  },
-  "getup_04": {
-   "hand": [
-    97,
-    77
-   ],
-   "angle": -40,
-   "layer": "back",
-   "check": {
-    "fromNovice": [
-     97,
-     77
     ],
     "shift": [
      0,
      0
     ],
-    "match": 0.963,
-    "match0": 0.963
+    "iou": 0.983
+   }
+  },
+  "getup_04": {
+   "hand": [
+    95,
+    76
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     97,
+     77
+    ],
+    "shift": [
+     -2,
+     -1
+    ],
+    "match": 0.947,
+    "match0": 0.917,
+    "note": "paladin match 0.91 too low -> old-knight transfer kept"
    }
   },
   "hurt2_01": {
@@ -602,56 +656,55 @@
    "angle": 60,
    "layer": "back",
    "check": {
-    "fromNovice": [
-     75,
-     79
+    "fromPaladin": [
+     77,
+     82
     ],
     "shift": [
-     2,
-     3
+     0,
+     0
     ],
-    "match": 0.97,
-    "match0": 0.906
+    "iou": 0.984
    }
   },
   "hurt2_02": {
    "hand": [
-    91,
+    90,
     92
    ],
    "angle": 80,
    "layer": "back",
    "check": {
-    "fromNovice": [
-     92,
+    "fromPaladin": [
+     91,
      92
     ],
     "shift": [
      -1,
      0
     ],
-    "match": 0.942,
-    "match0": 0.926
+    "iou": 0.985
    }
   },
   "hurt2_03": {
    "hand": [
-    98,
-    76
+    97,
+    77
    ],
    "angle": -40,
    "layer": "back",
    "check": {
-    "fromNovice": [
+    "fromTier1": [
      98,
      76
     ],
     "shift": [
-     0,
-     0
+     -1,
+     1
     ],
-    "match": 0.958,
-    "match0": 0.958
+    "match": 0.917,
+    "match0": 0.886,
+    "note": "paladin match 0.84 too low -> old-knight transfer kept"
    }
   },
   "knockdown_01": {
@@ -663,7 +716,7 @@
    "layer": "back",
    "hide": true,
    "check": {
-    "note": "weapon not drawn (dropped/hidden); hand = drop point on the ground"
+    "note": "weapon not drawn (dropped/hidden); hand = drop point on the ground (same as 1st tier)"
    }
   },
   "knockdown_02": {
@@ -675,7 +728,7 @@
    "layer": "back",
    "hide": true,
    "check": {
-    "note": "weapon not drawn (dropped/hidden); hand = drop point on the ground"
+    "note": "weapon not drawn (dropped/hidden); hand = drop point on the ground (same as 1st tier)"
    }
   },
   "knockdown_03": {
@@ -687,7 +740,7 @@
    "layer": "back",
    "hide": true,
    "check": {
-    "note": "weapon not drawn (dropped/hidden); hand = drop point on the ground"
+    "note": "weapon not drawn (dropped/hidden); hand = drop point on the ground (same as 1st tier)"
    }
   },
   "knockdown_04": {
@@ -699,7 +752,7 @@
    "layer": "back",
    "hide": true,
    "check": {
-    "note": "weapon not drawn (dropped/hidden); hand = drop point on the ground"
+    "note": "weapon not drawn (dropped/hidden); hand = drop point on the ground (same as 1st tier)"
    }
   },
   "knockdown_05": {
@@ -711,7 +764,7 @@
    "layer": "back",
    "hide": true,
    "check": {
-    "note": "weapon not drawn (dropped/hidden); hand = drop point on the ground"
+    "note": "weapon not drawn (dropped/hidden); hand = drop point on the ground (same as 1st tier)"
    }
   },
   "getup_01": {
@@ -723,7 +776,7 @@
    "layer": "back",
    "hide": true,
    "check": {
-    "note": "weapon not drawn (dropped/hidden); hand = drop point on the ground"
+    "note": "weapon not drawn (dropped/hidden); hand = drop point on the ground (same as 1st tier)"
    }
   },
   "getup_02": {
@@ -735,7 +788,7 @@
    "layer": "back",
    "hide": true,
    "check": {
-    "note": "weapon not drawn (dropped/hidden); hand = drop point on the ground"
+    "note": "weapon not drawn (dropped/hidden); hand = drop point on the ground (same as 1st tier)"
    }
   }
  }

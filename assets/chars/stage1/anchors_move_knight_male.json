@@ -4,149 +4,206 @@
   136
  ],
  "weapon": "sword",
+ "note": "1st-job male knight NEW look (2026-11-07, art/stage1/knight_male_flow). hand = [x,y] in the 176x136 frame, angle deg (0 = right, + = clockwise). The new art uses the paladin poses (silhouette IoU 0.92-0.99), so values = paladin anchors (already hand-checked) moved by the best silhouette shift; idle/walk = front gauntlet centre measured on the new frames; frames that match the paladin less well keep the old-knight transfer.",
  "frames": {
   "run_01": {
    "hand": [
-    53,
-    84
+    54,
+    82
    ],
    "angle": 139,
    "layer": "front",
    "fist": [
-    49,
-    80,
-    9,
-    9
-   ],
-   "check": {
-    "manual": true,
-    "runFix": "fist centre measured 2026-11-07, layer front so the hilt shows at the fist, angle follows the arm"
-   }
-  },
-  "run_02": {
-   "hand": [
-    49,
-    85
-   ],
-   "angle": 163,
-   "layer": "front",
-   "fist": [
-    45,
-    81,
-    9,
-    9
-   ],
-   "check": {
-    "manual": true,
-    "runFix": "fist centre measured 2026-11-07, layer front so the hilt shows at the fist, angle follows the arm"
-   }
-  },
-  "run_03": {
-   "hand": [
-    49,
-    80
-   ],
-   "angle": 160,
-   "layer": "front",
-   "fist": [
-    45,
-    76,
-    9,
-    9
-   ],
-   "check": {
-    "manual": true,
-    "runFix": "fist centre measured 2026-11-07, layer front so the hilt shows at the fist, angle follows the arm"
-   }
-  },
-  "run_04": {
-   "hand": [
-    51,
-    72
-   ],
-   "angle": 154,
-   "layer": "front",
-   "fist": [
-    47,
-    68,
-    9,
-    9
-   ],
-   "check": {
-    "manual": true,
-    "runFix": "fist centre measured 2026-11-07, layer front so the hilt shows at the fist, angle follows the arm"
-   }
-  },
-  "run_05": {
-   "hand": [
-    53,
-    82
-   ],
-   "angle": 143,
-   "layer": "front",
-   "fist": [
-    49,
+    50,
     78,
     9,
     9
    ],
    "check": {
-    "manual": true,
-    "runFix": "fist centre measured 2026-11-07, layer front so the hilt shows at the fist, angle follows the arm"
+    "fromPaladin": [
+     54,
+     82
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "iou": 0.952
+   }
+  },
+  "run_02": {
+   "hand": [
+    50,
+    84
+   ],
+   "angle": 163,
+   "layer": "front",
+   "fist": [
+    46,
+    80,
+    9,
+    9
+   ],
+   "check": {
+    "fromPaladin": [
+     50,
+     84
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "iou": 0.972
+   }
+  },
+  "run_03": {
+   "hand": [
+    51,
+    79
+   ],
+   "angle": 160,
+   "layer": "front",
+   "fist": [
+    47,
+    75,
+    9,
+    9
+   ],
+   "check": {
+    "fromPaladin": [
+     51,
+     79
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "iou": 0.968
+   }
+  },
+  "run_04": {
+   "hand": [
+    52,
+    71
+   ],
+   "angle": 154,
+   "layer": "front",
+   "fist": [
+    48,
+    67,
+    9,
+    9
+   ],
+   "check": {
+    "fromPaladin": [
+     52,
+     71
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "iou": 0.952
+   }
+  },
+  "run_05": {
+   "hand": [
+    54,
+    80
+   ],
+   "angle": 143,
+   "layer": "front",
+   "fist": [
+    50,
+    76,
+    9,
+    9
+   ],
+   "check": {
+    "fromPaladin": [
+     54,
+     80
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "iou": 0.968
    }
   },
   "run_06": {
    "hand": [
-    50,
-    83
+    51,
+    82
    ],
    "angle": 157,
    "layer": "front",
    "fist": [
-    46,
-    79,
+    47,
+    78,
     9,
     9
    ],
    "check": {
-    "manual": true,
-    "runFix": "fist centre measured 2026-11-07, layer front so the hilt shows at the fist, angle follows the arm"
+    "fromPaladin": [
+     51,
+     82
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "iou": 0.964
    }
   },
   "run_07": {
    "hand": [
-    50,
-    78
+    52,
+    79
    ],
    "angle": 159,
    "layer": "front",
    "fist": [
-    46,
-    74,
+    48,
+    75,
     9,
     9
    ],
    "check": {
-    "manual": true,
-    "runFix": "fist centre measured 2026-11-07, layer front so the hilt shows at the fist, angle follows the arm"
+    "fromPaladin": [
+     52,
+     79
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "iou": 0.966
    }
   },
   "run_08": {
    "hand": [
-    52,
-    73
+    53,
+    72
    ],
    "angle": 155,
    "layer": "front",
    "fist": [
-    48,
-    69,
+    49,
+    68,
     9,
     9
    ],
    "check": {
-    "manual": true,
-    "runFix": "fist centre measured 2026-11-07, layer front so the hilt shows at the fist, angle follows the arm"
+    "fromPaladin": [
+     53,
+     72
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "iou": 0.963
    }
   },
   "jump_01": {
@@ -157,7 +214,15 @@
    "angle": -30,
    "layer": "back",
    "check": {
-    "manual": true
+    "fromPaladin": [
+     96,
+     81
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "iou": 0.968
    }
   },
   "jump_02": {
@@ -168,18 +233,34 @@
    "angle": -60,
    "layer": "back",
    "check": {
-    "manual": true
+    "fromPaladin": [
+     105,
+     25
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "iou": 0.956
    }
   },
   "jump_03": {
    "hand": [
-    89,
-    75
+    90,
+    74
    ],
    "angle": -40,
    "layer": "back",
    "check": {
-    "manual": true
+    "fromPaladin": [
+     90,
+     74
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "iou": 0.965
    }
   },
   "jump_04": {
@@ -190,7 +271,15 @@
    "angle": -30,
    "layer": "back",
    "check": {
-    "manual": true
+    "fromPaladin": [
+     104,
+     51
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "iou": 0.969
    }
   },
   "jump_05": {
@@ -201,73 +290,129 @@
    "angle": -30,
    "layer": "back",
    "check": {
-    "manual": true
+    "fromPaladin": [
+     98,
+     82
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "iou": 0.961
    }
   },
   "run_attack_01": {
    "hand": [
-    43,
-    78
+    70,
+    80
    ],
    "angle": 150,
    "layer": "back",
    "check": {
-    "manual": true
+    "fromPaladin": [
+     70,
+     80
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "iou": 0.979
    }
   },
   "run_attack_02": {
    "hand": [
-    49,
-    85
+    80,
+    78
    ],
    "angle": 160,
    "layer": "back",
    "check": {
-    "manual": true
+    "fromPaladin": [
+     80,
+     78
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "iou": 0.982
    }
   },
   "run_attack_03": {
    "hand": [
-    53,
-    86
+    88,
+    82
    ],
    "angle": 160,
    "layer": "back",
    "check": {
-    "manual": true
+    "fromPaladin": [
+     88,
+     82
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "iou": 0.984
    }
   },
   "run_attack_04": {
    "hand": [
-    62,
-    67
+    86,
+    82
    ],
    "angle": 165,
    "layer": "back",
    "check": {
-    "manual": true
+    "fromPaladin": [
+     86,
+     82
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "iou": 0.986
    }
   },
   "run_attack_05": {
    "hand": [
-    108,
-    75
+    104,
+    76
    ],
    "angle": -40,
    "layer": "back",
    "check": {
-    "manual": true
+    "fromPaladin": [
+     104,
+     76
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "iou": 0.973
    }
   },
   "jump_attack_01": {
    "hand": [
     68,
-    37
+    36
    ],
    "angle": -150,
    "layer": "back",
    "check": {
-    "manual": true
+    "fromPaladin": [
+     69,
+     36
+    ],
+    "shift": [
+     -1,
+     0
+    ],
+    "iou": 0.95
    }
   },
   "jump_attack_02": {
@@ -278,7 +423,15 @@
    "angle": 40,
    "layer": "back",
    "check": {
-    "manual": true
+    "fromPaladin": [
+     102,
+     88
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "iou": 0.967
    }
   },
   "jump_attack_03": {
@@ -289,7 +442,15 @@
    "angle": 70,
    "layer": "back",
    "check": {
-    "manual": true
+    "fromPaladin": [
+     100,
+     80
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "iou": 0.963
    }
   },
   "jump_attack_04": {
@@ -300,7 +461,15 @@
    "angle": -40,
    "layer": "back",
    "check": {
-    "manual": true
+    "fromPaladin": [
+     94,
+     58
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "iou": 0.95
    }
   }
  }
