@@ -39,7 +39,7 @@
   var hudEl = document.getElementById('hud');
   // 가로로 돌려 주세요(2026-11-07, 형님 결정 = 가로 화면 전용): 폰 화면(touchui)을 세로로 들면 안내(#rotOv) + 게임 멈춤(step). 세로 CSS 는 그대로 두되 안 씀
   var rotEl = document.getElementById('rotOv'), rotHold = false;
-  var LW = 480, LH = 240, SCALE = 1;
+  var LW = 480, LH = 240, SCALE = 1, lbOn = false;   // lbOn = 위아래 여백 화면(폴드 펼침, resize)
   var world = { width: CFG.world.width, laneTop: 0, laneBottom: 0, floorY: 0, bgOff: 0, minX: null, maxX: null };
   // 폰 가로 화면: 공격 버튼이 게임 화면 오른쪽 아래(걷는 길)를 덮는다 → 그 폭(도트)만큼 오른쪽을 싸움 자리에서 뺀다.
   //   플레이어·적이 그 밑으로 못 들어가고, 카메라도 남은 폭 기준으로 따라간다. 버튼이 게임 화면 밖이면(세로 화면·PC) 0
@@ -66,7 +66,19 @@
     if (rotHold) Input.setOverride(null);
     var topCss = 0, padB = portrait ? 0 : pcBarPx();
     document.documentElement.style.setProperty('--pcbarH', padB + 'px');
-    if (portrait) {
+    // 위아래 여백(2026-11-07 형님, 폴드 펼친 화면): 손가락 화면 + 가로/세로 < letterbox.aspect 이면 게임 화면을 그 비율로 자르고 위아래를 비움.
+    //   보이는 높이 = targetH 도트 근처(접은 폰 254~270 보다 조금 크게) → 캐릭터가 예전(626x564 도트)보다 큼. 위 여백 = 체력판 등 HUD, 아래 여백 = 조작 버튼
+    //   보통 폰(904x388 · 1280x549)·PC 는 비율이 넓거나 손가락 화면이 아니라서 그대로
+    var LB = CFG.view.letterbox;
+    lbOn = !portrait && !!LB && document.body.classList.contains('touchui') && cw / ch < LB.aspect;
+    document.body.classList.toggle('lbox', lbOn);
+    if (lbOn) {
+      var phC = Math.round(pw / LB.aspect);
+      SCALE = Math.max(1, Math.min(Math.round(phC / LB.targetH), Math.floor(phC / CFG.view.targetH)));
+      LW = Math.ceil(pw / SCALE); LH = Math.floor(phC / SCALE);
+      var lbM = ch - LH * SCALE / dpr;
+      topCss = Math.round(Math.min(lbM, Math.max(lbM * LB.topShare, LB.hudH)));
+    } else if (portrait) {
       SCALE = Math.max(1, Math.floor(pw / CFG.view.portraitTargetW));
       LW = Math.ceil(pw / SCALE); LH = CFG.view.targetH;
       topCss = 52;
@@ -86,10 +98,12 @@
     canvas.style.height = cssH + 'px';
     canvas.style.top = topCss + 'px';
     if (hudEl) {
-      hudEl.style.top = topCss + 'px';
+      // 위아래 여백: HUD 판은 화면 맨 위부터 게임 화면 아래 끝까지(위쪽 HUD = 위 여백, 보스 막대 등 아래 붙은 것 = 게임 화면 아래 끝 그대로)
+      hudEl.style.top = (lbOn ? 0 : topCss) + 'px';
       hudEl.style.width = Math.min(cw, cssW) + 'px';
-      hudEl.style.height = Math.min(ch - topCss, cssH) + 'px';
+      hudEl.style.height = (lbOn ? topCss + cssH : Math.min(ch - topCss, cssH)) + 'px';
     }
+    document.documentElement.style.setProperty('--lbT', (lbOn ? topCss : 0) + 'px');
     setSmooth();
     world.floorY = Math.round(LH * CFG.world.floorTopRatio);
     if (MODE === 'stage') applyStageWorld();
@@ -196,7 +210,7 @@
   //     키워도 모자라면 그 위는 하늘색(천장 배경은 천장 타일 + 깜깜한 색), 그림 맨 위 blendPx 는 하늘색으로 부드럽게 이어짐. 보통 폰 · PC(가로/세로 >= squareAspect)는 안 바뀜
   function bgZoom(off, B) {
     var TB = CFG.view.tallBg;
-    if (!TB || !(off > 0) || LW / LH >= (CFG.view.squareAspect || 1.5)) return 1;
+    if (!TB || !(off > 0) || (LW / LH >= (CFG.view.squareAspect || 1.5) && !lbOn)) return 1;   // 위아래 여백 화면(lbOn)도 먼 배경을 키워 위를 채움
     return Math.max(1, Math.min(TB.maxZoom || 2, (off + B.floorY) / B.floorY));
   }
   function drawStageBg(camX) {
@@ -3093,7 +3107,8 @@
     });
     var w = R - L;
     if (w >= 300) { w = Math.min(w, 640); box.style.left = Math.round(L + (R - L - w) / 2 - hr.left) + 'px'; box.style.top = T + 'px'; box.style.width = Math.round(w) + 'px'; }
-    else { var bt = pr ? pr.bottom - hr.top + 22 : 70, w2 = Math.min(hr.width - 40, Math.max(300, hr.width * 0.56)); box.style.left = Math.round((hr.width - w2) / 2) + 'px'; box.style.top = Math.round(bt) + 'px'; box.style.width = Math.round(w2) + 'px'; }
+    else { var bt = pr ? pr.bottom - hr.top + 22 : 70, w2 = Math.min(hr.width - 40, Math.max(300, hr.width * 0.56)); if (lbOn) bt = Math.max(bt, canvas.getBoundingClientRect().top - hr.top + 8);   // 위아래 여백 화면: 위 여백에 자리가 없으면 게임 화면 안 맨 위(테두리에 걸치지 않게)
+      box.style.left = Math.round((hr.width - w2) / 2) + 'px'; box.style.top = Math.round(bt) + 'px'; box.style.width = Math.round(w2) + 'px'; }
   }
   // 얼굴 액자(2026-11-06 UI A): 지금 옷 서 있는 그림 1장의 머리~가슴을 HUD 왼쪽 위 작은 캔버스(pFace)에 도트 그대로 크게
   var faceEl = document.getElementById('pFace');

@@ -318,6 +318,11 @@ body.smooth #screen { image-rendering: auto; }
 .banner.title.show { animation: bannerin2 .25s ease-out; }
 @keyframes bannerin { from { transform: scale(1.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 @keyframes bannerin2 { from { transform: translateX(-50%) scale(1.6); opacity: 0; } to { transform: translateX(-50%) scale(1); opacity: 1; } }
+/* 위아래 여백 화면(2026-11-07 폴드 펼침, main.js resize 가 body.lbox + --lbT = 위 여백 높이): HUD 판이 화면 맨 위부터라
+   위쪽 HUD(체력판 · 단계 글자 · 레이드 막대)는 위 여백에, 알림 · GO 글자는 게임 화면 안 예전 비율 자리에. 게임 화면 위아래에 얇은 테 */
+.lbox .banner { top: calc(var(--lbT) + (100% - var(--lbT)) * .32); }
+.lbox .go { top: calc(var(--lbT) + (100% - var(--lbT)) * .4); }
+.lbox #screen { box-shadow: 0 -1px 0 var(--gold3), 0 -3px 0 #0a0810, 0 1px 0 var(--gold3), 0 3px 0 #0a0810; }
 
 /* ---------- 결과 화면 (클리어 / 게임 오버 / 엔딩) ---------- */
 .result { position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; background: #07050ab8; padding: 24px 12px 12px; }
