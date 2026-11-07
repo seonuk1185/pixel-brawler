@@ -721,7 +721,7 @@
       //   'counter' = 맞을 때(넘어지지 않는 보통 타, 가까운 적) val 확률로 되받아 베기(SKILLS.knight.counterSlash), reach = 그 적까지 거리
       { id: 'grit', unlock: 17, short: '체력이 적을수록 검이 세져요', name: '투지', icon: '투', desc: '체력이 90% 밑으로 줄수록 검 공격이 세져요(30% 이하에서 가장 셈). 세지면 발밑에 붉은 기운이 일어요',
         passive: { stat: 'grit', val: [0.2, 0.25, 0.3, 0.35, 0.4], from: 0.9, full: 0.3 } },
-      { id: 'storm', unlock: 19, short: '세 바퀴 돌며 끌어모아 베요' },   // 2026-11-06 사냥 기술(몹 떼를 끌어모아 쓸어 버림)
+      { id: 'storm', unlock: 19, short: '칼날 회오리를 앞으로 보내요' },   // 2026-11-06 사냥 기술(몹 떼를 끌어모아 쓸어 버림)
       { id: 'counter', unlock: 21, short: '맞는 순간 되받아 베요', name: '반격', icon: '반', desc: '맞는 순간(넘어지지 않는 보통 타) 확률로 바로 되받아 베어요. 1.5초에 한 번까지',
         passive: { stat: 'counter', val: [0.3, 0.35, 0.4, 0.45, 0.5], reach: 140 } },
       { id: 'holy', unlock: 23, short: '금빛 번개 칼을 내리꽂아요' }
