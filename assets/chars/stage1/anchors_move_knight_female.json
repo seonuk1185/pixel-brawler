@@ -7,38 +7,40 @@
  "frames": {
   "run_01": {
    "hand": [
-    52,
+    50,
     80
    ],
    "angle": 139,
    "layer": "front",
    "fist": [
-    48,
+    46,
     76,
     9,
     9
    ],
    "check": {
     "manual": true,
-    "runFix": "fist centre measured 2026-11-07, layer front so the hilt shows at the fist, angle follows the arm"
+    "runFix": "fist centre measured 2026-11-07, layer front so the hilt shows at the fist, angle follows the arm",
+    "fistFix": "2026-11-07 female re-check: hand/fist box re-centred on the drawn fist (was 2-4 px off, hilt sat outside the fist)"
    }
   },
   "run_02": {
    "hand": [
-    54,
-    82
+    52,
+    83
    ],
    "angle": 163,
    "layer": "front",
    "fist": [
-    50,
-    78,
+    48,
+    79,
     9,
     9
    ],
    "check": {
     "manual": true,
-    "runFix": "fist centre measured 2026-11-07, layer front so the hilt shows at the fist, angle follows the arm"
+    "runFix": "fist centre measured 2026-11-07, layer front so the hilt shows at the fist, angle follows the arm",
+    "fistFix": "2026-11-07 female re-check: hand/fist box re-centred on the drawn fist (was 2-4 px off, hilt sat outside the fist)"
    }
   },
   "run_03": {
@@ -115,20 +117,21 @@
   },
   "run_07": {
    "hand": [
-    52,
-    77
+    54,
+    80
    ],
    "angle": 159,
    "layer": "front",
    "fist": [
-    48,
-    73,
+    50,
+    76,
     9,
     9
    ],
    "check": {
     "manual": true,
-    "runFix": "fist centre measured 2026-11-07, layer front so the hilt shows at the fist, angle follows the arm"
+    "runFix": "fist centre measured 2026-11-07, layer front so the hilt shows at the fist, angle follows the arm",
+    "fistFix": "2026-11-07 female re-check: hand/fist box re-centred on the drawn fist (was 2-4 px off, hilt sat outside the fist)"
    }
   },
   "run_08": {
