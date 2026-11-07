@@ -306,7 +306,8 @@
   //   (판정·데미지는 안 건드림). 그림이 없거나(count 0) 못 불러오면 저절로 지금 임시 그림
   // 검기: 날아가며 길 위의 적을 모두 꿰뚫음(적마다 한 번)
   //   2026-11-06 형님: 누운 적도 맞음(hitsDown, 누운 적 때리기 규칙 그대로) → 검기가 누운 몸 위를 지나가도 닿음(skills.js castWave)
-  var WAVE_HIT = { dmg: 1.6, hitstop: 0.6, knock: 1.1, shake: 1.2, spark: 1.2, big: true, hitY: -58, hitsDown: true };
+  //   2026-11-07 형님(약해서 안 씀): 데미지 1.6 → 2.0(+25%). 기술 Lv 마다 크기·빛·타격감이 커짐 = SKILLS.knight.wave.grow
+  var WAVE_HIT = { dmg: 2.0, hitstop: 0.6, knock: 1.1, shake: 1.2, spark: 1.2, big: true, hitY: -58, hitsDown: true };
   // 내려찍기: 착지 자리 양옆 땅 충격파. 맞은 적은 짧게 기절(stunMs, 넘어뜨리지는 않음), 누운 적도 맞음
   var SLAM_HIT = { dmg: 2.5, hitstop: 1.6, knock: 0.6, shake: 2.6, stunMs: 700, spark: 1.4, big: true, hitsDown: true, away: true, noJuggle: true,
                    flash: { color: '#fff0d0', alpha: 0.35, ms: 140 }, slowMs: 200 };
@@ -351,6 +352,8 @@
   var STORM_LAST = { reach: { x0: -140, x1: 140, yTop: -118, yBot: -4, depth: 46 }, away: true, hitsDown: true,
                      dmg: 1.9, hitstop: 2.0, knock: 2.6, shake: 3.2, knockdown: true, spark: 1.6, big: true, hitY: -60,
                      flash: { color: '#e6f2ff', alpha: 0.5, ms: 170 }, slowMs: 300 };
+  // 칼날 폭풍 회오리 끝 터짐(2026-11-07): 넘어뜨리기 대신 크게 띄움(보스 · 큰 적은 휘청)
+  var STORM_BURST = merge(STORM_LAST, { away: false, knockdown: false, launch: 1.2, knock: 0.6 });
   var SKILLS = {
     knight: {
       // 돌진베기: 1~2장 동안 앞으로 약 120도트 미끄러지며 길 위의 적을 한 번씩 벤다(무적), 베는 장 다음 장에 「쾅」 멈춤
@@ -424,6 +427,11 @@
         darken: { ms: 320, alpha: 0.3 },
         iframes: [0, 200],
         shot: { frame: 2, x: 40, y: -60, speed: 380, range: 320, box: { w: 54, h: 76 }, depth: 22, gapMs: 150, hit: WAVE_HIT },
+        // 2026-11-07 형님(검기가 약해 안 찍음): 기술 Lv1~5 마다 커짐. size = 검기 크기(그림 + 맞는 상자 같이, Lv5 = 1.8배),
+        //   glow = 뒤 빛 · 날아가는 꼬리 세기, spark = 맞을 때 불똥 크기 · 수, hitstop · shake = 맞는 순간 멈춤 · 화면 흔들림 배율
+        //   lv5Art = Lv5 금테 그림이 Lv1 그림보다 원래 큰 정도(그만큼 덜 키움 → 보이는 크기가 size 와 맞음). 꿰뚫기는 모든 Lv(길 위 적 전부), Lv5 = 검기 2번(lv5.extra)
+        grow: { size: [1, 1.2, 1.4, 1.6, 1.8], glow: [1, 1.25, 1.5, 1.8, 2.1], spark: [1, 1.2, 1.4, 1.65, 1.9],
+                hitstop: [1, 1.1, 1.2, 1.35, 1.5], shake: [1, 1.15, 1.3, 1.5, 1.7], lv5Art: 1.27 },
         trail: { frames: [1, 2], everyMs: 35, lifeMs: 170, alpha: 0.35, color: '#a8d4ff' },   // 휘두르는 잔상(2026-11-06 밤)
         look: { proj: 'sword_wave', projLv5: 'sword_wave_lv5' },   // 2026-11-06 우리 그림(검기, Lv5 = 큰 금테 검기). 없으면 코드 초승달
         fx: [ { frame: 2, type: 'slash', x: 30, y: -62, rot: -8, sx: 1.4, sy: 1.2, tint: '#a8d4ff', ms: 200 } ],
@@ -485,40 +493,31 @@
       //   도는 동안 걸을 수 있음(walk). 한 바퀴에 두 번씩 여섯 번 베며 둘레 적을 끌어당기고(STORM_HIT pull), 마지막에 크게 터뜨려 넘어뜨림.
       //   효과 = 있는 회전 고리 그림(spin_ring)을 바퀴마다 + 코드로 그린 회오리(whirl: 바람 고리·강철 파편·빛). 새 그림 없음
       //   sfx = 쓰기 시작 소리(sfx.js 의 기술 소리 표에 없는 기술), fx 'sound' = 그 장에 있는 소리(바퀴마다 skSpin, 마지막 skSlam)
+      // 칼날 폭풍(2026-11-07 형님: 회전베기와 똑같아 보임 → 바꿈): 기사는 돌지 않고 칼을 앞으로 내질러(돌진베기 동작 그림의 찌르기 장을 잠깐 멈춤)
+      //   큰 칼날 회오리를 내보냄. 회오리(코드 그림, 무기 속성 색) = 땅을 따라 천천히 앞으로 가며 둘레 적을 끌어당기고 여러 번 벰 → 끝에 크게 터져 띄움
+      //   tornado = { frame = 내보내는 장, x = 나오는 앞 거리, speed = 1초에 도트, ms = 버티는 시간(+ msPerLv x (Lv-1)), r · h = 회오리 반지름 · 높이,
+      //     depth = 위아래 폭, tickMs = 베는 간격, pullR · pull = 끌어당기는 거리 · 1초에 도트(보스 · 중간보스 빼고), hit = 벨 때, last = 끝 터짐, color = 속성 없을 때 색 }
+      //   크기 = 기술 Lv 크기(area, Lv5 +30%), 데미지 · 쿨타임 · 마나는 예전과 비슷(베기 0.55 x 6~8번 + 터짐 1.9)
+      //   예전(돌며 세 바퀴) 값은 지움 — 회전베기(spin)는 그대로
       storm: {
-        name: '칼날 폭풍', icon: '폭', mp: 20, cooldownMs: 12000, damageStyle: 'skill_knight', motion: 'motion_spin', sfx: 'skSpin',
-        walk: true,
-        desc: '칼을 휘두르며 세 바퀴 돌아 둘레의 적을 끌어당기며 여섯 번 베고, 마지막에 크게 터뜨려 넘어뜨려요. 도는 동안 걸을 수 있어요(누운 적도 맞아요)',
-        lv5: { area: 1.3, say: '폭풍 크기 +30%' },
-        darken: { ms: 1000, alpha: 0.45 },
-        iframes: { frames: [0, 13] },
-        motionSeq: [0, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 5, 6],
-        motionMs: [120, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 130, 180],
-        hits: [ merge(STORM_HIT, { frame: 1 }), merge(STORM_HIT, { frame: 3 }), merge(STORM_HIT, { frame: 5 }),
-                merge(STORM_HIT, { frame: 7 }), merge(STORM_HIT, { frame: 9 }), merge(STORM_HIT, { frame: 11 }),
-                merge(STORM_LAST, { frame: 13 }) ],
-        trail: { frames: [1, 13], everyMs: 40, lifeMs: 220, alpha: 0.32, color: '#cfe8ff' },
-        zoom: { k: 1.05, ms: 900, lv5: true },
+        name: '칼날 폭풍', icon: '폭', mp: 20, cooldownMs: 12000, damageStyle: 'skill_knight', motion: 'motion_dash', sfx: 'skSpin',
+        desc: '칼을 앞으로 내질러 큰 칼날 회오리를 날려요. 회오리는 천천히 앞으로 가며 둘레 적을 끌어당겨 여러 번 베고, 끝에 크게 터지며 적을 띄워요(누운 적도 맞아요)',
+        lv5: { area: 1.3, say: '회오리 크기 +30%' },
+        darken: { ms: 700, alpha: 0.4 },
+        iframes: [0, 560],
+        motionSeq: [0, 1, 2, 3, 3, 4, 5],
+        motionMs: [110, 60, 60, 120, 260, 140, 120],
+        tornado: { frame: 3, x: 70, speed: 70, ms: 1900, msPerLv: 0.08, r: 58, h: 130, depth: 40, tickMs: 300, firstMs: 150, pullR: 150, pull: 90,
+                   hit: STORM_HIT, last: STORM_BURST, color: '#4a9cff' },
         fx: [
-          { frame: 1, type: 'art', fx: 'spin_ring', x: 0, y: -50, follow: true, split: true, alpha: 0.75, scale: 0.85,
-            ph: { type: 'ring', y: -58, r: 72, ms: 260, color: '#cfe8ff' } },
-          { frame: 5, type: 'art', fx: 'spin_ring', x: 0, y: -50, follow: true, split: true, alpha: 0.8, scale: 0.9,
-            ph: { type: 'ring', y: -58, r: 78, ms: 260, color: '#cfe8ff' } },
-          { frame: 9, type: 'art', fx: 'spin_ring', x: 0, y: -50, follow: true, split: true, alpha: 0.85, scale: 0.95,
-            ph: { type: 'ring', y: -58, r: 84, ms: 260, color: '#cfe8ff' } },
-          { frame: 1, type: 'whirl', r: 70 }, { frame: 5, type: 'whirl', r: 76 }, { frame: 9, type: 'whirl', r: 82 },
-          { frame: 5, type: 'sound', name: 'skSpin' }, { frame: 9, type: 'sound', name: 'skSpin' },
-          { frame: 13, type: 'ring', y: -56, r: 86, ms: 260, color: '#ffffff' },
-          { frame: 13, type: 'whirl', r: 90, big: true },
-          { frame: 13, type: 'sound', name: 'skSlam' },
-          { frame: 13, type: 'dust' }
+          { frame: 0, type: 'dust' },
+          { frame: 3, type: 'slash', x: 50, y: -52, rot: 0, sx: 1.3, sy: 0.6, tint: '#cfe8ff', ms: 220 },
+          { frame: 3, type: 'sound', name: 'skSpin' }
         ],
-        placeholder: { anim: 'attack2', f: [0, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, 4],
-                       d: [120, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 130, 180], spin: [120, 780], everyMs: 55 },
+        placeholder: { anim: 'attack1', f: [0, 1, 2, 3, 3, 4, 4], d: [110, 60, 60, 120, 260, 140, 120] },
         female: {
-          motionMs: [80, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 100, 150],
-          placeholder: { anim: 'attack2', f: [0, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 4, 4],
-                         d: [80, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 100, 150], spin: [80, 620], everyMs: 45 }
+          motionMs: [90, 50, 50, 110, 240, 130, 110],
+          placeholder: { anim: 'attack1', f: [0, 1, 2, 3, 3, 3, 3], d: [90, 50, 50, 110, 240, 130, 110] }
         }
       },
       // 성검 낙뢰(2차 필살, 2026-11-06): 웅크렸다(0장) 칼을 하늘로 들고(1~2장, 칼끝에서 하늘로 금빛 줄기) 버티는 동안
@@ -553,6 +552,24 @@
         fx: [ { frame: 0, type: 'counterflash' }, { frame: 1, type: 'arc', x: 34, y: -62, r: 46, color: '#ffe08a', ms: 220 } ],
         placeholder: { anim: 'attack1', f: [0, 3, 4], d: [60, 130, 140] },
         female: { placeholder: { anim: 'attack1', f: [0, 2, 3], d: [60, 130, 140] } }
+      }
+    },
+    // 견습 기본기(2026-11-07 형님): 전직 전에도 띄우기 하나 = 「올려치기」. 기술 점수 없이 늘 있음, 1번 칸(견습은 1번 칸만 열림, 나머지는 전직하면)
+    //   새 그림 없음: 남 = attack2 의 4번째 장(주먹을 위로 올려치는 자세), 여 = attack3 의 4번째 장(위로 치솟는 주먹). 띄우기 = 올려베기와 같은 방식(UPPER_HIT, 더 약하게)
+    //   전직하면 직업 띄우기 기술로 바뀜(config skills.basic: 기사 올려베기 · 법사 땅 융기 = 공짜 Lv1, 1번 칸)
+    novice: {
+      nupper: {
+        name: '올려치기', icon: '올', mp: 0, cooldownMs: 3500, damageStyle: 'skill_knight', launcher: true,
+        desc: '주먹을 아래에서 위로 올려쳐 적을 공중에 띄워요. 뜬 적은 평타가 다 맞아요(보스·큰 적은 휘청만)',
+        iframes: [0, 200],
+        hits: [ merge(UPPER_HIT, { frames: [2, 3], reach: { x0: -6, x1: 92, yTop: -140, yBot: -4, depth: 28 }, launch: 0.85, dmg: 1.0, hitstop: 1.2, shake: 1.2, spark: 1.0,
+                                   flash: { color: '#fff4d8', alpha: 0.2, ms: 90 }, slowMs: 90 }) ],
+        fx: [
+          { frame: 0, type: 'dust' },
+          { frame: 2, type: 'sparkup', x: 34, y: -64, color: '#fff2c0' }
+        ],
+        placeholder: { anims: ['attack2', 'attack2', 'attack2', 'attack2', 'attack2'], f: [0, 1, 3, 3, 4], d: [80, 60, 70, 150, 140] },
+        female: { placeholder: { anims: ['attack3', 'attack3', 'attack3', 'attack3', 'attack3'], f: [1, 2, 3, 3, 2], d: [80, 60, 70, 150, 140] } }
       }
     },
     mage: {
@@ -988,7 +1005,7 @@
       ],
       restMs: 1500,
       mids: { hp: 560 },
-      drop: { mob: 0.05, tough: 0.1, mid: [3, 5] },
+      drop: { mob: 0.025, tough: 0.05, mid: [1.5, 2.5] },   // 2026-11-07 절반(예전 5% · 10% · 3~5개). 소수 = 그 확률로 하나 더
       // 난이도별: stones · crys = 마지막 보상 배율, spawn = 무리 빠르기, alive = 살아 있는 몹 한도, boss = 수호자(보스) 체력 배율(난이도 hpMul 위에 더)
       modes: { easy: { stones: 1, crys: 1, spawn: 1, alive: 1, boss: 1 }, normal: { stones: 1.5, crys: 1.5, spawn: 1.15, alive: 1.15, boss: 1.1 }, hard: { stones: 2, crys: 2, spawn: 1.3, alive: 1.3, boss: 1.2 } },
       magnet: { r: 48, depth: 28, delayMs: 400, ms: 520, turns: 1.25, shrink: 0.5 },
@@ -1000,7 +1017,7 @@
       //   drop = 쓰러지면 그 속성 결정 crys · 강화석 stones 개 [최소, 최대](x 난이도 modes 배율)를 와르르 → 전부 빨려 듦(magnet), deathMs = 쓰러진 뒤 보상까지
       champ: { scale: 2, hp: 2600, dmgMul: 1.1, knockResist: 0.5, rim: null, tint: { bright: 1.02, colorK: 0.46 },
                adds: { firstMs: 6000, everyMs: 9000, n: 4, max: 8 },
-               drop: { crys: [18, 24], stones: [6, 9], burstMs: 900 },
+               drop: { crys: [9, 12], stones: [3, 4.5], burstMs: 900 },   // 2026-11-07 절반(예전 결정 18~24 · 강화석 6~9)
                magnet: { r: 9999, depth: 9999, delayMs: 700, ms: 800, turns: 1.4, shrink: 0.45 },
                deathMs: 1400 }
     };
@@ -1454,7 +1471,12 @@
     // 시험: 주소 뒤 ?lv=N = 이번 창에서만 LvN(경험치 0)으로 시작. 그동안 얻은 경험치는 저장 안 함(저장된 레벨은 그대로)
     growth: {
       maxLv: 60,
-      needBase: 10, needPerLv: 40,
+      // 2026-11-07 형님(레벨이 너무 빨리 오름): 다음 레벨까지 = (needBase + needPerLv × Lv) × min(1, Lv / needRampLv) + needHiSq × max(0, Lv - needHiLv)²
+      //   = (350 + 115 × Lv) × min(1, Lv / 8) + 10 × max(0, Lv - 30)²  (Lv1~7 은 싸게 → 1판에서 Lv6 · Lv30 부터 더 가파르게)
+      //   → Lv1→2 = 58, Lv5→6 = 578, Lv8→9 = 1,270, Lv10→11 = 1,500, Lv20→21 = 2,650, Lv29→30 = 3,685, Lv59→60 = 15,545 (예전 10 + 40 × Lv)
+      //   노말을 순서대로 안 죽고 깼을 때(지금 판 적 수 · 경험치로 셈): 1판 깸 ≈ Lv6(전직) · 5판 ≈ Lv12.5 · 10판 ≈ Lv20 → 하드 5판 ≈ Lv25.5 · 8판 ≈ Lv29.5 · 10판 ≈ Lv32.7
+      //   Lv50 까지 합 ≈ 19만(하드 한 바퀴 ≈ 4.1만) = 후반, Lv60 ≈ 31만. 예전 저장은 레벨 그대로(쌓인 경험치도 그대로, 다음 레벨부터 새 곡선)
+      needBase: 350, needPerLv: 115, needRampLv: 8, needHiLv: 30, needHiSq: 10,
       // 레벨마다 저절로 오르는 몫(2026-11-06 반으로 줄임: 예전 +5 / +2%). 나머지는 능력치 점수(아래 stats)로 고름
       hpPerLv: 2.5,
       atkPerLv: 0.01,
@@ -1476,7 +1498,8 @@
       //   기사 = 힘·체력 + 민첩 조금 / 법사 = 지능·지혜 + 체력 조금 / 견습 = 힘·체력·민첩
       // 값 고른 기준: 자동 배분한 Lv10·20·30 이 예전(+5 체력 · +2% 공격)보다 「조금 더」 세게 (표 = 설계안 변경 절)
       stats: {
-        perLv: 3,
+        // 2026-11-07 형님: Lv1~9 = 0점, Lv10 부터 레벨마다 perLv 점(Lv10 = 1점 · Lv14 = 5점, 합 = Lv - 9). 예전 = 레벨마다 3점
+        perLv: 1, fromLv: 10,
         str: 0.008, int: 0.008, vit: 4,
         agi: { atkSpd: 0.005, move: 0.004, crit: 0.003, spdCap: 0.25, critCap: 0.3 },
         wis: { mp: 5, regen: 0.1 },
@@ -1497,7 +1520,8 @@
       // 전직(2026-11-06, 설계안 3번): 이 id 의 판 보스를 처음 깨면 전직 화면(main.js) → 기사/법사 중 하나, 한 번 고르면 이 저장칸에선 못 바꿈.
       //   이미 이 판을 깬 저장인데 직업이 없으면 다음 스테이지 고르기·시작 때 뜸. 고른 직업 = 저장칸(growth.js)의 class
       //   위쪽 견습/기사/법사 버튼은 시험 도구: stagesAllOpen 이 true 일 때만 보이고, 눌러도 저장된 직업은 안 바뀜(이번 창에서만 덮어씀)
-      classChangeStage: 2,
+      //   2026-11-07 형님: 2판 → 1판(1판 보스를 깨면 바로 전직). 난이도와 상관없이 어느 난이도든 이 판을 깼으면 뜸(main.js needClassChange)
+      classChangeStage: 1,
       // 레벨업 연출: 머리 위 「LEVEL UP!」 글자(damageText.levelup) + 짧은 화면 번쩍(flash) + 반짝 불똥(sparkCol)
       levelUp: { flash: { color: '#fff3b0', alpha: 0.28, ms: 260 }, sparkCol: '#ffe066' }
     },
@@ -1546,7 +1570,12 @@
              knockMul: 0.3, heavyHp: 130, launchStunMs: 420, landShake: 0.5 },
       // 미리 서 있는 적(판 waves 의 placed)이 깨는 조건: 플레이어가 dist 도트 안으로 오면(크기 배율 안 곱함, 화면 도트 그대로)
       //   깨면 머리 위 「!」를 alertMs 동안 보이며 멈춰 있다가 싸움. 같은 무리(group)는 groupDelayMs 안에서 조금씩 늦게 깸
-      wake: { dist: 90, alertMs: 300, groupDelayMs: 150 }
+      //   2026-11-07 형님(웨이브가 느림): 알아채는 거리 90 → 200(거의 화면 전체), 「!」 300 → 150ms, 무리 깨는 틈 150 → 80ms
+      wake: { dist: 200, alertMs: 150, groupDelayMs: 80 },
+      // 판 웨이브 빨리 붙기(2026-11-07 형님): 오른쪽에서 걸어 들어오던 잡몹 = 웨이브가 시작될 때 화면 오른쪽에 미리 서 있음(퍼져서 · 플레이어를 봄 · 「!」 뒤 바로 옴).
+      //   왼쪽(뒤)에서 오는 몹 · 보스 · 중간보스는 그대로 걸어 들어옴. 던전은 안 함
+      //   x = 보이는 화면(오른쪽 버튼 자리 뺀 폭)에서 서는 범위 [왼쪽 비율, 오른쪽 비율], maxAt = 늦게 나오던 몹도 이 ms 안에 다 섬(먼지 퐁), walkMul = 판 잡몹 걷기 빠르기 배율(보스 빼고)
+      rightPlace: { on: true, x: [0.55, 0.95], maxAt: 400, walkMul: 1.2 }
     },
 
     // ---------- 적 종류 ----------
@@ -2570,9 +2599,12 @@
     //     → 노말 1판 Lv23 64% · 노말 10판 Lv38 48% · 하드 1판 Lv40 61% · 하드 10판 Lv55 65% (2번씩 평균, 안 쓰러짐)
     modes: {
       order: ['easy', 'normal', 'hard'],
-      easy:   { name: '이지', hpMul: 1, dmgMul: 1, count: 1, countTough: 1, xp: 1, drop: 1 },
-      normal: { name: '노말', hpMul: [2.1, 1.6], dmgMul: [2.0, 1.55], count: 1.5, countTough: 1.3, xp: 1.65, drop: 1.25 },
-      hard:   { name: '하드', hpMul: [3.0, 2.8], dmgMul: [2.8, 2.6], count: 2, countTough: 1.6, xp: 2.15, drop: 1.5 }
+      // 2026-11-07 형님: 이지 숨김(hidden = 고르는 탭에 안 나옴, 값은 남겨 둠 → hidden 만 지우면 돌아옴). 새 게임 = 노말, 이지에 있던 저장 = 노말로
+      //   노말이 지루함 → 잡몹 1.5 → 2배 · 단단한 잡몹 1.3 → 1.6배, 판 보스 · 중간보스 = 체력 x bossHp · 공격 x bossDmg 더(위 배율 위에)
+      //   하드 = 노말보다 확실히 많게 잡몹 2 → 2.5배 · 단단한 잡몹 1.6 → 2배(그 밖은 그대로). 하드의 「앞 난이도」 = 노말
+      easy:   { name: '이지', hidden: true, hpMul: 1, dmgMul: 1, count: 1, countTough: 1, xp: 1, drop: 1 },
+      normal: { name: '노말', hpMul: [2.1, 1.6], dmgMul: [2.0, 1.55], count: 2, countTough: 1.6, bossHp: 1.3, bossDmg: 1.2, xp: 1.65, drop: 1.25 },
+      hard:   { name: '하드', hpMul: [3.0, 2.8], dmgMul: [2.8, 2.6], count: 2.5, countTough: 2, xp: 2.15, drop: 1.5 }
     },
     stages: [
       {
@@ -3142,7 +3174,10 @@
         warnSec: 10,          // 남은 시간이 이 초 이하면 빨갛게 깜빡
         startMs: 1200,        // 시작 글자(「시작!」) 뒤 시계가 가기 시작
         // 몹 종류: [적 종류, 뽑힐 무게, 이 초부터 나옴]. 무게가 클수록 자주
-        mobs: [['goblin', 5, 0], ['bat', 3, 0], ['wolf', 3, 8], ['skeleton', 2, 15], ['lizard', 2, 35], ['imp', 2, 50], ['mummy', 1, 65]],
+        //   2026-11-07 형님(광산이 쉬움): 총잡이(gunner, 멀리서 쏨) 30초부터 · 오크(orc, 어깨 돌진) 60초부터 섞음 → 가만히 서서 기술만 쓰면 위험
+        mobs: [['goblin', 5, 0], ['bat', 3, 0], ['wolf', 3, 8], ['skeleton', 2, 15], ['gunner', 2, 30], ['lizard', 2, 35], ['imp', 2, 50], ['orc', 1, 60], ['mummy', 1, 65]],
+        // 단계(2026-11-07 형님): 30초마다 세짐. at = 이 초부터, hp · atk = 새로 나오는 적 체력 · 공격 배율, spawn = 나오는 빠르기 배율. 단계 글자는 아래 events banner
+        phases: [{ at: 0, hp: 1, atk: 1, spawn: 1 }, { at: 30, hp: 1.3, atk: 1.3, spawn: 1.25 }, { at: 60, hp: 1.7, atk: 1.7, spawn: 1.5 }],
         // 나오는 빠르기: 처음 → rampSec 초에 끝 값으로 고르게
         //   every = 몇 ms 마다 한 번 나옴 [처음, 끝], batch = 한 번에 몇 마리 [처음, 끝](소수 = 가끔 하나 더),
         //   maxAlive = 살아 있는 몹 최대 [처음, 끝](넘으면 쓰러질 때까지 기다림), cap = 어떤 경우에도 넘지 않는 살아 있는 적 수(중간보스 포함, 성능)
@@ -3158,12 +3193,13 @@
         mids: { hp: 470, list: [['goblin', '광산 고블린 대장', null], ['skeleton', '광부 해골 대장', null], ['lizard', '굴 도마뱀 대장', null]] },
         // 시간 사건: at = 지난 초. banner = 큰 글자, mids = 중간보스 수(양옆 번갈아 gapMs 씩), rush = 몹 n 마리 몰려옴(rushMs 동안, maxAlive 무시 · cap 은 지킴)
         events: [
-          { at: 30, banner: '대장 출현!', mids: 2, gapMs: 600 },
-          { at: 60, banner: '대장 총출동!', mids: 5, gapMs: 500, rush: { n: 12, ms: 3000 } }
+          //   2026-11-07: 단계 글자(2단계! · 3단계!) + 마지막 30초 = 대장 둘이 동시에(gapMs 0) + 몰려옴
+          { at: 30, banner: '2단계! 대장 출현!', mids: 2, gapMs: 600 },
+          { at: 60, banner: '3단계! 대장 둘 동시!', mids: 2, gapMs: 0, rush: { n: 12, ms: 3000 } }
         ],
         // 강화석: 잡몹 mob 확률(단단한 잡몹 tough), 중간보스 mid = [최소, 최대] 개. 판(enchant.drop: 1.2% · 4% · 1개)보다 훨씬 많이
-        drop: { mob: 0.07, tough: 0.12, mid: [4, 6] },
-        bonus: 8,             // 0초까지 버티면 덤 강화석
+        drop: { mob: 0.035, tough: 0.06, mid: [2, 3] },   // 2026-11-07 절반(예전 7% · 12% · 4~6개)
+        bonus: 4,             // 0초까지 버티면 덤 강화석(2026-11-07 절반, 예전 8)             // 0초까지 버티면 덤 강화석
         // 난이도별: stones = 강화석(떨어지는 확률·개수·덤) 배율, spawn = 나오는 빠르기 배율, alive = 살아 있는 몹 최대 배율(cap 은 그대로)
         modes: { easy: { stones: 1, spawn: 1, alive: 1 }, normal: { stones: 1.5, spawn: 1.15, alive: 1.2 }, hard: { stones: 2, spawn: 1.3, alive: 1.4 } },
         magnet: { r: 48, depth: 28, delayMs: 400, ms: 520, turns: 1.25, shrink: 0.5 },
@@ -3204,7 +3240,7 @@
         // 중간보스(광산과 같은 방식): hp = 체력(판 배율 · 난이도 곱하기 전)
         mids: { hp: 560, list: [['imp', '불꽃 도깨비 대장', null], ['lizard', '용암 도마뱀 대장', 'lava'], ['lavagolem', '용암 골렘 대장', 'lava']] },
         // 강화석(웨이브 몹): 광산보다 조금 적게(보스가 와르르 줌)
-        drop: { mob: 0.05, tough: 0.1, mid: [3, 5] },
+        drop: { mob: 0.025, tough: 0.05, mid: [1.5, 2.5] },   // 2026-11-07 절반(예전 5% · 10% · 3~5개)
         // 난이도별: stones · crys = 보스 보상 배율, spawn = 무리 빠르기, alive = 살아 있는 몹 한도, boss = 보스 체력 배율(난이도 hpMul 위에 더)
         modes: { easy: { stones: 1, crys: 1, spawn: 1, alive: 1, boss: 1 }, normal: { stones: 1.5, crys: 1.5, spawn: 1.15, alive: 1.15, boss: 1.1 }, hard: { stones: 2, crys: 2, spawn: 1.3, alive: 1.3, boss: 1.2 } },
         magnet: { r: 48, depth: 28, delayMs: 400, ms: 520, turns: 1.25, shrink: 0.5 },
@@ -3239,7 +3275,9 @@
             slam:   { weight: 3, near: 150, nearK: 2, warnMs: 800, dmg: [24, 30], heavy: true, plantMs: 1500,
                       shock: { speed: 230, band: 9, ry: 0.4, maxR: 520, dmg: [12, 16], dodgeZ: 12, knock: 14 } },
             // 꼬리 쓸기: 오른쪽 끝에서 먼지(예고) → 바닥 낮게 앞으로 크게 쓸음(tail_03 reach, 걷는 길 전체) → 점프(dodgeZ 넘게) 또는 회피 무적으로 피함
-            tail:   { weight: 2, near: 260, nearK: 1.5, warnMs: 750, activeMs: 260, dmg: [18, 24], heavy: true, dodgeZ: 14 },
+            //   2026-11-07 형님(잘 안 보이고 너무 빠름): weight 2 → 3, activeMs 260 → 500 = 쓸기 앞끝이 용 쪽에서 바깥으로 이 시간 동안 걷는 길을 따라 지나감
+            //   (앞끝이 지나갈 때 그 자리에서 맞음 → 앞끝이 오는 걸 보고 점프 · 회피). 예고 = 빨간 상자 대신 바닥을 따라 쓸 방향으로 길게 흐르는 노란 화살 줄
+            tail:   { weight: 3, near: 260, nearK: 1.5, warnMs: 750, activeMs: 500, dmg: [18, 24], heavy: true, dodgeZ: 14 },
             // 머리 돌진: 플레이어가 선 줄(깊이)을 겨눔(예고 = 그 줄 빨간 띠) → 내리꽂음(bite_02 reach, 위아래 depth) → 빗나가면 stuckMs 동안 머리가 바닥에 박힘(약점),
             //   맞혔으면 hitStuckMs 만. 줄을 바꾸거나 물러나면 피함
             bite:   { weight: 3, near: 220, nearK: 1.5, warnMs: 650, lungeMs: 140, stuckMs: 2000, hitStuckMs: 900, depth: 14, dmg: [28, 34], heavy: true },
@@ -3251,7 +3289,7 @@
                       radius: 30, depth: 15, dmg: [20, 26], heavy: true, dodgeZ: 99, landMs: 700, aimK: 0.5 }
           },
           // 보상: 쓰러지면 불 결정 crys · 강화석 stones 개 [최소, 최대](x 난이도 modes 배율)를 머리 쪽에서 와르르. 바로 빨려 듦(magnet)
-          drop: { el: 'fire', crys: [16, 22], stones: [10, 14], burstMs: 900 },
+          drop: { el: 'fire', crys: [8, 11], stones: [5, 7], burstMs: 900 },   // 2026-11-07 절반(예전 결정 16~22 · 강화석 10~14)
           magnet: { r: 9999, depth: 9999, delayMs: 700, ms: 800, turns: 1.4, shrink: 0.45 },
           deathMs: 2600         // 쓰러지는 그림 뒤 결과까지
         }
@@ -3612,7 +3650,8 @@
     enchant: {
       maxLv: 10,
       rate: [1, 1, 1, 0.8, 0.8, 0.8, 0.6, 0.6, 0.6, 0.4],
-      cost: [1, 2, 2, 3, 3, 4, 5, 6, 7, 10],
+      //   2026-11-07 형님(하룻저녁에 +10): +7 ~ +10 비싸게 5 6 7 10 → 8 10 12 18 (확률은 그대로)
+      cost: [1, 2, 2, 3, 3, 4, 8, 10, 12, 18],
       perLv: 0.06,
       bonus: {
         knight: { 3: { crit: 0.05 }, 6: { atkSpd: 0.08 }, 9: { cd: 0.1, mp: 0.1 }, 10: { reach: 0.1 } },
@@ -3624,7 +3663,9 @@
         mage:   [[0, 'staff_common'], [3, 'staff_rare'], [6, 'staff_epic'], [9, 'staff_legendary'], [10, 'staff_mythic']]
       },
       tierName: [[0, '일반'], [3, '희귀'], [6, '영웅'], [9, '전설'], [10, '신화']],
-      // ---- 속성 7가지: 칸마다 하나(같은 속성 두 번 안 됨), 끼운 속성은 전부 함께 켜짐. 바꾸기 = 그 속성 결정 1개(언제든) ----
+      // ---- 속성 7가지: 칸마다 하나(같은 속성 두 번 안 됨), 끼운 속성은 전부 함께 켜짐. 부여 · 바꾸기 = 그 속성 결정 setCost[칸] 개(언제든) ----
+      //   2026-11-07 형님(하룻저녁에 속성 다 모음): 1개 → 1번 칸 5개 · 2번 칸 10개 · 3번 칸 20개
+      setCost: [5, 10, 20],
       //   col = 오라 · 불티 · 결정 색, short = 고르는 창 한 줄 설명
       order: ['fire', 'ice', 'lightning', 'poison', 'wind', 'darkness', 'light'],
       el: {
@@ -3663,7 +3704,9 @@
       //   속성 결정: 판을 깨면 그 판 속성(stageEl[판 id][0]) clear 개 + 보스가 둘째 속성(stageEl[판 id][1]) boss 개를 떨어뜨림. 개수 x 난이도 crys(노말 1.5 · 하드 2)
       //   판 속성(2026-11-06): 숲 = 바람 · 폐광 = 번개 · 늪 = 독 · 사막 유적 = 빛 · 설산 = 얼음 · 해적 항구 = 바람 · 화산 = 불 · 유령 고성 = 어둠 · 요새 = 불 · 마왕성 = 어둠
       //     둘째(보스) 속성으로 3판까지 7가지 중 6가지, 5판까지 전부 나옴
-      drop: { mob: 0.012, tough: 0.04, mid: 1, boss: 2, clear: 2, bossCrys: 1, crys: { easy: 1, normal: 1.5, hard: 2 } },
+      //   2026-11-07 형님(너무 많이 모임): 강화석 잡몹 1.2% → 0.6% · 단단한 잡몹 4% → 2% · 중간보스 1개 → 50% 확률로 1개(mid 0.5) · 보스 2 → 1개,
+      //     판 깸 결정 2 → 1개(보스 둘째 속성 1개 그대로). 난이도 배율(drop · crys)은 예전처럼 곱함(소수 = 그 확률로 하나 더)
+      drop: { mob: 0.006, tough: 0.02, mid: 0.5, boss: 1, clear: 1, bossCrys: 1, crys: { easy: 1, normal: 1.5, hard: 2 } },
       stageEl: { 1: ['wind', 'light'], 2: ['lightning', 'fire'], 3: ['poison', 'darkness'], 4: ['light', 'poison'], 5: ['ice', 'wind'],
                  6: ['wind', 'ice'], 7: ['fire', 'darkness'], 8: ['darkness', 'ice'], 9: ['fire', 'lightning'], 10: ['darkness', 'light'] },
       // 바닥에 떨어진 강화석·결정(코드로 그린 도트): 밟으면 주움(물약과 같음). 사라지지 않음, 판을 깨면 남은 것은 저절로 주움
@@ -3724,6 +3767,19 @@
     //   botPlan = 시험용(GAME.test.skillSetup): 기술 점수를 이 순서로 돌아가며 1점씩
     skills: { bufferMs: 300, cancelAfterHit: true, knight: SKILLS.knight, mage: SKILLS.mage,
               cancel: { fromActive: true, padMs: 60 },
+              // 2026-11-07 형님: 저절로 배우기 · 저절로 끼우기 없앰. 기술 점수 = 전직 때 firstPts(1) + 그 뒤 레벨마다 perLv(1).
+              //   그 기술 Lv(unlock)가 되면 「배울 수 있음」 → 1점으로 배움(기술 Lv1) → 점수로 Lv5 까지. 늘 켜진 기술도 같음.
+              //   처음 배운 쓰는 기술은 빈 칸이 있으면 그 칸에 끼움(배우기는 플레이어가 고른 것). 초기화 = 쓴 점수 전부 돌려받음(배운 것도 다 지움)
+              //   slotsAllOpen = 전직하면 기술 칸 전부 열림(폰 5 · PC 10). 견습은 그대로 잠김. 아래 slots · moreLv · pcLv 는 false 로 되돌릴 때 쓰는 값
+              // 2026-11-07 형님: 기술 무적 없앰 → 슈퍼아머(superArmor). 기술 쓰는 동안 맞으면 데미지는 그대로 받지만 움찔 · 밀림 · 넘어짐 · 잡힘 없이 기술이 끝까지 나감
+              //   (무거운 보스 타도 데미지만). armorNoHitMs = 한 번 맞은 뒤 아주 잠깐 안 맞음(한 장면에 여러 번 겹쳐 맞지 않게). 완전 무적은 회피 · 각성만
+              //   기술마다 적힌 iframes 는 남겨 둠(superArmor 를 false 로 하면 예전처럼 무적)
+              superArmor: true, armorNoHitMs: 150,
+              learn: true, firstPts: 1, slotsAllOpen: true,
+              // 2026-11-07 형님: 견습 기본기 noviceSkill(올려치기, 위 SKILLS.novice) → 전직하면 basic[직업](기사 올려베기 · 법사 땅 융기)으로 바뀜:
+              //   전직 때 공짜 Lv1(기술 점수 안 씀, unlock Lv 무시) + 1번 칸. Lv2~5 는 보통처럼 점수. 초기화해도 Lv1 은 남음
+              noviceSkill: 'nupper', basic: { knight: 'upper', mage: 'rise' },
+              novice: SKILLS.novice,
               tree: SKILL_TREE, perLv: 1, maxLv: 5, classLv: 7, slots: [2, 3, 4, 5], moreLv: [10, 13, 15], pcSlots: 10, pcLv: 15, noMpMs: 500,
               curve: { dmg: [1, 1.2, 1.4, 1.6, 1.85], cd: [1, 0.94, 0.88, 0.82, 0.75], mp: [1, 1.05, 1.1, 1.15, 1.2] },
               test: { pts: 24 },

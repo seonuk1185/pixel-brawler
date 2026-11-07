@@ -315,11 +315,20 @@
         if (a.ph === 'warn') {
           this.fr = a.t < a.wMs - 130 ? 'tail_01' : 'tail_02'; this.weakOpen = true;
           if (Math.floor(a.t / 190) !== Math.floor((a.t - dt) / 190)) { var L1 = lane(); puff('dust_01', this.x + rr([150, 210]) * s, L1.L0 + Math.random() * L1.h, 520, 0.35, 0.55, 0.85, Math.random() < 0.5); }
-          if (a.t >= a.wMs) { next('act'); H.snd('swingHeavy', { k: 0.5, v: 1.4 }); a.hit = false; var L2 = lane(); for (var i = 0; i < 4; i++) puff('dust_01', this.x - (100 + i * 90) * s, lerp(L2.L0, L2.L1, (i + 0.5) / 4), 460, 0.4, 0.7, 0.8, i % 2 === 0); H.shake(1.6, 260); }
+          if (a.t >= a.wMs) { next('act'); H.snd('swingHeavy', { k: 0.5, v: 1.4 }); a.hit = false; a.dustX = null; H.shake(2.4, 420); }
         } else if (a.ph === 'act') {
+          // 2026-11-07: 쓸기 앞끝(front)이 용 쪽(R1.x1)에서 바깥(R1.x0)으로 activeMs 동안 지나감. 앞끝이 지나간 자리(front ~ 용)에 있으면 맞음(점프 dodgeZ · 회피 무적으로 피함)
           this.weakOpen = false; this.fr = 'tail_03';
-          var R1 = wbox(Fj.tail_03.reach, this);
-          if (!a.hit && p.state !== 'dead' && p.x >= R1.x0 && p.x <= R1.x1 && (p.z || 0) <= Q.dodgeZ) a.hit = hitP(this, Q) || a.hit;
+          var R1 = wbox(Fj.tail_03.reach, this), u1 = clamp(a.t / Q.activeMs, 0, 1), front = lerp(R1.x1, R1.x0, 1 - (1 - u1) * (1 - u1) * 0.35 - (1 - u1) * 0.65);
+          a.front = front; a.R1 = R1;
+          if (!a.hit && p.state !== 'dead' && p.x >= front && p.x <= R1.x1 && (p.z || 0) <= Q.dodgeZ) a.hit = hitP(this, Q) || a.hit;
+          if (a.dustX == null || a.dustX - front > 35 * s) {   // 앞끝을 따라 먼지 · 돌 튐 + 흔들림
+            a.dustX = front; var L2 = lane();
+            puff('dust_01', front, L2.L0 + Math.random() * L2.h * 0.5, 480, 0.45, 0.8, 0.9, Math.random() < 0.5);
+            puff('dust_01', front + 20 * s, L2.mid + Math.random() * L2.h * 0.5, 480, 0.45, 0.8, 0.9, Math.random() < 0.5);
+            if (H.Skills.debris) H.Skills.debris(front, L2.mid, L2.L1, 6, { cols: ['#6a5a4a', '#8a7258', '#c8b08a', '#fff2c0'], sp: 200, size: 2, ms: 500 });
+            H.shake(1.2, 160);
+          }
           if (a.t >= Q.activeMs) next('rec');
         } else { this.fr = 'tail_04'; if (a.t >= 350) this.endPat(); }
         break;
@@ -517,6 +526,40 @@
     Assets.blit(g, F.img, F.pv.x, F.pv.y); g.restore();
   }
   function snapv(v) { return window.snapPx ? window.snapPx(v) : Math.round(v); }
+  // 꼬리 쓸기 예고(2026-11-07): 걷는 길 가운데 긴 노란 줄 + 용 쪽에서 바깥(왼쪽)으로 흘러가는 화살(<) 여러 개. k = 0~1(진해짐)
+  function tailWarn(g, camX, x0, x1, L, k) {
+    var now = performance.now(), y = Math.round(L.mid), X0 = x0 - camX, X1 = x1 - camX, a = 0.35 + 0.55 * clamp(k, 0, 1), hh = L.h * 0.5;
+    g.save();
+    var gr = g.createLinearGradient(X1, 0, X0, 0);
+    gr.addColorStop(0, 'rgba(255,200,60,' + (0.28 * a) + ')'); gr.addColorStop(1, 'rgba(255,200,60,0)');
+    g.fillStyle = gr; g.fillRect(X0, y - hh, X1 - X0, hh * 2);
+    g.fillStyle = 'rgba(255,230,120,' + a + ')'; g.fillRect(X0, y - 2, X1 - X0, 4);
+    g.strokeStyle = 'rgba(255,214,80,' + Math.min(1, a + 0.15) + ')'; g.lineWidth = 5;
+    var gap = 46, off = (now / 4) % gap;
+    for (var x = X1 - off; x > X0 + 10; x -= gap) {
+      g.beginPath(); g.moveTo(x + 14, y - hh * 0.55); g.lineTo(x, y); g.lineTo(x + 14, y + hh * 0.55); g.stroke();
+    }
+    g.restore();
+  }
+  // 꼬리 쓸기 중(2026-11-07): 앞끝(front) ~ 용 쪽까지 바닥을 따라 흙바람 띠 + 앞끝에 큰 호(휘몰아치는 바람). u = 0~1 진행
+  function tailSweep(g, camX, front, x1, L, u) {
+    var F = front - camX, X1 = x1 - camX, y = L.mid, hh = L.h * 0.6, fade = 1 - Math.max(0, u - 0.8) / 0.2;
+    g.save();
+    var gr = g.createLinearGradient(F, 0, X1, 0);
+    gr.addColorStop(0, 'rgba(240,215,165,' + (0.85 * fade) + ')'); gr.addColorStop(0.4, 'rgba(210,180,130,' + (0.4 * fade) + ')'); gr.addColorStop(1, 'rgba(200,170,120,0)');
+    g.fillStyle = gr; g.fillRect(F, y - hh, X1 - F, hh * 2);
+    g.lineCap = 'round';
+    for (var i = 0; i < 4; i++) {
+      var yy = y - hh * 0.75 + i * hh * 0.5, len = (X1 - F) * (0.35 + 0.15 * i);
+      g.strokeStyle = 'rgba(255,245,220,' + (0.7 * fade) + ')'; g.lineWidth = 2;
+      g.beginPath(); g.moveTo(F + 6, yy); g.lineTo(F + len, yy + (i - 1.5) * 2); g.stroke();
+    }
+    g.strokeStyle = 'rgba(255,240,200,' + (0.95 * fade) + ')'; g.lineWidth = 7;
+    g.beginPath(); g.ellipse(F + hh * 0.5, y, hh * 0.6, hh * 1.05, 0, Math.PI * 0.55, Math.PI * 1.45); g.stroke();
+    g.strokeStyle = 'rgba(255,190,90,' + (0.7 * fade) + ')'; g.lineWidth = 2;
+    g.beginPath(); g.ellipse(F + hh * 0.8, y, hh * 0.5, hh * 0.85, 0, Math.PI * 0.6, Math.PI * 1.4); g.stroke();
+    g.restore();
+  }
   // 빨간 예고 상자(바닥): x0~x1, y0~y1, k = 0~1(진해짐)
   function warnRect(g, camX, x0, x1, y0, y1, k) {
     var blink = Math.floor(performance.now() / 90) % 2;
@@ -542,7 +585,9 @@
         else { var yy = halfY(a.half); warnRect(g, camX, xl, m.x, yy[0], yy[1], wu); }
       }
       if (a.name === 'slam' && a.ph === 'warn') { var R0 = wbox(Fj.slam_03.reach, e); warnRect(g, camX, R0.x0, R0.x1, L.L0 - 4, L.L1 + 4, wu); }
-      if (a.name === 'tail' && a.ph === 'warn') { var R1 = wbox(Fj.tail_03.reach, e); warnRect(g, camX, R1.x0, R1.x1, L.L0 - 4, L.L1 + 4, wu * 0.85); }
+      // 꼬리 쓸기(2026-11-07): 예고 = 바닥을 따라 쓸 방향(용 → 바깥)으로 흐르는 노란 화살 줄(빨간 상자 아님), 쓸 때 = 앞끝까지 바람 · 먼지 띠
+      if (a.name === 'tail' && a.ph === 'warn') { var R1 = wbox(Fj.tail_03.reach, e); tailWarn(g, camX, R1.x0, R1.x1, L, wu); }
+      if (a.name === 'tail' && a.ph === 'act' && a.R1) tailSweep(g, camX, a.front, a.R1.x1, L, a.t / a.Q.activeMs);
       if (a.name === 'bite' && a.ph === 'warn') { var R2 = wbox(Fj.bite_02.reach, e), R3 = wbox(Fj.bite_03.reach, e); warnRect(g, camX, Math.min(R2.x0, R3.x0) - 6, Math.max(R2.x1, R3.x1), a.lineY - a.Q.depth, a.lineY + a.Q.depth, wu); }
       if (a.name === 'lava' && (a.ph === 'warn' || a.ph === 'erupt')) {
         var yh = halfY(a.cur), x1 = wallX() + 30, x0 = H.G().camX - 8, erupt = a.ph === 'erupt';

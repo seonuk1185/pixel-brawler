@@ -619,7 +619,7 @@
   function grabPlayer(e, spec) {
     var p = G.player;
     if (p.state === 'dead' || p.state === 'down' || p.state === 'held' || p.invulnT > 0 || p.dodgeInvT > 0 || (p.z || 0) > 4) return false;   // dodgeInvT = 회피 무적
-    if (p.state === 'skill' && Skills.invulnerable(p)) return false;
+    if (p.state === 'skill' && (Skills.invulnerable(p) || (Skills.armored && Skills.armored(p)))) return false;   // 기술 슈퍼아머(2026-11-07) = 안 잡힘
     p.state = 'held'; p.heldBy = e; p.animT = 0; p.vx = 0;
     p.atk = null; p.sk = null; p.jp = null; p.ratk = null; p.comboStep = 0;
     p.dir = -e.dir;
@@ -848,6 +848,10 @@
     var S = G.stage, w = CFG.stage.waves[i];
     S.locked = true; S.lockCam = waveAt(w); S.waveIdx = i; S.lastLock = S.lockCam; S.waveT = 0;
     S.queue = hordeSpawn(w);   // 사냥 손맛: 켠 판이면 잡몹이 떼로(config hunt.horde)
+    // 오른쪽 잡몹은 미리 서 있게(2026-11-07, config ai.rightPlace): 늦게 나오던 것도 maxAt 안에, 서는 자리는 차례대로 퍼지게(place 번호)
+    var RP = CFG.ai.rightPlace, pn = 0;
+    if (RP && RP.on) S.queue.forEach(function (q) { var T = CFG.enemies[q.type]; if (q.side === 'R' && T && !T.boss && !(q.opt && q.opt.mid)) { q.place = pn++; q.at = Math.min(q.at, (RP.maxAt || 0) * Math.random()); } });
+    if (pn) S.queue.forEach(function (q) { if (q.place != null) q.placeN = pn; });
     var MQ = midOf(CFG.stage);   // 중간보스(2026-11-06): 보스 바로 앞 웨이브에 하나
     if (MQ && i === MQ.wave) S.queue.push({ type: MQ.type, side: CFG.midBoss.side || 'R', at: CFG.midBoss.delayMs || 0, opt: { mid: true }, off: 0 });
     // 미리 서 있는 적: 아직 안 나온 것도 지금 다 내놓고, 화면이 고정되면 전부 알아챔
@@ -877,6 +881,8 @@
     if (MQ) { T = e.T = MQ.T; e.hp = e.maxHp = T.hp; e.label = T.label; e.hoverD = T.hover[0] + Math.random() * (T.hover[1] - T.hover[0]); e.mid = true; S.mid = e; }
     var hm = (st.hpMul || 1) * (V && V.hpMul || 1) * modeVal(M.hpMul), dm = (st.dmgMul || 1) * (V && V.dmgMul || 1) * modeVal(M.dmgMul);
     if (MQ) dm *= CFG.midBoss.dmgMul || 1;
+    // 2026-11-07 형님(노말이 지루함): 판 보스 · 중간보스 = 난이도 bossHp · bossDmg 더(노말 체력 x1.3 · 공격 x1.2). 던전은 안 함
+    if ((T.boss || MQ) && !st.dg) { hm *= M.bossHp || 1; dm *= M.bossDmg || 1; }
     if (hm !== 1) e.hp = e.maxHp = Math.round(e.maxHp * hm);
     e.dmgMul = dm;
     if (V && !MQ) { e.variant = vk; if (V.label) e.label = V.label + ' ' + e.label; }
@@ -887,6 +893,7 @@
       e.hp = e.maxHp = Math.max(1, Math.round(e.maxHp * (HD.hpExp ? Math.pow(hmul, -HD.hpExp) : (HD.hpMul || 1))));
       e.dmgMul *= HD.dmgMul || 1; e.xpMul = HD.hpExp ? 1 / hmul : (HD.xpMul || 1); e.horde = true;
     }
+    if (!st.dg && !T.boss && !MQ && CFG.ai.rightPlace && CFG.ai.rightPlace.on) e.walkMul = CFG.ai.rightPlace.walkMul || 1;   // 판 잡몹 걷기 +20%(2026-11-07)
     var HDe = huntPart('death');
     if (HDe && !T.boss && !MQ) e.huntDeath = HDe;   // 중간보스는 보스처럼 그 자리에 쓰러짐(펑 없이)
     e.wave = S.waveIdx;
@@ -896,6 +903,17 @@
     return e;
   }
   // off = 몹 떼로 늘어난 몹: 화면 밖으로 off x hunt.horde.xOff 도트 더 떨어져서 나옴(한 덩어리로 겹치지 않게)
+  // 화면 오른쪽에 미리 서는 잡몹(2026-11-07, config ai.rightPlace): 보이는 화면 오른쪽 x 범위에 차례대로 퍼짐(위아래도 엇갈림) + 먼지 퐁 + 「!」 뒤 바로 옴
+  function spawnRightPlaced(q) {
+    var S = G.stage, RP = CFG.ai.rightPlace, vw = LW - controlPad, n = Math.max(1, q.placeN || 1), k = q.place || 0;
+    var u = n > 1 ? k / (n - 1) : 0.5, x = S.lockCam + vw * lerp(RP.x[0], RP.x[1], clamp(u + (Math.random() - 0.5) * 0.12, 0, 1));
+    var lt = world.laneTop, lh = world.laneBottom - lt, y = lt + lh * (((k * 0.618) % 1) * 0.8 + 0.1);
+    var e = makeEnemy(q.type, x, y, q.opt);
+    e.dir = -1; e.entered = true;
+    e.wake((CFG.ai.wake.alertMs || 0) + Math.random() * (CFG.ai.wake.groupDelayMs || 0), true);
+    if (G.assets.dust && G.assets.dust.length) FX.sprite(x, y, G.assets.dust, CFG.dust.fps, CFG.dust.pivot, false, true);
+    return e;
+  }
   function spawnEnemy(type, side, opt, off) {
     var S = G.stage, T = CFG.enemies[type], HD = off ? hordeOf(null) || CFG.hunt.horde : null, ox = HD ? off * (HD.xOff || 0) * AS : 0;
     var xl = S.dg ? 0 : S.lockCam, xr = S.dg ? world.width : S.lockCam + LW;   // 던전 = 싸움터 양끝 밖에서
@@ -1063,8 +1081,11 @@
     return Math.random() < ER.chance ? R.elPool[Math.floor(Math.random() * R.elPool.length)] : null;
   }
   function dgOpt(type) { var el = dgEl(type); return el ? { el: el } : null; }
-  function dgSpawnMob(type, side, off) { var e = spawnEnemy(type, side, dgOpt(type), off || 0); e.dgMob = true; return e; }
-  function dgSpawnMid(i, side) { var MQ = dgMid(i), D = DG(), e = spawnEnemy(MQ.type, side, { mid: true, mq: MQ, el: D && D.el }, 0); G.stage.mid = e; return e; }
+  // 광산 단계(2026-11-07, config dungeons.mine.phases): 지금 단계 { at, hp, atk, spawn } (없으면 null). 새로 나오는 적에 체력 · 공격 배율
+  function dgPhase() { var D = DG(), R = G.stage && G.stage.dg, P = D && D.phases, ph = null; if (!P || !R) return null; P.forEach(function (q) { if (R.t >= q.at * 1000) ph = q; }); return ph; }
+  function dgPhaseApply(e) { var ph = dgPhase(); if (!ph || !e) return e; if (ph.hp && ph.hp !== 1) e.hp = e.maxHp = Math.round(e.maxHp * ph.hp); if (ph.atk) e.dmgMul = (e.dmgMul || 1) * ph.atk; return e; }
+  function dgSpawnMob(type, side, off) { var e = spawnEnemy(type, side, dgOpt(type), off || 0); e.dgMob = true; return dgPhaseApply(e); }
+  function dgSpawnMid(i, side) { var MQ = dgMid(i), D = DG(), e = spawnEnemy(MQ.type, side, { mid: true, mq: MQ, el: D && D.el }, 0); G.stage.mid = e; return dgPhaseApply(e); }
   function dgQueue(q) { G.stage.dg.queue.push(q); }
   // ---------- 몹 떼(2026-11-07 형님: 한 줄로 오는 느낌 → 무리로, config pack) ----------
   //   한 번에 3~6마리 무리: 옆 간격 pack.dx 도트씩 엇갈리고, 깊이(위아래)는 걷는 길 전체에 고르게 퍼짐(순서는 섞음)
@@ -1107,7 +1128,7 @@
     var e = makeEnemy(q.type, q.x, clamp(q.y, world.laneTop, world.laneBottom), dgOpt(q.type));
     e.dgMob = true; e.dir = q.x < G.player.x ? 1 : -1;
     if (q.drop) { e.dropZ = q.drop; e.entered = true; }
-    return e;
+    return dgPhaseApply(e);
   }
   // 시간 사건(config events): 큰 글자 + 중간보스 + 몹 몰려옴
   function dgEvent(ev, R, D) {
@@ -1142,7 +1163,8 @@
     var cnt = dgFlush(R, SP), alive = cnt.alive, mobs = cnt.mobs;
     // 늘 나오는 몹: every ms 마다 batch 마리(양옆 번갈아), 살아 있는 몹이 maxAlive 보다 적을 때만
     //   몹 떼(config pack, 2026-11-07): pack.every ms 마다 size 마리 무리 하나(dgPack). 자리가 minRoom 마리보다 적으면 자리가 날 때까지 기다림
-    R.acc += dt * dgModeK('spawn');
+    var PH = dgPhase();
+    R.acc += dt * dgModeK('spawn') * ((PH && PH.spawn) || 1);   // 광산 단계(2026-11-07): 단계마다 더 빨리
     var every = lerp(SP.every[0], SP.every[1], u), maxA = Math.round(lerp(SP.maxAlive[0], SP.maxAlive[1], u) * dgModeK('alive'));
     if (D.pack) {
       var PK = D.pack, pe = lerp(PK.every[0], PK.every[1], u), qm = R.queue.filter(function (q) { return !q.mid; }).length;
@@ -2462,7 +2484,7 @@
       S.waveT += dt;
       for (var i = S.queue.length - 1; i >= 0; i--) {
         if (S.queue[i].at <= S.waveT) {
-          var ne = spawnEnemy(S.queue[i].type, S.queue[i].side, S.queue[i].opt, S.queue[i].off); S.queue.splice(i, 1);
+          var ne = S.queue[i].place != null ? spawnRightPlaced(S.queue[i]) : spawnEnemy(S.queue[i].type, S.queue[i].side, S.queue[i].opt, S.queue[i].off); S.queue.splice(i, 1);
           if (ne.T.boss && !S.introDone) { S.introDone = true; startIntro(ne); }   // 보스 등장 컷인(판마다 한 번)
           if (ne.mid) midIntro(ne);   // 중간보스 등장(2026-11-06)
         }
@@ -3131,7 +3153,7 @@
     document.getElementById('btnSel').textContent = '스테이지 선택';   // 던전 결과에서 바꿔 둔 이름
     var focus = clear && !last && !end ? nx : clear ? document.getElementById('btnSel') : document.getElementById('btnRetry');
     snd(clear ? 'stageClear' : 'fail');
-    // 전직(2026-11-06): 2단계 보스를 처음 깸 + 아직 직업 없음 → 전직 화면 먼저, 고르고 나면 결과 화면
+    // 전직(2026-11-06): 전직 판(2026-11-07 = 1판) 보스를 처음 깸 + 아직 직업 없음 → 전직 화면 먼저, 고르고 나면 결과 화면
     if (needClassChange()) { resultEl.hidden = true; openClassChange(function () { openMenu(resultEl, focus); }); }
     else openMenu(resultEl, focus);
   }
@@ -3297,12 +3319,13 @@
     var box = document.getElementById('modeTabs'), O = CFG.modes, cur = Growth.mode(), out = null, last = STAGES[STAGES.length - 1].id;
     if (!box || !O) return null;
     box.innerHTML = '';
-    O.order.forEach(function (k, i) {
+    var VL = Growth.modeList ? Growth.modeList() : O.order;   // 2026-11-07: 숨긴 난이도(이지) 빼고
+    VL.forEach(function (k, i) {
       var b = document.createElement('button'), open = Growth.modeOpen(k), M = O[k];
       b.type = 'button'; b.className = 'mtab mt-' + k + (k === cur ? ' on' : '') + (open ? '' : ' locked');
       b.disabled = !open;
       b.setAttribute('aria-pressed', k === cur ? 'true' : 'false');
-      b.innerHTML = '<b>' + M.name + '</b>' + (open ? '' : '<small>' + O[O.order[i - 1]].name + ' ' + last + '판 클리어 시 열림</small>');
+      b.innerHTML = '<b>' + M.name + '</b>' + (open ? '' : '<small>' + O[VL[i - 1]].name + ' ' + last + '판 클리어 시 열림</small>');
       b.addEventListener('click', function () {
         if (k === Growth.mode() || !Growth.setMode(k)) return;
         modeTabFocus = true; openStageSelect();
@@ -3493,6 +3516,7 @@
   function slotName(S, id) { return id === 'dodge' ? '회피' : (S[id] && S[id].name) || ''; }
   function skillBadges() {
     var bk = Growth.book(G.classKey), n = bk ? bk.pts() : 0;
+    if (bk && bk.novice) bk = null;   // 견습 기본기 책(2026-11-07)은 기술 창 없음
     document.querySelectorAll('.skbtn, .skopen').forEach(function (b) { b.hidden = !bk; });
     document.querySelectorAll('.skbtn .badge, .skopen .badge').forEach(function (b) { b.hidden = !n; b.textContent = n > 99 ? '99+' : n; });
   }
@@ -3528,7 +3552,7 @@
   }
   function renderSkills() {
     var bk = Growth.book(G.classKey);
-    if (!bk) { if (!skEl.hidden) closeSkills(); return; }
+    if (!bk || bk.novice) { if (!skEl.hidden) closeSkills(); return; }
     var focusK = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.sk : null;
     var pc = isPc(), max = CFG.skills.maxLv || 5, S = CFG.skills[bk.cls], pts = bk.pts(), slots = bk.slots(pc), bar = bk.bar(pc);
     if (skSel && !bk.canPut(skSel)) skSel = null;
@@ -3540,24 +3564,27 @@
     var actEl = document.getElementById('skAct'), pasEl = document.getElementById('skPas');
     actEl.innerHTML = ''; pasEl.innerHTML = '';
     bk.list().forEach(function (e) {
-      var d = S[e.id] && S[e.id].name ? S[e.id] : null, open = bk.unlocked(e.id), lv = bk.lv(e.id), canPick = bk.isActive(e.id) && open;
-      var name = d ? d.name : e.name, st = e.soon ? 'soon' : !open ? 'lock' : '', at = bar.indexOf(e.id);
+      // 2026-11-07 배우기: open = 그 Lv 가 됨, learned = 배움. 열렸는데 안 배움 = 'learn'(회색 그림 + 「배울 수 있음」, + 로 1점 써서 배움)
+      var d = S[e.id] && S[e.id].name ? S[e.id] : null, open = bk.unlocked(e.id), lv = bk.lv(e.id), learned = lv > 0, canPick = bk.isActive(e.id) && learned;
+      var name = d ? d.name : e.name, st = e.soon ? 'soon' : !open ? 'lock' : !learned ? 'learn' : '', at = bar.indexOf(e.id);
       var c = document.createElement('div');
       c.className = 'cell' + (st ? ' ' + st : '') + (skSel === e.id ? ' sel' : '');
-      c.title = name + ' — ' + ((d ? d.desc : e.desc) || '') + (st ? '' : '\n' + skillNums(bk, e, d, lv)) +
-        (d && d.lv5 && d.lv5.say && !st ? '\nLv5: ' + d.lv5.say : '');
+      var info = !st || st === 'learn';
+      c.title = name + ' — ' + ((d ? d.desc : e.desc) || '') + (info ? '\n' + skillNums(bk, e, d, lv) : '') +
+        (d && d.lv5 && d.lv5.say && info ? '\nLv5: ' + d.lv5.say : '') + (st === 'learn' ? '\n기술 점수 1점으로 배워요' : '');
       // 고르기(쓰는 기술 · 열림만 버튼): 그림 + 이름 · Lv · 짧은 설명
       var pick = document.createElement(canPick ? 'button' : 'div');
       pick.className = 'cpick';
       if (canPick) { pick.type = 'button'; pick.dataset.sk = e.id + ':pick'; pick.setAttribute('aria-label', name + ' 고르기'); }
       pick.appendChild(skIcon(e.id, 40, !!st));
-      var tag = st === 'soon' ? '<span class="tag">준비 중</span>' : st === 'lock' ? '<span class="tag lk">Lv' + e.unlock + '</span>' : '<span class="lvl">Lv ' + lv + '/' + max + '</span>';
+      var tag = st === 'soon' ? '<span class="tag">준비 중</span>' : st === 'lock' ? '<span class="tag lk">Lv' + e.unlock + '</span>' :
+        st === 'learn' ? '<span class="tag ln">배울 수 있음</span>' : '<span class="lvl">Lv ' + lv + '/' + max + '</span>';
       var line = !st && e.passive && e.passive.val ? passiveNow(e, lv) : (e.short || '');
       pick.insertAdjacentHTML('beforeend', '<span class="nm"><span class="l1"><b>' + name + '</b>' + tag + '</span><span class="sd">' + line + '</span></span>');
       c.appendChild(pick);
       var plus = document.createElement('button');
       plus.type = 'button'; plus.className = 'plus' + (lv >= max ? ' max' : ''); plus.dataset.sk = e.id + ':+';
-      plus.setAttribute('aria-label', name + ' 올리기'); plus.textContent = lv >= max ? 'MAX' : '+';
+      plus.setAttribute('aria-label', name + (st === 'learn' ? ' 배우기' : ' 올리기')); plus.textContent = lv >= max ? 'MAX' : '+';
       plus.disabled = !(pts > 0 && open && lv < max);
       c.appendChild(plus);
       if (at >= 0) c.insertAdjacentHTML('beforeend', '<span class="eq">' + slotKey(at) + '</span>');   // 끼운 칸 번호
@@ -3616,7 +3643,8 @@
     else if (focusK && skEl.contains(document.activeElement) === false) document.getElementById('btnSkClose').focus({ preventScroll: true });
   }
   function openSkills() {
-    if (!skEl.hidden || !Growth.book(G.classKey)) return;
+    var bk0 = Growth.book(G.classKey);
+    if (!skEl.hidden || !bk0 || bk0.novice) return;
     skBack = { menu: menuEl && !menuEl.hidden ? menuEl : null, paused: G.paused };
     G.paused = true; Input.setOverride(null);
     skSel = null;
@@ -3640,7 +3668,7 @@
   // ---------- 강화 창 (2026-11-06, 형님 승인. 수치 = config enchant, 계산·저장 = growth.js Growth.weapon) ----------
   // 여는 곳: 「기술」 옆 「강화」 · 스테이지 고르기 · 결과 화면(견습은 버튼이 안 보임). 여는 동안 게임 멈춤, 닫으면 원래대로
   //   왼쪽 = 무기 그림(강화 단계 그림 + 속성 오라, 움직임) · +강화 · 등급 이름 · 성공 확률 · 드는 강화석 · 「강화」(성공 = 금빛 번쩍 / 실패 = 흔들림)
-  //   오른쪽 = 강화 덤(가진 것 밝게) · 속성 칸 3개(+3 · +6 · +9 에 열림) · 가진 결정. 칸을 누르면 → 속성 7가지(결정 수 · 한 줄 설명) → 「부여」(결정 1개)
+  //   오른쪽 = 강화 덤(가진 것 밝게) · 속성 칸 3개(+3 · +6 · +9 에 열림) · 가진 결정. 칸을 누르면 → 속성 7가지(결정 수 · 한 줄 설명) → 「부여」(결정 = 칸마다 config enchant.setCost, 2026-11-07 5 · 10 · 20개)
   var encEl = document.getElementById('encPanel'), encBack = null, encSlot = -1, encPickEl = null, encRaf = 0, encFxT = 0;
   var BON_TXT = { crit: '치명타 확률', atkSpd: '공격 속도', cd: '기술 쿨타임', mp: '기술 마나', reach: '공격 범위', mpRegen: '마나 회복', castSpd: '시전 속도', area: '마법 범위' };
   function bonTxt(v) {
@@ -3694,8 +3722,8 @@
       var b = document.createElement('button'), e = w.at(i), open = w.slotOpen(i);
       b.type = 'button'; b.className = 'eslot' + (e ? '' : ' empty') + (encSlot === i ? ' sel' : ''); b.disabled = !open; b.dataset.slot = i;
       b.innerHTML = !open ? '<span><b>잠김</b><small>+' + w.slotLv(i) + ' 에 열림</small></span>' :
-        e ? '<img alt="" src="' + Enchant.iconUrl('crys', e) + '"><span><b style="color:' + ENC.el[e].col2 + '">' + ENC.el[e].name + '</b><small>' + (i + 1) + '번 칸 · 바꾸기</small></span>' :
-            '<span><b>비어 있음</b><small>' + (i + 1) + '번 칸 · 누르면 고르기</small></span>';
+        e ? '<img alt="" src="' + Enchant.iconUrl('crys', e) + '"><span><b style="color:' + ENC.el[e].col2 + '">' + ENC.el[e].name + '</b><small>' + (i + 1) + '번 칸 · 바꾸기 ' + w.setCost(i) + '개</small></span>' :
+            '<span><b>비어 있음</b><small>' + (i + 1) + '번 칸 · 결정 ' + w.setCost(i) + '개</small></span>';
       b.addEventListener('click', function () { openPick(i); });
       sl.appendChild(b);
     })(i);
@@ -3710,16 +3738,17 @@
     document.getElementById('encMain').hidden = true;
     var P = document.getElementById('encPick'); P.hidden = false;
     document.getElementById('encPickT').textContent = (i + 1) + '번 칸 속성' + (w.at(i) ? ' (지금 ' + ENC.el[w.at(i)].name + ')' : '');
+    var pc0 = document.getElementById('encPickCost'); if (pc0) pc0.textContent = '그 속성 결정 ' + w.setCost(i) + '개를 써서 부여해요';   // 2026-11-07 칸마다 5 · 10 · 20개
     var L = document.getElementById('encEls'); L.innerHTML = '';
     ENC.order.forEach(function (e) {
       var b = document.createElement('button'), E = ENC.el[e], ok = w.canSet(i, e), used = w.els().indexOf(e) >= 0;
       b.type = 'button'; b.className = 'eel'; b.disabled = !ok; b.dataset.el = e;
-      b.innerHTML = '<img alt="" src="' + Enchant.iconUrl('crys', e) + '"><b style="color:' + E.col + '">' + E.name + '</b><em>' + (w.test ? '∞' : 'x' + (Growth.crys[e] || 0)) + '</em>' +
+      b.innerHTML = '<img alt="" src="' + Enchant.iconUrl('crys', e) + '"><b style="color:' + E.col + '">' + E.name + '</b><em>' + (w.test ? '∞' : (Growth.crys[e] || 0) + '/' + w.setCost(i)) + '</em>' +
         '<small>' + (used ? (w.at(i) === e ? '지금 이 칸 속성' : '다른 칸에 있음') : E.short) + '</small>';
       b.addEventListener('click', function () {
         encPickEl = e;
         L.querySelectorAll('.eel').forEach(function (x) { x.classList.toggle('sel', x.dataset.el === e); });
-        var s = document.getElementById('btnEncSet'); s.disabled = false; s.textContent = E.name + ' 부여 (결정 1개)';
+        var s = document.getElementById('btnEncSet'); s.disabled = false; s.textContent = E.name + ' 부여 (결정 ' + w.setCost(i) + '개)';
       });
       L.appendChild(b);
     });
@@ -3819,13 +3848,14 @@
   //   2026-11-07: PC 화면이면 PC 칸 수(Lv15 에 위 줄 6~10번 칸까지 한꺼번에)
   function slotsAtLv(lv, pc) {
     var S = CFG.skills.slots || [2, 4], M = [].concat(CFG.skills.moreLv || 13), n = S[0];
+    if (CFG.skills.slotsAllOpen) return pc && CFG.skills.pcSlots ? CFG.skills.pcSlots : S[S.length - 1];   // 2026-11-07: 전직하면 다 열림 → 알림 안 뜸
     if (pc && CFG.skills.pcSlots && lv >= (CFG.skills.pcLv || 0)) return CFG.skills.pcSlots;
     M.forEach(function (l, k) { if (lv >= l && S[k + 1] != null) n = S[k + 1]; });
     return n;
   }
   function checkUnlock(up) {
     var bk = Growth.book(G.classKey), pc = isPc();
-    if (!bk || bk.test || MODE !== 'stage' || G.bot) return;
+    if (!bk || bk.test || bk.novice || MODE !== 'stage' || G.bot) return;
     var before = slotsAtLv(Growth.lv - up, pc), now = bk.slots(pc);
     if (now > before) openUnlock(before, now);
   }
@@ -3936,8 +3966,9 @@
       el.querySelector('.sec').textContent = cool ? (st.rem >= 1000 ? Math.ceil(st.rem / 1000) : (st.rem / 1000).toFixed(1)) : '';
       var mp = el.querySelector('small');
       mp.className = locked ? 'lk' : 'mp';
-      mp.textContent = locked ? (bk ? 'Lv' + bk.slotLv(i) : '') : st && !st.dodge ? st.cost : '';
-      el.title = locked ? (bk ? (i + 1) + '번 칸 · Lv' + bk.slotLv(i) + ' 에 열려요' : '전직하면 기술 칸이 열려요') :
+      var nov = !bk || bk.novice;   // 견습(2026-11-07): 1번 칸 = 올려치기, 나머지 = 전직하면 열림
+      mp.textContent = locked ? (!nov ? 'Lv' + bk.slotLv(i) : '') : st && !st.dodge ? st.cost : '';
+      el.title = locked ? (!nov ? (i + 1) + '번 칸 · Lv' + bk.slotLv(i) + ' 에 열려요' : '전직하면 기술 칸이 열려요') :
         st ? st.name + (st.dodge ? ' (' + Keys.lab('dodge') + ' 로도)' : ' · MP ' + st.cost) : (i + 1) + '번 칸 · 비었어요 (기술 창 ' + Keys.lab('skill') + ' 에서 끼워요)';
       if (was && !cool && st && was === st.id) { el.classList.remove('ready'); void el.offsetWidth; el.classList.add('ready'); }
     }
@@ -4224,9 +4255,9 @@
   }
 
   // ---------- 전직 (2026-11-06, 설계안 3번 · config growth.classChangeStage / classChange) ----------
-  // 뜨는 때: 판 모드 + 아직 직업 없음(Growth.cls) + 전직 판(2단계)을 깬 저장. 시험 자동 조종(?bot=1)은 안 띄움(멈추지 않게)
+  // 뜨는 때: 판 모드 + 아직 직업 없음(Growth.cls) + 전직 판(2026-11-07 형님: 1판, 예전 2판)을 어느 난이도에서든 깬 저장(이지에서 깬 예전 저장도). 시험 자동 조종(?bot=1)은 안 띄움(멈추지 않게)
   //   → 2단계 보스를 처음 깬 결과 화면 직전 · 이미 깬 저장이면 다음 스테이지 고르기·바로 시작(?stage=N) 때. 고르면 Growth.cls 가 생겨 다시는 안 뜸
-  function needClassChange() { return MODE === 'stage' && !G.bot && !Growth.cls && isCleared(CFG.growth.classChangeStage); }
+  function needClassChange() { return MODE === 'stage' && !G.bot && !Growth.cls && (Growth.clearedAny ? Growth.clearedAny(CFG.growth.classChangeStage) : isCleared(CFG.growth.classChangeStage)); }
   var classEl = document.getElementById('classSel'), classAnim = 0;
   // 카드 속 움직이는 모습: 그 직업 옷(지금 성별) + 직업 무기를 든 작은 플레이어를 숨 쉬는(idle) 그림으로 계속 그림
   function classPreview(cv, k) {

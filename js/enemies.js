@@ -65,8 +65,8 @@
     this.state = 'idle'; this.animT = rand(0, 1000);   // 여럿이 똑같이 숨 쉬지 않게
   };
   // 알아챔: alertMs 동안 「!」 보이며 멈춰 있다가 싸움
-  Enemy.prototype.wake = function (alertMs) {
-    if (!this.asleep) return;
+  Enemy.prototype.wake = function (alertMs, force) {
+    if (!this.asleep && !force) return;   // force = 미리 서서 나온 몹(2026-11-07): 안 자도 「!」
     this.asleep = false; this.alertT = alertMs || 0; this.animT = 0;
   };
 
@@ -528,8 +528,9 @@
     ty = Math.max(ctx.world.laneTop, Math.min(ctx.world.laneBottom, ty));
     if (ctx.steer && !T.flying) { var sv = ctx.steer(this, tx, ty); tx = sv.x; ty = sv.y; }   // 나는 적(박쥐)은 소품 위로 지나감   // 막는 소품(상자·통): 목표가 그 안이면 옆으로, 앞에 있으면 위나 아래로 돌아감 (props.js)
     var mx = tx - this.x, my = ty - this.y;
-    var vx = Math.abs(mx) > 4 ? Math.sign(mx) * T.speedX * this.speedMul() : 0;
-    var vy = Math.abs(my) > 3 ? Math.sign(my) * T.speedY * this.speedMul() : 0;
+    var wm = this.walkMul || 1;   // 판 잡몹 걷기 +20%(2026-11-07, config ai.rightPlace.walkMul, main.js makeEnemy)
+    var vx = Math.abs(mx) > 4 ? Math.sign(mx) * T.speedX * this.speedMul() * wm : 0;
+    var vy = Math.abs(my) > 3 ? Math.sign(my) * T.speedY * this.speedMul() * wm : 0;
     // 목표 근처에서는 천천히
     var slowD = 14 * AS();
     if (Math.abs(mx) < slowD) vx *= Math.abs(mx) / slowD;
@@ -594,8 +595,8 @@
     if (ctx.steer) { var sv = ctx.steer(this, tx, ty); tx = sv.x; ty = sv.y; }
     var mx = tx - this.x, my = ty - this.y;
     var away = Math.sign(mx) === Math.sign(this.x - p.x);   // 플레이어에게서 멀어지는 쪽 = 뒷걸음질(느리게)
-    var vx = Math.abs(mx) > 4 ? Math.sign(mx) * T.speedX * (away ? R.backOffMul || 1 : 1) : 0;
-    var vy = Math.abs(my) > 2 ? Math.sign(my) * T.speedY : 0;
+    var vx = Math.abs(mx) > 4 ? Math.sign(mx) * T.speedX * (away ? R.backOffMul || 1 : 1) * (this.walkMul || 1) : 0;
+    var vy = Math.abs(my) > 2 ? Math.sign(my) * T.speedY * (this.walkMul || 1) : 0;
     var slowD = 14 * AS();
     if (Math.abs(mx) < slowD) vx *= Math.abs(mx) / slowD;
     this.setMove(vx, vy);

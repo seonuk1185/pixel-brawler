@@ -100,7 +100,7 @@
       <p class="shint">←→ 고르기 · Enter / J 시작</p>
     </div>
   </div>
-  <!-- 전직 화면 (2026-11-06): 2단계 보스를 처음 깨면 한 번. 카드는 main.js 가 CFG.classChange 로 만듦(기사·법사 = 그 옷 입고 움직이는 모습, 나머지 = 준비 중).
+  <!-- 전직 화면 (2026-11-06): 1단계 보스를 처음 깨면 한 번(2026-11-07 형님, 예전 2단계). 카드는 main.js 가 CFG.classChange 로 만듦(기사·법사 = 그 옷 입고 움직이는 모습, 나머지 = 준비 중).
        카드를 고르고 → 아래 「전직하기」(바꿀 수 없어요) → 저장칸에 직업 저장 -->
   <div class="classsel" id="classSel" hidden>
     <div class="box">
@@ -125,7 +125,7 @@
   <div class="statpanel skillpanel" id="skillPanel" hidden>
     <div class="box">
       <h2>기술</h2>
-      <div class="sktop"><span class="spts">남은 기술 점수 <b id="skPts">0</b></span><span class="who" id="skSum"></span><span class="sp"></span><button type="button" class="wbtn" id="btnSkReset">초기화</button><button type="button" class="wbtn x" id="btnSkClose" aria-label="닫기">X</button></div>
+      <div class="sktop"><span class="spts">남은 기술 점수 <b id="skPts">0</b></span><span class="who" id="skSum"></span><span class="sp"></span><button type="button" class="wbtn" id="btnSkReset" title="쓴 기술 점수를 모두 돌려받아요(무료). 직업 기본기 Lv1 은 그대로 남아요">스킬 초기화 (무료)</button><button type="button" class="wbtn x" id="btnSkClose" aria-label="닫기">X</button></div>
       <div class="spread">
         <div class="page act"><div class="ph"><b>쓰는 기술</b><span>기술 칸에 끼워서 버튼으로 눌러요</span></div><div class="cells" id="skAct"></div></div>
         <div class="spine"></div>
@@ -164,12 +164,12 @@
           <div class="encsec" id="encMain">
             <p class="ehd"><b>강화 덤</b><span>+1 마다 공격 +6%</span></p>
             <div class="ebon" id="encBon"></div>
-            <p class="ehd"><b>속성 부여</b><span>칸을 눌러 속성을 골라요 · 바꾸기 = 결정 1개</span></p>
+            <p class="ehd"><b>속성 부여</b><span>칸을 눌러 속성을 골라요 · 결정 1번 칸 5개 · 2번 칸 10개 · 3번 칸 20개</span></p>
             <div class="eslots" id="encSlots"></div>
             <div class="ecrys" id="encCrys"></div>
           </div>
           <div class="encsec epick" id="encPick" hidden>
-            <p class="ehd"><b id="encPickT">1번 칸 속성</b><span>결정 1개를 써서 부여해요</span></p>
+            <p class="ehd"><b id="encPickT">1번 칸 속성</b><span id="encPickCost">그 속성 결정을 써서 부여해요</span></p>
             <div class="elist" id="encEls"></div>
             <div class="rbtns"><button type="button" id="btnEncSet" disabled>부여</button><button type="button" class="sub" id="btnEncBack">뒤로</button></div>
           </div>

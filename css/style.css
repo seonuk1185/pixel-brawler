@@ -514,6 +514,7 @@ button.cpick { cursor: pointer; }
 .cell.lock .sd, .cell.soon .sd { color: #6a5a40; }
 .pas .cell.lock .sd, .pas .cell.soon .sd { color: #6a5a7a; }
 .cell .tag { flex: none; padding: 1px 5px; font: 400 11px/1 var(--ui); color: #f5e0a8; background: #5c3418; border: 1px solid var(--ink); }
+.cell .tag.ln { color: #10240c; background: #8ee26a; }   /* 2026-11-07 「배울 수 있음」(Lv 가 됐는데 아직 안 배운 기술) */
 .cell .tag.lk::before { content: ''; display: inline-block; width: 10px; height: 10px; margin-right: 2px; vertical-align: -1px; background: var(--ic-lock) center / 10px no-repeat; }
 /* 초록 보석 + (작은 팔각형). Lv5 = MAX */
 .plus {

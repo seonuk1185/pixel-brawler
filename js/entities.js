@@ -290,6 +290,12 @@
     if (this.state === 'dead' || this.state === 'down' || this.invulnT > 0 || this.noHitT > 0 || this.dodgeInvT > 0) return false;   // dodgeInvT = 회피 무적
     if (this.state === 'held') return false;   // 붙잡혀 있는 동안은 다른 적에게 안 맞음(놓을 때 main.js 가 상태를 풀고 때림)
     if (this.state === 'skill' && window.Skills && Skills.invulnerable(this)) return false;   // 기술 무적 구간
+    // 기술 슈퍼아머(2026-11-07, config skills.superArmor): 기술 도중 = 데미지만(무거운 타도) · 움찔 · 밀림 · 넘어짐 · 기술 끊김 없음. 쓰러지는 타는 원래대로
+    if (window.Skills && Skills.armored && Skills.armored(this) && (this.god || this.hp - dmg > 0)) {
+      if (!this.god) this.hp -= dmg;
+      this.noHitT = (this.cfg.skills && this.cfg.skills.armorNoHitMs) || 150;
+      return true;
+    }
     var H = this.cfg.hero;
     // 각성 슈퍼아머(2026-11-06 밤): 보통 타 = 데미지만(움찔·밀림·기술 끊김 없음) + 짧게 안 맞음. 넘어뜨리는 큰 타·쓰러지는 타는 원래대로
     if (this.superArmor && !heavy && (this.god || this.hp - dmg > 0)) {

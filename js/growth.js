@@ -7,7 +7,7 @@
 //     skills = 기술 책 { clsLv, lv: { id: 올린 수 }, bar: [칸에 끼운 id] } (직업이 있을 때만)
 //     class = 전직한 직업('knight' / 'mage', 2026-11-06). 없으면 견습(맨손). 한 번 정하면 setClass 가 안 바꿈(새 저장칸에서 다른 직업)
 //     club = 첫 무기 몽둥이를 주웠으면 true(2026-11-06, config club). 없으면(예전 저장) 안 주운 것 → 견습이면 1판에서 다시 나옴
-//     stats = 올린 능력치, pts = 안 쓴 점수. 예전 저장(능력치 없음, v1)은 지금 레벨만큼 점수를 한꺼번에 줌(3 × (Lv-1), 안 쓴 채로)
+//     stats = 올린 능력치, pts = 안 쓴 점수. 예전 저장(능력치 없음, v1)은 지금 레벨만큼 점수를 한꺼번에 줌(ptsFor = 2026-11-07부터 Lv - 9, 안 쓴 채로)
 //     지금은 1번 칸만 씀(저장칸 고르기 화면은 나중). 깬 판 목록은 예전엔 따로(pixelBrawler.clearedIds) → 2026-11-06 부터 저장칸의 modes(아래)
 //     난이도(2026-11-06, config modes): 저장칸의 modes = { cur: 지금 난이도('easy'·'normal'·'hard'), cleared: { easy: [깬 판 id], normal: [...], hard: [...] } }
 //       modes 가 없는 예전 저장 = 예전 깬 판 목록(pixelBrawler.clearedIds, 더 예전 pixelBrawler.cleared)을 이지로 옮김(예전 값은 그대로 둠)
@@ -30,9 +30,14 @@
 
   function clampLv(n) { return Math.max(1, Math.min(GR.maxLv, n | 0)); }
   // lv 에서 다음 레벨까지 필요한 경험치 (최고 레벨이면 0)
-  function need(lv) { return lv >= GR.maxLv ? 0 : GR.needBase + GR.needPerLv * lv; }
-  // 그 레벨까지 받은 능력치 점수 합
-  function ptsFor(lv) { return ST.perLv * (lv - 1); }
+  //   2026-11-07: x min(1, Lv / needRampLv)(낮은 Lv 싸게) + needHiSq × (Lv - needHiLv)² (Lv30 부터 더 가파르게, config growth 설명)
+  function need(lv) {
+    if (lv >= GR.maxLv) return 0;
+    var h = Math.max(0, lv - (GR.needHiLv || GR.maxLv)), r = GR.needRampLv ? Math.min(1, lv / GR.needRampLv) : 1;
+    return Math.round((GR.needBase + GR.needPerLv * lv) * r + (GR.needHiSq || 0) * h * h);
+  }
+  // 그 레벨까지 받은 능력치 점수 합. 2026-11-07 형님: Lv1~9 = 0점, Lv10 부터 레벨마다 perLv(1)점 → 합 = Lv - 9 (fromLv 없으면 예전처럼 Lv2 부터)
+  function ptsFor(lv) { return ST.perLv * Math.max(0, lv - (ST.fromLv || 2) + 1); }
   function zero() { var o = {}; KEYS.forEach(function (k) { o[k] = 0; }); return o; }
 
   // 저장 읽기: 없거나 깨졌으면 Lv1. 숫자는 범위 안으로 맞춤
@@ -49,12 +54,29 @@
   //     칸(2026-11-07 PC 아래 막대): PC · 폰이 같은 순서 하나. 폰 = 앞 5칸(slots()), PC = 10칸(slots(true), 위 줄 6~10 은 pcLv 에 열림)
   //     'dodge' = 회피(PC 기술 창에서 아무 칸에나 끼움, 누르면 회피). 예전 저장(칸 4개) = 그대로 1~4번 칸
   //   기술 Lv = 열렸으면 1 + 올린 수(최고 maxLv), 안 열렸으면 0. 기술 점수 = (지금 Lv - 전직 Lv) x perLv - 쓴 점수
+  //   2026-11-07 배우기(config skills.learn, 형님): 저절로 배우기 없음. 저장 sk.v = 2 → lv = { id: 배운 Lv 1~5 }(0 = 안 배움).
+  //     unlocked(id) = 그 기술 Lv(unlock)가 됨(= 「배울 수 있음」 또는 배움), learned(id) = 배움, learnable(id) = 열렸는데 아직 안 배움
+  //     기술 점수 = firstPts(전직 때 1) + (지금 Lv - 전직 Lv) x perLv - 쓴 점수(배운 Lv 합). 시험 책(test)은 예전 그대로(전부 Lv1 + 시험 점수)
   var SK = CFG.skills || {};
   var realBook = null, testBooks = {};
   function treeOf(cls) { return (SK.tree && SK.tree[cls]) || null; }
-  function newSk(clsLv) { return { clsLv: clsLv, lv: {}, bar: [] }; }
+  var LEARN = !!SK.learn;
+  function newSk(clsLv) { var o = { clsLv: clsLv, lv: {}, bar: [] }; if (LEARN) o.v = 2; return o; }
+  // 견습 책(2026-11-07): 기본기 올려치기(config skills.noviceSkill) 하나만, 1번 칸만 열림. 점수 · 기술 창 없음(main.js 가 novice 를 보고 숨김)
+  var noviceBook = null;
+  function makeNoviceBook() {
+    var id = SK.noviceSkill, S = SK.slots || [2, 4], is = function (x) { return x === id; };
+    return { cls: 'novice', novice: true, test: false,
+      list: function () { return []; }, entry: function () { return null; },
+      isActive: is, unlocked: is, learned: is, learnable: function () { return false; }, lv: function (x) { return is(x) ? 1 : 0; },
+      total: function () { return 0; }, used: function () { return 0; }, pts: function () { return 0; }, add: function () { return false; }, reset: function () {},
+      slots: function () { return 1; }, maxSlots: function (pc) { return pc && SK.pcSlots ? SK.pcSlots : S[S.length - 1]; }, slotLv: function () { return 0; },
+      canPut: is, at: function (i) { return i === 0 ? id : null; }, bar: function () { return [id]; }, put: function () { return false; },
+      fill: function () {}, bonus: function () { return 0; }, save: function () {} };
+  }
   function makeBook(cls, st, test) {
     var L = treeOf(cls), byId = {};
+    var BASIC = !test && LEARN && SK.basic ? SK.basic[cls] || null : null;   // 직업 기본기(2026-11-07): 늘 열림 · 공짜 Lv1
     L.forEach(function (e) { byId[e.id] = e; });
     var B = {
       cls: cls, test: !!test,
@@ -63,23 +85,41 @@
       // 쓰는 기술(칸에 끼우는 것)인가: 준비 중·늘 켜진 기술이 아니고 SKILLS 에 동작이 있음
       isActive: function (id) { var e = byId[id]; return !!(e && !e.soon && !e.passive && SK[cls] && SK[cls][id]); },
       // 열렸나: 시험 책 = 준비 중 빼고 전부, 저장 책 = 그 레벨이 됨(unlock 0 = 전직 즉시)
-      unlocked: function (id) { var e = byId[id]; return !!e && !e.soon && (test || G.lv >= (e.unlock || 0)); },
-      lv: function (id) { return B.unlocked(id) ? 1 + (st.lv[id] || 0) : 0; },
-      total: function () { return test ? ((SK.test && SK.test.pts) || 0) : Math.max(0, G.lv - st.clsLv) * (SK.perLv || 1); },
-      used: function () { var n = 0; Object.keys(st.lv).forEach(function (k) { n += st.lv[k]; }); return n; },
+      unlocked: function (id) { var e = byId[id]; return !!e && !e.soon && (test || id === BASIC || G.lv >= (e.unlock || 0)); },
+      lv: function (id) {
+        if (!B.unlocked(id)) return 0;
+        if (id === BASIC) return Math.max(1, Math.min(SK.maxLv || 5, st.lv[id] || 1));   // 기본기 = 늘 Lv1 이상
+        if (LEARN && !test) return Math.min(SK.maxLv || 5, st.lv[id] || 0);   // 배운 Lv(0 = 안 배움)
+        return 1 + (st.lv[id] || 0);
+      },
+      learned: function (id) { return B.lv(id) > 0; },
+      learnable: function (id) { return B.unlocked(id) && !B.learned(id); },
+      total: function () {
+        if (test) return (SK.test && SK.test.pts) || 0;
+        return (LEARN ? (SK.firstPts || 0) : 0) + Math.max(0, G.lv - st.clsLv) * (SK.perLv || 1);
+      },
+      used: function () { var n = 0; Object.keys(st.lv).forEach(function (k) { n += k === BASIC ? Math.max(0, B.lv(k) - 1) : st.lv[k]; }); return n; },   // 기본기 Lv1 = 공짜
       pts: function () { return Math.max(0, B.total() - B.used()); },
       // 기술 점수 1점 → 그 기술 Lv +1 (열려 있고 최고 Lv 아님)
+      //   배우기(2026-11-07): 안 배운 기술 + 1점 = 배움(Lv1). 처음 배운 쓰는 기술은 빈 칸(PC 기준 열린 칸 앞에서부터)이 있으면 그 칸에 끼움
       add: function (id) {
         if (!B.pts() || !B.unlocked(id) || B.lv(id) >= (SK.maxLv || 5)) return false;
-        st.lv[id] = (st.lv[id] || 0) + 1; B.save();
+        var first = LEARN && !test && !B.learned(id);
+        st.lv[id] = LEARN && !test ? B.lv(id) + 1 : (st.lv[id] || 0) + 1;
+        if (first && B.isActive(id) && B.bar(true).indexOf(id) < 0) {
+          for (var i = 0; i < B.slots(true); i++) if (!B.at(i)) { var j = st.bar.indexOf(id); if (j >= 0) st.bar[j] = null; st.bar[i] = id; break; }
+        }
+        B.save();
         return true;
       },
-      // 초기화(공짜): 쓴 기술 점수 전부 돌려받음 → 열린 기술은 모두 Lv1
+      // 초기화(공짜): 쓴 기술 점수 전부 돌려받음 → 열린 기술은 모두 Lv1 (2026-11-07 배우기: 배운 기술도 전부 지움 = 다시 배움, 칸 자리는 기억)
       reset: function () { st.lv = {}; B.save(); },
       // 칸 수: 시험 책 = 늘 가장 많이, 저장 책 = moreLv 마다 하나씩 늘어남(2026-11-06 밤: [2, 3, 4] / Lv10 · Lv13, 2026-11-06 Lv9 → 10,
       //   2026-11-07: [2, 3, 4, 5] / Lv10 · Lv13 · Lv15). pc = PC 아래 막대: pcLv 부터 pcSlots(10)칸, 그 전엔 폰과 같음
+      //   2026-11-07 형님(slotsAllOpen): 전직하면 칸 전부 열림 = 폰 5칸 · PC 10칸 (기술 책은 전직한 뒤에만 있음 → 견습은 그대로 잠김)
       slots: function (pc) {
         var S = SK.slots || [2, 4], M = [].concat(SK.moreLv || 13), n = S[0];
+        if (SK.slotsAllOpen) return pc && SK.pcSlots ? SK.pcSlots : S[S.length - 1];
         if (pc && SK.pcSlots && (test || G.lv >= (SK.pcLv || 0))) return SK.pcSlots;
         if (test) return S[S.length - 1];
         M.forEach(function (lv, k) { if (G.lv >= lv && S[k + 1] != null) n = S[k + 1]; });
@@ -90,13 +130,14 @@
       // i 번째 칸(0부터)이 열리는 레벨(처음부터 있으면 0) — 기술 창 「LvN에 열림」. 폰 칸(앞 5칸)을 넘으면 PC 위 줄 = pcLv
       slotLv: function (i) {
         var S = SK.slots || [2, 4], M = [].concat(SK.moreLv || 13);
+        if (SK.slotsAllOpen) return 0;
         if (i < S[0]) return 0;
         if (i >= S[S.length - 1]) return SK.pcLv || M[M.length - 1];
         for (var k = 0; k < M.length; k++) if (i < S[k + 1]) return M[k];
         return M[M.length - 1];
       },
       // 칸에 끼울 수 있나: 쓰는 기술(열림) 또는 회피('dodge')
-      canPut: function (id) { return id === 'dodge' || (B.isActive(id) && B.unlocked(id)); },
+      canPut: function (id) { return id === 'dodge' || (B.isActive(id) && B.learned(id)); },
       // i 번째 칸(0부터)에 끼운 기술 id 또는 'dodge' (열린 칸(PC 기준)이 아니거나 안 열린 기술이면 null)
       at: function (i) { var id = i < B.slots(true) ? st.bar[i] : null; return id && B.canPut(id) ? id : null; },
       bar: function (pc) { var a = []; for (var i = 0; i < B.slots(pc); i++) a.push(B.at(i)); return a; },
@@ -109,11 +150,11 @@
         st.bar[i] = id; B.save();
         return true;
       },
-      // 빈 칸에 열린 쓰는 기술을 순서대로 저절로 끼움(전직·레벨업·불러오기 때)
+      // 빈 칸에 배운 쓰는 기술을 순서대로 끼움. 2026-11-07: 레벨업 · 전직 때는 안 부름(저절로 끼우기 없음) → 시험 책 · 시험 자동 조종(testSetup)만
       fill: function () {
         var changed = false;
         L.forEach(function (e) {
-          if (!B.isActive(e.id) || !B.unlocked(e.id) || B.bar(true).indexOf(e.id) >= 0) return;
+          if (!B.isActive(e.id) || !B.learned(e.id) || B.bar(true).indexOf(e.id) >= 0) return;
           for (var i = 0; i < B.slots(true); i++) if (!B.at(i)) { var j = st.bar.indexOf(e.id); if (j >= 0) st.bar[j] = null; st.bar[i] = e.id; changed = true; return; }
         });
         if (changed) B.save();
@@ -121,7 +162,7 @@
       // 늘 켜진 기술 합: stat('phys' / 'magic' / 'guard' / 'mpRegen') → 0.12 = +12%
       bonus: function (stat) {
         var n = 0;
-        L.forEach(function (e) { var P = e.passive; if (P && P.val && P.stat === stat && B.unlocked(e.id)) n += P.val[B.lv(e.id) - 1] || 0; });
+        L.forEach(function (e) { var P = e.passive; if (P && P.val && P.stat === stat && B.learned(e.id)) n += P.val[B.lv(e.id) - 1] || 0; });
         return n;
       },
       save: function () { if (!test) G.save(); }
@@ -166,11 +207,13 @@
       // 켜진 속성 목록(칸 순서, 첫째 = 오라 주인공)
       els: function () { var a = []; for (var i = 0; i < 3; i++) { var e = A.at(i); if (e) a.push(e); } return a; },
       has: function (e) { return A.els().indexOf(e) >= 0; },
-      // 칸 i 에 속성 e 끼우기(바꾸기): 칸이 열림 + 다른 칸에 없음 + 지금과 다름 + 결정 1개(시험 = 공짜)
-      canSet: function (i, e) { return !!EN.el[e] && A.slotOpen(i) && W.ench[i] !== e && A.els().indexOf(e) < 0 && (test || (G.crys[e] || 0) >= 1); },
+      // 칸 i 에 속성 e 끼우기(바꾸기): 칸이 열림 + 다른 칸에 없음 + 지금과 다름 + 그 속성 결정 setCost(i)개(시험 = 공짜)
+      //   2026-11-07 형님: 1개 → 칸마다 config enchant.setCost(1번 5 · 2번 10 · 3번 20개)
+      setCost: function (i) { return (EN.setCost && EN.setCost[i]) || 1; },
+      canSet: function (i, e) { return !!EN.el[e] && A.slotOpen(i) && W.ench[i] !== e && A.els().indexOf(e) < 0 && (test || (G.crys[e] || 0) >= A.setCost(i)); },
       set: function (i, e) {
         if (!A.canSet(i, e)) return false;
-        if (!test) G.crys[e]--;
+        if (!test) G.crys[e] -= A.setCost(i);
         W.ench[i] = e; A.save();
         return true;
       },
@@ -194,6 +237,9 @@
   // ---------- 난이도 저장 (2026-11-06, config modes) ----------
   //   MS = 저장되는 것 { cur, cleared: { 난이도: [판 id] } }. 예전 깬 판 목록(아래 legacyCleared)은 처음 한 번 이지로 옮김
   var MO = CFG.modes || { order: ['easy'], easy: { name: '이지' } }, ORDER = MO.order;
+  // 고를 수 있는 난이도(2026-11-07 형님: 이지 숨김 = config hidden). 열림 순서 · 「앞 난이도」도 이 목록 기준(하드의 앞 = 노말)
+  var VIS = ORDER.filter(function (k) { return MO[k] && !MO[k].hidden; });
+  if (!VIS.length) VIS = ORDER.slice();
   function lastId() { return CFG.stages[CFG.stages.length - 1].id; }
   // 예전 저장(난이도 전): 깬 판 id 목록 'pixelBrawler.clearedIds' JSON, 더 예전 = 깬 판 「수」 N 'pixelBrawler.cleared'(그때 판 순서 1 2 3 4 6 의 앞 N개)
   function legacyCleared() {
@@ -209,16 +255,17 @@
     } catch (e) {}
     return out.sort(function (a, b) { return a - b; });
   }
-  var MSsaved = { cur: ORDER[0], cleared: {} }, cm = cur.modes;
+  var MSsaved = { cur: VIS[0], cleared: {} }, cm = cur.modes, modeMoved = false;
   ORDER.forEach(function (k) {
     var L = cm && cm.cleared && Array.isArray(cm.cleared[k]) ? cm.cleared[k] : (!cm && k === ORDER[0] ? legacyCleared() : []);
     MSsaved.cleared[k] = L.filter(function (id) { return typeof id === 'number'; });
   });
-  if (cm && ORDER.indexOf(cm.cur) >= 0) MSsaved.cur = cm.cur;
+  if (cm && VIS.indexOf(cm.cur) >= 0) MSsaved.cur = cm.cur;
+  else if (cm && cm.cur) modeMoved = true;   // 숨긴 난이도(이지)에 있던 저장 → 첫 난이도(노말)로, 아래에서 한 번 저장
   // ?diff=normal (시험): 이번 창에서만 그 난이도, 잠금 무시. 그동안 깬 판은 이번 창에서만 기억(저장된 목록은 그대로)
-  var urlDiff = !CFG.demo && ORDER.indexOf(params.get('diff')) >= 0 ? params.get('diff') : null;   // 친구 시험 모드(?demo=1) = 무시
+  var urlDiff = !CFG.demo && VIS.indexOf(params.get('diff')) >= 0 ? params.get('diff') : null;   // 친구 시험 모드(?demo=1) = 무시
   var MS = urlDiff ? JSON.parse(JSON.stringify(MSsaved)) : MSsaved;
-  if (!MO[MSsaved.cur] || (ORDER.indexOf(MSsaved.cur) > 0 && !CFG.stagesAllOpen && MSsaved.cleared[ORDER[ORDER.indexOf(MSsaved.cur) - 1]].indexOf(lastId()) < 0)) MSsaved.cur = ORDER[0];   // 잠긴 난이도에 있던 저장(시험 기간이 끝남) → 이지로
+  if (!MO[MSsaved.cur] || (VIS.indexOf(MSsaved.cur) > 0 && !CFG.stagesAllOpen && MSsaved.cleared[VIS[VIS.indexOf(MSsaved.cur) - 1]].indexOf(lastId()) < 0)) MSsaved.cur = VIS[0];   // 잠긴 난이도에 있던 저장(시험 기간이 끝남) → 첫 난이도로
   // 난이도만 저장: ?lv=N 시험 중(noSave)에도 깬 판은 예전처럼 저장(레벨·능력치는 저장된 그대로 둠). ?diff 시험 중이면 저장 안 함
   function saveModes() {
     if (MS !== MSsaved) return;
@@ -342,23 +389,24 @@
       G.xp += n;
       while (!G.isMax() && G.xp >= need(G.lv)) { G.xp -= need(G.lv); G.lv++; up++; }
       if (G.isMax()) G.xp = 0;
-      G.pts += ST.perLv * up;
-      if (up && G.cls) G.book(G.cls).fill();   // 새로 열린 기술 · 늘어난 칸(Lv13)에 저절로 끼움
+      G.pts += ptsFor(G.lv) - ptsFor(G.lv - up);   // 2026-11-07: Lv10 부터 레벨마다 1점
+      // 2026-11-07: 새로 열린 기술은 저절로 안 배우고 안 끼움(기술 창에 「배울 수 있음」) — 예전엔 여기서 fill()
       G.save();
       return up;
     },
     // 전직: 이 저장칸에 직업을 한 번만 정함(이미 있으면 안 바꿈 → false). 기술 책은 이 레벨부터(첫 기술 Lv1, 기술 점수는 다음 레벨부터)
     setClass: function (k) {
       if (G.cls || !CFG.classes[k] || k === 'novice') return false;
-      G.cls = k; G.sk = newSk(G.lv); realBook = null;
+      G.cls = k; G.sk = newSk(G.lv); realBook = null;   // 2026-11-07: 기술 점수 firstPts(1)점으로 첫 기술을 바로 배움(저절로 배우지는 않음)
+      basicOn(k, true);   // 견습 올려치기 → 직업 기본기(올려베기 · 땅 융기) 공짜 Lv1, 1번 칸
       G.wpn = newW(); G._realW = null; delete testW[k];   // 전직 = 그 직업 무기를 +0 으로 받음(2026-11-06 강화)
-      G.book(k).fill();
       G.save();
       return true;
     },
     // 기술 책(2026-11-06): 그 직업의 기술 열림·기술 Lv·기술 점수·기술 칸 (아래 makeBook). 기술이 없는 직업(견습)은 null
     //   저장된 직업 = 저장되는 책, 시험 버튼으로 입은 다른 직업 = 시험 책(이번 창에서만, config skills.test)
     book: function (cls) {
+      if (cls === 'novice') return SK.noviceSkill && SK.novice && SK.novice[SK.noviceSkill] ? (noviceBook || (noviceBook = makeNoviceBook())) : null;   // 견습 기본기(2026-11-07)
       cls = cls || G.cls;
       if (!cls || !treeOf(cls)) return null;
       if (cls === G.cls) return realBook || (realBook = makeBook(cls, G.sk, false));
@@ -369,14 +417,15 @@
     testSetup: function (cls, clsLv, plan) {
       if (!G.noSave || !treeOf(cls)) return null;
       G.cls = cls; G.sk = newSk(Math.min(G.lv, clsLv || SK.classLv)); realBook = null; G._realW = null;
-      var b = G.book(cls); b.fill();
+      var b = G.book(cls);
       var ids = plan || (SK.botPlan && SK.botPlan[cls]) || [], guard = 0;
       while (b.pts() > 0 && guard++ < 200) {
         var any = false;
         ids.forEach(function (id) { if (b.pts() > 0 && b.add(id)) any = true; });
         if (!any) break;
       }
-      var o = {}; treeOf(cls).forEach(function (e) { if (b.unlocked(e.id)) o[e.id] = b.lv(e.id); });
+      b.fill();   // 배운 쓰는 기술을 빈 칸에(시험 자동 조종)
+      var o = {}; treeOf(cls).forEach(function (e) { if (b.learned(e.id)) o[e.id] = b.lv(e.id); });
       return { lv: o, pts: b.pts(), bar: b.bar(true) };
     },
     save: function () {
@@ -390,11 +439,13 @@
     M: function () { return MO[G.mode()] || MO.easy; },
     // 열렸나: 첫 난이도는 늘, 나머지는 앞 난이도에서 마지막 판을 깸(시험 기간 stagesAllOpen 이면 다)
     modeOpen: function (k) {
-      var i = ORDER.indexOf(k);
-      if (i < 0) return false;
+      var i = VIS.indexOf(k);
+      if (i < 0) return false;   // 숨긴 난이도(이지) = 못 고름
       if (i === 0 || CFG.stagesAllOpen) return true;
-      return MS.cleared[ORDER[i - 1]].indexOf(lastId()) >= 0;
+      return MS.cleared[VIS[i - 1]].indexOf(lastId()) >= 0;
     },
+    // 고르는 탭에 나오는 난이도 목록(숨긴 것 빼고, 2026-11-07)
+    modeList: function () { return VIS.slice(); },
     setMode: function (k) {
       if (!G.modeOpen(k)) return false;
       if (urlDiff) { urlDiff = null; MS = MSsaved; }
@@ -404,9 +455,11 @@
     // 지금 난이도에서 깬 판 { id: true }
     cleared: function (k) { var o = {}; (MS.cleared[k || G.mode()] || []).forEach(function (id) { o[id] = true; }); return o; },
     isCleared: function (id) { return (MS.cleared[G.mode()] || []).indexOf(id) >= 0; },
+    // 어느 난이도에서든 깼나(전직 판 확인용, 2026-11-07: 이지에서 깬 예전 저장도 셈)
+    clearedAny: function (id) { return ORDER.some(function (k) { return (MS.cleared[k] || []).indexOf(id) >= 0; }); },
     // 판을 깸 → 지금 난이도 목록에 저장. 다음 난이도가 새로 열렸으면 그 난이도 key 를 돌려줌(결과 화면 알림)
     markCleared: function (id) {
-      var k = G.mode(), L = MS.cleared[k], i = ORDER.indexOf(k), nx = ORDER[i + 1], was = nx ? G.modeOpen(nx) : true;
+      var k = G.mode(), L = MS.cleared[k], i = VIS.indexOf(k), nx = i >= 0 ? VIS[i + 1] : null, was = nx ? G.modeOpen(nx) : true;
       if (L.indexOf(id) < 0) { L.push(id); L.sort(function (a, b) { return a - b; }); }
       saveModes();
       return nx && !was && G.modeOpen(nx) ? nx : null;
@@ -431,19 +484,50 @@
   if (dbgLv > 0) { G.lv = clampLv(dbgLv); G.xp = 0; G.stats = zero(); G.pts = ptsFor(G.lv); G.noSave = true; }
   // 기술 책(2026-11-06): 저장에 있으면 그대로(이상한 값은 버림). 직업은 있는데 기술 책이 없는 예전 저장 = 전직 Lv 를 classLv(7)로 보고
   //   (지금 Lv - 전직 Lv) 점을 안 쓴 채로 줌. 쓴 점수가 받은 점수보다 많으면(저장이 꼬임 · ?lv 로 낮춤) 초기화
+  // 직업 기본기(2026-11-07, config skills.basic): 기술 책에 Lv1 이상으로 + 칸에 없으면 끼움(first = 전직 순간 → 1번 칸, 아니면 1번 칸이 비었으면 거기, 아니면 빈 칸)
+  //   바꿨으면 true
+  function basicOn(cls, first) {
+    var id = LEARN && SK.basic ? SK.basic[cls] : null;
+    if (!id || !G.sk) return false;
+    var ch = false;
+    if (!(G.sk.lv[id] > 0)) { G.sk.lv[id] = 1; ch = true; }
+    if (G.sk.bar.indexOf(id) < 0) {
+      var n = SK.pcSlots || 10, i = first || !G.sk.bar[0] ? 0 : -1;
+      if (i < 0) for (var k = 0; k < n; k++) if (!G.sk.bar[k]) { i = k; break; }
+      if (i >= 0) { G.sk.bar[i] = id; ch = true; }
+    }
+    return ch;
+  }
   G.sk = newSk(G.lv);
+  var skConverted = false;
   if (G.cls) {
     var cs = cur.skills, L0 = treeOf(G.cls) || [];
     if (cs && typeof cs === 'object') {
       G.sk.clsLv = clampLv(cs.clsLv || 1);
       // 아직 안 열린 기술에 올려 둔 점수는 돌려받음(2026-11-06 열림 순서 바꿈: 예전 Lv9 저장의 올려베기·땅 융기는 이제 Lv10 에 열림)
-      if (cs.lv && typeof cs.lv === 'object') L0.forEach(function (e) { var n = cs.lv[e.id] | 0; if (n > 0 && G.lv >= (e.unlock || 0)) G.sk.lv[e.id] = Math.min((SK.maxLv || 5) - 1, n); });
-      // 칸(2026-11-07 10칸): 예전 저장(4칸) = 그대로 1~4번 칸, 늘어난 칸은 아래 fill 이 열린 기술로 채움
+      // 칸(2026-11-07 10칸): 예전 저장(4칸) = 그대로 1~4번 칸
       if (Array.isArray(cs.bar)) G.sk.bar = cs.bar.slice(0, SK.pcSlots || 10).map(function (id) { return typeof id === 'string' ? id : null; });
+      var newFmt = cs.v === 2 || !LEARN;
+      if (cs.lv && typeof cs.lv === 'object') L0.forEach(function (e) {
+        var n = cs.lv[e.id] | 0;
+        if (e.soon || G.lv < (e.unlock || 0)) return;
+        if (newFmt) { if (n > 0) G.sk.lv[e.id] = Math.min(LEARN ? (SK.maxLv || 5) : (SK.maxLv || 5) - 1, n); }
+        else G.sk.lv[e.id] = 1 + Math.max(0, Math.min((SK.maxLv || 5) - 1, n));   // 예전(저절로 배움) = 열린 기술은 Lv1 + 올린 수
+      });
+      else if (!newFmt) L0.forEach(function (e) { if (!e.soon && G.lv >= (e.unlock || 0)) G.sk.lv[e.id] = 1; });
     } else G.sk.clsLv = Math.min(G.lv, SK.classLv || 7);
     var bk = G.book(G.cls);
-    if (bk.used() > bk.total()) G.sk.lv = {};
-    bk.fill();
+    // 예전 저장 바꾸기(2026-11-07 배우기): 배운 Lv 합이 새 점수(전직 1 + 레벨마다 1)보다 많으면
+    //   → 칸에 끼워 둔 쓰는 기술만 Lv1 로 남기고(단축키가 그대로 됨) 나머지 점수는 돌려받음. 그것도 넘치면 전부 초기화(공짜)
+    if (bk.used() > bk.total()) {
+      var keep = {};
+      if (cs && cs.v !== 2 && LEARN) G.sk.bar.forEach(function (id) { if (id && G.sk.lv[id] && bk.isActive(id)) keep[id] = 1; });
+      G.sk.lv = Object.keys(keep).length <= bk.total() ? keep : {};
+    }
+    if (LEARN && cs && cs.v !== 2) skConverted = true;
+    if (basicOn(G.cls, false)) skConverted = true;   // 예전 저장: 기본기가 없으면 공짜 Lv1 + 빈 칸(있던 Lv 는 그대로)
   }
+  // 예전 저장을 바꿨으면(이지 → 노말 · 기술 배우기 방식) 한 번 저장(?lv 시험 중이면 저장 안 함)
+  if ((modeMoved || skConverted) && !G.noSave) G.save();
   window.Growth = G;
 })();

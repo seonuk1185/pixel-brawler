@@ -405,6 +405,9 @@
     pillar: ['불기둥', 'mage', 'active', 'fire'], brand: ['원소 낙인', 'mage', 'passive', 'arcane'],
     dodge: ['회피', 'all', 'active', 'ice'], atk: ['평타', 'all', 'active', 'steel'], jump: ['점프', 'all', 'active', 'earth']
   };
+  // 견습 기본기 올려치기(2026-11-07): 올려베기 그림을 흙색 액자로(새 그림 없음)
+  META.nupper = ['올려치기', 'novice', 'active', 'earth'];
+  if (ART.upper && !ART.nupper) ART.nupper = ART.upper;
   var meta = {}; Object.keys(META).forEach(function (k) { var m = META[k]; meta[k] = { name: m[0], cls: m[1], kind: m[2], theme: m[3] }; });
 
   // ---------- 한 장 만들기 ----------
