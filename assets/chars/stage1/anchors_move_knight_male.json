@@ -7,68 +7,74 @@
  "frames": {
   "run_01": {
    "hand": [
-    52,
-    85
+    53,
+    84
    ],
-   "angle": 155,
-   "layer": "back",
+   "angle": 139,
+   "layer": "front",
    "check": {
-    "manual": true
+    "manual": true,
+    "runFix": "fist centre measured 2026-11-07, layer front so the hilt shows at the fist, angle follows the arm"
    }
   },
   "run_02": {
    "hand": [
-    48,
-    88
+    49,
+    85
    ],
-   "angle": 155,
-   "layer": "back",
+   "angle": 163,
+   "layer": "front",
    "check": {
-    "manual": true
+    "manual": true,
+    "runFix": "fist centre measured 2026-11-07, layer front so the hilt shows at the fist, angle follows the arm"
    }
   },
   "run_03": {
    "hand": [
-    48,
+    49,
     80
    ],
-   "angle": 155,
-   "layer": "back",
+   "angle": 160,
+   "layer": "front",
    "check": {
-    "manual": true
+    "manual": true,
+    "runFix": "fist centre measured 2026-11-07, layer front so the hilt shows at the fist, angle follows the arm"
    }
   },
   "run_04": {
    "hand": [
-    52,
+    51,
     72
    ],
-   "angle": 155,
-   "layer": "back",
+   "angle": 154,
+   "layer": "front",
    "check": {
-    "manual": true
+    "manual": true,
+    "runFix": "fist centre measured 2026-11-07, layer front so the hilt shows at the fist, angle follows the arm"
    }
   },
   "run_05": {
    "hand": [
-    52,
+    53,
     82
    ],
-   "angle": 155,
-   "layer": "back",
+   "angle": 143,
+   "layer": "front",
    "check": {
-    "manual": true
+    "manual": true,
+    "runFix": "fist centre measured 2026-11-07, layer front so the hilt shows at the fist, angle follows the arm"
    }
   },
   "run_06": {
    "hand": [
     50,
-    88
+    83
    ],
-   "angle": 155,
-   "layer": "back",
+   "angle": 157,
+   "layer": "front",
    "check": {
-    "manual": true
+    "manual": true,
+    "runFix": "fist centre measured 2026-11-07, layer front so the hilt shows at the fist, angle follows the arm"
    }
   },
   "run_07": {
@@ -76,21 +82,23 @@
     50,
     78
    ],
-   "angle": 155,
-   "layer": "back",
+   "angle": 159,
+   "layer": "front",
    "check": {
-    "manual": true
+    "manual": true,
+    "runFix": "fist centre measured 2026-11-07, layer front so the hilt shows at the fist, angle follows the arm"
    }
   },
   "run_08": {
    "hand": [
-    53,
+    52,
     73
    ],
    "angle": 155,
-   "layer": "back",
+   "layer": "front",
    "check": {
-    "manual": true
+    "manual": true,
+    "runFix": "fist centre measured 2026-11-07, layer front so the hilt shows at the fist, angle follows the arm"
    }
   },
   "jump_01": {

@@ -196,6 +196,12 @@
     if (a.phase === 'push') return 1 + (Math.floor(a.pt / R.ms.pushLoop) % 2);
     return a.phase === 'finish' ? 3 : 4;
   };
+  // 보이는 그림(2026-11-07): 미끄러지는 동안(push) pushHold 장 하나로 고정(기사 = 1장, 무릎이 오르내리지 않게). 판정 · 시간은 위 runAttackFrame 그대로
+  Player.prototype.runAttackShowFrame = function () {
+    var a = this.ratk, R = this.mv().run_attack;
+    if (a.phase === 'push' && R.pushHold != null) return R.pushHold;
+    return this.runAttackFrame();
+  };
   // ---------- 회피 (2026-11-07, config move.dodge) ----------
   // 지금 회피로 빠질 수 있나: 쿨타임 끝 + 땅 위 + 서 있기·걷기·달리기, 또는 끝무렵(평타 첫 판정이 지나간 뒤 · 기술 이어 쓰기 구간 ·
   //   달리며 공격 회복 · 착지 웅크림). 움찔·넘어짐·쓰러짐·붙잡힘·공중·이미 회피 중이면 안 됨
@@ -434,7 +440,7 @@
     if (this.state === 'skill' && this.sk && window.Skills) return Skills.frame(this);   // 기술 그림(없으면 placeholder)
     if (this.state === 'dodge' && this.dg) return this.dodgeFrame();
     if (this.state === 'jump' && this.jp) return this.jumpFrame();
-    if (this.state === 'runatk' && this.ratk) return { anim: 'run_attack', idx: this.runAttackFrame() };
+    if (this.state === 'runatk' && this.ratk) return { anim: 'run_attack', idx: this.runAttackShowFrame() };
     if (this.state === 'run' && this.hasMove()) return { anim: 'run', idx: this.runFrame() };
     var a = this.state === 'walk' ? 'walk' : 'idle';
     var A = def.anims[a];

@@ -8,11 +8,11 @@
  "frames": {
   "run_01": {
    "hand": [
-    52,
-    85
+    54,
+    82
    ],
-   "angle": 155,
-   "layer": "back",
+   "angle": 139,
+   "layer": "front",
    "check": {
     "fromTier1": [
      52,
@@ -24,16 +24,17 @@
     ],
     "match": 0.93,
     "match0": 0.883,
-    "note": "auto shift hit the search limit (cape covers the hand area) -> 1st-tier hand kept"
+    "note": "auto shift hit the search limit (cape covers the hand area) -> 1st-tier hand kept",
+    "runFix": "fist centre measured 2026-11-07, layer front so the hilt shows at the fist, angle follows the arm"
    }
   },
   "run_02": {
    "hand": [
-    48,
-    88
+    50,
+    84
    ],
-   "angle": 155,
-   "layer": "back",
+   "angle": 163,
+   "layer": "front",
    "check": {
     "fromTier1": [
      48,
@@ -44,16 +45,17 @@
      0
     ],
     "match": 0.975,
-    "match0": 0.931
+    "match0": 0.931,
+    "runFix": "fist centre measured 2026-11-07, layer front so the hilt shows at the fist, angle follows the arm"
    }
   },
   "run_03": {
    "hand": [
-    48,
-    80
+    51,
+    79
    ],
-   "angle": 155,
-   "layer": "back",
+   "angle": 160,
+   "layer": "front",
    "check": {
     "fromTier1": [
      48,
@@ -65,16 +67,17 @@
     ],
     "match": 0.908,
     "match0": 0.822,
-    "note": "auto shift hit the search limit (cape covers the hand area) -> 1st-tier hand kept"
+    "note": "auto shift hit the search limit (cape covers the hand area) -> 1st-tier hand kept",
+    "runFix": "fist centre measured 2026-11-07, layer front so the hilt shows at the fist, angle follows the arm"
    }
   },
   "run_04": {
    "hand": [
     52,
-    72
+    71
    ],
-   "angle": 155,
-   "layer": "back",
+   "angle": 154,
+   "layer": "front",
    "check": {
     "fromTier1": [
      52,
@@ -86,16 +89,17 @@
     ],
     "match": 0.969,
     "match0": 0.909,
-    "note": "auto shift hit the search limit (cape covers the hand area) -> 1st-tier hand kept"
+    "note": "auto shift hit the search limit (cape covers the hand area) -> 1st-tier hand kept",
+    "runFix": "fist centre measured 2026-11-07, layer front so the hilt shows at the fist, angle follows the arm"
    }
   },
   "run_05": {
    "hand": [
-    52,
-    82
+    54,
+    80
    ],
-   "angle": 155,
-   "layer": "back",
+   "angle": 143,
+   "layer": "front",
    "check": {
     "fromTier1": [
      52,
@@ -107,16 +111,17 @@
     ],
     "match": 0.903,
     "match0": 0.858,
-    "note": "auto shift hit the search limit (cape covers the hand area) -> 1st-tier hand kept"
+    "note": "auto shift hit the search limit (cape covers the hand area) -> 1st-tier hand kept",
+    "runFix": "fist centre measured 2026-11-07, layer front so the hilt shows at the fist, angle follows the arm"
    }
   },
   "run_06": {
    "hand": [
-    50,
-    88
+    51,
+    82
    ],
-   "angle": 155,
-   "layer": "back",
+   "angle": 157,
+   "layer": "front",
    "check": {
     "fromTier1": [
      50,
@@ -127,16 +132,17 @@
      0
     ],
     "match": 0.922,
-    "match0": 0.907
+    "match0": 0.907,
+    "runFix": "fist centre measured 2026-11-07, layer front so the hilt shows at the fist, angle follows the arm"
    }
   },
   "run_07": {
    "hand": [
-    51,
-    73
+    52,
+    79
    ],
-   "angle": 155,
-   "layer": "back",
+   "angle": 159,
+   "layer": "front",
    "check": {
     "fromTier1": [
      50,
@@ -147,16 +153,17 @@
      -5
     ],
     "match": 0.943,
-    "match0": 0.878
+    "match0": 0.878,
+    "runFix": "fist centre measured 2026-11-07, layer front so the hilt shows at the fist, angle follows the arm"
    }
   },
   "run_08": {
    "hand": [
-    54,
-    67
+    53,
+    72
    ],
    "angle": 155,
-   "layer": "back",
+   "layer": "front",
    "check": {
     "fromTier1": [
      53,
@@ -167,7 +174,8 @@
      -6
     ],
     "match": 0.965,
-    "match0": 0.906
+    "match0": 0.906,
+    "runFix": "fist centre measured 2026-11-07, layer front so the hilt shows at the fist, angle follows the arm"
    }
   },
   "jump_01": {

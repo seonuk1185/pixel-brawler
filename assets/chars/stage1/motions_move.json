@@ -538,6 +538,8 @@
       4
      ]
     },
+    "pushHold": 1,
+    "pushHoldNote": "2026-11-07: while sliding/charging show only frame 1 (firm planted lean) instead of cycling 1-2 (knee pumping). Display only: reach/hitbox/timing still use the 1-2 loop.",
     "ms": {
      "entry": 70,
      "pushLoop": 90,
@@ -752,6 +754,8 @@
       4
      ]
     },
+    "pushHold": 1,
+    "pushHoldNote": "2026-11-07: while sliding/charging show only frame 1 (firm planted lean) instead of cycling 1-2 (knee pumping). Display only: reach/hitbox/timing still use the 1-2 loop.",
     "ms": {
      "entry": 70,
      "pushLoop": 90,
