@@ -1,0 +1,356 @@
+{
+ "note": "2nd-tier knight (paladin) male. Same format as anchors_motions_knight_male.json: hand = [x,y] in the 176x136 frame, angle deg (0 = right, + = clockwise), layer back. Values = 1st-tier anchors, hand nudged to the T2 gauntlet by local silhouette matching; check.manual = read by eye.",
+ "weapon": "sword",
+ "frameSize": [
+  176,
+  136
+ ],
+ "frames": {
+  "motion_dash_01": {
+   "hand": [
+    54,
+    78
+   ],
+   "angle": 160,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     54,
+     78
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.895,
+    "match0": 0.894
+   }
+  },
+  "motion_dash_02": {
+   "hand": [
+    83,
+    82
+   ],
+   "angle": 165,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     83,
+     82
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.902,
+    "match0": 0.83,
+    "note": "auto shift hit the search limit (cape covers the hand area) -> 1st-tier hand kept"
+   }
+  },
+  "motion_dash_03": {
+   "hand": [
+    81,
+    82
+   ],
+   "angle": 165,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     81,
+     82
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.922,
+    "match0": 0.819,
+    "note": "auto shift hit the search limit (cape covers the hand area) -> 1st-tier hand kept"
+   }
+  },
+  "motion_dash_04": {
+   "hand": [
+    144,
+    65
+   ],
+   "angle": 0,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     144,
+     66
+    ],
+    "shift": [
+     0,
+     -1
+    ],
+    "match": 0.962,
+    "match0": 0.95
+   }
+  },
+  "motion_dash_05": {
+   "hand": [
+    76,
+    66
+   ],
+   "angle": 175,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     77,
+     67
+    ],
+    "shift": [
+     -1,
+     -1
+    ],
+    "match": 0.949,
+    "match0": 0.939
+   }
+  },
+  "motion_dash_06": {
+   "hand": [
+    104,
+    75
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     103,
+     73
+    ],
+    "shift": [
+     1,
+     2
+    ],
+    "match": 0.92,
+    "match0": 0.842
+   }
+  },
+  "motion_spin_01": {
+   "hand": [
+    41,
+    73
+   ],
+   "angle": 175,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     41,
+     73
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.764,
+    "match0": 0.683,
+    "note": "auto shift hit the search limit (cape covers the hand area) -> 1st-tier hand kept"
+   }
+  },
+  "motion_spin_02": {
+   "hand": [
+    115,
+    58
+   ],
+   "angle": 0,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     115,
+     58
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.959,
+    "match0": 0.95
+   }
+  },
+  "motion_spin_03": {
+   "hand": [
+    113,
+    57
+   ],
+   "angle": 15,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     111,
+     58
+    ],
+    "shift": [
+     2,
+     -1
+    ],
+    "match": 0.971,
+    "match0": 0.936
+   }
+  },
+  "motion_spin_04": {
+   "hand": [
+    29,
+    57
+   ],
+   "angle": 180,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     30,
+     58
+    ],
+    "shift": [
+     -1,
+     -1
+    ],
+    "match": 0.973,
+    "match0": 0.938
+   }
+  },
+  "motion_spin_05": {
+   "hand": [
+    108,
+    55
+   ],
+   "angle": 0,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     107,
+     56
+    ],
+    "shift": [
+     1,
+     -1
+    ],
+    "match": 0.968,
+    "match0": 0.918
+   }
+  },
+  "motion_spin_06": {
+   "hand": [
+    125,
+    73
+   ],
+   "angle": 5,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     125,
+     74
+    ],
+    "shift": [
+     0,
+     -1
+    ],
+    "match": 0.977,
+    "match0": 0.939
+   }
+  },
+  "motion_spin_07": {
+   "hand": [
+    99,
+    74
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     97,
+     61
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.799,
+    "match0": 0.722,
+    "note": "auto shift hit the search limit (cape covers the hand area) -> 1st-tier hand kept",
+    "manual": true
+   }
+  },
+  "motion_upper_01": {
+   "hand": [
+    64,
+    104
+   ],
+   "angle": 160,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     64,
+     104
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.877,
+    "match0": 0.843,
+    "note": "auto shift hit the search limit (cape covers the hand area) -> 1st-tier hand kept"
+   }
+  },
+  "motion_upper_02": {
+   "hand": [
+    114,
+    96
+   ],
+   "angle": 15,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     114,
+     96
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.986,
+    "match0": 0.986
+   }
+  },
+  "motion_upper_03": {
+   "hand": [
+    113,
+    35
+   ],
+   "angle": -55,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     113,
+     35
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.973,
+    "match0": 0.973
+   }
+  },
+  "motion_upper_04": {
+   "hand": [
+    112,
+    72
+   ],
+   "angle": -27,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     112,
+     72
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.932,
+    "match0": 0.93
+   }
+  }
+ }
+}

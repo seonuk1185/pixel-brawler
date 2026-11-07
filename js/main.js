@@ -2402,6 +2402,7 @@
     if (LU.flash) Skills.flash(LU.flash);
     FX.impact(p.x, p.y - (p.z || 0) - 60 * AS, p.dir, LU.sparkCol || '#ffe066', Math.round(J.sparkCount * 1.4), true, G.assets.fx && G.assets.fx.impact, 1);
 
+    wearOutfit();      // 2차 옷 레벨(기사 Lv30 = 성기사)이 되면 옷 그림이 바뀜(아니면 그대로)
     checkUnlock(up);   // 기술 칸이 늘었으면(Lv10 · Lv13 · Lv15, PC 는 Lv15 에 10칸) 「축하합니다!」 알림(아래 openUnlock)
   }
 
@@ -3351,9 +3352,12 @@
     });
   }
   // 지금 성별 + 직업 옷에 맞는 그림 묶음 이름 (기사 = knight_male / knight_female, 없으면 견습 옷)
+  //   2차 옷(2026-11-07, config classes.<직업>.tier2): 레벨이 tier2.lv 이상이고 그 성별 그림이 있으면 그 옷(기사 Lv30 = 성기사 knight_t2_male)
   function outfitKey() {
     var c = CFG.classes && CFG.classes[G.classKey], A = CFG.art.characters;
     var k = c && c.outfit ? c.outfit + '_' + G.charKey : G.charKey;
+    var t2 = c && c.tier2, k2 = t2 ? t2.outfit + '_' + G.charKey : null;
+    if (k2 && A[k2] && window.Growth && Growth.lv >= t2.lv) return k2;
     return A[k] ? k : G.charKey;
   }
   // 그 그림 묶음 (아직 안 불러왔으면 지금 플레이어 그림 그대로)

@@ -790,6 +790,9 @@
     return def;
   }
 
+  // 성기사(남) 그림이 있는 묶음 = 기사 남과 같은 16개 전부(art\knight-t2\male, 82장). 여기 없는 묶음은 기사(1차) 그림을 씀
+  var KNIGHT_T2_MALE_ANIMS = ['idle', 'walk', 'attack1', 'attack2', 'attack3', 'hurt', 'hurt2', 'knockdown', 'getup',
+                              'run', 'jump', 'run_attack', 'jump_attack', 'motion_dash', 'motion_spin', 'motion_upper'];
   // 어떤 그림 묶음을 쓸지: 기본 stage1, 주소 뒤에 ?art=novice 를 붙이면 예전 견습(칼 박힌 그림)
   var artSet = /[?&]art=novice/.test(location.search) ? 'novice' : 'stage1';
   var male, female, knightMale = null, knightFemale = null;
@@ -807,8 +810,23 @@
     var mageMale = stage1('male', 'assets/chars/stage1/anchors_mage_male.json', 'mage');
     var mageFemale = stage1('female', 'assets/chars/stage1/anchors_mage_female.json', 'mage');
   }
+  // 성기사 옷 (2026-11-07, 기사 2차 · classes.knight.tier2): 남자만. 그림 = assets/chars/stage1/knight_t2_male (art\knight-t2\male 에서 복사).
+  //   파일 이름·장 수·발 위치가 기사(1차) 그림과 똑같아서 기사 남 묶음을 그대로 쓰고 그림 폴더·손 위치 json 만 바꾼다
+  //   (콤보·보폭·달리기 수치 moveWho · 기술 동작 시간 = 기사 남 그대로. 그림이 없는 묶음이 생기면 그 묶음만 기사 그림을 씀)
+  var knightT2Male = null;
+  if (knightMale) {
+    knightT2Male = stage1('male', 'assets/chars/stage1/anchors_knight_t2_male.json', 'knight');
+    var T2DIR = 'assets/chars/stage1/knight_t2_male/', T2HAS = KNIGHT_T2_MALE_ANIMS;
+    Object.keys(knightT2Male.anims).forEach(function (n) {
+      var A = knightT2Male.anims[n];
+      if (T2HAS.indexOf(n) >= 0) A.frames = A.frames.map(function (f) { return f.replace('assets/chars/stage1/knight_male/', T2DIR); });
+    });
+    knightT2Male.moveAnchors = 'assets/chars/stage1/anchors_move_knight_t2_male.json';
+    knightT2Male.t2Dir = T2DIR;
+  }
   var characters = { male: male, female: female };
   if (knightMale) { characters.knight_male = knightMale; characters.knight_female = knightFemale; }
+  if (knightT2Male) characters.knight_t2_male = knightT2Male;
   if (mageMale) { characters.mage_male = mageMale; characters.mage_female = mageFemale; }
 
   // ---------- 적 그림 (art\stage1-enemies 에서 복사, 그림은 전부 「왼쪽을 봄」) ----------
@@ -1151,7 +1169,8 @@
     // 도끼를 다시 켜려면: 아래 axe 줄의 주석(//)을 풀고, index.html 의 도끼 버튼 주석(<!-- -->)도 푼다.
     classes: {
       novice: { label: '견습(맨손)', weapon: 'fist',  moves: 'fist' },
-      knight: { label: '기사(검)',   weapon: 'sword', moves: 'sword', outfit: 'knight' },
+      // tier2 = 2차 옷(2026-11-07): 레벨이 lv 이상이면 outfit 대신 이 옷(characters 의 「옷_성별」, 그 성별 그림이 없으면 1차 옷 그대로). 그림만 바뀜
+      knight: { label: '기사(검)',   weapon: 'sword', moves: 'sword', outfit: 'knight', tier2: { lv: 30, outfit: 'knight_t2', name: '성기사' } },
       // 법사: 무기가 성별마다 다름(남 지팡이 staff / 여 짧은 지팡이 wand)
       mage:   { label: '법사(지팡이)', weapon: { male: 'staff', female: 'wand' }, moves: 'magic', outfit: 'mage' }
       // , axe: { label: '도끼', weapon: 'axe', moves: 'sword' }
@@ -3766,6 +3785,16 @@
       });
       def.motionAnchors = 'assets/chars/stage1/anchors_motions_' + ch + '.json';
     });
+    // 성기사(남, 2026-11-07): 기술 동작 = 기사 남과 같은 동작 · 시간, 그림만 성기사 폴더(없는 동작은 기사 그림), 손 위치 = anchors_motions_knight_t2_male.json
+    var T2 = C.art.characters.knight_t2_male, K1 = C.motions.knight_male;
+    if (T2 && K1) {
+      Object.keys(K1).forEach(function (m) {
+        if (!(K1[m].count > 0)) return;
+        var dir = KNIGHT_T2_MALE_ANIMS.indexOf(m) >= 0 ? T2.t2Dir : 'assets/chars/stage1/knight_male/';
+        T2.anims[m] = { frames: seq(dir + m + '_', K1[m].count), fps: 14, loop: false };
+      });
+      T2.motionAnchors = 'assets/chars/stage1/anchors_motions_knight_t2_male.json';
+    }
   })(window.CFG);
 
   // ---------- 속성 시련 웨이브 펼치기(2026-11-07): trial 던전 = elMobs.dungeons[속성] 의 mobs · mids 를 wavePlan 웨이브로 ----------
