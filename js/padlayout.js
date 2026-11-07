@@ -8,12 +8,16 @@
 //  - 자리 = 가까운 옆(왼/오른쪽) · 위아래 끝에서 버튼 가운데까지 거리 ÷ 화면 폭·높이(%) → 화면 크기가 조금 바뀌어도 같은 느낌
 //    크기 = 그 화면의 원래 버튼 크기 x 버튼 크기 x 전체 크기
 //  - 폰 화면(body.touchui) 가로일 때만. 세로(가로로 돌려 주세요) · PC 화면은 원래대로
+//  - 기술 1~5 칸(2026-11-07 폴드 펼침 고침): 화면 % 가 아니라 「공격 버튼 가운데에서 얼마나」(공격 원래 폭 x 전체 크기 단위)로 저장
+//    → 넓은 화면 · 네모난 화면 · 주소창 있고 없고 어디서나 반달이 공격 버튼에 똑같이 붙음. 예전(화면 %) 저장의 기술 칸 자리는 원래 반달로(크기 고른 건 그대로)
 //  - 조이스틱: 버튼이 조이스틱 칸보다 위(누름 먼저) + 버튼 둘레 JOYGAP 안에서 누르면 조이스틱이 안 생김(Input.setJoyBlock)
 // =====================================================================
 (function () {
   var CFG = window.CFG;
   var SAVE = CFG.demo ? 'pixelBrawler.demo.pad' : 'pixelBrawler.pad';
   var IDS = ['btnAtk', 'btnJump', 'btnDodge', 'btnAwk', 'btnSkA', 'btnSkB', 'btnSkC', 'btnSkD', 'btnSkE'];
+  var SKS = ['btnSkA', 'btnSkB', 'btnSkC', 'btnSkD', 'btnSkE'];
+  function isSk(id) { return SKS.indexOf(id) >= 0; }
   var SIZES = [0.8, 1, 1.25], GS = [0.8, 0.9, 1, 1.1, 1.2, 1.3];
   var GRID = 8, GAP = 2, TOP = 48, JOYGAP = 8;
   var SHAPE = { wide: '넓은 화면', normal: '보통 화면', square: '네모난 화면' };
@@ -54,21 +58,32 @@
   // 원래 배치 → 저장 모양(전체 크기 100%, 버튼 크기 보통)
   function fromDefaults(D) {
     var rec = { g: 1, b: {} };
-    IDS.forEach(function (id) { rec.b[id] = toRel(D[id].cx, D[id].cy, 1, 1); });
+    IDS.forEach(function (id) { rec.b[id] = isSk(id) ? skDef(id, D, 1) : toRel(D[id].cx, D[id].cy, 1, 1); });
     return rec;
   }
+  // 기술 칸 = 공격 가운데에서 떨어진 거리 ÷ (공격 원래 폭 x 전체 크기). 원래 반달(CSS)은 화면 모양과 상관없이 같은 값
+  function skDef(id, D, s) { var A = D.btnAtk, u = A.w || 1; return { a: 1, rx: (D[id].cx - A.cx) / u, ry: (D[id].cy - A.cy) / u, s: s || 1 }; }
+  function skRel(id, b, atk, D, g, s) { var u = (D.btnAtk.w || 1) * g; return { a: 1, rx: (b.cx - atk.cx) / u, ry: (b.cy - atk.cy) / u, s: s || 1 }; }
   function toRel(cx, cy, g, s) {
     var ax = cx > W() / 2 ? 'r' : 'l', ay = cy > H() / 2 ? 'b' : 't';
     return { ax: ax, ay: ay, x: (ax === 'r' ? W() - cx : cx) / W() / g, y: (ay === 'b' ? H() - cy : cy) / H() / g, s: s };
   }
   // 저장 모양 → 화면 자리(px): { id: { cx, cy, w, h } } (화면 안으로 맞춤)
   function layout(rec, D) {
-    var out = {}, S = safe(), g = rec.g || 1;
+    var out = {}, S = safe(), g = rec.g || 1, u = (D.btnAtk.w || 1) * g;
     IDS.forEach(function (id) {
+      if (isSk(id)) return;
       var q = rec.b[id] || toRel(D[id].cx, D[id].cy, g, 1), k = (q.s || 1) * g;
       var w = D[id].w * k, h = D[id].h * k;
       var cx = q.ax === 'r' ? W() - q.x * W() * g : q.x * W() * g, cy = q.ay === 'b' ? H() - q.y * H() * g : q.y * H() * g;
       out[id] = clampBox({ cx: cx, cy: cy, w: w, h: h }, S);
+    });
+    // 기술 칸: 그려진 공격 버튼 가운데 기준(예전 화면 % 저장이면 원래 반달 자리, 크기는 그대로)
+    var A = out.btnAtk;
+    SKS.forEach(function (id) {
+      var q = rec.b[id]; if (!q || !q.a) q = skDef(id, D, q && q.s);
+      var k = (q.s || 1) * g;
+      out[id] = clampBox({ cx: A.cx + q.rx * u, cy: A.cy + q.ry * u, w: D[id].w * k, h: D[id].h * k }, S);
     });
     return out;
   }
@@ -129,7 +144,11 @@
     DEF = defaults();
     var rec = data[bucket()];
     work = rec ? JSON.parse(JSON.stringify(rec)) : fromDefaults(DEF);
-    IDS.forEach(function (id) { if (!work.b[id]) work.b[id] = toRel(DEF[id].cx, DEF[id].cy, work.g || 1, 1); });
+    IDS.forEach(function (id) {
+      var q = work.b[id];
+      if (isSk(id)) { if (!q || !q.a) work.b[id] = skDef(id, DEF, q && q.s); }
+      else if (!q) work.b[id] = toRel(DEF[id].cx, DEF[id].cy, work.g || 1, 1);
+    });
     workDef = !rec; sel = 'btnAtk';
     document.body.classList.add('layedit');
     ed.hidden = false;
@@ -152,7 +171,16 @@
     window.dispatchEvent(new Event('resize'));   // main.js 가 버튼 자리(오른쪽 비우는 폭) 다시 잼
     var f = done; done = null; if (f) f(!!saveIt);
   }
-  function setRel(id, b) { var s = (work.b[id] && work.b[id].s) || 1; work.b[id] = toRel(b.cx, b.cy, work.g || 1, s); workDef = false; }
+  function setRel(id, b) {
+    var s = (work.b[id] && work.b[id].s) || 1, g = work.g || 1;
+    if (isSk(id)) work.b[id] = skRel(id, b, CUR.btnAtk, DEF, g, s);
+    else {
+      work.b[id] = toRel(b.cx, b.cy, g, s);
+      // 공격을 옮기면 기술 칸은 지금 자리 그대로(끈 버튼만 움직임) → 새 공격 자리 기준으로 다시 잼
+      if (id === 'btnAtk') SKS.forEach(function (k) { work.b[k] = skRel(k, CUR[k], b, DEF, g, (work.b[k] && work.b[k].s) || 1); });
+    }
+    workDef = false;
+  }
 
   // 끌기: 바꾸기 화면에서만. 버튼 쪽 누름(input.js)은 잡는 단계에서 막음
   function onDown(e) {
