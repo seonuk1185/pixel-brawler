@@ -344,11 +344,15 @@
       // 무거운 타(타 knock × 무기 knockMul 이 크면) = 잡몹 넘어짐 (config ai.react.heavyKnock)
       //   noKnockdown = 세게 밀어도 안 넘어짐(달리며 공격 어깨 돌진 마무리 = 멀리 날려 보내기), noJuggle = 연속 맞음으로 안 넘어짐(밀고 가는 작은 타)
       var heavy = airHit || (!st.noKnockdown && (!!st.knockdown || st.knock * W.knockMul >= CFG.ai.react.heavyKnock));
+      // 평타 콤보 마지막 타(2026-11-07 형님): 잡몹을 넘어뜨리지 않고 크게 휘청(config ai.react.finisherStagger) → 바로 올려베기 등 띄우기로 이어 가게.
+      //   기술(damageStyle) · knockdown 붙은 타(각성 끝 등) · 공중 타는 그대로. 보스는 원래 규칙(넘어짐 없음)
+      var FS = CFG.ai.react.finisherStagger, comboFin = FS && st.finisher && !st.damageStyle && !st.knockdown && !airHit;
+      if (comboFin) { heavy = false; knock *= FS.knockMul; }
       // 누운 적 때리기(OTG, config ai.otg): 땅까지 닿는 공격(hitsDown)만 여기까지 옴 → 데미지 배율, 다시 날아가지 않음
       var otg = target.state === 'down' && !!st.hitsDown;
       var wasAir = target.state === 'air';   // 띄워진 잡몹을 침(콤보 글자 「AIR」)
       if (otg) dmg = Math.max(1, Math.round(dmg * (CFG.ai.otg.dmgMul != null ? CFG.ai.otg.dmgMul : 1)));
-      var res = target.takeHit(dmg, dir, knock, !!st.finisher && !st.noKnockdown, { heavy: heavy, stunMs: st.stunMs, noJuggle: !!st.noJuggle, flashK: st.flashK != null ? st.flashK : (heavyHit ? IM.flashHeavy || 1 : 1), otg: otg, launch: st.launch || 0, part: rpt && rpt.part });   // part = 레이드 보스 맞은 부위,  stunMs = 번개 기술, launch = 띄우기(ai.air)
+      var res = target.takeHit(dmg, dir, knock, !!st.finisher && !st.noKnockdown && !comboFin, { heavy: heavy, stunMs: comboFin ? Math.max(st.stunMs || 0, FS.stunMs) : st.stunMs, noJuggle: !!st.noJuggle || comboFin, flashK: st.flashK != null ? st.flashK : (heavyHit ? IM.flashHeavy || 1 : 1), otg: otg, launch: st.launch || 0, part: rpt && rpt.part });   // part = 레이드 보스 맞은 부위,  stunMs = 번개 기술, launch = 띄우기(ai.air)
       // 콤보 기록·글자(2026-11-06 밤): 띄움 / 공중 타 / 누운 적 타
       var CS = G.cstats;
       if (res === 'launch') { CS.launch++; comboTag('LAUNCH'); }

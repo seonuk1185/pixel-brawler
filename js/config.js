@@ -1535,11 +1535,14 @@
       deathHoldMs: 700,     // 쓰러진 뒤 누워 있는 시간
       deathFadeMs: 600,     // 그다음 깜빡이며 사라지는 시간
       // 잡몹 맞음 반응: 보통 맞으면 hit/hit2 번갈아. 아래 중 하나면 넘어짐(knockdown):
-      //   콤보 마지막 타(finisher) / 무거운 타(그 타 knock × 무기 knockMul ≥ heavyKnock) / juggleWindowMs 안에 juggleHits 번째 맞음
+      //   (콤보 마지막 타는 2026-11-07부터 넘어뜨리지 않고 finisherStagger) / 무거운 타(그 타 knock × 무기 knockMul ≥ heavyKnock) / juggleWindowMs 안에 juggleHits 번째 맞음
       //   넘어지면 down.slide 만큼 밀려나며 날아감 → lyingMs 더 누워 있음 → 일어남. 넘어짐~일어남 동안 무적(누운 적 때리기 없음)
       react: {
         heavyKnock: 2.0,
         juggleHits: 4, juggleWindowMs: 1500,
+        // 평타 콤보 마지막 타(2026-11-07 형님): 넘어뜨리지 않고 크게 휘청 → 올려베기 · 올려치기 · 땅 융기로 바로 띄우기.
+        //   stunMs = 맞은 자세로 멈춰 있는 시간, knockMul = 밀려나는 거리 배율(조금만). 불똥 · 흔들림 · 멈칫은 그대로
+        finisherStagger: { stunMs: 520, knockMul: 0.35 },
         lyingMs: 500,         // 넘어짐 그림이 끝난 뒤 더 누워 있는 시간
         getupCoolMs: 600      // 일어난 뒤 바로 공격하지 않는 시간
       },
