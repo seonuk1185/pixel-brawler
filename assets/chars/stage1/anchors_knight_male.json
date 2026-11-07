@@ -250,7 +250,7 @@
     97,
     60
    ],
-   "angle": -27,
+   "angle": -32,
    "layer": "back",
    "check": {
     "walk3": "2026-11-03 legs redrawn (v3): hand = front gauntlet centre"
@@ -261,7 +261,7 @@
     95,
     64
    ],
-   "angle": -27,
+   "angle": -35,
    "layer": "back",
    "check": {
     "walk3": "2026-11-03 legs redrawn (v3): hand = front gauntlet centre"
@@ -272,7 +272,7 @@
     95,
     62
    ],
-   "angle": -27,
+   "angle": -34,
    "layer": "back",
    "check": {
     "walk3": "2026-11-03 legs redrawn (v3): hand = front gauntlet centre"
@@ -283,7 +283,7 @@
     100,
     60
    ],
-   "angle": -27,
+   "angle": -32,
    "layer": "back",
    "check": {
     "walk3": "2026-11-03 legs redrawn (v3): hand = front gauntlet centre"
@@ -294,7 +294,7 @@
     97,
     62
    ],
-   "angle": -27,
+   "angle": -34,
    "layer": "back",
    "check": {
     "walk3": "2026-11-03 legs redrawn (v3): hand = front gauntlet centre"
@@ -305,7 +305,7 @@
     96,
     62
    ],
-   "angle": -27,
+   "angle": -34,
    "layer": "back",
    "check": {
     "walk3": "2026-11-03 legs redrawn (v3): hand = front gauntlet centre"
@@ -316,7 +316,7 @@
     94,
     60
    ],
-   "angle": -27,
+   "angle": -32,
    "layer": "back",
    "check": {
     "walk3": "2026-11-03 legs redrawn (v3): hand = front gauntlet centre"
@@ -327,7 +327,7 @@
     100,
     62
    ],
-   "angle": -27,
+   "angle": -34,
    "layer": "back",
    "check": {
     "walk3": "2026-11-03 legs redrawn (v3): hand = front gauntlet centre"

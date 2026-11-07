@@ -255,7 +255,7 @@
     96,
     71
    ],
-   "angle": -27,
+   "angle": -40,
    "layer": "back",
    "check": {
     "fromTier1": [
@@ -276,7 +276,7 @@
     96,
     64
    ],
-   "angle": -27,
+   "angle": -36,
    "layer": "back",
    "check": {
     "fromTier1": [
@@ -296,7 +296,7 @@
     96,
     61
    ],
-   "angle": -27,
+   "angle": -34,
    "layer": "back",
    "check": {
     "fromTier1": [
@@ -316,7 +316,7 @@
     100,
     59
    ],
-   "angle": -27,
+   "angle": -32,
    "layer": "back",
    "check": {
     "fromTier1": [
@@ -336,7 +336,7 @@
     98,
     61
    ],
-   "angle": -27,
+   "angle": -34,
    "layer": "back",
    "check": {
     "fromTier1": [
@@ -356,7 +356,7 @@
     97,
     62
    ],
-   "angle": -27,
+   "angle": -34,
    "layer": "back",
    "check": {
     "fromTier1": [
@@ -376,7 +376,7 @@
     95,
     60
    ],
-   "angle": -27,
+   "angle": -33,
    "layer": "back",
    "check": {
     "fromTier1": [
@@ -396,7 +396,7 @@
     101,
     59
    ],
-   "angle": -27,
+   "angle": -32,
    "layer": "back",
    "check": {
     "fromTier1": [
