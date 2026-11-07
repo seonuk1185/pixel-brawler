@@ -385,7 +385,10 @@
       }
       if (res && res !== 'dead') Skills.brandMark(p, target, st);   // 원소 낙인(2차): 기술 마법에 맞은 적에게 낙인
       if (res === 'dead' && target.T.boss) onBossDown(target);
-      else if (res === 'dead') { G.hitstop = Math.max(G.hitstop, J.hitstopMs * 1.6); onKill(target); }
+      else if (res === 'dead') {
+        G.hitstop = Math.max(G.hitstop, J.hitstopMs * 1.6); onKill(target);
+        if (Skills.shardKill) Skills.shardKill(p, target, st.shardDepth || 0);   // 칼날 파편(기사 늘 켜진 기술, 2026-11-08): 쓰러진 자리에서 파편이 튐(st.shardDepth = 파편으로 이어진 횟수)
+      }
     }
     // hitY = 주먹·발이 닿는 높이(맨손 콤보), spark = 불똥 그림 크기(맨손은 작게)
     var hy = p.y - (p.z || 0) + (st.hitY != null ? st.hitY : -52 * AS), sc = st.spark || 1;   // 공중이면 그만큼 위
@@ -2401,6 +2404,12 @@
   function mpStep(dt) {
     var p = G.player;
     if (p.state !== 'dead' && p.mp < p.maxMp) p.mp = Math.min(p.maxMp, p.mp + Growth.mpRegen(G.classKey) * (1 + wb('mpRegen')) * dt / 1000);   // 법사 강화 +3 = 마나 회복 +   // 마나 순환(늘 켜진 기술)도
+    // 신성 가호(성기사 늘 켜진 기술, 2026-11-08): 1초마다 최대 체력 x regen 만큼 체력이 참(쓰러지면 안 참). 소수점은 모아 두었다가 1 이 되면 더함
+    var bk = Growth.book(G.classKey), rg = bk && !bk.novice ? bk.bonus('regen') : 0;
+    if (rg > 0 && p.state !== 'dead' && p.hp > 0 && p.hp < p.maxHp) {
+      p.regenAcc = (p.regenAcc || 0) + p.maxHp * rg * dt / 1000;
+      if (p.regenAcc >= 1) { var n = Math.floor(p.regenAcc); p.regenAcc -= n; p.hp = Math.min(p.maxHp, p.hp + n); }
+    } else p.regenAcc = 0;
   }
   // 쓰러진 적(어떻게 쓰러졌든: 플레이어 타·기술·보스와 같이 쓰러짐)마다 한 번 경험치. 적 머리 위에 「+13 XP」
   function xpStep() {
@@ -2442,7 +2451,7 @@
     if (LU.flash) Skills.flash(LU.flash);
     FX.impact(p.x, p.y - (p.z || 0) - 60 * AS, p.dir, LU.sparkCol || '#ffe066', Math.round(J.sparkCount * 1.4), true, G.assets.fx && G.assets.fx.impact, 1);
 
-    wearOutfit();      // 2차 옷 레벨(기사 Lv30 = 성기사)이 되면 옷 그림이 바뀜(아니면 그대로)
+    wearOutfit();      // 2차 옷 레벨(기사 Lv25 = 성기사, 2026-11-08 30 → 25)이 되면 옷 그림이 바뀜(아니면 그대로)
     checkUnlock(up);   // 기술 칸이 늘었으면(Lv10 · Lv13 · Lv15, PC 는 Lv15 에 10칸) 「축하합니다!」 알림(아래 openUnlock)
   }
 
@@ -2806,6 +2815,12 @@
     awkStep(dt, realMs);   // 각성 시간·불꽃·잔상·끝 폭발
     var pst0 = p.state;
     var ev = p.update(dt, world);
+    // 끌어당기는 검압(기사 늘 켜진 기술, 2026-11-08): 평타 콤보 마무리 타(finisher)를 시작하면 한 번 → 맞기 전에 둘레 잡몹이 앞으로 끌려옴
+    if (p.state === 'attack' && p.atk && !p.atk.pulled && Skills.comboPull) {
+      p.atk.pulled = true;
+      var cs = p.comboSteps && p.comboSteps()[p.atk.step];
+      if (cs && !cs.cast && (cs.finisher || (cs.hits && cs.hits.some(function (h) { return h.finisher; })))) Skills.comboPull(p);
+    }
     if (p.state === 'jump' && pst0 !== 'jump') snd('jump');
     if (ev.slash) {
       // fx 는 하나 또는 여러 개(법사 2타 = 바람 + 지팡이 끝 반짝임)
@@ -3394,7 +3409,7 @@
     });
   }
   // 지금 성별 + 직업 옷에 맞는 그림 묶음 이름 (기사 = knight_male / knight_female, 없으면 견습 옷)
-  //   2차 옷(2026-11-07, config classes.<직업>.tier2): 레벨이 tier2.lv 이상이고 그 성별 그림이 있으면 그 옷(기사 Lv30 = 성기사 knight_t2_male)
+  //   2차 옷(2026-11-07, config classes.<직업>.tier2): 레벨이 tier2.lv 이상이고 그 성별 그림이 있으면 그 옷(기사 Lv25 = 성기사 knight_t2_male, 2026-11-08 30 → 25)
   function outfitKey() {
     var c = CFG.classes && CFG.classes[G.classKey], A = CFG.art.characters;
     var k = c && c.outfit ? c.outfit + '_' + G.charKey : G.charKey;
@@ -3557,6 +3572,9 @@
   function passiveNow(e, lv) {
     var P = e.passive, v = pctTxt(P.val[Math.max(1, lv) - 1]);
     if (P.stat === 'shield') return '피해의 ' + v + ' 마나로';
+    if (P.stat === 'shards') return '파편 피해 ' + v + ' · 반경 ' + (P.r ? P.r[Math.max(1, lv) - 1] : 0);   // 칼날 파편(2026-11-08)
+    if (P.stat === 'pull') return '3타 검압 반경 ' + P.val[Math.max(1, lv) - 1];                               // 끌어당기는 검압(2026-11-08)
+    if (P.stat === 'regen') return '초당 체력 +' + (Math.round(P.val[Math.max(1, lv) - 1] * 1000) / 10) + '%';   // 신성 가호(2026-11-08): 최대 체력의 0.4~0.8%
     var k = { phys: '물리 공격 +', magic: '마법 공격 +', guard: '받는 피해 -', mpRegen: '마나 회복 +',
               grit: '체력 적으면 공격 최대 +', counter: '반격 확률 ', brand: '낙인 찍힌 적 피해 +' }[P.stat] || '';
     return k + v;
@@ -3590,15 +3608,19 @@
       c.className = 'cell' + (st ? ' ' + st : '') + (skSel === e.id ? ' sel' : '');
       var info = !st || st === 'learn';
       c.title = name + ' — ' + ((d ? d.desc : e.desc) || '') + (info ? '\n' + skillNums(bk, e, d, lv) : '') +
-        (d && d.lv5 && d.lv5.say && info ? '\nLv5: ' + d.lv5.say : '') + (st === 'learn' ? '\n기술 점수 1점으로 배워요' : '');
+        (d && d.lv5 && d.lv5.say && info ? '\nLv5: ' + d.lv5.say : '') + (st === 'learn' ? '\n기술 점수 1점으로 배워요' : '') +
+        (st === 'lock' && e.tier === 2 ? '\n2차 전직(' + (((CFG.classes[bk.cls] || {}).tier2 || {}).name || '2차') + ') 후 Lv' + bk.openLv(e.id) + '에 배울 수 있어요' : '');
       // 고르기(쓰는 기술 · 열림만 버튼): 그림 + 이름 · Lv · 짧은 설명
       var pick = document.createElement(canPick ? 'button' : 'div');
       pick.className = 'cpick';
       if (canPick) { pick.type = 'button'; pick.dataset.sk = e.id + ':pick'; pick.setAttribute('aria-label', name + ' 고르기'); }
       pick.appendChild(skIcon(e.id, 40, !!st));
-      var tag = st === 'soon' ? '<span class="tag">준비 중</span>' : st === 'lock' ? '<span class="tag lk">Lv' + e.unlock + '</span>' :
+      // 2차 기술(2026-11-08, tier 2): 2차 전직 전 = 자물쇠 「2차 LvN」 + 짧은 설명 자리에 「2차 전직 후 LvN에 열려요」(이름이 안 잘리게 나눔),
+      //   전직 뒤 = 그냥 「LvN」(N = bk.openLv)
+      var t2Lock = st === 'lock' && e.tier === 2 && !bk.tier2();
+      var tag = st === 'soon' ? '<span class="tag">준비 중</span>' : st === 'lock' ? '<span class="tag lk' + (t2Lock ? ' t2' : '') + '">' + (t2Lock ? '2차 ' : '') + 'Lv' + bk.openLv(e.id) + '</span>' :
         st === 'learn' ? '<span class="tag ln">배울 수 있음</span>' : '<span class="lvl">Lv ' + lv + '/' + max + '</span>';
-      var line = !st && e.passive && e.passive.val ? passiveNow(e, lv) : (e.short || '');
+      var line = !st && e.passive && e.passive.val ? passiveNow(e, lv) : t2Lock ? '2차 전직 후 Lv' + bk.openLv(e.id) + '에 열려요' : (e.short || '');
       pick.insertAdjacentHTML('beforeend', '<span class="nm"><span class="l1"><b>' + name + '</b>' + tag + '</span><span class="sd">' + line + '</span></span>');
       c.appendChild(pick);
       var plus = document.createElement('button');

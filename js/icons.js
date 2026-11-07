@@ -262,6 +262,64 @@
       g.outline();
       g.spark(6, 18, false); g.spark(18, 19, false);
     },
+    // ===== 1차 기사 새 기술(2026-11-08) =====
+    shards: function (g) {                  // 칼날 파편(늘 켜짐): 가운데 터짐 + 사방으로 튀는 칼날 조각 6개
+      g.disc(12, 12, 3.4, function (d) { return d > 2.4 ? K.i1 : K.wht; });
+      [[12, 1, 0, 1], [21, 6, -1, 1], [21, 18, -1, -1], [12, 23, 0, -1], [3, 18, 1, -1], [3, 6, 1, 1]].forEach(function (q) {
+        var x = q[0], y = q[1], dx = q[2], dy = q[3];
+        g.line(x, y, x + dx * 4, y + dy * 4, K.s0); g.line(x + (dx ? 0 : 1), y + (dx ? 1 : 0), x + dx * 4 + (dx ? 0 : 1), y + dy * 4 + (dx ? 1 : 0), K.s2);
+      });
+      g.outline();
+      g.spark(12, 12, false, K.i1);
+      g.px(7, 9, K.i2); g.px(17, 9, K.i2); g.px(7, 15, K.i2); g.px(17, 15, K.i2);
+    },
+    thrust: function (g) {                  // 연속 찌르기: 오른쪽으로 뻗는 칼 + 겹친 찌르기 줄 세 개
+      g.rect(6, 11, 14, 1, K.s0); g.rect(6, 12, 16, 1, K.wht); g.rect(6, 13, 14, 1, K.s2); g.px(21, 12, K.s0);
+      g.rect(4, 8, 1, 9, K.g0); g.rect(5, 8, 1, 9, K.g2);
+      g.rect(1, 11, 3, 3, K.b1); g.px(2, 12, K.b0);
+      g.outline();
+      g.rect(9, 5, 11, 1, K.i1); g.rect(13, 4, 7, 1, K.wht); g.rect(9, 19, 11, 1, K.i1); g.rect(13, 20, 7, 1, K.wht);
+      g.rect(14, 8, 6, 1, K.i2); g.rect(14, 16, 6, 1, K.i2);
+      g.spark(22, 4, false, K.i1); g.spark(22, 20, false, K.i1);
+    },
+    pressure: function (g) {                // 끌어당기는 검압(늘 켜짐): 가운데 칼 + 안쪽으로 모이는 바람 화살 넷
+      g.ring(12, 12, 9, 10.6, 0, 359, function (t) { return (Math.floor(t * 12) % 2) ? K.i1 : K.i2; });
+      g.outline();
+      diagSword(g, 16, 5, 9, 1);
+      g.outline();
+      g.map(1, 10, ['a..', 'aa.', 'aaa', 'aa.', 'a..'], { a: K.wht }); g.map(20, 10, ['..a', '.aa', 'aaa', '.aa', '..a'], { a: K.wht });
+      g.spark(12, 2, false, K.i1);
+    },
+    // ===== 성기사(2차, 2026-11-08) =====
+    aegis: function (g) {                   // 신성 가호(늘 켜짐): 금빛 후광 + 금테 방패 + 가운데 하트 빛
+      g.ring(12, 12, 9.4, 11.2, 0, 359, function (t) { return (Math.floor(t * 16) % 2) ? K.g0 : K.g1; });
+      g.outline();
+      g.poly([[5, 4], [19, 4], [19, 12], [12, 20], [5, 12]], function (x, y) { return x < 12 ? (y < 9 ? K.g0 : K.g1) : (y < 9 ? K.g1 : K.g2); });
+      g.outline();
+      g.rect(11, 6, 2, 10, K.wht); g.rect(8, 9, 8, 2, K.wht);
+      g.px(11, 6, K.f0); g.px(12, 15, K.g0);
+      g.spark(3, 3, false); g.spark(21, 20, false);
+    },
+    cross: function (g) {                   // 심판의 십자: 땅에 새긴 금빛 십자 + 위로 솟는 빛기둥
+      g.rect(0, 19, 24, 5, K.e2); g.rect(0, 19, 24, 1, K.e1); g.rect(0, 22, 24, 2, K.e3);
+      [[3, 3], [7, 0], [12, 1], [17, 0], [21, 4]].forEach(function (p, i) {
+        for (var y = p[1]; y < 19; y++) g.px(p[0], y, y < p[1] + 4 ? K.g0 : (i % 2 ? K.f0 : K.wht));
+        g.px(p[0] + 1, 18, K.g0); g.px(p[0] - 1, 18, K.g0);
+      });
+      g.rect(10, 6, 4, 13, K.g1); g.rect(6, 9, 12, 4, K.g1);
+      g.rect(11, 6, 2, 13, K.f0); g.rect(6, 10, 12, 2, K.f0);
+      g.rect(11, 10, 2, 2, K.wht);
+      g.outline();
+      g.rect(2, 20, 20, 1, K.g0); g.rect(9, 20, 6, 1, K.wht);
+    },
+    charge: function (g) {                  // 성스러운 돌격: 금빛 방패 구슬에 싸여 오른쪽으로 돌진 + 뒤로 남는 금빛 줄
+      g.disc(14, 12, 8.6, function (d) { return d > 7.6 ? K.g0 : d > 6 ? K.g1 : d > 3.5 ? '#c89a3a' : K.g2; });
+      g.outline();
+      g.rect(12, 8, 3, 9, K.s0); g.rect(15, 8, 1, 9, K.s2); g.rect(10, 10, 7, 2, K.s1); g.px(13, 9, K.r1);
+      g.ring(14, 12, 8.6, 10.4, 300, 60, function (t) { return t > 0.3 && t < 0.7 ? K.wht : K.f0; });
+      g.rect(0, 6, 5, 1, K.g1); g.rect(1, 11, 4, 1, K.g0); g.rect(0, 16, 5, 1, K.g1); g.rect(2, 19, 3, 1, K.g2);
+      g.spark(22, 3, false);
+    },
     // ===== 법사 =====
     fireball: function (g) {                // 화염구: 오른쪽으로 날아가는 불덩이 + 불꼬리
       g.poly([[12, 5], [1, 2], [6, 9], [0, 12], [6, 15], [1, 21], [13, 19]], K.f3);
@@ -399,6 +457,8 @@
     mastery: ['검 숙련', 'knight', 'passive', 'steel'], skin: ['강철 피부', 'knight', 'passive', 'steel'], wave: ['검기 날리기', 'knight', 'active', 'steel'],
     slam: ['대지 내려찍기', 'knight', 'active', 'earth'], grit: ['투지', 'knight', 'passive', 'blood'], counter: ['반격', 'knight', 'passive', 'blood'],
     storm: ['칼날 폭풍', 'knight', 'active', 'steel'], holy: ['성검 낙뢰', 'knight', 'active', 'holy'],
+    shards: ['칼날 파편', 'knight', 'passive', 'steel'], thrust: ['연속 찌르기', 'knight', 'active', 'steel'], pressure: ['끌어당기는 검압', 'knight', 'passive', 'ice'],   // 1차 기사(2026-11-08)
+    aegis: ['신성 가호', 'knight', 'passive', 'holy'], cross: ['심판의 십자', 'knight', 'active', 'holy'], charge: ['성스러운 돌격', 'knight', 'active', 'holy'],   // 성기사(2차, 2026-11-08)
     fireball: ['화염구', 'mage', 'active', 'fire'], bolt: ['번개', 'mage', 'active', 'storm'], rise: ['땅 융기', 'mage', 'active', 'earth'],
     amp: ['원소 증폭', 'mage', 'passive', 'arcane'], flow: ['마나 순환', 'mage', 'passive', 'ice'], ice: ['얼음창', 'mage', 'active', 'ice'],
     meteor: ['메테오', 'mage', 'active', 'fire'], blink: ['순간이동', 'mage', 'active', 'arcane'], shield: ['마나 방패', 'mage', 'passive', 'ice'],

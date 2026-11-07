@@ -337,6 +337,26 @@
   // 반격(늘 켜진 기술)이 나갈 때 되받아 베는 한 칼(누운 적은 안 맞음)
   var COUNTER_HIT = { reach: { x0: -20, x1: 104, yTop: -112, yBot: -4, depth: 22 }, dmg: 1.8, hitstop: 1.4, knock: 1.6, shake: 1.8,
                       spark: 1.3, big: true, hitY: -60, flash: { color: '#fff4d0', alpha: 0.3, ms: 90 }, slowMs: 120 };
+  // ---------- 1차 기사 새 기술 (2026-11-08 형님 승인): 연속 찌르기 · 칼날 파편(늘 켜짐) ----------
+  // 연속 찌르기: 빠른 찌르기 다섯 번(THRUST_HIT, 작게 · 분노 안 채움) → 마지막 크게 밀쳐 넘어뜨림(THRUST_LAST). 앞으로 길게 한 줄(누운 적은 안 맞음)
+  //   데미지 합 = 0.45 x 5 + 1.6 = 3.85 (회전베기 0.8 x 2 + 1.6 = 3.2 보다 조금 셈 · 대신 앞 한 줄만)
+  var THRUST_REACH = { x0: -10, x1: 125, yTop: -100, yBot: -20, depth: 22 };
+  var THRUST_HIT = { reach: THRUST_REACH, dmg: 0.45, hitstop: 0.35, knock: 0.15, shake: 0.5, spark: 0.9, hitY: -62, noRage: true, noJuggle: true };   // noJuggle = 4번째 타에 넘어지지 않게(마지막 찌르기에서 넘어짐)
+  var THRUST_LAST = { reach: { x0: -10, x1: 140, yTop: -104, yBot: -16, depth: 24 }, dmg: 1.6, hitstop: 1.8, knock: 3.0, shake: 2.4, knockdown: true,
+                      spark: 1.4, big: true, hitY: -62, flash: { color: '#e6f2ff', alpha: 0.3, ms: 110 }, slowMs: 160 };
+  // 칼날 파편(늘 켜진 기술): 쓰러진 적 둘레를 때리는 파편 한 번(데미지 = 이 값 x 기술 Lv 배율 passive.val). 누운 적도 맞음(땅으로 튐)
+  var SHARD_HIT = { dmg: 0.9, hitstop: 0.4, knock: 0.6, shake: 0.6, spark: 0.9, hitsDown: true, noRage: true, noJuggle: true };
+  // ---------- 성기사(2차 전직) 새 기술 (2026-11-08 형님 승인): 심판의 십자 · 성스러운 돌격 ----------
+  // 심판의 십자: 땅에 새긴 금빛 십자가 터지며 위로 솟는 빛(넓은 범위 전부, 누운 적도 맞음). 잡몹은 띄움(보스 · 큰 적은 휘청)
+  //   CROSS_HIT = 솟는 순간 크게 한 번, CROSS_TICK = 빛이 남아 있는 동안 작게 두 번(분노 안 채움)
+  //   데미지 합 = 4.6 + 0.5 x 2 = 5.6 (칼날 폭풍 약 5.7 · 성검 낙뢰 6.2 와 비슷하지만 넓은 범위의 모든 적이 다 맞음 = 몹 쓸기 최강)
+  var CROSS_HIT = { dmg: 4.6, hitstop: 2.2, knock: 0.5, shake: 3.4, launch: 1.15, spark: 1.7, big: true, hitsDown: true,
+                    flash: { color: '#fff6c8', alpha: 0.38, ms: 200 }, slowMs: 300 };
+  var CROSS_TICK = { dmg: 0.5, hitstop: 0.4, knock: 0.1, shake: 0.6, spark: 0.9, hitsDown: true, noRage: true, noJuggle: true };
+  // 성스러운 돌격: 금빛 방패에 싸여 돌진(그동안 안 맞음). 앞에 걸린 잡몹을 앞으로 밀고 가며 작게 여러 번(CHARGE_TICK) → 끝에 크게 터짐(CHARGE_BURST)
+  var CHARGE_TICK = { dmg: 0.35, hitstop: 0.25, knock: 0.2, shake: 0.5, spark: 0.8, noRage: true, noJuggle: true };
+  var CHARGE_BURST = { dmg: 4.2, hitstop: 2.4, knock: 3.0, shake: 3.6, knockdown: true, spark: 1.7, big: true, hitsDown: true,
+                       flash: { color: '#fff2c0', alpha: 0.5, ms: 180 }, slowMs: 280 };
   // 순간이동: 사라지는 자리의 작은 보라 폭발(밀어냄). 작은 폭발이라 누운 적은 안 맞음
   var BLINK_HIT = { dmg: 1.3, hitstop: 1.0, knock: 1.6, shake: 1.4, spark: 1.1, big: true, flash: { color: '#d8b0ff', alpha: 0.18, ms: 80 } };
   // 불기둥: 솟는 순간 크게 한 번(FLAME_HIT) + 타는 동안 작게 여러 번(FLAME_TICK). 땅에서 솟음 = 누운 적도 맞음. 띄우지 않음
@@ -542,6 +562,78 @@
           placeholder: { anims: ['jump', 'motion_dash', 'motion_dash', 'attack3'], f: [0, 2, 2, 5], d: [140, 160, 760, 240] }
         }
       },
+      // 연속 찌르기(1차 Lv17, 2026-11-08 형님 승인): 새 그림 없음 = 평타 1타 그림의 「팔 당김 ↔ 찌름」 두 장을 빠르게 되풀이(다섯 번) → 크게 한 번 찌르며 밀쳐 넘어뜨림.
+      //   기술 장 번호: 0 준비 · 1~10 (당김, 찌름) x 5 · 11 크게 당김 · 12 크게 찌름 · 13 복귀. 찌르는 장(2 · 4 · 6 · 8 · 10)마다 판정 + 코드로 그린 찌르기 줄(thrust)
+      //   찌르는 동안 앞으로 조금씩 나감(move). Lv5 = 찌르기 길이 +25%(area)
+      thrust: {
+        name: '연속 찌르기', icon: '찌', mp: 10, cooldownMs: 6000, damageStyle: 'skill_knight', sfx: 'skDash',
+        desc: '앞으로 빠르게 다섯 번 찌른 뒤 크게 한 번 찔러 적을 밀쳐 넘어뜨려요',
+        lv5: { area: 1.25, say: '찌르기 길이 +25%' },
+        darken: { ms: 500, alpha: 0.3 },
+        iframes: [0, 300],
+        move: { frames: [1, 12], dist: 34 },
+        hits: [ merge(THRUST_HIT, { frame: 2 }), merge(THRUST_HIT, { frame: 4 }), merge(THRUST_HIT, { frame: 6 }), merge(THRUST_HIT, { frame: 8 }),
+                merge(THRUST_HIT, { frame: 10 }), merge(THRUST_LAST, { frame: 12 }) ],
+        trail: { frames: [11, 12], everyMs: 30, lifeMs: 170, alpha: 0.35, color: '#a8d4ff' },
+        fx: [
+          { frame: 2, type: 'thrust', x: 40, y: -64, len: 92, color: '#cfe8ff', ms: 130 }, { frame: 4, type: 'thrust', x: 40, y: -56, len: 96, color: '#cfe8ff', ms: 130 },
+          { frame: 6, type: 'thrust', x: 40, y: -68, len: 92, color: '#cfe8ff', ms: 130 }, { frame: 8, type: 'thrust', x: 40, y: -60, len: 100, color: '#cfe8ff', ms: 130 },
+          { frame: 10, type: 'thrust', x: 40, y: -64, len: 96, color: '#cfe8ff', ms: 130 },
+          { frame: 12, type: 'thrust', x: 44, y: -62, len: 140, color: '#ffffff', ms: 220 }, { frame: 12, type: 'sound', name: 'skWave' }, { frame: 12, type: 'dust' }
+        ],
+        // 남: 평타 그림 2장(팔 앞) ↔ 3장(내지름) / 여: 3장(당김) ↔ 2장(내지름)
+        placeholder: { anim: 'attack1', f: [0, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4], d: [90, 35, 55, 35, 55, 35, 55, 35, 55, 35, 55, 110, 160, 140] },
+        female: { placeholder: { anim: 'attack1', f: [0, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 0], d: [90, 35, 55, 35, 55, 35, 55, 35, 55, 35, 55, 110, 160, 140] } }
+      },
+      // 심판의 십자(성기사 Lv35, 2026-11-08 형님 승인): 칼을 머리 위로 들었다(1~2장) 땅에 내리꽂으면(3장) 기사 앞 땅에 금빛 십자가 새겨지고
+      //   telegraphMs(0.4초) 뒤 십자 줄을 따라 금빛 빛기둥이 위로 솟으며 터짐 → 넓은 범위(가로 len x 2, 위아래 depth) 안 적 전부.
+      //   cross = { frame = 십자가 새겨지는 장, x = 십자 가운데까지 앞 거리, len = 긴 줄 반 길이(가로), arm = 가로대 반 길이(위아래 방향),
+      //            depth = 위아래 판정 폭, telegraphMs, ticks · tickMs = 남은 빛이 작게 더 때림, hit · tick }
+      //   grow = 기술 Lv1~5 마다 커짐(검기 날리기처럼): size = 십자 크기(그림 + 판정 같이, 기술 Lv 크기 area 에 더 곱함 → Lv5 약 1.4배), glow = 빛 세기, hitstop · shake = 타격감 배율
+      //   Lv5 = 빛기둥이 한 번 더 솟음(lv5.again, 첫 터짐의 60% 데미지). 그림 = 우리 코드(skills.js drawCross), 소리 = 있는 소리(skHoly · holyBolt · skSlam)
+      cross: {
+        name: '심판의 십자', icon: '십', mp: 34, cooldownMs: 16000, damageStyle: 'skill_holy', sfx: 'skHoly',
+        desc: '(2차) 칼을 땅에 내리꽂아 앞쪽 넓은 땅에 금빛 십자를 새겨요. 잠깐 뒤 십자에서 빛이 솟구쳐 범위 안 적을 모두 크게 때리고 띄워요(누운 적도 맞아요)',
+        lv5: { again: 0.6, say: '빛기둥이 한 번 더 솟음' },
+        darken: { ms: 1100, alpha: 0.5 },
+        iframes: [0, 900],
+        zoom: { k: 1.05, ms: 900 },
+        cross: { frame: 3, x: 125, len: 115, arm: 46, depth: 56, telegraphMs: 400, ticks: 2, tickMs: 180, hit: CROSS_HIT, tick: CROSS_TICK },
+        grow: { size: [1, 1.03, 1.06, 1.09, 1.12], glow: [1, 1.15, 1.3, 1.45, 1.65], hitstop: [1, 1.08, 1.16, 1.25, 1.35], shake: [1, 1.1, 1.2, 1.32, 1.45] },
+        fx: [ { frame: 0, type: 'dust' }, { frame: 3, type: 'dust' } ],
+        // 남: 3타 그림(0 웅크림 → 2 칼 머리 위 → 3 내리침 → 4 깊이 꽂음, 빛이 솟을 때까지 버팀 → 5 일어섬)
+        placeholder: { anims: ['attack3', 'attack3', 'attack3', 'attack3', 'attack3', 'attack3'], f: [0, 2, 3, 4, 4, 5], d: [100, 150, 70, 440, 220, 160] },
+        // 여: 돌진베기 3장(칼 머리 위) → 3타 2장(낮게 내리꽂는 자세)에서 버팀 → 서기
+        female: {
+          placeholder: { anims: ['attack3', 'motion_dash', 'motion_dash', 'attack3', 'attack3', 'attack3'], f: [0, 3, 3, 2, 2, 0], d: [90, 150, 70, 440, 220, 160] }
+        }
+      },
+      // 성스러운 돌격(성기사 Lv39, 2026-11-08 형님 승인): 금빛 방패(barrier)에 싸여 앞으로 돌진 → 앞에 걸린 잡몹을 밀고 감 → 끝에 크게 터짐.
+      //   동작 = 돌진베기 동작 그림(motion_dash)의 돌진 자세를 길게(motionSeq) → 마무리 베기 장에서 터짐.
+      //   barrier = { frames = 방패가 있는 장(그동안 안 맞음 = 슈퍼아머보다 셈) }, move = 돌진(돌진베기와 같은 방식, Lv5 = 더 멀리)
+      //   charge = { reach = 앞에서 밀고 가는 상자(front = 기사 앞 몇 도트에 붙여 밂), tickMs = 밀며 작게 때리는 간격, tick,
+      //              burst = { frame = 터지는 장, x = 앞 거리, r = 반지름, depth, hit } }
+      charge: {
+        name: '성스러운 돌격', icon: '격', mp: 28, cooldownMs: 14000, damageStyle: 'skill_holy', motion: 'motion_dash', sfx: 'skDash',
+        desc: '(2차) 금빛 방패에 싸여 앞으로 돌진해요. 앞의 적을 밀고 가다가 끝에서 크게 터뜨려 날려 버려요. 돌진하는 동안 안 맞아요',
+        lv5: { dist: 1.3, say: '돌진 거리 +30%' },
+        darken: { ms: 900, alpha: 0.42 },
+        iframes: { frames: [0, 5] },
+        barrier: { frames: [0, 5] },
+        motionSeq: [0, 1, 2, 1, 2, 3, 4, 5],
+        motionMs: [110, 110, 110, 110, 110, 150, 140, 130],
+        move: { frames: [1, 4], dist: 230 },
+        charge: { reach: { x0: -10, x1: 76, depth: 36 }, front: 46, tickMs: 110, tick: CHARGE_TICK,
+                  burst: { frame: 5, x: 56, r: 120, depth: 52, hit: CHARGE_BURST } },
+        trail: { frames: [1, 5], everyMs: 35, lifeMs: 220, alpha: 0.42, color: '#ffd86a' },
+        fx: [ { frame: 0, type: 'dust' }, { frame: 1, type: 'dust' } ],
+        placeholder: { anim: 'attack1', f: [0, 1, 1, 1, 1, 3, 4, 4], d: [110, 110, 110, 110, 110, 150, 140, 130] },
+        // 여: 1장(수평 돌진) 을 길게 → 2장(올려베기)에서 터짐
+        female: {
+          motionSeq: [0, 1, 1, 1, 1, 2, 4, 5],
+          placeholder: { anim: 'attack1', f: [0, 1, 1, 1, 1, 2, 3, 3], d: [110, 110, 110, 110, 110, 150, 140, 130] }
+        }
+      },
       // 반격(늘 켜진 기술 counter)이 나갈 때 쓰는 되받아 베기 한 칼. 칸에 끼우는 기술이 아님(기술 책엔 「반격」만 보임).
       //   auto = 저절로 나감(마나·포만감 안 씀), keepDir = 방향 그대로(때린 적 쪽). cooldownMs = 다시 나갈 때까지(반격 Lv 마다 curve 로 줄어듦)
       counterSlash: {
@@ -705,26 +797,51 @@
   // 2026-11-06 밤 콤보: 띄우기 기술 올려베기(기사)·땅 융기(법사)를 앞당김(3번째 칸이 열리는 레벨에 같이 열림 → 바로 끼워짐). 불기둥은 2차 그대로(띄우지 않는 큰 한 방)
   // 2026-11-06 순서 바꿈: 늘 켜진 기술이 쓰는 기술 사이에 끼게 = Lv9 늘 켜진 기술(검 숙련·원소 증폭) → Lv10 띄우기 기술(+3번째 칸) → Lv11 늘 켜진 기술
   //   + 기사 Lv19 칼날 폭풍(사냥 기술, 비어 있던 Lv19 자리) → 기사도 11개(쓰는 기술 7 + 늘 켜진 기술 4)
+// 2026-11-08 형님 승인: 기사 2차(성기사) 기술 = tier: 2 (2차 전직 뒤 Lv25 칼날 폭풍 · 28 신성 가호 · 31 성검 낙뢰 · 35 심판의 십자 · 39 성스러운 돌격)
+//   2026-11-08 형님 승인(2): 2차 전직 Lv30 → 25 + 1차 기사 다시 배치(아래 knight 순서 = 기술 창 순서). 새 기술 칼날 파편 · 연속 찌르기 · 끌어당기는 검압
+//   → 기사 17개(쓰는 기술 10 + 늘 켜진 기술 7). 1차 기사 = 반격(Lv24)까지. 법사는 그대로
+//   예전 저장: 지금 Lv 보다 늦게 열리게 바뀐 기술(예: Lv22 저장의 반격 21 → 24, 2차 전 칼날 폭풍 · 성검 낙뢰)은 저장을 읽을 때 빠짐(growth.js openLv)
+//     = 그 기술에 쓴 점수는 안 쓴 점수로 돌아옴(기술 칸에 끼운 것도 저절로 빈 칸)
   //   short = 기술 창(책 모양, 2026-11-06 폰 UI) 칸에 쓰는 짧은 설명 한 줄(긴 설명 desc 는 칸에 손을 올리면 · 고르면 보임)
   var SKILL_TREE = {
     knight: [
+      // 전직(1차) 때: 돌진베기 = 첫 기술 점수(firstPts 1)로 배움, 올려베기 = 기본기(config skills.basic, 공짜 Lv1 + 1번 칸)
       { id: 'dash', unlock: 0, short: '앞으로 미끄러지며 베요' },
-      { id: 'spin', unlock: 8, short: '한 바퀴 돌며 세 번 베요' },
+      // 2026-11-08: 올려베기는 기본기라 늘 열려 있음 → unlock 0(예전 Lv10 은 기술 창에 「Lv10」처럼 헷갈리게 보일 수 있어 지움)
+      { id: 'upper', unlock: 0, short: '적을 공중에 띄워요' },
+      { id: 'wave', unlock: 8, short: '초승달 검기를 날려요' },                  // 2026-11-08 Lv13 → 8
       { id: 'mastery', unlock: 9, short: '검 공격이 세져요', name: '검 숙련', icon: '숙', desc: '검으로 하는 모든 공격(콤보·기술)이 세져요',
         passive: { stat: 'phys', val: [0.08, 0.12, 0.16, 0.2, 0.25] } },
-      { id: 'upper', unlock: 10, short: '적을 공중에 띄워요' },   // 2026-11-06 밤 콤보: 2차(Lv19)에서 앞당김. Lv10 = 3번째 칸이 열리면서 바로 끼워짐(2026-11-06 Lv9 → 10)
-      { id: 'skin', unlock: 11, short: '받는 피해가 줄어요', name: '강철 피부', icon: '피', desc: '적에게 받는 피해가 줄어요',
-        passive: { stat: 'guard', val: [0.05, 0.08, 0.11, 0.14, 0.18] } },
-      { id: 'wave', unlock: 13, short: '초승달 검기를 날려요' },
-      { id: 'slam', unlock: 15, short: '뛰어올라 땅을 내려찍어요' },
+      { id: 'spin', unlock: 11, short: '한 바퀴 돌며 세 번 베요' },              // 2026-11-08 Lv8 → 11
+      { id: 'skin', unlock: 12, short: '받는 피해가 줄어요', name: '강철 피부', icon: '피', desc: '적에게 받는 피해가 줄어요',
+        passive: { stat: 'guard', val: [0.05, 0.08, 0.11, 0.14, 0.18] } },      // 2026-11-08 Lv11 → 12
+      { id: 'slam', unlock: 14, short: '뛰어올라 땅을 내려찍어요' },            // 2026-11-08 Lv15 → 14
+      // 2026-11-08 새 늘 켜진 기술: passive.stat 'shards' = 기사가 적을 쓰러뜨리면 그 자리에서 칼날 파편이 튀어 둘레 적을 때림.
+      //   val = 파편 데미지 배율(SHARD_HIT 에 곱함), r = 반지름(도트), depth = 위아래 폭, chain = 파편으로 쓰러진 적이 또 파편을 튀기는 최대 횟수(무한 반복 없음)
+      { id: 'shards', unlock: 15, short: '쓰러뜨린 적에서 칼날이 튀어요', name: '칼날 파편', icon: '편', desc: '적을 쓰러뜨리면 그 자리에서 칼날 파편이 사방으로 튀어 둘레 적을 때려요(파편으로 쓰러진 적도 두 번까지 또 튀김)',
+        passive: { stat: 'shards', val: [0.6, 0.75, 0.9, 1.05, 1.2], r: [70, 78, 86, 94, 104], depth: 36, chain: 2, hit: SHARD_HIT } },
+      { id: 'thrust', unlock: 17, short: '빠르게 다섯 번 찌르고 밀쳐요' },
+      // 2026-11-08 새 늘 켜진 기술: passive.stat 'pull' = 평타 콤보 3타(마무리)를 휘두를 때 둘레 잡몹을 기사 앞으로 끌어당김.
+      //   val = 끌어당기는 반지름(도트), ms = 끌려오는 시간, front = 기사 앞 어디로(도트). 보스 · 중간보스 · 누운 적 · 공중 적 · 소품은 안 끌려옴
+      { id: 'pressure', unlock: 18, short: '3타에 둘레 적을 앞으로 끌어와요', name: '끌어당기는 검압', icon: '압', desc: '평타 콤보 마지막(3타)을 휘두르면 검압이 일어 둘레 적을 기사 앞으로 끌어당겨요(보스 · 큰 적은 안 끌려옴)',
+        passive: { stat: 'pull', val: [90, 100, 112, 124, 140], ms: 110, front: 44 } },
       // 2차(2026-11-06 넣음): passive.stat 'grit' = 체력이 from(비율) 밑으로 내려가면 물리 공격이 오르기 시작해 full 이하에서 val(최대)
       //   'counter' = 맞을 때(넘어지지 않는 보통 타, 가까운 적) val 확률로 되받아 베기(SKILLS.knight.counterSlash), reach = 그 적까지 거리
-      { id: 'grit', unlock: 17, short: '체력이 적을수록 검이 세져요', name: '투지', icon: '투', desc: '체력이 90% 밑으로 줄수록 검 공격이 세져요(30% 이하에서 가장 셈). 세지면 발밑에 붉은 기운이 일어요',
-        passive: { stat: 'grit', val: [0.2, 0.25, 0.3, 0.35, 0.4], from: 0.9, full: 0.3 } },
-      { id: 'storm', unlock: 19, short: '칼날 회오리를 앞으로 보내요' },   // 2026-11-06 사냥 기술(몹 떼를 끌어모아 쓸어 버림)
-      { id: 'counter', unlock: 21, short: '맞는 순간 되받아 베요', name: '반격', icon: '반', desc: '맞는 순간(넘어지지 않는 보통 타) 확률로 바로 되받아 베어요. 1.5초에 한 번까지',
-        passive: { stat: 'counter', val: [0.3, 0.35, 0.4, 0.45, 0.5], reach: 140 } },
-      { id: 'holy', unlock: 23, short: '금빛 번개 칼을 내리꽂아요' }
+      { id: 'grit', unlock: 21, short: '체력이 적을수록 검이 세져요', name: '투지', icon: '투', desc: '체력이 90% 밑으로 줄수록 검 공격이 세져요(30% 이하에서 가장 셈). 세지면 발밑에 붉은 기운이 일어요',
+        passive: { stat: 'grit', val: [0.2, 0.25, 0.3, 0.35, 0.4], from: 0.9, full: 0.3 } },   // 2026-11-08 Lv17 → 21
+      { id: 'counter', unlock: 24, short: '맞는 순간 되받아 베요', name: '반격', icon: '반', desc: '맞는 순간(넘어지지 않는 보통 타) 확률로 바로 되받아 베어요. 1.5초에 한 번까지',
+        passive: { stat: 'counter', val: [0.3, 0.35, 0.4, 0.45, 0.5], reach: 140 } },   // 2026-11-08 Lv21 → 24
+      // ---- 성기사(2차 전직, 2026-11-08 형님 승인) ----
+      // tier: 2 = 2차 전직(config classes.<직업>.tier2, 기사 Lv25 = 성기사)을 한 뒤에만 열림 + 그 기술 Lv(unlock)가 돼야 함.
+      //   전직할 때 공짜로 주는 Lv 없음(기술 점수로 배움). 2차 전 기술 창에는 자물쇠 + 「2차 LvN」
+      //   칼날 폭풍(예전 Lv19) · 성검 낙뢰(예전 Lv23)를 1차에서 2차로 옮김
+      { id: 'storm', unlock: 25, tier: 2, short: '칼날 회오리를 앞으로 보내요' },   // 2026-11-06 사냥 기술(몹 떼를 끌어모아 쓸어 버림), 2026-11-08 Lv19 → 2차 Lv25
+      // passive.stat 'regen' = 1초마다 최대 체력의 val 만큼 체력이 참(늘). 켜져 있으면 몸 둘레에 옅은 금빛 기운
+      { id: 'aegis', unlock: 28, tier: 2, short: '체력이 천천히 차요', name: '신성 가호', icon: '가', desc: '성스러운 힘이 몸을 감싸 체력이 늘 조금씩 차요. 몸 둘레에 옅은 금빛 기운이 감돌아요',
+        passive: { stat: 'regen', val: [0.004, 0.005, 0.006, 0.007, 0.008] } },
+      { id: 'holy', unlock: 31, tier: 2, short: '금빛 번개 칼을 내리꽂아요' },      // 2026-11-08 Lv23 → 2차 Lv31
+      { id: 'cross', unlock: 35, tier: 2, short: '땅의 십자에서 빛이 솟아요' },
+      { id: 'charge', unlock: 39, tier: 2, short: '금빛 방패로 돌진해 터뜨려요' }
     ],
     mage: [
       { id: 'fireball', unlock: 0, short: '큰 불덩이를 던져요' },
@@ -1212,8 +1329,8 @@
     // 도끼를 다시 켜려면: 아래 axe 줄의 주석(//)을 풀고, index.html 의 도끼 버튼 주석(<!-- -->)도 푼다.
     classes: {
       novice: { label: '견습(맨손)', weapon: 'fist',  moves: 'fist' },
-      // tier2 = 2차 옷(2026-11-07): 레벨이 lv 이상이면 outfit 대신 이 옷(characters 의 「옷_성별」, 그 성별 그림이 없으면 1차 옷 그대로). 그림만 바뀜
-      knight: { label: '기사(검)',   weapon: 'sword', moves: 'sword', outfit: 'knight', tier2: { lv: 30, outfit: 'knight_t2', name: '성기사' } },
+      // tier2 = 2차 옷(2026-11-07, 2026-11-08 기사 Lv30 → 25 = 성기사 전직 · 2차 기술도 이 Lv 부터): 레벨이 lv 이상이면 outfit 대신 이 옷(characters 의 「옷_성별」, 그 성별 그림이 없으면 1차 옷 그대로). 그림만 바뀜
+      knight: { label: '기사(검)',   weapon: 'sword', moves: 'sword', outfit: 'knight', tier2: { lv: 25, outfit: 'knight_t2', name: '성기사' } },
       // 법사: 무기가 성별마다 다름(남 지팡이 staff / 여 짧은 지팡이 wand)
       mage:   { label: '법사(지팡이)', weapon: { male: 'staff', female: 'wand' }, moves: 'magic', outfit: 'mage' }
       // , axe: { label: '도끼', weapon: 'axe', moves: 'sword' }
@@ -3812,7 +3929,7 @@
               tree: SKILL_TREE, perLv: 1, maxLv: 5, classLv: 7, slots: [2, 3, 4, 5], moreLv: [10, 13, 15], pcSlots: 10, pcLv: 15, noMpMs: 500,
               curve: { dmg: [1, 1.2, 1.4, 1.6, 1.85], cd: [1, 0.94, 0.88, 0.82, 0.75], mp: [1, 1.05, 1.1, 1.15, 1.2] },
               test: { pts: 24 },
-              botPlan: { knight: ['dash', 'spin', 'upper', 'mastery', 'skin', 'wave', 'slam', 'grit', 'storm', 'counter', 'holy'],
+              botPlan: { knight: ['dash', 'upper', 'wave', 'mastery', 'spin', 'skin', 'slam', 'shards', 'thrust', 'pressure', 'grit', 'counter', 'storm', 'aegis', 'holy', 'cross', 'charge'],
                          mage: ['fireball', 'bolt', 'rise', 'amp', 'flow', 'ice', 'meteor', 'blink', 'shield', 'pillar', 'brand'] } },
 
     // ---------- 기술 효과 그림 (art\stage1\skills\fx 에서 복사 → assets/fx/skill/<이름>_01.png …, 크기·기준점은 fx.json) ----------

@@ -61,6 +61,10 @@
   var realBook = null, testBooks = {};
   function treeOf(cls) { return (SK.tree && SK.tree[cls]) || null; }
   var LEARN = !!SK.learn;
+  // 2차 전직 기술(2026-11-08, config SKILL_TREE 의 tier: 2): 그 직업 2차 Lv(config classes.<직업>.tier2.lv, 기사 = 30) 이 돼야 2차 전직(성기사)
+  //   tier2Lv(직업) = 2차 전직 Lv(없으면 0) / openLv(직업, 기술) = 그 기술이 열리는 Lv = unlock 과 2차 Lv 중 큰 것(2차 기술만)
+  function tier2Lv(cls) { var c = CFG.classes && CFG.classes[cls], t = c && c.tier2; return t ? t.lv || 0 : 0; }
+  function openLv(cls, e) { var u = e.unlock || 0; return e.tier === 2 ? Math.max(u, tier2Lv(cls)) : u; }
   function newSk(clsLv) { var o = { clsLv: clsLv, lv: {}, bar: [] }; if (LEARN) o.v = 2; return o; }
   // 견습 책(2026-11-07): 기본기 올려치기(config skills.noviceSkill) 하나만, 1번 칸만 열림. 점수 · 기술 창 없음(main.js 가 novice 를 보고 숨김)
   var noviceBook = null;
@@ -85,7 +89,12 @@
       // 쓰는 기술(칸에 끼우는 것)인가: 준비 중·늘 켜진 기술이 아니고 SKILLS 에 동작이 있음
       isActive: function (id) { var e = byId[id]; return !!(e && !e.soon && !e.passive && SK[cls] && SK[cls][id]); },
       // 열렸나: 시험 책 = 준비 중 빼고 전부, 저장 책 = 그 레벨이 됨(unlock 0 = 전직 즉시)
-      unlocked: function (id) { var e = byId[id]; return !!e && !e.soon && (test || id === BASIC || G.lv >= (e.unlock || 0)); },
+      //   2차 기술(tier 2, 2026-11-08) = 2차 전직 Lv 도 돼야 함(openLv). 2차 전 기술 창 = 「2차 전직 후 LvN」(main.js)
+      unlocked: function (id) { var e = byId[id]; return !!e && !e.soon && (test || id === BASIC || G.lv >= openLv(cls, e)); },
+      openLv: function (id) { var e = byId[id]; return e ? openLv(cls, e) : 0; },
+      // 2차 전직을 했나(2026-11-08): 이 직업에 2차가 있고 그 Lv 가 됨
+      tier2: function () { var t = tier2Lv(cls); return !!t && G.lv >= t; },
+      tier2Lv: function () { return tier2Lv(cls); },
       lv: function (id) {
         if (!B.unlocked(id)) return 0;
         if (id === BASIC) return Math.max(1, Math.min(SK.maxLv || 5, st.lv[id] || 1));   // 기본기 = 늘 Lv1 이상
@@ -510,11 +519,13 @@
       var newFmt = cs.v === 2 || !LEARN;
       if (cs.lv && typeof cs.lv === 'object') L0.forEach(function (e) {
         var n = cs.lv[e.id] | 0;
-        if (e.soon || G.lv < (e.unlock || 0)) return;
+        // 2026-11-08: 2차 기술(칼날 폭풍 · 성검 낙뢰를 1차 Lv19 · 23 에서 2차 Lv25 · 31 로 옮김)도 2차 전직 Lv 로 봄(openLv) + 1차 기사 다시 배치(반격 21 → 24 등) →
+        //   예전 저장에서 미리 배워 둔 2차 기술 · 지금 Lv 보다 늦게 열리게 바뀐 기술은 여기서 빠짐 = 그 기술 점수는 안 쓴 점수로 돌아옴(기술 칸에 끼운 것도 저절로 빈 칸)
+        if (e.soon || G.lv < openLv(G.cls, e)) return;
         if (newFmt) { if (n > 0) G.sk.lv[e.id] = Math.min(LEARN ? (SK.maxLv || 5) : (SK.maxLv || 5) - 1, n); }
         else G.sk.lv[e.id] = 1 + Math.max(0, Math.min((SK.maxLv || 5) - 1, n));   // 예전(저절로 배움) = 열린 기술은 Lv1 + 올린 수
       });
-      else if (!newFmt) L0.forEach(function (e) { if (!e.soon && G.lv >= (e.unlock || 0)) G.sk.lv[e.id] = 1; });
+      else if (!newFmt) L0.forEach(function (e) { if (!e.soon && G.lv >= openLv(G.cls, e)) G.sk.lv[e.id] = 1; });
     } else G.sk.clsLv = Math.min(G.lv, SK.classLv || 7);
     var bk = G.book(G.cls);
     // 예전 저장 바꾸기(2026-11-07 배우기): 배운 Lv 합이 새 점수(전직 1 + 레벨마다 1)보다 많으면

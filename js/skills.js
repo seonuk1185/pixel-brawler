@@ -23,6 +23,8 @@
   //   arcs = 코드로 그린 초승달 베기(반격), shieldFx = 마나 방패 번쩍, gritOn = 「투지!」 글자를 띄웠나(다시 띄우려면 기운이 줄었다 다시 커져야)
   var blades = [], flames = [], beams = [], arcs = [], shieldFx = null, gritOn = false, gritT = 0;
   var tornados = [];   // 칼날 폭풍 회오리(2026-11-07): 앞으로 천천히 가며 끌어당겨 벰 → 끝에 터짐
+  // 성기사(2차) 기술(2026-11-08): crosses = 심판의 십자(땅에 새김 → 빛기둥 솟음, 기사가 다른 걸 해도 그대로 터짐), aegisT = 신성 가호 금빛 불티 간격
+  var crosses = [], aegisT = 0;
   // 기술 Lv 에 따라 효과가 세 보이게(2026-11-06 형님): curLv = 지금 만드는 효과의 기술 Lv(1~5).
   //   wave·glow·debris 가 이 값을 보고 — 파편·불티 수 Lv 마다 +15%, 빛 조금 더 밝게, Lv5 = 「최대」 표시(금빛 바깥 고리 + 흰 심 빛).
   //   크기는 기술 진행의 area(LV_GROW, start 참고)로 커짐 → 판정도 같이(보이는 크기 = 맞는 크기)
@@ -115,6 +117,9 @@
     if (o.pillar && o.pillar.at == null) o.pillar = cp(o.pillar, { at: st(o.pillar.frame), burstAt: st(o.pillar.burst) });
     if (o.flame && o.flame.at == null) o.flame = cp(o.flame, { at: st(o.flame.frame), burstAt: st(o.flame.burst) });   // 불기둥(2차)
     if (o.blades && o.blades.at == null) o.blades = cp(o.blades, { at: st(o.blades.frame) });
+    if (o.cross && o.cross.at == null) o.cross = cp(o.cross, { at: st(o.cross.frame) });                                // 심판의 십자(2026-11-08)
+    if (o.barrier && o.barrier.frames) { var br = span(o.barrier); o.barrier = cp(o.barrier, { from: br[0], to: br[1] }); }   // 성스러운 돌격 방패(2026-11-08)
+    if (o.charge && o.charge.burst && o.charge.burst.at == null) o.charge = cp(o.charge, { burst: cp(o.charge.burst, { at: st(o.charge.burst.frame) }) });
     if (o.tornado && o.tornado.at == null) o.tornado = cp(o.tornado, { at: st(o.tornado.frame) });                     // 칼날 폭풍 회오리(2026-11-07)                         // 성검 낙뢰(2차)
     if (o.strikes && !Array.isArray(o.strikes.at)) {
       var t0 = st(o.strikes.frame), gap = o.strikes.gapMs || 120;
@@ -130,6 +135,7 @@
       if (o.flame) mx(o.flame.burstAt); if (o.blink) mx(o.blink.at + o.blink.hideMs);
       if (o.blades) mx(o.blades.at + (o.blades.n - 1) * o.blades.gapMs + o.blades.fallMs);
       if (o.tornado) mx(o.tornado.at);
+      if (o.cross) mx(o.cross.at + o.cross.telegraphMs); if (o.charge) mx(o.charge.burst.at);   // 성기사(2026-11-08)
       if (o.quake) mx(o.quake.at); if (o.leap) mx(o.leap.at[1]); if (o.finale) mx(o.finale.at); if (o.strikes) mx(o.strikes.at[o.strikes.at.length - 1]);
       o.chainAt = o.chainFrom != null ? st(o.chainFrom) : Math.min(o.ms - 1, last + pad);
     }
@@ -320,6 +326,8 @@
     }
     if (d.quake && !s.quaked && t1 >= d.quake.at) { s.quaked = true; p.z = 0; quake(p, d); }
     if (d.tornado && !s.tornDone && t1 >= d.tornado.at) { s.tornDone = true; castTornado(p, d, s); }   // 칼날 폭풍 회오리(2026-11-07)
+    if (d.cross && !s.crossDone && t1 >= d.cross.at) { s.crossDone = true; castCross(p, d, s); }       // 심판의 십자(2026-11-08)
+    if (d.charge) chargeStep(p, d, s, t0, t1);                                                          // 성스러운 돌격(2026-11-08)
     if (d.shot) {
       var nShot = 1 + ((s.L.lv5 && s.L.lv5.extra) || 0);
       while (s.shotDone < nShot && t1 >= d.shot.at + s.shotDone * (d.shot.gapMs || 150)) { castWave(p, d, s.shotDone); s.shotDone++; }
@@ -399,7 +407,10 @@
   // 지금 시각이 무적 구간인지
   //   2026-11-07: config skills.superArmor 면 기술 무적 없음(→ armored = 슈퍼아머, entities.js takeHit)
   function armored(p) { return !!(CFG.skills.superArmor && p && p.state === 'skill' && p.sk); }
+  //   성스러운 돌격 방패(barrier, 2026-11-08): 슈퍼아머여도 방패가 있는 동안은 안 맞음(완전 무적)
+  function barrierOn(p) { var s = p && p.state === 'skill' && p.sk, B = s && s.d.barrier; return !!(B && s.t >= B.from && s.t <= B.to); }
   function invulnerable(p) {
+    if (barrierOn(p)) return true;
     if (CFG.skills.superArmor) return false;
     var s = p.sk, I = s && s.d.iframes;
     return !!(I && s.t >= I[0] && s.t <= I[1]);
@@ -1573,6 +1584,389 @@
     });
   }
 
+  // ---- 1차 기사 늘 켜진 기술 (2026-11-08 형님 승인, 효과 = 우리 코드): 칼날 파편 · 끌어당기는 검압 ----
+  // 칼날 파편: 기사가 적을 쓰러뜨리면(main.js onHit → shardKill) 그 자리에서 칼날 조각이 사방으로 튀고 SHARD_DELAY 뒤 둘레 적을 때림.
+  //   파편으로 쓰러진 적도 또 튀김 = depth(몇 번째 이어짐) 가 passive.chain 을 넘으면 안 튀김(무한 반복 없음) +
+  //   SHARD_CAP = 짧은 시간(SHARD_WIN ms)에 튀는 최대 수(몹 떼를 한꺼번에 쓸 때 폰이 느려지지 않게)
+  var shardFx = [], shardQ = [], shardN = 0, shardWinT = 0, pulls = [];
+  var SHARD_DELAY = 70, SHARD_CAP = 8, SHARD_WIN = 250;
+  function shardKill(p, t, depth) {
+    var q = pasOf(p, 'shards');
+    if (!q || !t || t.isProp || !t.T) return;
+    depth = depth || 0;
+    if (depth > (q.P.chain || 0) || shardN >= SHARD_CAP) return;
+    shardN++;
+    var R = (q.P.r && q.P.r[q.lv - 1]) || 80, x = t.x, z = t.y, cy = z - 40 * AS();
+    shardQ.push({ t: SHARD_DELAY, x: x, z: z, R: R, depth: depth, mul: q.v, wk: p.weaponKey, P: q.P, lv: q.lv });
+    var n = 7 + q.lv;   // 칼날 조각 수(Lv 마다 +1)
+    for (var i = 0; i < n; i++) {
+      var a = i / n * Math.PI * 2 + Math.random() * 0.5;
+      shardFx.push({ x: x, cy: cy, a: a, R: R * (0.75 + Math.random() * 0.35), h: 10 + Math.random() * 22, t: 0, life: 200 + Math.random() * 60, rot: Math.random() * 6.28, vr: (Math.random() < 0.5 ? -1 : 1) * (14 + Math.random() * 10) });
+    }
+    glow(x, cy, 26 * AS() / 0.55, '#dcefff', 180, 0.55);
+    debris(x, cy, z, 6, { cols: ['#ffffff', '#cfe8ff', '#8e9cb4'], glow: true, sp: 200, size: 1.3, ms: 260, spread: 2.6 });
+    snd('skWave', { v: 0.5 });
+  }
+  // 파편이 닿음: 둘레(R, 위아래 depth) 적 모두(쓰러진 그 적은 이미 죽어서 안 맞음). 맞은 적이 쓰러지면 main.js 가 depth + 1 로 또 부름
+  function shardHit(o) {
+    var P = o.P, C = P._hits || (P._hits = []), h = C[o.depth];
+    if (!h) { h = {}; for (var k in P.hit) if (k !== '_st') h[k] = P.hit[k]; h.shardDepth = o.depth + 1; C[o.depth] = h; }
+    var st = stOf(h, { damageStyle: 'skill_knight' });
+    H.targets().forEach(function (e) {
+      if (!e || !H.canHit(e, h)) return;
+      var hb = e.hurtbox();
+      if (Math.abs(hb.z - o.z) > (P.depth || 36)) return;
+      if (hb.x1 < o.x - o.R || hb.x0 > o.x + o.R) return;
+      var dir = Math.abs(e.x - o.x) < 3 ? 1 : (e.x > o.x ? 1 : -1);
+      H.onHit(st, e, { dir: dir, wk: o.wk, x: e.x - dir * 4 * AS(), y: e.y - 46 * AS(), mul: o.mul });
+      debris(e.x, e.y - 46 * AS(), e.y, 3, { cols: ['#ffffff', '#cfe8ff'], glow: true, sp: 140, size: 1.2, ms: 200 });
+    });
+  }
+  function shardStep(dt) {
+    shardWinT += dt;
+    if (shardWinT >= SHARD_WIN) { shardWinT = 0; shardN = 0; }
+    for (var i = shardQ.length - 1; i >= 0; i--) {
+      var o = shardQ[i]; o.t -= dt;
+      if (o.t <= 0) { shardQ.splice(i, 1); (function (o) { atLv(o.lv, function () { shardHit(o); }); })(o); }
+    }
+    for (var j = shardFx.length - 1; j >= 0; j--) { var f = shardFx[j]; f.t += dt; f.rot += f.vr * dt / 1000; if (f.t >= f.life) shardFx.splice(j, 1); }
+  }
+  // 칼날 조각 그림(코드): 강철색 가는 세모 + 흰 날 + 지나온 길 꼬리. 땅 타원(위아래 납작)으로 퍼지며 살짝 포물선
+  function drawShards(ctx, camX) {
+    if (!shardFx.length) return;
+    ctx.save(); ctx.lineCap = 'round';
+    shardFx.forEach(function (f) {
+      var u = ease(Math.min(1, f.t / f.life)), x = f.x + Math.cos(f.a) * f.R * u - camX, y = f.cy + Math.sin(f.a) * f.R * 0.35 * u - f.h * Math.sin(Math.PI * u);
+      var u0 = ease(Math.max(0, f.t - 50) / f.life), x0 = f.x + Math.cos(f.a) * f.R * u0 - camX, y0 = f.cy + Math.sin(f.a) * f.R * 0.35 * u0 - f.h * Math.sin(Math.PI * u0);
+      var al = f.t > f.life * 0.75 ? (f.life - f.t) / (f.life * 0.25) : 1;
+      ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.5 * al; ctx.strokeStyle = '#a8d4ff'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x, y); ctx.stroke();
+      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = al;
+      ctx.save(); ctx.translate(x, y); ctx.rotate(f.rot);
+      ctx.fillStyle = '#55607a'; ctx.beginPath(); ctx.moveTo(-5, 1.6); ctx.lineTo(6, 0); ctx.lineTo(-5, -1.6); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#e8f0ff'; ctx.beginPath(); ctx.moveTo(-4, 0); ctx.lineTo(6, 0); ctx.lineTo(-4, -1.4); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    });
+    ctx.restore();
+  }
+  // 끌어당기는 검압: 평타 콤보 마무리 타를 시작할 때(main.js → comboPull) 둘레 잡몹을 기사 앞(front)으로 ms 동안 끌어옴.
+  //   마무리 타가 맞기 전에 도착 → 마무리 타의 휘청(ai.react.finisherStagger)은 그대로 맞고, 그 뒤 앞에 모여 있어 띄우기 · 기술로 이어 감.
+  //   끌려오는 도중 맞아서 움찔(hit)하면 그 자리에서 끌기를 멈춤(밀려나는 힘을 덮어쓰지 않게). 보스 · 중간보스 · 소품 · 누운 · 뜬 적은 안 끌림
+  function comboPull(p) {
+    var q = pasOf(p, 'pressure');
+    if (!q || !p) return false;
+    var R = q.v, P = q.P, n = 0;
+    H.targets().forEach(function (t) {
+      if (!t || t.isProp || !t.T || t.T.boss || t.mid || (t.alive && !t.alive())) return;
+      if (t.state === 'down' || t.state === 'air' || t.state === 'dead' || (t.flyZ && t.flyZ() > 2)) return;
+      var dx = t.x - p.x, dz = t.y - p.y, ahead = dx * p.dir;
+      if (Math.abs(dx) > R || Math.abs(dz) > R * 0.45) return;
+      if (ahead > 10 && ahead <= P.front + 18 && Math.abs(dz) < 12) return;   // 이미 앞에 있음
+      var tx = p.x + p.dir * (P.front + (n % 3) * 9), ty = p.y + clamp(dz, -14, 14) * 0.5;
+      pulls.push({ e: t, x0: t.x, y0: t.y, tx: tx, ty: ty, t: 0, life: P.ms || 110, s0: t.state, done: false });
+      n++;
+    });
+    // 안으로 모이는 바람 고리(땅 + 몸 높이) + 끌려오는 쪽에서 들어오는 바람 불티
+    var cx = p.x + p.dir * P.front * 0.5;
+    wave(cx, p.y, 10, { r0: R, flat: 0.3, w: 3, ms: 220, color: '#e8f4ff', glow: '#7fb8ff', ground: true, noMax: true });
+    wave(cx, p.y - 52 * AS(), 8, { r0: R * 0.7, flat: 0.8, w: 2, ms: 200, color: '#ffffff', glow: '#9cc8ff', noMax: true });
+    [-1, 1].forEach(function (sd) { debris(p.x + sd * R * 0.8, p.y - 40 * AS(), p.y, 3, { cols: ['#ffffff', '#cfe8ff'], glow: true, sp: 120, size: 1.2, ms: 220, spread: 0.6 }); });
+    return n;
+  }
+  function pullStep(dt) {
+    for (var i = pulls.length - 1; i >= 0; i--) {
+      var o = pulls[i], e = o.e;
+      o.t += dt;
+      if (!o.done) {
+        if (!e || (e.alive && !e.alive()) || (e.state === 'hit' && o.s0 !== 'hit' && o.t > 0) || e.state === 'down' || e.state === 'air') o.done = true;
+        else {
+          var u = ease(Math.min(1, o.t / o.life));
+          e.x = o.x0 + (o.tx - o.x0) * u; e.y = o.y0 + (o.ty - o.y0) * u;
+          if (o.t >= o.life) o.done = true;
+        }
+      }
+      if (o.t >= o.life + 120) pulls.splice(i, 1);
+    }
+  }
+  // 끌려오는 적 뒤로 남는 바람 줄(처음 자리 → 지금 자리)
+  function drawPulls(ctx, camX) {
+    pulls.forEach(function (o) {
+      var e = o.e; if (!e) return;
+      var a = o.t < o.life ? 0.7 : Math.max(0, 0.7 * (1 - (o.t - o.life) / 120)), y = o.y0 - 44 * AS(), y1 = e.y - 44 * AS();
+      if (a <= 0) return;
+      ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
+      [[6, '#7fb8ff', 0.35], [2, '#ffffff', 0.8]].forEach(function (L) {
+        ctx.globalAlpha = a * L[2]; ctx.strokeStyle = L[1]; ctx.lineWidth = L[0];
+        ctx.beginPath(); ctx.moveTo(o.x0 - camX, y); ctx.lineTo(e.x - camX, y1); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(o.x0 - camX, y - 14); ctx.lineTo(e.x - camX, y1 - 14); ctx.stroke();
+      });
+      ctx.restore();
+    });
+  }
+
+  // ---- 성기사(2차 전직) 기술 (2026-11-08 형님 승인, 효과 = 전부 우리 코드) ----
+  var GOLD = ['#ffffff', '#fff6c8', '#ffd23f', '#ffb030'];
+  // 기술 Lv 별 배율(config grow: size · glow · hitstop · shake, 검기 날리기와 같은 방식). 없는 값 = 1
+  function growK(d, lv) { var GW = d.grow, gi = clamp((lv || 1) - 1, 0, 4); return function (n) { return GW && GW[n] && GW[n][gi] != null ? GW[n][gi] : 1; }; }
+  // 판정 값에 Lv 별 멈춤 · 흔들림 배율을 곱한 것(Lv 마다 한 번만 만들어 둠, key = 판정마다 따로 기억)
+  function growHit(d, h, lv, key) {
+    if (!d.grow) return h;
+    var gi = clamp((lv || 1) - 1, 0, 4), gk = growK(d, lv), C = d['_g' + key] || (d['_g' + key] = []);
+    if (!C[gi]) { var o = {}, n; for (n in h) if (n !== '_st') o[n] = h[n]; o.hitstop = (h.hitstop != null ? h.hitstop : 1) * gk('hitstop'); o.shake = (h.shake != null ? h.shake : 1) * gk('shake'); C[gi] = o; }
+    return C[gi];
+  }
+  // 심판의 십자: 칼이 땅에 꽂히는 순간 앞 땅에 십자를 새김(그 자리 고정) → telegraphMs 뒤 터짐(crossStep). 기사가 다른 걸 해도 그대로 터짐
+  //   k = 크기(기술 Lv 크기 area x grow.size) → 십자 길이 · 판정 같이 커짐
+  function castCross(p, d, s) {
+    var C = d.cross, lv = s.L.lv || 1, gk = growK(d, lv), k = s.area * gk('size');
+    crosses.push({ x: p.x + p.dir * C.x * Math.sqrt(k), z: p.y, dir: p.dir, t: 0, C: C, d: d, k: k, L: C.len * k, A: C.arm * k, D: C.depth * k,
+                   gl: gk('glow'), sh: gk('shake'), hit: growHit(d, C.hit, lv, 'cross'), again: (s.L.lv5 && s.L.lv5.again) || 0, againDone: false,
+                   boom: false, bt: 0, ticks: 0, moteT: 0, wk: p.weaponKey, mul: s.mul, lv: curLv, seed: Math.random() * 100 });
+    snd('holyBolt');
+    FX.shake(CFG.juice.shakePx * 0.9, CFG.juice.shakeMs);
+    var hx = p.x + p.dir * 30 * AS();
+    glow(hx, p.y - 8 * AS(), 40 * AS() / 0.55, '#ffe9a0', 260, 0.7);
+    debris(hx, p.y - 4 * AS(), p.y, 8, { cols: GOLD, glow: true, sp: 160, size: 1.4, ms: 360, spread: 1.2 });
+  }
+  var CROSS_AGAIN_MS = 360;   // Lv5: 첫 터짐 뒤 이만큼 있다가 한 번 더 솟음
+  function crossStep(dt) {
+    for (var i = crosses.length - 1; i >= 0; i--) {
+      var o = crosses[i];
+      o.t += dt;
+      crossTick(o, dt);
+      if (o.t >= o.C.telegraphMs + 900 + (o.again ? CROSS_AGAIN_MS : 0)) crosses.splice(i, 1);
+    }
+  }
+  function crossTick(o, dt) {
+    atLv(o.lv, function () {
+      var C = o.C, T = C.telegraphMs;
+      if (!o.boom) {   // 새겨진 동안: 십자 줄에서 금빛 불티가 조금씩 오름(곧 터진다는 표시)
+        o.moteT -= dt;
+        if (o.moteT <= 0) {
+          o.moteT = 45;
+          var u = Math.random() * 2 - 1;
+          debris(o.x + u * o.L, o.z - 2, o.z, 1, { cols: GOLD, glow: true, sp: 60, size: 1.3, ms: 380, g: -200, spread: 0.3 });
+        }
+      }
+      if (!o.boom && o.t >= T) { o.boom = true; o.bt = o.t; crossBoom(o, 1, true); }
+      if (o.boom) {
+        while (o.ticks < C.ticks && o.t >= T + C.tickMs * (o.ticks + 1)) {   // 남은 빛이 작게 더 때림
+          o.ticks++;
+          crossHitAll(o, C.tick, 1);
+          glow(o.x, o.z - 50 * AS(), o.L * 0.5, '#ffe9a0', 200, 0.3 * o.gl);
+        }
+        if (o.again && !o.againDone && o.t >= T + CROSS_AGAIN_MS) { o.againDone = true; o.bt2 = o.t; crossBoom(o, o.again, false); }
+      }
+    });
+  }
+  // 십자 둘레 사각(가로 ±L, 위아래 ±D) 안의 적 모두. mulK = 데미지 배율(Lv5 두 번째 솟음 = 0.6)
+  function crossHitAll(o, h, mulK) {
+    var st = stOf(h, o.d), any = false;
+    H.targets().forEach(function (t) {
+      if (!t || !H.canHit(t, h)) return;
+      var hb = t.hurtbox();
+      if (Math.abs(hb.z - o.z) > o.D) return;
+      if (hb.x1 < o.x - o.L || hb.x0 > o.x + o.L) return;
+      var dir = Math.abs(t.x - o.x) < 3 ? o.dir : (t.x > o.x ? 1 : -1);
+      H.onHit(st, t, { dir: dir, wk: o.wk, x: t.x, y: t.y - 50 * AS(), mul: o.mul * mulK });
+      any = true;
+    });
+    return any;
+  }
+  // 터짐: 땅 충격파(십자 길이만큼) + 큰 금빛 + 십자 줄 따라 위로 솟는 불티 + 멈춤 · 흔들림 · 번쩍
+  function crossBoom(o, mulK, first) {
+    var h = o.hit, gl = o.gl * (first ? 1 : 0.75);
+    snd('skSlam'); snd('holyBolt');
+    H.hitstop(first ? 90 : 60);
+    FX.shake(CFG.juice.shakePx * 3 * o.sh * (first ? 1 : 0.7), CFG.juice.shakeMs * 1.8);
+    H.dust(o.x - o.L * 0.8, o.z, -1); H.dust(o.x + o.L * 0.8, o.z, 1);
+    glow(o.x, o.z - 50 * AS(), o.L * 0.75, '#ffe9a0', 420, Math.min(0.7, 0.42 * gl));
+    glow(o.x + o.dir * o.L * 0.35, o.z - 30 * AS(), o.A * 1.6, '#ffffff', 240, 0.7);
+    wave(o.x, o.z, o.L * 1.1, { flat: 0.3, w: 5, ms: 480, color: '#fff6c8', glow: '#ffc030', ground: true });
+    wave(o.x + o.dir * o.L * 0.35, o.z, o.A * 2.2, { flat: 0.3, w: 4, ms: 340, color: '#ffffff', glow: '#ffd23f', ground: true });
+    if (first) wave(o.x, o.z - 60 * AS(), o.L * 0.7, { flat: 0.8, w: 4, ms: 360, color: '#ffffff', glow: '#ffd23f' });
+    for (var j = -3; j <= 3; j++)   // 긴 줄 따라 위로 솟는 불티
+      debris(o.x + j * o.L / 3.2, o.z - 4, o.z, first ? 4 : 2, { cols: GOLD, glow: true, sp: 320, size: 1.6, ms: 520, spread: 0.3, g: 160 });
+    debris(o.x + o.dir * o.L * 0.35, o.z - 4, o.z, first ? 8 : 4, { cols: GOLD, glow: true, sp: 260, size: 1.6, ms: 480, spread: 0.5, g: 160 });
+    debris(o.x, o.z - 2, o.z, first ? 10 : 4, { cols: ['#6a5a4a', '#8a7258', '#4a3e32'], sp: 200, size: 2.4, ms: 700 });
+    if (h.flash) doFlash(first ? h.flash : { color: h.flash.color, alpha: h.flash.alpha * 0.6, ms: h.flash.ms });
+    if (crossHitAll(o, h, mulK) && h.slowMs && first) H.slow(h.slowMs);
+  }
+  // 십자 모양 점들(세계 자리): 긴 줄(가로) + 가로대(앞쪽 35% 자리에서 위아래로, 살짝 비스듬 = 땅에 누운 느낌)
+  function crossPts(o) {
+    var cx = o.x + o.dir * o.L * 0.35, sl = o.A * 0.3;
+    return { l0: [o.x - o.L, o.z], l1: [o.x + o.L, o.z], b0: [cx + sl, o.z - o.A], b1: [cx - sl, o.z + o.A], c: [cx, o.z] };
+  }
+  // 땅에 새겨진 십자(캐릭터 밑): 새길 때 가운데에서 바깥으로 그어짐 → 터지기 직전 깜빡이며 밝아짐 → 터진 뒤 사라짐
+  function drawCrossMarks(ctx, camX) {
+    crosses.forEach(function (o) {
+      var T = o.C.telegraphMs, e = ease(clamp(o.t / 160, 0, 1)), P = crossPts(o);
+      var a = o.boom ? Math.max(0, 1 - (o.t - o.bt) / 520) : 0.75 + 0.25 * (Math.floor(o.t / 60) % 2) * clamp((o.t - T * 0.5) / (T * 0.5), 0, 1);
+      if (a <= 0) return;
+      var hot = o.boom ? 1 : clamp(o.t / T, 0, 1);
+      ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
+      function seg(p0, p1, u) {   // 가운데에서 p0 · p1 쪽으로 u 만큼 그음
+        var m = [(p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2];
+        ctx.beginPath();
+        ctx.moveTo(m[0] + (p0[0] - m[0]) * u - camX, m[1] + (p0[1] - m[1]) * u);
+        ctx.lineTo(m[0] + (p1[0] - m[0]) * u - camX, m[1] + (p1[1] - m[1]) * u);
+        ctx.stroke();
+      }
+      [[10, '#ffb030', 0.32], [5, '#ffe9a0', 0.7], [2, '#ffffff', 0.95]].forEach(function (L) {   // 바깥 빛 → 금 → 흰 심
+        ctx.globalAlpha = L[2] * a; ctx.strokeStyle = L[1]; ctx.lineWidth = L[0] * Math.sqrt(o.k) * (0.8 + 0.4 * hot);
+        seg(P.l0, P.l1, e); seg(P.b0, P.b1, e);
+      });
+      // 가로대 둘레 성스러운 고리 + 도는 룬 눈금
+      var R = o.A * 1.35 * e, cx = P.c[0] - camX, cz = P.c[1];
+      ctx.globalAlpha = 0.6 * a; ctx.strokeStyle = '#ffe9a0'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.ellipse(cx, cz, R * 1.15, R * 0.42, 0, 0, Math.PI * 2); ctx.stroke();
+      ctx.globalAlpha = 0.35 * a;
+      ctx.beginPath(); ctx.ellipse(cx, cz, R * 0.8, R * 0.3, 0, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = '#fff6c8'; ctx.globalAlpha = 0.85 * a;
+      for (var i = 0; i < 10; i++) { var an = o.t / 260 + i * Math.PI / 5; ctx.fillRect(cx + Math.cos(an) * R * 0.98 - 1, cz + Math.sin(an) * R * 0.36 - 1, 2.5, 2); }
+      // 바닥 빛(십자 길이만큼 납작하게)
+      ctx.save(); ctx.translate(o.x - camX, o.z); ctx.scale(1, 0.22);
+      var g = ctx.createRadialGradient(0, 0, 0, 0, 0, o.L);
+      g.addColorStop(0, 'rgba(255,233,160,' + (0.35 * a * (0.5 + 0.5 * hot)).toFixed(3) + ')'); g.addColorStop(1, 'rgba(255,180,40,0)');
+      ctx.globalAlpha = 1; ctx.fillStyle = g; ctx.fillRect(-o.L, -o.L, o.L * 2, o.L * 2); ctx.restore();
+      ctx.restore();
+    });
+  }
+  // 터질 때 십자 줄 따라 위로 솟는 금빛 빛기둥(캐릭터 위, 더하기 빛): 아래 밝고 위로 사라짐, 솟음(110ms) → 버팀 → 가늘어지며 사라짐
+  function drawCrossBeams(ctx, camX) {
+    crosses.forEach(function (o) {
+      if (!o.boom) return;
+      [[o.bt, 1], [o.bt2, 0.75]].forEach(function (B) {
+        if (B[0] == null) return;
+        var bt = o.t - B[0], life = 640;
+        if (bt < 0 || bt > life) return;
+        var rise = ease(clamp(bt / 110, 0, 1)), fade = bt > life * 0.4 ? 1 - (bt - life * 0.4) / (life * 0.6) : 1, P = crossPts(o);
+        var Hh = 175 * Math.sqrt(o.k) * B[1] * rise, w0 = 9 * Math.sqrt(o.k) * (1.2 - 0.5 * (1 - fade));
+        function rnd(i) { var v = Math.sin(o.seed + i * 12.9898) * 43758.5453; return v - Math.floor(v); }
+        function beam(x, z, w, h, i) {
+          var hh = h * (0.7 + 0.3 * rnd(i)), g = ctx.createLinearGradient(0, z - hh, 0, z);
+          g.addColorStop(0, 'rgba(255,220,120,0)'); g.addColorStop(0.55, 'rgba(255,233,160,' + (0.45 * fade).toFixed(3) + ')'); g.addColorStop(1, 'rgba(255,255,240,' + (0.9 * fade).toFixed(3) + ')');
+          ctx.fillStyle = g; ctx.fillRect(x - camX - w / 2, z - hh, w, hh);
+        }
+        ctx.save(); ctx.globalCompositeOperation = 'lighter';
+        var n = 9, k;
+        for (k = 0; k <= n; k++) { var u = k / n; beam(P.l0[0] + (P.l1[0] - P.l0[0]) * u, o.z, w0 * (0.8 + 0.4 * rnd(k + 30)), Hh * (0.75 + 0.25 * Math.sin(Math.PI * u)), k); }
+        for (k = 0; k <= 4; k++) { var v = k / 4; beam(P.b0[0] + (P.b1[0] - P.b0[0]) * v, P.b0[1] + (P.b1[1] - P.b0[1]) * v, w0 * 0.9, Hh * 0.85, k + 50); }
+        beam(P.c[0], P.c[1], w0 * 3, Hh * 1.15, 99);   // 가운데(가로대 만나는 곳) 굵은 빛
+        ctx.restore();
+      });
+    });
+  }
+
+  // 성스러운 돌격: 돌진(move) 하는 동안 앞 상자(reach) 안 잡몹을 기사 앞(front)에 붙여 밀고 감 + tickMs 마다 작게 때림(보스 · 중간보스 · 소품은 안 밂, 때리기만)
+  //   burst.at 에 앞쪽에서 크게 터짐(chargeBurst)
+  function chargeStep(p, d, s, t0, t1) {
+    var C = d.charge, m = d.move, B = C.burst, k = s.area;
+    if (t1 >= m.from && t0 <= m.to + 40) {
+      var xa = p.x + p.dir * C.reach.x0 * k, xb = p.x + p.dir * C.reach.x1 * k, lo = Math.min(xa, xb), hi = Math.max(xa, xb), fx = p.x + p.dir * C.front * k;
+      s.chT = (s.chT || 0) - (t1 - t0);
+      var tick = s.chT <= 0, st = stOf(C.tick, d), f = Math.min(1, 6 * (t1 - t0) / 1000);
+      if (tick) s.chT = C.tickMs;
+      H.targets().forEach(function (t) {
+        if (!t || (t.alive && !t.alive())) return;
+        if (Math.abs(t.y - p.y) > C.reach.depth * k) return;
+        var hb = t.hurtbox();
+        if (hb.x1 < lo || hb.x0 > hi) return;
+        if (!t.isProp && t.T && !t.T.boss && !t.mid && t.state !== 'down') {
+          if ((t.x - fx) * p.dir < 0) t.x = fx;   // 기사 앞에 붙여 밂(앞에 모임)
+          t.y += (p.y - t.y) * f;                 // 위아래도 기사 줄로 조금씩 모음
+        }
+        if (tick && H.canHit(t, C.tick)) H.onHit(st, t, { dir: p.dir, wk: p.weaponKey, x: t.x - p.dir * 10 * AS(), y: t.y - 50 * AS(), mul: s.mul });
+      });
+      if (tick) {
+        glow(fx, p.y - 50 * AS(), 30 * AS() / 0.55, '#ffe9a0', 160, 0.45);
+        debris(fx, p.y - 50 * AS(), p.y, 3, { cols: GOLD, glow: true, sp: 150, size: 1.3, ms: 260, spread: 1.2 });
+      }
+    }
+    if (!s.chBurst && t1 >= B.at) { s.chBurst = true; chargeBurst(p, d, s); }
+  }
+  function chargeBurst(p, d, s) {
+    var B = d.charge.burst, k = s.area, x = p.x + p.dir * B.x * k, z = p.y, R = B.r * k, h = B.hit, st = stOf(h, d), any = false;
+    snd('skSlam'); snd('holyBolt');
+    H.hitstop(90);
+    FX.shake(CFG.juice.shakePx * 3.2, CFG.juice.shakeMs * 1.8);
+    H.dust(x - 14 * AS(), z, -1); H.dust(x + 14 * AS(), z, 1);
+    glow(x, z - 50 * AS(), R * 0.9, '#fff2c0', 380, 0.85);
+    glow(x, z - 50 * AS(), R * 0.4, '#ffffff', 200, 0.7);
+    wave(x, z, R * 1.3, { flat: 0.3, w: 5, ms: 440, color: '#fff6c8', glow: '#ffc030', ground: true });
+    wave(x, z - 55 * AS(), R * 0.9, { flat: 0.85, w: 4, ms: 320, color: '#ffffff', glow: '#ffd23f' });
+    debris(x, z - 50 * AS(), z, 24, { cols: GOLD, glow: true, sp: 300, size: 1.7, ms: 520, spread: 1.6 });
+    H.targets().forEach(function (t) {
+      if (!t || !H.canHit(t, h)) return;
+      var hb = t.hurtbox();
+      if (Math.abs(hb.z - z) > B.depth * k) return;
+      if (hb.x1 < x - R || hb.x0 > x + R) return;
+      var dir = (t.x - p.x) * p.dir < -4 ? -p.dir : p.dir;   // 앞으로 날려 버림(기사 뒤에 있는 적만 뒤로)
+      H.onHit(st, t, { dir: dir, wk: p.weaponKey, x: t.x - dir * 6 * AS(), y: z - 50 * AS(), mul: s.mul });
+      any = true;
+    });
+    if (h.flash) doFlash(h.flash);
+    if (any && h.slowMs) H.slow(h.slowMs);
+  }
+  // 금빛 방패(돌진하는 동안, 캐릭터 위 더하기 빛): 몸을 감싼 타원 + 돌아가는 세로 줄(구처럼 보임) + 앞쪽 밝은 활(밀고 가는 쪽)
+  function drawBarrier(ctx, camX) {
+    var p = H.player && H.player();
+    if (!p || !barrierOn(p)) return;
+    var s = p.sk, B = s.d.barrier, a = clamp(Math.min((s.t - B.from) / 80, (B.to - s.t) / 100), 0, 1), now = s.t / 1000;
+    var x = p.x - camX, y = p.y - (p.z || 0) - 48 * AS(), rx = 40 * AS(), ry = 56 * AS(), P2 = Math.PI * 2;   // 몸 가운데 둘레(몸 크기 = actorScale)
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    var g = ctx.createRadialGradient(x, y, rx * 0.4, x, y, ry);
+    g.addColorStop(0, 'rgba(255,220,120,0)'); g.addColorStop(0.8, 'rgba(255,225,140,' + (0.3 * a).toFixed(3) + ')'); g.addColorStop(1, 'rgba(255,190,60,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, P2); ctx.fill();
+    ctx.strokeStyle = '#fff2b0'; ctx.lineWidth = 1.5; ctx.globalAlpha = 0.85 * a;
+    ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, P2); ctx.stroke();
+    ctx.lineWidth = 1; ctx.globalAlpha = 0.4 * a;
+    for (var i = 0; i < 3; i++) { var c = Math.cos(now * 9 + i * 2.1); ctx.beginPath(); ctx.ellipse(x, y, Math.abs(rx * c) + 0.5, ry, 0, 0, P2); ctx.stroke(); }
+    ctx.beginPath(); ctx.ellipse(x, y, rx, ry * 0.25, 0, 0, P2); ctx.stroke();
+    ctx.globalAlpha = 0.9 * a; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3; ctx.lineCap = 'round';   // 앞쪽 활
+    var a0 = p.dir > 0 ? -0.9 : Math.PI - 0.9;
+    ctx.beginPath(); ctx.ellipse(x, y, rx + 3, ry + 2, 0, a0, a0 + 1.8); ctx.stroke();
+    ctx.globalAlpha = 0.45 * a; ctx.strokeStyle = '#ffd23f'; ctx.lineWidth = 7;
+    ctx.beginPath(); ctx.ellipse(x, y, rx + 3, ry + 2, 0, a0, a0 + 1.8); ctx.stroke();
+    ctx.restore();
+  }
+  // 신성 가호(늘 켜진 기술): 몸 뒤 옅은 금빛(숨쉬듯) + 발밑 납작한 금빛. 눈에 거슬리지 않게 아주 옅게(Lv 마다 조금 진하게)
+  function drawAegis(ctx, camX, p) {
+    var q = pasOf(p, 'aegis');
+    if (!q || p.state === 'dead' || hidden(p)) return;
+    var br = 0.85 + 0.15 * Math.sin(performance.now() / 420), lk = 0.8 + 0.05 * q.lv, x = p.x - camX, y = p.y - (p.z || 0) - 48 * AS(), R = 58 * AS(), F = 34 * AS();
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    var g = ctx.createRadialGradient(x, y, 2, x, y, R);
+    g.addColorStop(0, 'rgba(255,236,170,' + (0.22 * br * lk).toFixed(3) + ')'); g.addColorStop(0.6, 'rgba(255,210,90,' + (0.1 * br * lk).toFixed(3) + ')'); g.addColorStop(1, 'rgba(255,190,60,0)');
+    ctx.fillStyle = g; ctx.fillRect(x - R, y - R, R * 2, R * 2);
+    ctx.translate(x, p.y); ctx.scale(1, 0.3);
+    var f = ctx.createRadialGradient(0, 0, 0, 0, 0, F);
+    f.addColorStop(0, 'rgba(255,230,150,' + (0.3 * br * lk).toFixed(3) + ')'); f.addColorStop(1, 'rgba(255,190,60,0)');
+    ctx.fillStyle = f; ctx.fillRect(-F, -F, F * 2, F * 2);
+    ctx.restore();
+    // 밝은 땅에서도 보이게: 발밑 얇은 금빛 고리 + 몸 둘레를 천천히 도는 금빛 점 3개(뒤쪽은 흐리게)
+    var now = performance.now() / 1000, rr = 26 * AS() / 0.55 * (0.96 + 0.04 * Math.sin(now * 3));
+    ctx.save();
+    ctx.globalAlpha = 0.45 * br * lk; ctx.strokeStyle = '#ffd86a'; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.ellipse(x, p.y, rr * 0.75, rr * 0.22, 0, 0, Math.PI * 2); ctx.stroke();
+    for (var i = 0; i < 3; i++) {
+      var an = now * 1.6 + i * Math.PI * 2 / 3, ox = Math.cos(an) * rr * 0.7, oy = y + 6 * AS() + Math.sin(now * 2 + i) * 14 * AS(), back = Math.sin(an) < 0;
+      ctx.globalAlpha = (back ? 0.35 : 0.85) * lk; ctx.fillStyle = back ? '#ffd23f' : '#fff6c8';
+      ctx.fillRect(x + ox - 1, oy - 1, 2, 2);
+      if (!back) { ctx.globalAlpha = 0.4 * lk; ctx.fillRect(x + ox - 2, oy - 0.5, 4, 1); ctx.fillRect(x + ox - 0.5, oy - 2, 1, 4); }
+    }
+    ctx.restore();
+  }
+  // 신성 가호 불티: 가끔 몸 둘레에서 작은 금빛 점이 천천히 위로 오름
+  function aegisStep(p, dt) {
+    if (!p || p.state === 'dead' || !pasOf(p, 'aegis')) return;
+    aegisT -= dt;
+    if (aegisT > 0) return;
+    aegisT = 260 + Math.random() * 200;
+    debris(p.x + (Math.random() * 2 - 1) * 18 * AS(), p.y - (p.z || 0) - (10 + Math.random() * 70) * AS(), p.y, 1,
+           { cols: ['#fff6c8', '#ffd23f'], glow: true, sp: 20, size: 1.2, ms: 700, g: -50, spread: 0.6 });
+  }
+
   // ---- 늘 켜진 기술 ----
   // 투지: 체력이 from 밑으로 줄수록 물리 공격 +, full 이하에서 val(최대). main.js onHit 가 물리 공격에 더함
   function gritBonus(p) {
@@ -1697,6 +2091,8 @@
   function update(dt) {
     for (var ei = echoes.length - 1; ei >= 0; ei--) { var E = echoes[ei]; E.t -= dt; if (E.t <= 0) { echoes.splice(ei, 1); atLv(E.lv, E.fn); } }   // 각성: 한 번 더
     bladeStep(dt); flameStep(dt); passiveStep(dt); tornadoStep(dt);   // 2차 기술(2026-11-06)
+    crossStep(dt); aegisStep(H.player && H.player(), dt);              // 성기사 기술(2026-11-08)
+    shardStep(dt); pullStep(dt);                                       // 칼날 파편 · 끌어당기는 검압(2026-11-08)
     meteorStep(dt);
     [bolts, rings, ghosts, arts, waves, parts, glows, pillars].forEach(function (L) {
       for (var i = L.length - 1; i >= 0; i--) { L[i].t += dt; if (L[i].t >= L[i].life) L.splice(i, 1); }
@@ -1742,6 +2138,7 @@
     drawCircle(ctx, camX, p);     // 땅 융기 마법진(2026-11-06 밤)
     drawFlameMark(ctx, camX, p);  // 불기둥 마법진(2차)
     drawGrit(ctx, camX, p);       // 투지 발밑 붉은 기운(2차)
+    drawCrossMarks(ctx, camX);    // 심판의 십자 땅에 새긴 십자(2026-11-08)
     var s = p && p.state === 'skill' && p.sk, K = s && (s.K || s.d.strikes);
     if (!K) return;
     K.at.forEach(function (at, k) {
@@ -1793,6 +2190,8 @@
   }
   // 잔상 + 캐릭터 뒤 효과(돌진 잔상 그림) (캐릭터 그리기 전에)
   function drawGhosts(ctx, camX) {
+    var pl = H.player && H.player();
+    if (pl) drawAegis(ctx, camX, pl);   // 신성 가호 금빛 기운 = 캐릭터 바로 뒤(2026-11-08)
     arts.forEach(function (a) { if (a.split) drawArt(ctx, camX, a, 'top'); else if (a.back) drawArt(ctx, camX, a); });
     ghosts.forEach(function (g) {
       var k = g.t / g.life;
@@ -1841,6 +2240,8 @@
     drawSlowed(ctx, camX);        // 얼음창에 느려진 적(2026-11-06)
     drawBeams(ctx, camX); drawArcs(ctx, camX); drawShield(ctx, camX); drawBrands(ctx, camX);   // 2차 기술(2026-11-06)
     drawMeteors(ctx, camX);       // 떨어지는 운석
+    drawCrossBeams(ctx, camX); drawBarrier(ctx, camX);   // 심판의 십자 빛기둥 · 성스러운 돌격 방패(2026-11-08)
+    drawPulls(ctx, camX); drawShards(ctx, camX);         // 끌어당기는 검압 바람 줄 · 칼날 파편(2026-11-08)
     waves.forEach(function (w) { if (!w.ground) drawWave(ctx, camX, w); });
     // 번쩍 빛(더하기)
     glows.forEach(function (gl) {
@@ -2058,9 +2459,10 @@
     // 떨어지는 중인 운석 자리(2026-11-06 무기 속성: 운석에도 속성 꼬리, js/enchant.js)
     meteorsNow: function () { return meteors.filter(function (m) { return !m.boom && m.t >= m.M.markMs; }).map(function (m) { return meteorPos(m, clamp((m.t - m.M.markMs) / m.M.fallMs, 0, 1)); }); },
     // 2차 기술(2026-11-06): 늘 켜진 기술(main.js 가 부름) · 순간이동 숨기 · 시험용
+    shardKill: shardKill, comboPull: comboPull,   // 1차 기사 늘 켜진 기술(2026-11-08): 칼날 파편(적이 쓰러질 때) · 끌어당기는 검압(콤보 마무리 타 시작)
     gritBonus: gritBonus, tryCounter: tryCounter, shieldSplit: shieldSplit, shieldHit: shieldHit, brandMul: brandMul, brandMark: brandMark,
-    hidden: hidden, test: TEST, _fx: function () { return { blades: blades.length, flames: flames.length, beams: beams.length, arcs: arcs.length, shield: !!shieldFx }; },
-    clear: function () { tornados.length = 0; blades.length = 0; flames.length = 0; beams.length = 0; arcs.length = 0; shieldFx = null; gritOn = false; curLv = 1; meteors.length = 0; pillars.length = 0; echoes.length = 0; bright = 1; noMpT = 0; bolts.length = 0; rings.length = 0; ghosts.length = 0; arts.length = 0; waves.length = 0; parts.length = 0; glows.length = 0; flash = null; },
+    hidden: hidden, test: TEST, _fx: function () { return { blades: blades.length, flames: flames.length, beams: beams.length, arcs: arcs.length, shield: !!shieldFx, crosses: crosses.length, shards: shardFx.length, pulls: pulls.length }; },
+    clear: function () { crosses.length = 0; aegisT = 0; shardFx.length = 0; shardQ.length = 0; shardN = 0; pulls.length = 0; tornados.length = 0; blades.length = 0; flames.length = 0; beams.length = 0; arcs.length = 0; shieldFx = null; gritOn = false; curLv = 1; meteors.length = 0; pillars.length = 0; echoes.length = 0; bright = 1; noMpT = 0; bolts.length = 0; rings.length = 0; ghosts.length = 0; arts.length = 0; waves.length = 0; parts.length = 0; glows.length = 0; flash = null; },
     // 화면 번쩍(콤보 마무리 타도 씀): { color, alpha, ms }
     flash: function (f) { doFlash(f); },
     // 파편·둥근 빛(소품 나뭇조각·음식 반짝임도 씀, props.js)
