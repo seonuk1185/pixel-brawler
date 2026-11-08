@@ -7,8 +7,10 @@
   var CFG = window.CFG, J = CFG.juice;
   var AS = CFG.actorScale || 1;   // 캐릭터 크기: 코드에 바로 적힌 거리·높이와 손맛의 밀림 거리(juice.knockback)에 곱한다
   var params = new URLSearchParams(location.search);
-  var DEBUG = params.get('debug') === '1' && !CFG.demo;   // 친구 시험 모드(?demo=1)엔 시험 화면 없음
-  var MODE = params.get('mode') === 'practice' ? 'practice' : 'stage';
+  // 기술 미리보기 액자(2026-11-08, index.html window.PV): 기술 창이 이 게임을 작은 액자 안에 한 번 더 띄운 것 → 판 고르기 · 버튼 · 저장 없이 그 기술만 되풀이(아래 pvBoot)
+  var PV = window.PV || null;
+  var DEBUG = !PV && params.get('debug') === '1' && !CFG.demo;   // 친구 시험 모드(?demo=1)엔 시험 화면 없음
+  var MODE = !PV && params.get('mode') === 'practice' ? 'practice' : 'stage';
   if (params.get('slow')) J.timeScale = +params.get('slow') || 1;
 
   // ---------- 스테이지 고르기 (2026-11-04) ----------
@@ -17,7 +19,7 @@
   //   저장 = 깬 판 「id」 목록(2026-11-04 7단계 때 바꿈): 예전처럼 목록 순서로 저장하면 5단계를 6 앞에 끼울 때 예전 저장이 한 칸씩 어긋남
   var STAGES = CFG.stages;
   function stageIndexOfId(id) { for (var i = 0; i < STAGES.length; i++) if (STAGES[i].id === id) return i + 1; return 0; }
-  var urlStage = stageIndexOfId(parseInt(params.get('stage'), 10));
+  var urlStage = PV ? 0 : stageIndexOfId(parseInt(params.get('stage'), 10));
   // 친구 시험 모드(?demo=1): ?stage=N 은 열린 판(1판 · 앞 판을 깬 판)만. 잠금 건너뛰기 없음
   if (CFG.demo && urlStage > 1 && !Growth.isCleared(STAGES[urlStage - 2].id) && !Growth.isCleared(STAGES[urlStage - 1].id)) urlStage = 0;
   // 깬 판 저장(2026-11-06 난이도): 저장칸에 난이도마다 따로(growth.js Growth.cleared · markCleared). 예전 깬 판 목록(pixelBrawler.clearedIds)은 growth.js 가 이지로 옮김
@@ -33,6 +35,8 @@
   // 처음 판: ?stage=N, 아니면 아직 안 깬 첫 판(앞 판을 다 깼으니 열려 있음, 고르기 화면 뒤에 미리 보임)
   var startNo = urlStage || firstUncleared();
   CFG.stage = STAGES[startNo - 1]; CFG.bg = CFG.stage.bg;
+  // 미리보기 액자: 1판 숲길 배경만 빌린 빈 판(웨이브 · 소품 없음, 고블린은 pvReset 이 세움)
+  if (PV) { CFG.stage = Object.assign({}, STAGES[0], { waves: [], props: [], width: 1600, pv: true }); CFG.bg = CFG.stage.bg; }
 
   var canvas = document.getElementById('screen');
   var ctx = canvas.getContext('2d');
@@ -272,7 +276,7 @@
     // 콤보 기록(2026-11-06 밤, 시험·결과용): launch = 띄움, air = 공중 타, otg = 누운 적 타, cancel = 캔슬(평타→기술 / 기술→기술), maxAirMs = 가장 오래 뜬 시간
     cstats: { launch: 0, air: 0, otg: 0, cancel: 0, maxAirMs: 0, maxAirHits: 0 }, comboTagTxt: '', comboTagT: 0,
     charKey: 'male', classKey: CFG.defaultClass || 'knight', weaponKey: 'sword', moveSet: 'sword', debug: DEBUG,
-    stage: null, bot: params.get('bot') === '1' && !CFG.demo,   // 친구 시험 모드엔 자동 조종 없음
+    stage: null, bot: !PV && params.get('bot') === '1' && !CFG.demo,   // 친구 시험 모드엔 자동 조종 없음
     stageNo: startNo, paused: false, props: Props.list
   };
 
@@ -388,8 +392,11 @@
       else if (res === 'dead') {
         G.hitstop = Math.max(G.hitstop, J.hitstopMs * 1.6); onKill(target);
         if (Skills.shardKill) Skills.shardKill(p, target, st.shardDepth || 0);   // 칼날 파편(기사 늘 켜진 기술, 2026-11-08): 쓰러진 자리에서 파편이 튐(st.shardDepth = 파편으로 이어진 횟수)
+        if (Skills.chainKill && W.magic) Skills.chainKill(p, target, st.chainDepth || 0);   // 원소 연쇄(대마법사 늘 켜진 기술, 2026-11-08): 마법으로 쓰러진 적이 터짐(st.chainDepth = 이어진 횟수)
       }
     }
+    // 원소 파편(법사 늘 켜진 기술, 2026-11-08): 마법(지팡이 · 완드 타 · 마법탄 · 터짐 · 기술)이 맞으면 둘레 적에게 불 · 얼음 조각(조각 자신은 안 튐 = st.eshard, 0.28초에 한 번)
+    if (W.magic && Skills.eshardHit && (target === G.dummy || res)) Skills.eshardHit(p, target, st);
     // hitY = 주먹·발이 닿는 높이(맨손 콤보), spark = 불똥 그림 크기(맨손은 작게)
     var hy = p.y - (p.z || 0) + (st.hitY != null ? st.hitY : -52 * AS), sc = st.spark || 1;   // 공중이면 그만큼 위
     if (src) { var tb = target.hurtbox(); hy = clamp(src.y, tb.y0 + 6, tb.y1 - 6); }
@@ -424,7 +431,7 @@
       var ls = Math.min(p.maxHp - p.hp, Math.max(1, Math.round(dmg * G.awk.A.lifesteal)));
       if (ls > 0) { p.hp += ls; FX.damage(p.x, p.y - (p.z || 0) - 112 * AS, ls, false, J, null, 'heal', 'player:ls', true); }
     }
-    p.mp = Math.min(p.maxMp, p.mp + CFG.growth.mp.onHit);   // 마나: 맞힐 때마다 조금 참
+    if (!st.noMp) p.mp = Math.min(p.maxMp, p.mp + CFG.growth.mp.onHit);   // 마나: 맞힐 때마다 조금 참(noMp = 원소 파편 조각처럼 자주 나가는 작은 타는 안 채움, 2026-11-08)
     G.comboHits = G.comboT > 0 ? G.comboHits + 1 : 1;
     G.maxCombo = Math.max(G.maxCombo, G.comboHits);
     G.comboT = 1200;
@@ -2873,7 +2880,7 @@
         e.update(dt, E);
         if (e.state === 'air') { G.cstats.maxAirMs = Math.max(G.cstats.maxAirMs, e.airT); G.cstats.maxAirHits = Math.max(G.cstats.maxAirHits, e.airHits); }   // 콤보 기록
       });
-      xpStep();             // 쓰러진 적 → 경험치(성장)
+      if (PV) pvKills(); else xpStep();   // 쓰러진 적 → 경험치(성장). 미리보기 액자 = 경험치 없음, 다시 세움
       separate();
       propCollide();
       heldStep();            // 미라에게 붙잡힘: 잡은 적 앞에 붙여 둠
@@ -2894,7 +2901,7 @@
       fullStep(dt);          // 포만감: 체력 천천히 + 줄어듦(2026-11-06 밤)
       rageStep(dt);          // 분노: 싸움이 없으면 천천히 줆(2026-11-06 밤)
       awkPushStep(dt);       // 각성 변신 순간 밀려나는 적
-      stageStep(dt);
+      if (PV) pvStep(dt); else stageStep(dt);   // 미리보기 액자 = 웨이브 · 결과 없이 그 기술만 되풀이
       Props.update(dt, p);   // 부서지는 그림·음식 줍기
       Enchant.updateItems(dt, p);   // 강화석 · 결정 줍기(2026-11-06)
     } else {
@@ -3574,6 +3581,9 @@
     if (P.stat === 'shield') return '피해의 ' + v + ' 마나로';
     if (P.stat === 'shards') return '파편 피해 ' + v + ' · 반경 ' + (P.r ? P.r[Math.max(1, lv) - 1] : 0);   // 칼날 파편(2026-11-08)
     if (P.stat === 'pull') return '3타 검압 반경 ' + P.val[Math.max(1, lv) - 1];                               // 끌어당기는 검압(2026-11-08)
+    if (P.stat === 'eshard') return '조각 피해 ' + v + ' · ' + P.n[Math.max(1, lv) - 1] + '마리 · 반경 ' + P.r[Math.max(1, lv) - 1];   // 원소 파편(법사, 2026-11-08)
+    if (P.stat === 'vortex') return (P.val[Math.max(1, lv) - 1] / 1000) + '초마다 · 피해 ' + pctTxt(P.mul[Math.max(1, lv) - 1]) + ' · 반경 ' + P.r[Math.max(1, lv) - 1];   // 마력 소용돌이(2026-11-08)
+    if (P.stat === 'echain') return '터짐 피해 ' + v + ' · 반경 ' + P.r[Math.max(1, lv) - 1];   // 원소 연쇄(대마법사, 2026-11-08)
     if (P.stat === 'regen') return '초당 체력 +' + (Math.round(P.val[Math.max(1, lv) - 1] * 1000) / 10) + '%';   // 신성 가호(2026-11-08): 최대 체력의 0.4~0.8%
     var k = { phys: '물리 공격 +', magic: '마법 공격 +', guard: '받는 피해 -', mpRegen: '마나 회복 +',
               grit: '체력 적으면 공격 최대 +', counter: '반격 확률 ', brand: '낙인 찍힌 적 피해 +' }[P.stat] || '';
@@ -3610,10 +3620,9 @@
       c.title = name + ' — ' + ((d ? d.desc : e.desc) || '') + (info ? '\n' + skillNums(bk, e, d, lv) : '') +
         (d && d.lv5 && d.lv5.say && info ? '\nLv5: ' + d.lv5.say : '') + (st === 'learn' ? '\n기술 점수 1점으로 배워요' : '') +
         (st === 'lock' && e.tier === 2 ? '\n2차 전직(' + (((CFG.classes[bk.cls] || {}).tier2 || {}).name || '2차') + ') 후 Lv' + bk.openLv(e.id) + '에 배울 수 있어요' : '');
-      // 고르기(쓰는 기술 · 열림만 버튼): 그림 + 이름 · Lv · 짧은 설명
-      var pick = document.createElement(canPick ? 'button' : 'div');
-      pick.className = 'cpick';
-      if (canPick) { pick.type = 'button'; pick.dataset.sk = e.id + ':pick'; pick.setAttribute('aria-label', name + ' 고르기'); }
+      // 그림 + 이름 · Lv · 짧은 설명 = 버튼(2026-11-08): 누르면 설명 · 미리보기 창(openDetail). 칸에 끼우기는 그 창의 「칸에 끼우기」
+      var pick = document.createElement('button');
+      pick.className = 'cpick'; pick.type = 'button'; pick.dataset.sk = e.id + ':info'; pick.setAttribute('aria-label', name + ' 설명 · 미리보기');
       pick.appendChild(skIcon(e.id, 40, !!st));
       // 2차 기술(2026-11-08, tier 2): 2차 전직 전 = 자물쇠 「2차 LvN」 + 짧은 설명 자리에 「2차 전직 후 LvN에 열려요」(이름이 안 잘리게 나눔),
       //   전직 뒤 = 그냥 「LvN」(N = bk.openLv)
@@ -3661,11 +3670,12 @@
     });
     var sd = skSel && S[skSel], sL = sd && Skills.lvStat(sd, bk.lv(skSel));
     bEl.insertAdjacentHTML('beforeend', '<span class="hint">' + (sd ? '<b>' + sd.name + '</b> MP ' + sL.mp + ' · 쿨타임 ' + secTxt(sL.cd) :
-      skSel === 'dodge' ? '<b>회피</b> 쿨타임 ' + secTxt(CFG.move.dodge.cdMs) : '기술을 고르고') + '<br><em>칸을 누르면 끼워져요</em></span>');
+      skSel === 'dodge' ? '<b>회피</b> 쿨타임 ' + secTxt(CFG.move.dodge.cdMs) : '기술을 누르면 설명 · 미리보기') + '<br><em>' + (skSel ? '칸을 누르면 끼워져요' : '「칸에 끼우기」 → 칸을 누름') + '</em></span>');
     skEl.querySelectorAll('.spread button[data-sk], .skbar button[data-sk]').forEach(function (b) {
       b.addEventListener('click', function () {
         var a = b.dataset.sk.split(':'), bk2 = Growth.book(G.classKey);
         if (!bk2) return;
+        if (a[1] === 'info') { openDetail(a[0]); return; }   // 설명 · 미리보기 창(2026-11-08)
         if (a[1] === '+') bk2.add(a[0]);
         else if (a[1] === 'pick') skSel = skSel === a[0] ? null : a[0];
         else {   // 칸: 고른 기술을 끼움 / 고른 게 없으면 그 칸 기술을 고름
@@ -3693,6 +3703,7 @@
     openMenu(skEl, skEl.querySelector('.plus:not([disabled])') || document.getElementById('btnSkClose'));
   }
   function closeSkills() {
+    closeDetail(false);   // 설명 · 미리보기 창이 떠 있으면 같이 닫음(2026-11-08)
     closeMenu(skEl);
     skSel = null;
     var B = skBack || {}; skBack = null;
@@ -3703,8 +3714,131 @@
   document.querySelectorAll('.skopen').forEach(function (b) { b.addEventListener('click', function () { openSkills(); }); });
   document.getElementById('btnSkReset').addEventListener('click', function () { var bk = Growth.book(G.classKey); if (bk) { bk.reset(); refreshGrowth(); renderSkills(); } });
   document.getElementById('btnSkClose').addEventListener('click', closeSkills);
-  window.addEventListener('keydown', function (e) { if (e.code === 'Escape' && !skEl.hidden) { e.preventDefault(); closeSkills(); } });
+  window.addEventListener('keydown', function (e) {
+    if (e.code !== 'Escape' || skEl.hidden) return;
+    e.preventDefault();
+    if (detEl && !detEl.hidden) closeDetail(true); else closeSkills();   // 설명 · 미리보기 창 → 기술 창으로
+  });
   G.openSkills = openSkills; G.closeSkills = closeSkills;
+
+  // ---------- 기술 설명 · 미리보기 창 (2026-11-08, 형님 요청) ----------
+  // 기술 창에서 기술(쓰는 기술 · 늘 켜진 기술, 1차 · 2차, 잠긴 것도)을 누르면 기술 창 위에 뜸. 진짜 게임은 뒤에서 그대로 멈춤
+  //   왼쪽 = 그림 · 이름 · 갈래(쓰는 기술 / 늘 켜진 기술 · 1차 / 2차) · 쉬운 설명 · 지금 Lv 숫자(마나 · 쿨타임 · 위력) · 다음 Lv 에 좋아지는 것 · Lv5 덤 · 잠김(열리는 Lv)
+  //   오른쪽 = 미리보기 액자. 「▶ 미리보기」 = 이 게임을 작은 액자(iframe) 안에 ?pv=기술 로 한 번 더 띄움(main.js pvBoot):
+  //     지금 옷(2차 기술이면 2차 옷) · 진짜 기술 코드 · 효과 · 숫자 그대로 고블린 허수아비 앞에서 되풀이. 다른 창이라 진짜 게임 · 저장과 안 섞임
+  //   칸에 끼우기(배운 쓰는 기술만) = 예전 「기술을 고르고 → 칸을 누름」의 고르기. 닫기 · X · Esc · 패드 B = 기술 창으로
+  var detEl = document.getElementById('skDetail'), detId = null, pvFrame = null, pvWait = 0;
+  var pvBoxEl = document.getElementById('pvBox'), pvPhEl = document.getElementById('pvPh'), pvBtn = document.getElementById('btnPv');
+  // 늘 켜진 기술 미리보기에서 무엇을 보여 주나(액자 밑 한 줄)
+  var PV_CAP = {
+    phys: '평타로 고블린을 때려요 — 눈에 띄는 효과 없이 숫자가 커져요', magic: '평타로 고블린을 때려요 — 눈에 띄는 효과 없이 숫자가 커져요',
+    guard: '고블린이 때려요 — 받는 피해 숫자가 작아져요', mpRegen: '마나가 더 빨리 차요 — 눈에 띄는 효과는 없어요',
+    shards: '평타로 쓰러뜨리면 그 자리에서 칼날 파편이 튀어요', pull: '평타 3타째에 둘레 고블린이 앞으로 끌려와요',
+    grit: '체력을 일부러 25%로 낮춰서 보여 줘요(발밑 붉은 기운)', counter: '고블린이 때리면 확률로 되받아 베요',
+    regen: '몸 둘레 금빛 기운 · 체력이 천천히 차요', eshard: '마법이 맞으면 불 · 얼음 조각이 둘레 고블린에게 튀어요',
+    vortex: '둘레 고블린 가운데에 마력 소용돌이가 저절로 생겨요', shield: '고블린이 때리면 마나가 피해 일부를 대신 받아요(파란 방패)',
+    brand: '화염구로 낙인을 찍은 뒤 평타 — 낙인 찍힌 적은 더 아파요', echain: '마법으로 쓰러뜨리면 그 자리에서 터져 둘레를 때려요'
+  };
+  function t2Name(cls) { return ((CFG.classes[cls] || {}).tier2 || {}).name || '2차'; }
+  function detRow(k, v, cls) { return '<div class="sdrow' + (cls ? ' ' + cls : '') + '"><b>' + k + '</b><span>' + v + '</span></div>'; }
+  function arrow(a, b) { return a === b ? a : a + ' → <em>' + b + '</em>'; }
+  function renderDetail() {
+    var bk = Growth.book(G.classKey), e = bk && bk.entry(detId);
+    if (!e) return;
+    var S = CFG.skills[bk.cls], d = S[e.id] && S[e.id].name ? S[e.id] : null, max = CFG.skills.maxLv || 5;
+    var name = d ? d.name : e.name, lv = bk.lv(e.id), open = bk.unlocked(e.id), show = Math.max(1, lv);
+    var st = e.soon ? 'soon' : !open ? 'lock' : lv > 0 ? '' : 'learn', basic = CFG.skills.basic && CFG.skills.basic[bk.cls] === e.id;
+    document.getElementById('sdRib').textContent = e.passive ? '늘 켜진 기술' : '쓰는 기술';
+    var ic = document.getElementById('sdIcon'); ic.innerHTML = ''; ic.appendChild(skIcon(e.id, 56, !!st && st !== 'learn'));
+    document.getElementById('sdName').textContent = name;
+    var tags = '<i class="tg ' + (e.passive ? 'pas' : 'act') + '">' + (e.passive ? '늘 켜진 기술' : '쓰는 기술') + '</i>' +
+      '<i class="tg' + (e.tier === 2 ? ' t2' : '') + '">' + (e.tier === 2 ? '2차 · ' + t2Name(bk.cls) : '1차 · ' + ((CFG.classes[bk.cls] || {}).label || '')) + '</i>' +
+      (basic ? '<i class="tg">기본기</i>' : '') +
+      (st === 'lock' ? '<i class="tg lk">잠김</i>' : st === 'learn' ? '<i class="tg ln">배울 수 있음</i>' : st === 'soon' ? '<i class="tg lk">준비 중</i>' : '<i class="tg lv">Lv ' + lv + '/' + max + '</i>');
+    document.getElementById('sdTags').innerHTML = tags;
+    document.getElementById('sdDesc').textContent = (d ? d.desc : e.desc) || e.short || '';
+    // 숫자: 지금 Lv(안 배웠으면 Lv1 기준) · 다음 Lv · Lv5 덤 · 여는 법
+    var h = '', now = lv > 0 ? '지금 Lv' + lv : 'Lv1 기준';
+    if (d) {
+      var L = Skills.lvStat(d, show), N = show < max ? Skills.lvStat(d, show + 1) : null;
+      h += detRow(now, '마나 ' + L.mp + ' · 쿨타임 ' + secTxt(L.cd) + ' · 위력 ' + pctTxt(L.dmg));
+      if (N) h += detRow('Lv' + (show + 1) + ' 되면', '마나 ' + arrow(L.mp, N.mp) + ' · 쿨타임 ' + arrow(secTxt(L.cd), secTxt(N.cd)) + ' · 위력 ' + arrow(pctTxt(L.dmg), pctTxt(N.dmg)) +
+        (show + 1 === max && d.lv5 && d.lv5.say ? ' · <em>' + d.lv5.say + '</em>' : ''), 'nx');
+      else h += detRow('최고 Lv', '더 올릴 수 없어요', 'nx');
+      if (d.lv5 && d.lv5.say) h += detRow('Lv5 덤', d.lv5.say, 'l5');
+    } else if (e.passive && e.passive.val) {
+      h += detRow(now, passiveNow(e, show));
+      if (show < max) h += detRow('Lv' + (show + 1) + ' 되면', '<em>' + passiveNow(e, show + 1) + '</em>', 'nx');
+      else h += detRow('최고 Lv', '더 올릴 수 없어요', 'nx');
+    }
+    if (st === 'lock') h += detRow('여는 법', e.tier === 2 && !bk.tier2() ? '2차 전직(' + t2Name(bk.cls) + ', Lv' + bk.tier2Lv() + ') 뒤 Lv' + bk.openLv(e.id) + '에 배울 수 있어요' : 'Lv' + bk.openLv(e.id) + '에 배울 수 있어요', 'lk');
+    else if (st === 'learn') h += detRow('배우기', '기술 점수 1점으로 배워요(기술 창의 초록 +)', 'ln');
+    document.getElementById('sdNums').innerHTML = h;
+    var put = document.getElementById('btnSdPut');
+    put.hidden = !(bk.isActive(e.id) && lv > 0);
+    document.getElementById('pvCap').textContent = (e.passive ? PV_CAP[e.passive.stat] || '평타로 고블린을 때리며 보여 줘요' : '고블린 허수아비에게 저절로 되풀이해요') +
+      (lv > 0 ? ' (Lv' + lv + ')' : ' (Lv1)') + ' · 진짜 게임엔 영향 없어요';
+    var pi = document.getElementById('pvPhIc'); pi.innerHTML = ''; pi.appendChild(skIcon(e.id, 40));
+  }
+  function openDetail(id) {
+    var bk = Growth.book(G.classKey);
+    if (!bk || !bk.entry(id) || bk.entry(id).soon) return;
+    pvStop();
+    detId = id;
+    renderDetail();
+    openMenu(detEl, pvBtn);
+  }
+  // back = 기술 창으로 돌아감(그 기술 칸에 초점). 기술 창째 닫을 때는 false
+  function closeDetail(back) {
+    if (!detEl || detEl.hidden) return;
+    pvStop();
+    closeMenu(detEl);
+    var id = detId; detId = null;
+    if (back && !skEl.hidden) openMenu(skEl, skEl.querySelector('button[data-sk="' + id + ':info"]') || document.getElementById('btnSkClose'));
+  }
+  // 미리보기 켜기: 액자를 새로 만듦(기술 · 직업 · 성별 · 기술 Lv · 레벨을 주소로 넘김). 액자가 준비되면(pv ready 알림) 덮개를 걷음
+  function pvStart() {
+    var bk = Growth.book(G.classKey), e = bk && bk.entry(detId);
+    if (!e) return;
+    pvStop();
+    var q = new URLSearchParams();
+    q.set('pv', e.id); q.set('pvc', bk.cls); q.set('pvg', G.charKey); q.set('pvl', Math.max(1, bk.lv(e.id)));
+    if (e.passive && e.passive.stat === 'brand') q.set('pvh', 'fireball');   // 원소 낙인 = 기술 마법에 맞아야 → 도우미 화염구
+    // 레벨: 2차 기술인데 아직 2차 Lv 전이면 2차 Lv 로(2차 옷), 아니면 지금 창의 시험 레벨(?lv=) 그대로 · 없으면 저장된 레벨(액자가 저장을 읽기만 함)
+    var need = e.tier === 2 ? bk.tier2Lv() : 0, lvq = params.get('lv');
+    if (need && Growth.lv < need) q.set('lv', need); else if (lvq) q.set('lv', lvq);
+    ['rs', 'art'].forEach(function (k) { if (params.get(k)) q.set(k, params.get(k)); });
+    var f = pvFrame = document.createElement('iframe');
+    f.className = 'pvframe'; f.title = '기술 미리보기'; f.setAttribute('tabindex', '-1'); f.setAttribute('aria-hidden', 'true');
+    f.src = location.pathname + '?' + q.toString();
+    pvBoxEl.appendChild(f);
+    pvBoxEl.classList.add('on', 'wait');
+    document.getElementById('pvPhTxt').textContent = '불러오는 중…';
+    clearTimeout(pvWait); pvWait = setTimeout(function () { pvBoxEl.classList.remove('wait'); }, 10000);
+    pvBtn.textContent = '■ 멈추기';
+  }
+  function pvStop() {
+    clearTimeout(pvWait);
+    if (pvFrame) { try { pvFrame.src = 'about:blank'; } catch (e) {} pvFrame.remove(); pvFrame = null; }
+    pvBoxEl.classList.remove('on', 'wait');
+    document.getElementById('pvPhTxt').textContent = '▶ 미리보기를 누르면 움직여요';
+    pvBtn.textContent = '▶ 미리보기';
+  }
+  window.addEventListener('message', function (ev) {
+    if (!pvFrame || ev.source !== pvFrame.contentWindow || !ev.data || ev.data.pv !== 'ready') return;
+    clearTimeout(pvWait); pvBoxEl.classList.remove('wait');
+  });
+  pvBtn.addEventListener('click', function () { if (pvFrame) pvStop(); else pvStart(); });
+  document.getElementById('btnSdPut').addEventListener('click', function () {
+    var id = detId;
+    closeDetail(false);
+    skSel = id; renderSkills();
+    openMenu(skEl, skEl.querySelector('.bslot:not([disabled])') || document.getElementById('btnSkClose'));   // 칸 고르기로 바로(패드 · 키보드)
+  });
+  document.getElementById('btnSdClose').addEventListener('click', function () { closeDetail(true); });
+  document.getElementById('btnSdX').addEventListener('click', function () { closeDetail(true); });
+  G.openDetail = openDetail; G.closeDetail = closeDetail; G.pvStart = pvStart;   // 시험용
+
 
   // ---------- 강화 창 (2026-11-06, 형님 승인. 수치 = config enchant, 계산·저장 = growth.js Growth.weapon) ----------
   // 여는 곳: 「기술」 옆 「강화」 · 스테이지 고르기 · 결과 화면(견습은 버튼이 안 보임). 여는 동안 게임 멈춤, 닫으면 원래대로
@@ -4550,6 +4684,119 @@
     }
   };
 
+  // ---------- 기술 미리보기 액자 (2026-11-08, 기술 창 「▶ 미리보기」 · index.html window.PV) ----------
+  // 기술 창이 이 게임을 작은 액자(iframe) 안에 ?pv=기술 로 한 번 더 띄움 → 진짜 기술 코드 · 효과 · 숫자 그대로, 진짜 게임과는 완전히 따로
+  //   (다른 창이라 적 목록 · 효과 · 저장이 안 섞임. 저장은 index.html 이 막음, 경험치 · 떨어지는 것 · 웨이브 · 결과 없음)
+  //   쓰는 기술: 플레이어 앞 고블린 허수아비 3~4마리(가만히 서 있음, 안 쓰러짐) → 잠깐 뒤 그 기술 → 끝나고 조금 쉬었다 처음부터(되풀이)
+  //   늘 켜진 기술: 저절로 평타로 고블린을 때림. 칼날 파편 · 원소 연쇄 = 약한 고블린(쓰러지며 터짐, 다시 나옴) · 투지 = 체력 25% ·
+  //     반격 · 마나 방패 · 강철 피부 = 고블린이 때림(플레이어는 가만히) · 원소 낙인 = 도우미 화염구(PV.help)로 낙인 → 평타
+  var pv = null, pvWear = null;
+  var PV_FIGHT = { counter: 1, shield: 1, guard: 1 };   // 맞아야 보이는 늘 켜진 기술(passive.stat)
+  var PV_KILL = { shards: 1, echain: 1 };               // 쓰러져야 보이는 것
+  var PV_BEHIND = { spin: 1, slam: 1, blink: 1 };       // 둘레를 치는 쓰는 기술 = 뒤에도 한 마리
+  function pvInfo() {
+    var bk = Growth.book(G.classKey), e = bk && bk.entry(PV.id), P = e && e.passive;
+    return { e: e, pas: !!P, stat: P ? P.stat : null };
+  }
+  function pvSpawn(slot, I) {
+    var p = G.player, mid = (world.laneTop + world.laneBottom) / 2, lh = world.laneBottom - world.laneTop;
+    var e = makeEnemy('goblin', p.x + slot.dx * AS, clamp(mid + slot.k * lh * 0.16, world.laneTop, world.laneBottom), null);
+    e.dir = slot.dx < 0 ? 1 : -1; e.entered = true; e.noDrop = true; e.pvSlot = slot;
+    if (PV_KILL[I.stat]) {   // 평타 두세 번에 쓰러지는 체력
+      var W = CFG.weapons[G.weaponKey], hit = (W.damage[0] + W.damage[1]) / 2 * Growth.atkMul(!!W.magic);
+      e.hp = e.maxHp = Math.max(1, Math.round(hit * 2.2));
+    } else e.hp = e.maxHp = 999999;   // 허수아비: 안 쓰러짐(띄우기 · 넘어짐 · 숫자는 그대로)
+    if (PV_FIGHT[I.stat]) e.dmgMul = 0.35;
+    else e.sleep('idle');   // 가만히 서 있음(맞으면 깨지만 pvStep 이 다시 세워 둠)
+    return e;
+  }
+  function pvReset() {
+    var I = pvInfo();
+    pv = { t: 0, cast: 0, done: 0, press: -1e9, atkT: 0, re: [], I: I };
+    FX.list.length = 0; Projectiles.clear(); Skills.clear(); if (window.Enchant) Enchant.reset();
+    orbs.length = 0;
+    G.enemies = []; G.stage = newStage(); G.ectx = makeEnemyCtx();
+    G.mh = newMh(); G.mk = { n: 0, t: 0 }; G.callout = null; G.hitstop = 0; G.slowT = 0; G.zoom = null; G.comboT = 0; G.rage = 0; G.awk = null; G.vig = 0;
+    var p = G.player = new Player(CFG);
+    applyGrowth(p);
+    p.setCharacter(outfitAssets()); p.weaponKey = G.weaponKey; p.setMoveSet(G.moveSet);
+    p.x = Math.round(LW * (I.pas ? 0.3 : 0.24)); p.y = Math.round((world.laneTop + world.laneBottom) / 2); p.dir = 1;
+    p.god = !PV_FIGHT[I.stat];
+    if (I.stat === 'regen') p.hp = Math.round(p.maxHp * 0.5);   // 신성 가호: 체력이 차는 중
+    G.camX = 0;
+    Input.setOverride({ x: 0, y: 0 });
+    var slots = I.pas ? [{ dx: 46, k: 0.05 }, { dx: 92, k: -0.65 }, { dx: 132, k: 0.6 }, { dx: 172, k: -0.15 }]
+                      : [{ dx: 62, k: 0.1 }, { dx: 116, k: -0.6 }, { dx: 172, k: 0.55 }];
+    if (!I.pas && PV_BEHIND[PV.id]) slots.push({ dx: -66, k: -0.2 });
+    slots.forEach(function (sl) { pvSpawn(sl, I); });
+  }
+  // 쓰러진 고블린: 「펑」만(경험치 · 물약 · 강화석 없음) → 1.1초 뒤 그 자리에 다시
+  function pvKills() {
+    G.enemies.forEach(function (e) {
+      if (e.alive() || e.xpDone) return;
+      e.xpDone = true; snd('pop');
+      if (pv && e.pvSlot) pv.re.push({ at: pv.t + 1100, slot: e.pvSlot });
+    });
+  }
+  // 늘 켜진 기술 자동 조종: 가장 가까운 고블린에게 다가가 평타(맞아야 보이는 기술 = 가만히)
+  function pvBot(p) {
+    var best = null, bd = 1e9;
+    G.enemies.forEach(function (e) { if (!e.alive()) return; var d = Math.abs(e.x - p.x) + Math.abs(e.y - p.y) * 2; if (d < bd) { bd = d; best = e; } });
+    if (!best) { Input.setOverride({ x: 0, y: 0 }); return; }
+    var W = CFG.weapons[G.weaponKey], reach = (W.magic ? 120 : 44) * AS, dx = best.x - p.x, dy = best.y - p.y;
+    var mx = Math.abs(dx) > reach ? Math.sign(dx) : 0, my = Math.abs(dy) > 5 * AS ? Math.sign(dy) * 0.9 : 0;
+    Input.setOverride({ x: mx, y: my });
+    if ((p.state === 'idle' || p.state === 'walk') && !mx && Math.abs(dx) > 2) p.dir = dx > 0 ? 1 : -1;
+    if (!mx && Math.abs(dy) < 9 * AS && pv.t - pv.atkT > 130) { pv.atkT = pv.t; Input.pressAttack(); }
+  }
+  function pvStep(dt) {
+    if (!pv) return;
+    var p = G.player, I = pv.I;
+    pv.t += dt;
+    p.maxMp = Math.max(p.maxMp, 200); p.mp = p.maxMp;   // 마나 걱정 없이
+    G.rage = 0; if (CFG.fullness) G.full = CFG.fullness.max;
+    if (p.state === 'dead') { pvReset(); return; }
+    if (PV_FIGHT[I.stat] && p.hp < p.maxHp * 0.4) p.hp = p.maxHp;
+    if (I.stat === 'grit') p.hp = Math.round(p.maxHp * 0.25);   // 투지: 체력이 적어야 보임
+    // 맞아야 보이는 기술이 아니면 고블린은 늘 가만히(맞고 일어나면 다시 세움)
+    if (!PV_FIGHT[I.stat]) G.enemies.forEach(function (e) { if (e.alive() && !e.atk && (e.state === 'idle' || e.state === 'walk')) e.asleep = true; });
+    pv.re = pv.re.filter(function (q) {
+      if (pv.t < q.at) return true;
+      var e = pvSpawn(q.slot, I);
+      if (G.assets.dust && G.assets.dust.length) FX.sprite(e.x, e.y, G.assets.dust, CFG.dust.fps, CFG.dust.pivot, false, true);
+      return false;
+    });
+    if (!I.pas) {
+      // 쓰는 기술: 0.42초 뒤 1번 칸(= 그 기술) → 끝나고 1.7초 뒤 처음부터
+      if (!pv.cast) {
+        if (p.state === 'skill') pv.cast = pv.t;
+        else if (pv.t >= 420 && pv.t - pv.press > 500) { pv.press = pv.t; Input.pressSkill('A'); }
+      } else if (!pv.done && p.state !== 'skill' && pv.t - pv.cast > 500) pv.done = pv.t;
+      if ((pv.done && pv.t - pv.done > 1700) || pv.t > 9000) pvReset();
+      return;
+    }
+    // 늘 켜진 기술: 원소 낙인 = 처음에 도우미 화염구 → 평타. 6.5초마다 처음부터
+    if (PV.help && !pv.cast) {
+      if (p.state === 'skill') pv.cast = pv.t;
+      else if (pv.t >= 380 && pv.t - pv.press > 500) { pv.press = pv.t; Input.pressSkill('A'); }
+      if (!pv.cast) return;
+    }
+    if (PV_FIGHT[I.stat]) Input.setOverride({ x: 0, y: 0 });
+    else if (p.state !== 'skill') pvBot(p);
+    if (pv.t > 6500) pvReset();
+  }
+  function pvBoot() {
+    Input.setMode('pc');   // 액자 안은 PC 화면 갈래(폰 버튼 · 위아래 여백 없음). 버튼은 css(html.pvmode)가 다 숨김
+    hudEl.hidden = true;
+    resize();
+    pvReset();
+    function ready() {
+      pvReset();
+      try { window.parent.postMessage({ pv: 'ready', id: PV.id }, location.origin); } catch (e) {}
+    }
+    (pvWear || Promise.resolve()).then(ready, ready);
+  }
+
   // ---------- 시작 ----------
   var last = 0, acc = 0, STEP = 1000 / 60;
   function frame(now) {
@@ -4579,13 +4826,14 @@
   // 처음 불러올 것: 지금 고른 옷 하나(나머지 옷은 시작한 뒤 뒤에서 하나씩). 예전 견습 그림(?art=novice)은 둘 다
   // 처음 직업 = 저장칸에 전직한 직업(없으면 견습)
   G.classKey = Growth.cls || CFG.defaultClass || 'novice';
+  if (PV) { G.classKey = PV.cls; G.charKey = PV.chr; }   // 미리보기 액자: 기술 창이 넘긴 직업 · 성별(그 옷부터 불러옴)
   var firstChars = CFG.artSet === 'novice' ? Object.keys(CFG.art.characters) : [outfitKey()];
   if (loadEl) {
     var lbar = loadEl.querySelector('i');
     Assets.progress.onChange = function (got, want) { if (lbar) lbar.style.width = Math.round(100 * got / Math.max(1, want)) + '%'; };
   }
   // 적 그림은 지금 판에 나오는 것만(다른 판 적은 그 판을 고를 때 goStage 가). 연습장은 적 없음
-  Assets.loadAll(CFG, firstChars, MODE === 'stage' ? stageEnemies(CFG.stage) : []).then(function (assets) {
+  Assets.loadAll(CFG, firstChars, MODE === 'stage' ? (PV ? ['goblin'] : stageEnemies(CFG.stage)) : []).then(function (assets) {
     G.assets = assets;
     return MODE === 'stage' ? Props.load(CFG.stage).then(function () { return assets; }) : assets;
   }).then(function (assets) {
@@ -4620,8 +4868,10 @@
     G.player.y = Math.round((world.laneTop + world.laneBottom) / 2);
     if (G.dummy) G.dummy.y = G.player.y;
     G.camX = Math.max(0, G.player.x - LW * 0.42);
-    setChar('male'); setClass(Growth.cls || CFG.defaultClass || 'novice');
-    if (MODE === 'stage') {
+    if (PV) { setChar(PV.chr); pvWear = setClass(PV.cls); }
+    else { setChar('male'); setClass(Growth.cls || CFG.defaultClass || 'novice'); }
+    if (PV) pvBoot();
+    else if (MODE === 'stage') {
       hudEl.hidden = false;
       // 처음: 고르기 화면(뒤에 그 판이 멈춰 보임). ?stage=N 이나 ?bot=1 이면 바로 시작
       var pick = !urlStage && !G.bot;
@@ -4641,7 +4891,7 @@
     if (DEBUG && window.Debug) Debug.init(G);
     document.body.classList.add('ready');
     if (loadEl) { loadEl.hidden = true; Assets.progress.onChange = null; }
-    setTimeout(function () { Assets.loadRest(); }, 800);   // 나머지 옷 그림은 뒤에서 하나씩
+    if (!PV) setTimeout(function () { Assets.loadRest(); }, 800);   // 나머지 옷 그림은 뒤에서 하나씩
     requestAnimationFrame(frame);
   });
   window.addEventListener('resize', function () { if (G.player) resize(); });

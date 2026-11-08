@@ -429,6 +429,59 @@
       [[12, 1], [1, 12], [22, 12], [12, 22]].forEach(function (p) { g.px(p[0], p[1], K.f0); });
       g.spark(20, 3, false);
     },
+    // ===== 법사 새 기술(2026-11-08) =====
+    eshard: function (g) {                  // 원소 파편(늘 켜짐): 가운데 마법 터짐 + 사방으로 튀는 불 · 얼음 조각(번갈아)
+      g.disc(12, 12, 3.6, function (d) { return d > 2.6 ? K.p1 : K.p0; });
+      [[12, 2, 0, 1], [20, 5, -1, 1], [21, 17, -1, -1], [12, 21, 0, -1], [3, 17, 1, -1], [4, 5, 1, 1]].forEach(function (q, i) {
+        var x = q[0], y = q[1], dx = q[2], dy = q[3], c0 = i % 2 ? K.i0 : K.f1, c1 = i % 2 ? K.i2 : K.f3;
+        g.px(x, y, c0); g.px(x + dx, y + dy, c0); g.px(x + dx * 2, y + dy * 2, c1); g.px(x + (dy ? 1 : 0), y + (dx ? 1 : 0), c1);
+      });
+      g.outline();
+      g.spark(12, 12, false, K.p0);
+      g.px(8, 8, K.f2); g.px(16, 8, K.i1); g.px(8, 16, K.i1); g.px(16, 16, K.f2);
+    },
+    gravity: function (g) {                 // 중력 구체: 검은 속 보라 구체 + 기울어진 고리 + 빨려드는 화살 넷
+      g.disc(12, 12, 6.4, function (d, x, y) { return d < 3.2 ? '#12041e' : d < 4.6 ? K.p3 : (x + y < 22 ? K.p1 : K.p2); });
+      g.outline();
+      g.ellipse(12, 12, 10.5, 3.2, function (v, x, y) { return v > 0.62 && (y > 12 || Math.abs(x - 12) > 6) ? K.p0 : null; });
+      g.px(10, 10, K.p0); g.px(11, 9, K.wht);
+      g.map(1, 2, ['a..', '.a.', '..a'], { a: K.wht }); g.map(20, 2, ['..a', '.a.', 'a..'], { a: K.wht });
+      g.map(1, 19, ['..a', '.a.', 'a..'], { a: K.wht }); g.map(20, 19, ['a..', '.a.', '..a'], { a: K.wht });
+    },
+    vortex: function (g) {                  // 마력 소용돌이(늘 켜짐): 바닥 보라 나선 + 위로 넓어지는 작은 깔때기
+      g.ellipse(12, 20, 10, 2.8, function (v) { return v > 0.6 ? K.p1 : K.p3; });
+      for (var y = 4; y < 20; y++) {
+        var w = 1.5 + (20 - y) * 0.45, sx = Math.sin(y * 0.8) * 1.2;
+        g.px(12 + sx - w, y, K.p2); g.px(12 + sx + w, y, K.p1);
+        if (y % 3 === 0) for (var x = Math.round(12 + sx - w) + 1; x < 12 + sx + w; x++) g.px(x, y, (x + y) % 2 ? K.p0 : K.p1);
+      }
+      g.outline();
+      g.spark(5, 4, false, K.p0); g.spark(19, 7, false, K.p0);
+    },
+    echain: function (g) {                  // 원소 연쇄(늘 켜짐): 줄줄이 터지는 세 폭발(작은 → 큰)
+      [[5, 17, 3.2], [12, 12, 4], [19, 6, 4.6]].forEach(function (b, i) {
+        g.disc(b[0], b[1], b[2], function (d) { return d < b[2] * 0.4 ? K.f0 : d < b[2] * 0.75 ? (i === 1 ? K.p1 : K.f1) : (i === 1 ? K.p2 : K.f2); });
+      });
+      g.outline();
+      g.line(7, 15, 9, 14, K.f1); g.line(14, 10, 16, 8, K.f1);
+      g.spark(19, 6, false); g.px(2, 22, K.f2); g.px(22, 14, K.p0);
+    },
+    frost: function (g) {                   // 빙결 폭풍: 구름에서 비스듬히 쏟아지는 얼음 + 땅의 얼음 덩어리
+      g.disc(6, 5, 3.4, K.c0); g.disc(12, 4, 4.2, K.c0); g.disc(18, 5, 3.4, K.c0); g.rect(4, 5, 16, 3, K.c0); g.rect(4, 8, 16, 1, K.c1);
+      for (var i = 0; i < 5; i++) { var x0 = 4 + i * 4; g.line(x0, 11, x0 - 2, 16, i % 2 ? K.i1 : K.i0); }
+      g.poly([[3, 23], [5, 18], [8, 17], [10, 20], [13, 16], [17, 18], [21, 17], [22, 23]], function (x, y) { return y < 19 ? K.i0 : (x + y) % 3 ? K.i2 : K.i1; });
+      g.outline();
+      g.px(14, 18, K.wht); g.px(6, 19, K.wht); g.spark(21, 12, false, K.i1);
+    },
+    judgment: function (g) {                // 천둥 심판: 하늘에서 땅까지 굵은 번개 기둥 + 땅 큰 빛 + 둘레 작은 번개
+      g.rect(9, 0, 6, 24, '#2a6ab0');
+      g.poly([[14, 0], [8, 9], [12, 9], [9, 18], [16, 8], [12, 8], [16, 0]], K.wht);
+      g.line(13, 1, 10, 8, K.i0); g.line(11, 10, 10, 16, K.i0);
+      g.ellipse(12, 21, 10, 2.6, function (v) { return v < 0.4 ? K.wht : v < 0.8 ? K.f0 : K.f1; });
+      g.outline();
+      g.line(3, 8, 5, 12, K.f1); g.line(5, 12, 3, 16, K.f1); g.line(21, 6, 19, 11, K.f1); g.line(19, 11, 21, 15, K.f1);
+      g.spark(4, 3, false); g.spark(20, 2, false, K.i1);
+    },
     // ===== 모든 직업 (2026-11-07 PC 아래 막대: 회피 칸 · 평타 · 점프 칸) =====
     dodge: function (g) {                   // 회피: 몸을 굴려 피하는 하늘색 반원 화살표 + 뒤로 남는 속도 줄 + 먼지
       g.ring(11, 15, 6, 9, 185, 345, function (t) { return t < 0.3 ? K.i3 : t < 0.65 ? K.i2 : K.i1; });
@@ -463,6 +516,8 @@
     amp: ['원소 증폭', 'mage', 'passive', 'arcane'], flow: ['마나 순환', 'mage', 'passive', 'ice'], ice: ['얼음창', 'mage', 'active', 'ice'],
     meteor: ['메테오', 'mage', 'active', 'fire'], blink: ['순간이동', 'mage', 'active', 'arcane'], shield: ['마나 방패', 'mage', 'passive', 'ice'],
     pillar: ['불기둥', 'mage', 'active', 'fire'], brand: ['원소 낙인', 'mage', 'passive', 'arcane'],
+    eshard: ['원소 파편', 'mage', 'passive', 'fire'], gravity: ['중력 구체', 'mage', 'active', 'arcane'], vortex: ['마력 소용돌이', 'mage', 'passive', 'arcane'],   // 1차 법사(2026-11-08)
+    echain: ['원소 연쇄', 'mage', 'passive', 'fire'], frost: ['빙결 폭풍', 'mage', 'active', 'ice'], judgment: ['천둥 심판', 'mage', 'active', 'storm'],     // 대마법사(2차, 2026-11-08)
     dodge: ['회피', 'all', 'active', 'ice'], atk: ['평타', 'all', 'active', 'steel'], jump: ['점프', 'all', 'active', 'earth']
   };
   // 견습 기본기 올려치기(2026-11-07): 올려베기 그림을 흙색 액자로(새 그림 없음)

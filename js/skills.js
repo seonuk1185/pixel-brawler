@@ -120,6 +120,9 @@
     if (o.cross && o.cross.at == null) o.cross = cp(o.cross, { at: st(o.cross.frame) });                                // 심판의 십자(2026-11-08)
     if (o.barrier && o.barrier.frames) { var br = span(o.barrier); o.barrier = cp(o.barrier, { from: br[0], to: br[1] }); }   // 성스러운 돌격 방패(2026-11-08)
     if (o.charge && o.charge.burst && o.charge.burst.at == null) o.charge = cp(o.charge, { burst: cp(o.charge.burst, { at: st(o.charge.burst.frame) }) });
+    if (o.grav && o.grav.at == null) o.grav = cp(o.grav, { at: st(o.grav.frame) });                                    // 중력 구체(법사, 2026-11-08)
+    if (o.frost && o.frost.at == null) o.frost = cp(o.frost, { at: st(o.frost.frame) });                               // 빙결 폭풍(대마법사, 2026-11-08)
+    if (o.judge && o.judge.at == null) o.judge = cp(o.judge, { at: st(o.judge.frame), strikeAt: st(o.judge.strike) });  // 천둥 심판(대마법사, 2026-11-08)
     if (o.tornado && o.tornado.at == null) o.tornado = cp(o.tornado, { at: st(o.tornado.frame) });                     // 칼날 폭풍 회오리(2026-11-07)                         // 성검 낙뢰(2차)
     if (o.strikes && !Array.isArray(o.strikes.at)) {
       var t0 = st(o.strikes.frame), gap = o.strikes.gapMs || 120;
@@ -136,6 +139,7 @@
       if (o.blades) mx(o.blades.at + (o.blades.n - 1) * o.blades.gapMs + o.blades.fallMs);
       if (o.tornado) mx(o.tornado.at);
       if (o.cross) mx(o.cross.at + o.cross.telegraphMs); if (o.charge) mx(o.charge.burst.at);   // 성기사(2026-11-08)
+      if (o.grav) mx(o.grav.at); if (o.frost) mx(o.frost.at); if (o.judge) mx(o.judge.strikeAt);   // 대마법사 · 법사 새 기술(2026-11-08)
       if (o.quake) mx(o.quake.at); if (o.leap) mx(o.leap.at[1]); if (o.finale) mx(o.finale.at); if (o.strikes) mx(o.strikes.at[o.strikes.at.length - 1]);
       o.chainAt = o.chainFrom != null ? st(o.chainFrom) : Math.min(o.ms - 1, last + pad);
     }
@@ -328,6 +332,9 @@
     if (d.tornado && !s.tornDone && t1 >= d.tornado.at) { s.tornDone = true; castTornado(p, d, s); }   // 칼날 폭풍 회오리(2026-11-07)
     if (d.cross && !s.crossDone && t1 >= d.cross.at) { s.crossDone = true; castCross(p, d, s); }       // 심판의 십자(2026-11-08)
     if (d.charge) chargeStep(p, d, s, t0, t1);                                                          // 성스러운 돌격(2026-11-08)
+    if (d.grav && !s.gravDone && t1 >= d.grav.at) { s.gravDone = true; castGrav(p, d, s); }           // 중력 구체(법사, 2026-11-08)
+    if (d.frost && !s.frostDone && t1 >= d.frost.at) { s.frostDone = true; castFrost(p, d, s); }      // 빙결 폭풍(대마법사, 2026-11-08)
+    if (d.judge) judgeStep(p, d, s, t0, t1);                                                                // 천둥 심판(대마법사, 2026-11-08)
     if (d.shot) {
       var nShot = 1 + ((s.L.lv5 && s.L.lv5.extra) || 0);
       while (s.shotDone < nShot && t1 >= d.shot.at + s.shotDone * (d.shot.gapMs || 150)) { castWave(p, d, s.shotDone); s.shotDone++; }
@@ -817,7 +824,7 @@
     var S = pr.skill, c = S.c, lk = lookOf(S.d), A = fxArt(lk.hit), M = CFG.magic.spark;
     H.onHit(stOf(c.hit, S.d), t, { dir: pr.dir, wk: S.wk, x: pr.x, y: pr.y, mul: S.mul });
     // 느려짐: 그 적의 시간이 mul 배로 흐름(enemies.js update). 보스는 덜 느려짐
-    if (c.slow && t.T && t.alive && t.alive()) { t.slowT = c.slow.ms; t.slowK = t.T.boss ? c.slow.bossMul : c.slow.mul; }
+    if (c.slow && t.T && t.alive && t.alive()) { t.slowT = c.slow.ms; t.slowK = t.T.boss ? c.slow.bossMul : c.slow.mul; t.slowDaze = false; }
     if (A) spriteFrom(pr.x, pr.y, A.fr, A.fps, A.pivot, pr.dir < 0, 1, 0);
     else { var fr = tintFx(M.frames, '#bff4ff', 0.75); if (fr) FX.sprite(pr.x, pr.y, fr, M.fps, M.pivot, pr.dir < 0, false, 1.8); }
     glow(pr.x, pr.y, 34 * AS(), '#bfefff', 240, 0.8);
@@ -1048,7 +1055,7 @@
   // 느려진 적(얼음창): 발밑 얼음 빛 고리 + 몸 둘레 작은 얼음 조각이 반짝
   function drawSlowed(ctx, camX) {
     H.targets().forEach(function (e) {
-      if (!e || !e.T || !(e.slowT > 0) || (e.alive && !e.alive())) return;
+      if (!e || !e.T || !(e.slowT > 0) || e.slowDaze || (e.alive && !e.alive())) return;   // slowDaze = 중력 구체 · 소용돌이에 끌리며 어질(얼음 아님, 2026-11-08)
       var x = e.x - camX, r = e.T.radius * 1.4, a = Math.min(1, e.slowT / 400), t = performance.now() / 1000;
       ctx.save(); ctx.globalAlpha = 0.55 * a; ctx.globalCompositeOperation = 'lighter';
       ctx.strokeStyle = '#8fe0ff'; ctx.lineWidth = 2;
@@ -2011,6 +2018,694 @@
            { cols: ['#fff6c8', '#ffd23f'], glow: true, sp: 20, size: 1.2, ms: 700, g: -50, spread: 0.6 });
   }
 
+  // ======== 법사 기술 다시 짜기 (2026-11-08 형님 승인, 효과 = 전부 우리 코드) ========
+  //   1차: 원소 파편(늘 켜짐) · 중력 구체 · 마력 소용돌이(늘 켜짐) / 대마법사(2차): 원소 연쇄(늘 켜짐) · 빙결 폭풍 · 천둥 심판
+  //   gravs = 중력 구체, eshFx = 날아가는 원소 조각, vortexes = 마력 소용돌이, chainQ = 원소 연쇄 터짐 대기, frosts = 빙결 폭풍,
+  //   judges = 천둥 심판 큰 번개 기둥(그림), jbolts = 천둥 심판 둘레 번개 대기
+  var gravs = [], eshFx = [], eshT = 0, eshFlip = 0, vortexes = [], vortexT = 0, chainQ = [], chainN = 0, chainWinT = 0, frosts = [], judges = [], jbolts = [];
+  var NOSTYLE = { damageStyle: undefined }, ARC = { damageStyle: 'skill_arcane' }, FIRE = { damageStyle: 'skill_fire' };
+  var PURPLE = ['#ffffff', '#f0d8ff', '#c890ff', '#8a4ae0'], ICEC = ['#ffffff', '#e8fbff', '#a8ecff', '#5ac8f0'];
+  // 끌려오는 적인가: 잡몹만(보스 · 중간보스 · 레이드 보스 · 소품 · 허수아비 빼고), 살아 있음
+  function pullable(t) { return !!(t && !t.isProp && t.T && !t.T.boss && !t.mid && !t.raid && (!t.alive || t.alive())); }
+  // 가운데(cx, cz)로 끌어당김: K = 세기(1초에 남은 거리의 몇 배씩 줄어듦, 7 이면 0.3초에 약 88%), minD 안쪽은 그대로(몸끼리 밀어내기가 퍼뜨림)
+  function pullTo(t, cx, cz, K, dt, minD) {
+    var f = 1 - Math.exp(-K * dt / 1000), dx = cx - t.x, dz = cz - t.y;
+    if (Math.abs(dx) > minD) t.x += dx * f;
+    if (Math.abs(dz) > minD * 0.5) t.y += dz * f;
+  }
+  // 끌리는 동안 어질(아주 잠깐 느려짐 = 끌려오며 공격을 못 함). 얼음창 · 빙결로 이미 더 오래 느려졌으면 그대로
+  function daze(t, ms, k) { if (!(t.slowT > ms)) { t.slowT = ms; t.slowK = k; t.slowDaze = true; } }   // slowDaze = 얼음 고리(drawSlowed) 안 그림
+  function inBox(t, x, z, R, D) { var hb = t.hurtbox(); return Math.abs(hb.z - z) <= D && hb.x1 >= x - R && hb.x0 <= x + R; }
+
+  // ---- 원소 파편(1차 Lv15, 늘 켜짐) ----
+  // 법사 마법이 맞으면(main.js onHit → eshardHit, 지팡이 · 완드 타 · 마법탄 · 터짐 · 기술 모두) 맞은 자리에서 불(홀수 번째) · 얼음(짝수 번째) 조각이 튀어
+  //   둘레(r, 위아래 depth)의 다른 적 n 마리에게 날아가 꽂힘. 둘레에 다른 적이 없으면 맞은 적에게 한 조각(혼자 남은 적도 조금 더 아픔).
+  //   icdMs(0.28초)에 한 번까지 = 몹 떼에 기술이 한꺼번에 맞아도 한 번. 조각에 맞은 것은 또 안 튐(st.eshard)
+  function eshardHit(p, t, st) {
+    var q = pasOf(p, 'eshard');
+    if (!q || !t || t.isProp || (st && st.eshard) || eshT > 0) return;
+    var P = q.P, i = q.lv - 1, R = P.r[i], n = P.n[i], x0 = t.x, z0 = t.y, y0 = t.y - (t.T ? t.T.height * 0.55 : 40 * AS()), list = [];
+    eshT = P.icdMs || 280;
+    var fire = (eshFlip = 1 - eshFlip) === 1;
+    H.targets().forEach(function (e) {
+      if (!e || e === t || e.isProp || (e.alive && !e.alive()) || !H.canHit(e, P.hit)) return;
+      var dx = e.x - x0, dz = e.y - z0;
+      if (Math.abs(dz) > P.depth || Math.abs(dx) > R) return;
+      list.push({ e: e, d: Math.abs(dx) + Math.abs(dz) * 1.5 });
+    });
+    list.sort(function (a, b) { return a.d - b.d; });
+    list = list.slice(0, n).map(function (o) { return o.e; });
+    if (!list.length && (!t.alive || t.alive())) list = [t];
+    list.forEach(function (e, k) {
+      eshFx.push({ x0: x0, y0: y0, e: e, t: -k * 30, life: 150 + Math.random() * 40, fire: fire, mul: q.v, wk: p.weaponKey, P: P, lv: q.lv,
+                   arc: 10 + Math.random() * 14, rot: Math.random() * 6.28, done: false });
+    });
+    glow(x0, y0, 16 * AS() / 0.55, fire ? '#ffb050' : '#bff4ff', 150, 0.55);
+    debris(x0, y0, z0, 4, { cols: fire ? ['#fff4d0', '#ffb040', '#ff5a1e'] : ICEC, glow: true, sp: 150, size: 1.2, ms: 240, spread: 2.4 });
+  }
+  function eshardStep(dt) {
+    if (eshT > 0) eshT -= dt;
+    for (var i = eshFx.length - 1; i >= 0; i--) {
+      var f = eshFx[i]; f.t += dt; f.rot += 18 * dt / 1000;
+      if (!f.done && f.t >= f.life) {
+        f.done = true;
+        var e = f.e;
+        if (e && (!e.alive || e.alive()) && H.canHit(e, f.P.hit)) {
+          var dir = e.x >= f.x0 ? 1 : -1;
+          atLv(f.lv, function () {
+            H.onHit(stOf(f.P.hit, NOSTYLE), e, { dir: dir, wk: f.wk, x: e.x - dir * 4 * AS(), y: e.y - 40 * AS(), mul: f.mul });
+            glow(e.x, e.y - 40 * AS(), 12 * AS() / 0.55, f.fire ? '#ff9a3a' : '#9fe8ff', 130, 0.6);
+            debris(e.x, e.y - 40 * AS(), e.y, 3, { cols: f.fire ? ['#fff4d0', '#ff8a2a'] : ['#ffffff', '#9fe8ff'], glow: true, sp: 130, size: 1.1, ms: 200 });
+          });
+        }
+      }
+      if (f.t >= f.life + 60) eshFx.splice(i, 1);
+    }
+  }
+  // 날아가는 조각: 불 = 주황 마름모 + 불꼬리 / 얼음 = 하늘색 가는 조각 + 흰 꼬리. 맞은 자리 → 다른 적 몸 가운데로 살짝 포물선
+  function eshPos(f, u) {
+    var e = f.e, x1 = e ? e.x : f.x0, y1 = e ? e.y - (e.T ? e.T.height * 0.5 : 40 * AS()) : f.y0;
+    return { x: f.x0 + (x1 - f.x0) * u, y: f.y0 + (y1 - f.y0) * u - f.arc * Math.sin(Math.PI * u) };
+  }
+  function drawEshards(ctx, camX) {
+    if (!eshFx.length) return;
+    ctx.save(); ctx.lineCap = 'round';
+    eshFx.forEach(function (f) {
+      if (f.t < 0 || f.done) return;
+      var u = ease(clamp(f.t / f.life, 0, 1)), q = eshPos(f, u), q0 = eshPos(f, ease(clamp((f.t - 45) / f.life, 0, 1))), x = q.x - camX, y = q.y;
+      ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.6;
+      ctx.strokeStyle = f.fire ? '#ff7a1a' : '#7fd8ff'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(q0.x - camX, q0.y); ctx.lineTo(x, y); ctx.stroke();
+      ctx.globalAlpha = 0.9; ctx.strokeStyle = f.fire ? '#ffd27a' : '#ffffff'; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(q0.x - camX, q0.y); ctx.lineTo(x, y); ctx.stroke();
+      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+      ctx.save(); ctx.translate(x, y); ctx.rotate(f.rot);
+      ctx.fillStyle = f.fire ? '#ff5a1e' : '#5ac8f0';
+      ctx.beginPath(); ctx.moveTo(-3.2, 0); ctx.lineTo(0, -1.8); ctx.lineTo(3.2, 0); ctx.lineTo(0, 1.8); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = f.fire ? '#fff2c0' : '#e8fbff'; ctx.fillRect(-1, -0.8, 2, 1.6);
+      ctx.restore();
+    });
+    ctx.restore();
+  }
+
+  // ---- 중력 구체(1차 Lv17, 몰이사냥) ----
+  // 던짐(castGrav) → ph 0 날아감(dist 만큼 또는 적에 닿으면 멈춤) → ph 1 끌어당김(holdMs, 넓은 둘레 잡몹을 가운데로 세게 + tickMs 마다 작게) → ph 2 터짐
+  //   법사가 다른 걸 해도 구체는 그대로. k = 기술 Lv 크기(area, Lv5 1.3) → 끄는 둘레 · 터짐 같이 커짐. 각성 마력 폭주 = 같은 자리 한 번 더 터짐(70%)
+  function castGrav(p, d, s) {
+    var C = d.grav;
+    gravs.push({ x: p.x + p.dir * C.x, z: p.y, y: C.y, dir: p.dir, t: 0, ph: 0, flown: 0, ht: 0, bt: 0, C: C, d: d, k: s.area, mul: s.mul, wk: p.weaponKey,
+                 lv: curLv, next: C.tickMs, echo: !!s.echo, seed: Math.random() * 6.28, caught: [], trailT: 0 });
+    snd('magicShot');
+    glow(p.x + p.dir * C.x, p.y + C.y, 26 * AS() / 0.55, '#b46aff', 220, 0.7);
+  }
+  function gravStep(dt) {
+    for (var i = gravs.length - 1; i >= 0; i--) {
+      var o = gravs[i], C = o.C;
+      o.t += dt;
+      if (o.ph === 0) {
+        var mv = C.speed * dt / 1000, touch = false;
+        o.x += o.dir * mv; o.flown += mv;
+        H.targets().forEach(function (t) {
+          if (touch || !t || t.isProp || (t.alive && !t.alive()) || t.state === 'down') return;
+          var hb = t.hurtbox();
+          if (Math.abs(hb.z - o.z) <= 16 && o.x + C.orb >= hb.x0 && o.x - C.orb <= hb.x1) touch = true;
+        });
+        o.trailT -= dt;
+        if (o.trailT <= 0) { o.trailT = 40; debris(o.x - o.dir * 6, o.z + o.y, o.z, 1, { cols: PURPLE, glow: true, sp: 40, size: 1.3, ms: 300, g: -60, spread: 1.2 }); }
+        if (touch || o.flown >= C.dist) { o.ph = 1; o.ht = 0; atLv(o.lv, function () { gravOpen(o); }); }
+      } else if (o.ph === 1) {
+        o.ht += dt;
+        atLv(o.lv, function () {
+          gravPull(o, dt);
+          while (o.ht >= o.next && o.next < C.holdMs) { gravTick(o); o.next += C.tickMs; }
+          if (o.ht >= C.holdMs) {
+            o.ph = 2; o.bt = 0; gravBoom(o, 1, true);
+            if (o.echo) echo(o.d, function () { gravBoom(o, 0.7, false); });   // 각성 마력 폭주: 같은 자리 한 번 더
+          }
+        });
+      } else { o.bt += dt; if (o.bt > 460) gravs.splice(i, 1); }
+    }
+  }
+  // 멈추는 순간: 안으로 빨려드는 고리(큰 → 작은) + 「웅」
+  function gravOpen(o) {
+    var R = o.C.pullR * o.k;
+    snd('blink');
+    wave(o.x, o.z, R * 0.25, { r0: R, flat: 0.3, w: 3, ms: 360, color: '#f0d8ff', glow: '#8a4ae0', ground: true, noMax: true });
+    wave(o.x, o.z - 30 * AS(), R * 0.15, { r0: R * 0.7, flat: 0.75, w: 2, ms: 300, color: '#ffffff', glow: '#b46aff', noMax: true });
+    glow(o.x, o.z - 30 * AS(), 34 * AS() / 0.55, '#c890ff', 260, 0.8);
+    FX.shake(CFG.juice.shakePx * 0.8, CFG.juice.shakeMs);
+  }
+  // 끌어당김: 둘레(pullR x k, 위아래 pullDepth x k) 잡몹을 가운데로 세게(pullK) + 어질. 누운 적도 끌림(바닥을 미끄러져 옴)
+  function gravPull(o, dt) {
+    var C = o.C, R = C.pullR * o.k, D = C.pullDepth * o.k;
+    o.caught = [];
+    H.targets().forEach(function (t) {
+      if (!pullable(t)) return;
+      if (Math.abs(t.x - o.x) > R || Math.abs(t.y - o.z) > D) return;
+      pullTo(t, o.x, o.z, C.pullK, dt, 5);
+      daze(t, 160, 0.35);
+      o.caught.push(t);
+    });
+  }
+  // 끌리는 동안 작게(가운데 가까이 모인 적 = 터짐 둘레의 90% 안)
+  function gravTick(o) {
+    var C = o.C, R = C.r * o.k * 0.9, D = C.depth * o.k, st = stOf(C.tick, o.d), any = false;
+    H.targets().forEach(function (t) {
+      if (!t || !H.canHit(t, C.tick) || !inBox(t, o.x, o.z, R, D)) return;
+      var dir = t.x > o.x ? -1 : 1;   // 가운데 쪽으로
+      H.onHit(st, t, { dir: dir, wk: o.wk, x: t.x, y: t.y - 40 * AS(), mul: o.mul });
+      any = true;
+    });
+    glow(o.x, o.z - 30 * AS(), 28 * AS() / 0.55, '#b46aff', 160, any ? 0.55 : 0.35);
+  }
+  // 터짐: 보라 빛 → 공중 고리 + 땅 고리 + 불티. 맞은 적은 거의 안 밀리고 잠깐 멈춤(한데 모인 채)
+  function gravBoom(o, mulK, first) {
+    var C = o.C, R = C.r * o.k, D = C.depth * o.k, h = C.hit, st = stOf(h, o.d), any = false, y = o.z - 30 * AS();
+    snd('skSlam'); snd('fireBoom', { v: 0.6, k: 0.7 });
+    H.hitstop(first ? 80 : 60);
+    FX.shake(CFG.juice.shakePx * (first ? 2.8 : 2), CFG.juice.shakeMs * 1.6);
+    glow(o.x, y, R * 1.4, '#b46aff', 380, 0.85);
+    glow(o.x, y, R * 0.6, '#ffffff', 200, 0.75);
+    wave(o.x, y, R * 1.2, { flat: 0.8, w: 5, ms: 360, color: '#f0d8ff', glow: '#8a4ae0' });
+    wave(o.x, o.z, R * 1.6, { flat: 0.3, w: 5, ms: 440, color: '#e8d0ff', glow: '#6a3ad8', ground: true });
+    debris(o.x, y, o.z, first ? 22 : 12, { cols: PURPLE, glow: true, sp: 280, size: 1.7, ms: 520, spread: 2.6 });
+    debris(o.x, y, o.z, first ? 8 : 4, { cols: ['#2a1048', '#4e2290'], sp: 70, size: 3, ms: 800, g: -60, spread: 0.8 });   // 검보라 연기
+    H.dust(o.x - 14 * AS(), o.z, -1); H.dust(o.x + 14 * AS(), o.z, 1);
+    H.targets().forEach(function (t) {
+      if (!t || !H.canHit(t, h) || !inBox(t, o.x, o.z, R, D)) return;
+      var dir = Math.abs(t.x - o.x) < 3 ? o.dir : (t.x > o.x ? 1 : -1);
+      H.onHit(st, t, { dir: dir, wk: o.wk, x: t.x, y: t.y - 44 * AS(), mul: o.mul * mulK });
+      any = true;
+    });
+    if (h.flash) doFlash(first ? h.flash : { color: h.flash.color, alpha: h.flash.alpha * 0.6, ms: h.flash.ms });
+    if (any && first && h.slowMs) H.slow(h.slowMs);
+  }
+  // 바닥(캐릭터 밑): 끌어당기는 동안 둘레 큰 어두운 보라 원(경계 = 끄는 둘레) + 안으로 감겨 드는 나선 줄
+  function drawGravUnder(ctx, camX) {
+    gravs.forEach(function (o) {
+      if (o.ph !== 1) return;
+      var C = o.C, R = C.pullR * o.k, a = clamp(o.ht / 150, 0, 1) * clamp((C.holdMs - o.ht) / 120 + 0.3, 0, 1), x = o.x - camX, now = o.t / 1000;
+      ctx.save(); ctx.translate(x, o.z); ctx.scale(1, 0.3);
+      var g = ctx.createRadialGradient(0, 0, 0, 0, 0, R);
+      g.addColorStop(0, 'rgba(40,10,80,' + (0.45 * a).toFixed(3) + ')'); g.addColorStop(0.55, 'rgba(90,40,170,' + (0.22 * a).toFixed(3) + ')'); g.addColorStop(1, 'rgba(90,40,170,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.fill();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.strokeStyle = '#c890ff'; ctx.globalAlpha = 0.5 * a; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(0, 0, R * (0.97 + 0.03 * Math.sin(now * 9)), 0, Math.PI * 2); ctx.stroke();
+      // 나선 팔 4개(안으로 감기며 돎)
+      ctx.lineWidth = 2;
+      for (var k = 0; k < 4; k++) {
+        ctx.globalAlpha = 0.55 * a; ctx.strokeStyle = k % 2 ? '#e8d0ff' : '#8a4ae0';
+        ctx.beginPath();
+        for (var j = 0; j <= 18; j++) {
+          var u = j / 18, rr = R * (1 - u) * 0.95, an = o.seed + k * Math.PI / 2 + u * 3.2 + now * 4.2;
+          if (j) ctx.lineTo(Math.cos(an) * rr, Math.sin(an) * rr); else ctx.moveTo(Math.cos(an) * rr, Math.sin(an) * rr);
+        }
+        ctx.stroke();
+      }
+      ctx.restore();
+    });
+  }
+  // 구체(캐릭터 위): 검은 속 + 보라 테 + 도는 고리 2개 + 빨려드는 빛 점들(끄는 동안) + 끌려오는 적에서 가운데로 보라 줄 / 터진 뒤 = 줄어드는 흰 점
+  function gravPosY(o) { var lo = o.z - 30 * AS(); return o.ph === 0 ? o.z + o.y : o.z + o.y + (lo - (o.z + o.y)) * clamp(o.ht / 300, 0, 1); }
+  function drawGravs(ctx, camX) {
+    gravs.forEach(function (o) {
+      var C = o.C, x = o.x - camX, y = gravPosY(o), now = o.t / 1000;
+      ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
+      if (o.ph === 2) {   // 터진 뒤: 가운데 흰 점이 줄어듦
+        var u = o.bt / 460;
+        ctx.globalAlpha = Math.max(0, 1 - u); ctx.fillStyle = '#ffffff';
+        ctx.beginPath(); ctx.arc(x, y, C.orb * o.k * (1 - u) * 0.8 + 0.5, 0, Math.PI * 2); ctx.fill();
+        ctx.restore(); return;
+      }
+      if (o.ph === 1) {
+        // 끌려오는 적 → 가운데 보라 줄
+        o.caught.forEach(function (t) {
+          if (Math.abs(t.x - o.x) < 10) return;
+          var ty = t.y - 40 * AS();
+          ctx.globalAlpha = 0.35; ctx.strokeStyle = '#8a4ae0'; ctx.lineWidth = 5;
+          ctx.beginPath(); ctx.moveTo(t.x - camX, ty); ctx.lineTo(x, y); ctx.stroke();
+          ctx.globalAlpha = 0.7; ctx.strokeStyle = '#f0d8ff'; ctx.lineWidth = 1.3;
+          ctx.beginPath(); ctx.moveTo(t.x - camX, ty); ctx.lineTo(x, y); ctx.stroke();
+        });
+        // 빨려드는 빛 점(바깥 → 가운데로 나선)
+        var R = C.pullR * o.k * 0.8;
+        for (var j = 0; j < 22; j++) {
+          var ph = (now * 1.6 + j / 22) % 1, rr = R * (1 - ph), an = o.seed + j * 2.4 - ph * 4;
+          ctx.globalAlpha = 0.85 * ph; ctx.fillStyle = j % 3 ? '#e8d0ff' : '#ffffff';
+          ctx.fillRect(x + Math.cos(an) * rr - 1, y + Math.sin(an) * rr * 0.45 - 1, 2.2, 2.2);
+        }
+      }
+      var r = C.orb * (o.ph === 1 ? 1 + 0.35 * clamp(o.ht / 300, 0, 1) : 1) * Math.sqrt(o.k) * (1 + 0.06 * Math.sin(now * 20));
+      var g = ctx.createRadialGradient(x, y, r * 0.3, x, y, r * 2.4);
+      g.addColorStop(0, 'rgba(200,150,255,0.9)'); g.addColorStop(0.45, 'rgba(140,70,240,0.45)'); g.addColorStop(1, 'rgba(90,30,200,0)');
+      ctx.globalAlpha = 1; ctx.fillStyle = g; ctx.fillRect(x - r * 2.4, y - r * 2.4, r * 4.8, r * 4.8);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.fillStyle = '#12041e'; ctx.beginPath(); ctx.arc(x, y, r * 0.78, 0, Math.PI * 2); ctx.fill();   // 검은 속(빛을 삼킴)
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.strokeStyle = '#e8d0ff'; ctx.lineWidth = 1.6; ctx.globalAlpha = 0.95;
+      ctx.beginPath(); ctx.arc(x, y, r * 0.82, 0, Math.PI * 2); ctx.stroke();
+      for (var k = 0; k < 2; k++) {   // 도는 고리(기울어진 타원)
+        ctx.save(); ctx.translate(x, y); ctx.rotate(now * (k ? -3.2 : 2.6) + k * 1.1);
+        ctx.globalAlpha = 0.7; ctx.strokeStyle = k ? '#c890ff' : '#ffffff'; ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.ellipse(0, 0, r * 1.55, r * 0.5, 0, 0, Math.PI * 2); ctx.stroke();
+        ctx.restore();
+      }
+      ctx.restore();
+    });
+  }
+
+  // ---- 마력 소용돌이(1차 Lv18, 늘 켜짐) ----
+  // val(ms) 마다: 법사 둘레(find, 위아래 findDepth) 적(소품 빼고)이 있으면 가까운 4마리 가운데 자리에 소용돌이 → ms 동안 둘레(r) 잡몹을 모음 +
+  //   ticks 번 작게 → 끝에 톡 터짐. 둘레에 적이 없으면 0.25초마다 다시 봄(쓸데없이 안 생김)
+  function vortexStep(dt) {
+    var p = H.player && H.player(), q = p && pasOf(p, 'vortex');
+    if (!q || p.state === 'dead' || hidden(p)) return;
+    vortexT -= dt;
+    if (vortexT > 0) return;
+    var P = q.P, i = q.lv - 1, list = [];
+    H.targets().forEach(function (t) {
+      if (!t || t.isProp || (t.alive && !t.alive())) return;
+      var dx = t.x - p.x, dz = t.y - p.y;
+      if (Math.abs(dx) > P.find || Math.abs(dz) > P.findDepth) return;
+      list.push({ t: t, d: Math.abs(dx) + Math.abs(dz) });
+    });
+    if (!list.length) { vortexT = 250; return; }
+    list.sort(function (a, b) { return a.d - b.d; });
+    var n = Math.min(4, list.length), cx = 0, cz = 0;
+    for (var k = 0; k < n; k++) { cx += list[k].t.x; cz += list[k].t.y; }
+    vortexes.push({ x: cx / n, z: cz / n, t: 0, P: P, lv: q.lv, r: P.r[i], mul: P.mul[i], ticks: 0, wk: p.weaponKey, popped: false, seed: Math.random() * 6.28 });
+    vortexT = q.v;
+    snd('blink', { v: 0.45, k: 1.2 });
+  }
+  function vortexTick(dt) {
+    for (var i = vortexes.length - 1; i >= 0; i--) {
+      var o = vortexes[i], P = o.P;
+      o.t += dt;
+      if (!o.popped) {
+        H.targets().forEach(function (t) { if (pullable(t) && Math.abs(t.x - o.x) <= o.r * 1.3 && Math.abs(t.y - o.z) <= P.depth * 1.3) { pullTo(t, o.x, o.z, P.pullK, dt, 6); daze(t, 120, 0.5); } });
+        var gap = P.ms / (P.ticks + 1);
+        while (o.ticks < P.ticks && o.t >= gap * (o.ticks + 1)) { o.ticks++; (function (o) { atLv(o.lv, function () { vortexHit(o, P.tick, false); }); })(o); }
+        if (o.t >= P.ms) { o.popped = true; atLv(o.lv, function () { vortexHit(o, P.pop, true); }); }
+      }
+      if (o.t >= P.ms + 300) vortexes.splice(i, 1);
+    }
+  }
+  function vortexHit(o, h, pop) {
+    var st = stOf(h, ARC), D = o.P.depth;
+    H.targets().forEach(function (t) {
+      if (!t || !H.canHit(t, h) || !inBox(t, o.x, o.z, o.r, D)) return;
+      var dir = pop ? (t.x >= o.x ? 1 : -1) : (t.x > o.x ? -1 : 1);
+      H.onHit(st, t, { dir: dir, wk: o.wk, x: t.x, y: t.y - 40 * AS(), mul: o.mul });
+    });
+    if (pop) {
+      snd('skWave', { v: 0.5 });
+      glow(o.x, o.z - 26 * AS(), o.r * 0.9, '#b46aff', 240, 0.6);
+      wave(o.x, o.z, o.r * 1.2, { flat: 0.3, w: 3, ms: 300, color: '#f0d8ff', glow: '#8a4ae0', ground: true, noMax: true });
+      debris(o.x, o.z - 26 * AS(), o.z, 10, { cols: PURPLE, glow: true, sp: 200, size: 1.4, ms: 380, spread: 2.4 });
+    } else debris(o.x, o.z - 10 * AS(), o.z, 3, { cols: PURPLE, glow: true, sp: 90, size: 1.2, ms: 380, g: -160, spread: 0.5 });
+  }
+  // 소용돌이 그림: 바닥 나선(납작) + 위로 감겨 오르는 얇은 보라 줄 3개(작은 깔때기). 나타남(150ms) → 끝에 줄어듦
+  function drawVortexes(ctx, camX) {
+    vortexes.forEach(function (o) {
+      var P = o.P, a = o.popped ? Math.max(0, 1 - (o.t - P.ms) / 300) : clamp(o.t / 150, 0, 1), x = o.x - camX, now = o.t / 1000, R = o.r;
+      if (a <= 0) return;
+      ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
+      ctx.save(); ctx.translate(x, o.z); ctx.scale(1, 0.3);
+      var g = ctx.createRadialGradient(0, 0, 0, 0, 0, R);
+      g.addColorStop(0, 'rgba(180,106,255,' + (0.35 * a).toFixed(3) + ')'); g.addColorStop(1, 'rgba(120,60,255,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.fill();
+      ctx.lineWidth = 1.8;
+      for (var k = 0; k < 3; k++) {
+        ctx.globalAlpha = 0.7 * a; ctx.strokeStyle = k ? '#c890ff' : '#ffffff';
+        ctx.beginPath();
+        for (var j = 0; j <= 14; j++) { var u = j / 14, rr = R * (1 - u) * 0.9, an = o.seed + k * 2.09 + u * 3 + now * 7; if (j) ctx.lineTo(Math.cos(an) * rr, Math.sin(an) * rr); else ctx.moveTo(Math.cos(an) * rr, Math.sin(an) * rr); }
+        ctx.stroke();
+      }
+      ctx.restore();
+      var Hh = 46 * AS() / 0.55 * a;   // 작은 깔때기(위로 넓어짐)
+      for (var m = 0; m < 3; m++) {
+        ctx.globalAlpha = 0.55 * a; ctx.strokeStyle = m === 1 ? '#ffffff' : '#b46aff'; ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        for (var s2 = 0; s2 <= 12; s2++) {
+          var v = s2 / 12, rr2 = 4 + R * 0.45 * v, an2 = o.seed + m * 2.09 + v * 5 + now * 9, px = x + Math.cos(an2) * rr2, py = o.z - Hh * v + Math.sin(an2) * rr2 * 0.3;
+          if (s2) ctx.lineTo(px, py); else ctx.moveTo(px, py);
+        }
+        ctx.stroke();
+      }
+      ctx.restore();
+    });
+  }
+
+  // ---- 원소 연쇄(대마법사 Lv28, 늘 켜짐) ----
+  // 법사 마법으로 쓰러진 적(main.js onHit → chainKill)이 CHAIN_DELAY 뒤 그 자리에서 터져 둘레 적을 때림. 터짐으로 쓰러진 적도 또 터짐(depth 가 passive.chain 까지).
+  //   CHAIN_CAP = 짧은 시간(CHAIN_WIN)에 터지는 최대 수(몹 떼를 한꺼번에 쓸 때 폰이 느려지지 않게) — 기사 칼날 파편과 같은 짜임
+  var CHAIN_DELAY = 110, CHAIN_CAP = 10, CHAIN_WIN = 300;
+  function chainKill(p, t, depth) {
+    var q = pasOf(p, 'echain');
+    if (!q || !t || t.isProp || !t.T) return;
+    depth = depth || 0;
+    if (depth > (q.P.chain || 0) || chainN >= CHAIN_CAP) return;
+    chainN++;
+    var R = q.P.r[q.lv - 1], cy = t.y - t.T.height * 0.45;
+    chainQ.push({ t: CHAIN_DELAY, x: t.x, z: t.y, cy: cy, R: R, depth: depth, mul: q.v, wk: p.weaponKey, P: q.P, lv: q.lv });
+    glow(t.x, cy, 18 * AS() / 0.55, '#ffd27a', CHAIN_DELAY + 60, 0.7);   // 터지기 직전 부풀어 오르는 빛
+  }
+  function chainStep(dt) {
+    chainWinT += dt;
+    if (chainWinT >= CHAIN_WIN) { chainWinT = 0; chainN = 0; }
+    for (var i = chainQ.length - 1; i >= 0; i--) {
+      var o = chainQ[i]; o.t -= dt;
+      if (o.t <= 0) { chainQ.splice(i, 1); (function (o) { atLv(o.lv, function () { chainBoom(o); }); })(o); }
+    }
+  }
+  // 터짐: 주황 · 보라 작은 폭발(불 + 마법 두 겹 고리) → 둘레 R(위아래 depth) 적 모두. 맞은 적이 쓰러지면 main.js 가 depth + 1 로 또 부름
+  function chainBoom(o) {
+    var P = o.P, C = P._hits || (P._hits = []), h = C[o.depth];
+    if (!h) { h = {}; for (var k in P.hit) if (k !== '_st') h[k] = P.hit[k]; h.chainDepth = o.depth + 1; C[o.depth] = h; }
+    var st = stOf(h, FIRE), D = P.depth || 36;
+    snd('fireBoom', { v: 0.55, k: 1.15 });
+    H.hitstop(30);
+    FX.shake(CFG.juice.shakePx * 1.2, CFG.juice.shakeMs);
+    glow(o.x, o.cy, o.R * 1.1, '#ff9a3a', 260, 0.75);
+    glow(o.x, o.cy, o.R * 0.5, '#ffffff', 150, 0.6);
+    wave(o.x, o.cy, o.R * 0.9, { flat: 0.8, w: 3, ms: 260, color: '#fff2c0', glow: '#ff6a10', noMax: true });
+    wave(o.x, o.z, o.R * 1.25, { flat: 0.3, w: 3, ms: 320, color: '#e8d0ff', glow: '#8a4ae0', ground: true, noMax: true });
+    debris(o.x, o.cy, o.z, 10, { cols: ['#fff4d0', '#ffb040', '#ff5a1e', '#c890ff'], glow: true, sp: 220, size: 1.5, ms: 420, spread: 2.4 });
+    H.targets().forEach(function (e) {
+      if (!e || !H.canHit(e, h) || !inBox(e, o.x, o.z, o.R, D)) return;
+      var dir = Math.abs(e.x - o.x) < 3 ? 1 : (e.x > o.x ? 1 : -1);
+      H.onHit(st, e, { dir: dir, wk: o.wk, x: e.x - dir * 4 * AS(), y: e.y - 44 * AS(), mul: o.mul });
+    });
+  }
+
+  // ---- 빙결 폭풍(대마법사 Lv35, 광역딜) ----
+  // 앞쪽 넓은 땅(가운데 x 앞, 가로 ±w, 위아래 ±depth)에 ms 동안 얼음 폭풍: firstMs 부터 tickMs 마다 작게 + 맞은 적 얼어붙음(거의 멈춤, 보스는 덜) →
+  //   끝에 산산이 깨짐(shatter = 크게, 넘어뜨림. 깨지기 직전 얼음을 풀어 넘어지는 모습이 제 빠르기로 나옴). 법사가 다른 걸 해도 폭풍은 그대로
+  function castFrost(p, d, s) {
+    var F = d.frost, k = s.area;
+    frosts.push({ x: p.x + p.dir * F.x * k, z: p.y, w: F.w * k, D: F.depth, dir: p.dir, t: 0, F: F, d: d, k: k, mul: s.mul, wk: p.weaponKey, lv: curLv,
+                  next: F.firstMs, done: false, echo: !!s.echo, flakes: [], flakeT: 0, seed: Math.random() * 100, frozen: [] });
+    snd('iceSpear'); snd('wave', { v: 0.5 });
+    FX.shake(CFG.juice.shakePx * 1.2, CFG.juice.shakeMs * 1.4);
+    doFlash({ color: '#cfefff', alpha: 0.22, ms: 160 });
+  }
+  function frostStep(dt) {
+    for (var i = frosts.length - 1; i >= 0; i--) {
+      var o = frosts[i], F = o.F, sm = SM();
+      o.t += dt;
+      if (o.t < F.ms) {   // 쏟아지는 얼음 조각(그림만): 위에서 비스듬히 떨어져 땅에서 부서짐
+        o.flakeT -= dt;
+        while (o.flakeT <= 0) {
+          o.flakeT += sm ? 9 : 16;
+          var fx = o.x + (Math.random() * 2 - 1) * o.w, fz = o.z + (Math.random() * 2 - 1) * o.D;
+          o.flakes.push({ x: fx - o.dir * 70, y: fz - 170 - Math.random() * 40, tx: fx, tz: fz, t: 0, life: 260 + Math.random() * 120, big: Math.random() < 0.3 });
+        }
+      }
+      for (var j = o.flakes.length - 1; j >= 0; j--) {
+        var f = o.flakes[j]; f.t += dt;
+        if (f.t >= f.life) {
+          o.flakes.splice(j, 1);
+          if (f.big && parts.length < cap('parts', 1e9) * 0.7) debris(f.tx, f.tz - 2, f.tz, 1, { cols: ICEC, glow: true, sp: 80, size: 1.1, ms: 220, spread: 1.4 });
+        }
+      }
+      atLv(o.lv, function () {
+        while (o.next < F.ms && o.t >= o.next) { frostHit(o, F.tick, 1, false); o.next += F.tickMs; }
+        if (!o.done && o.t >= F.ms) {
+          o.done = true; frostShatter(o, 1, true);
+          if (o.echo) echo(o.d, function () { frostShatter(o, 0.6, false); });   // 각성 마력 폭주: 한 번 더 깨짐(60%)
+        }
+      });
+      if (o.done && o.t >= F.ms + 700) frosts.splice(i, 1);
+    }
+  }
+  // 폭풍 안 적 모두(맞으면 얼어붙음: 깨질 때까지 시간이 freeze.mul 배 = 거의 멈춤, 보스 bossMul)
+  function frostHit(o, h, mulK, shatter) {
+    var F = o.F, st = stOf(h, o.d), any = false, until = Math.min(F.freeze.ms, F.ms - o.t + 120);
+    H.targets().forEach(function (t) {
+      if (!t || !H.canHit(t, h) || !inBox(t, o.x, o.z, o.w, o.D)) return;
+      if (shatter && t.frozenT > 0) { t.frozenT = 0; t.slowT = 0; }   // 깨짐: 얼음을 풀고 때림(넘어지는 모습은 제 빠르기)
+      var dir = Math.abs(t.x - o.x) < 3 ? o.dir : (t.x > o.x ? 1 : -1);
+      H.onHit(st, t, { dir: shatter ? dir : o.dir, wk: o.wk, x: t.x, y: t.y - 44 * AS(), mul: o.mul * mulK });
+      if (!shatter && t.T && (!t.alive || t.alive()) && until > 0) {
+        t.slowT = Math.max(t.slowT || 0, until); t.slowK = t.T.boss ? F.freeze.bossMul : F.freeze.mul; t.slowDaze = false; t.frozenT = Math.max(t.frozenT || 0, until);
+        if (o.frozen.indexOf(t) < 0) o.frozen.push(t);
+        if (t.flashT > 6) t.flashT = 6;   // 얼면 시간이 거의 멈춰 하얀 번쩍이 오래 남음 → 짧게(얼음 덩어리가 보이게)
+      }
+      if (!shatter) debris(t.x, t.y - 40 * AS(), t.y, 2, { cols: ICEC, glow: true, sp: 120, size: 1.1, ms: 220 });
+      any = true;
+    });
+    if (!shatter && any) snd('iceHit', { v: 0.45 });
+    return any;
+  }
+  function frostShatter(o, mulK, first) {
+    var h = o.F.shatter;
+    snd('iceHit'); snd('skSlam');
+    H.hitstop(first ? 90 : 60);
+    FX.shake(CFG.juice.shakePx * (first ? 3.2 : 2.2), CFG.juice.shakeMs * 1.8);
+    glow(o.x, o.z - 40 * AS(), o.w * 0.8, '#bfefff', 420, 0.7);
+    glow(o.x, o.z - 30 * AS(), o.w * 0.35, '#ffffff', 240, 0.7);
+    wave(o.x, o.z, o.w * 1.15, { flat: 0.3, w: 5, ms: 480, color: '#ffffff', glow: '#5ac8f0', ground: true });
+    wave(o.x, o.z - 40 * AS(), o.w * 0.6, { flat: 0.6, w: 4, ms: 340, color: '#e8fbff', glow: '#7fd8ff' });
+    for (var j = -3; j <= 3; j++) debris(o.x + j * o.w / 3.4, o.z - 20 * AS(), o.z, first ? 6 : 3, { cols: ICEC, glow: true, sp: 260, size: 1.6, ms: 520, spread: 1.5 });
+    if (first) for (var m = -2; m <= 2; m++) debris(o.x + m * o.w / 2.4, o.z - 10 * AS(), o.z, 4, { cols: ['#e8fbff', '#a8ecff', '#5ac8f0', '#2a7ad0'], sp: 200, size: 2.4, ms: 700, spread: 1.2 });   // 얼음 덩어리
+    if (h.flash) doFlash(first ? h.flash : { color: h.flash.color, alpha: h.flash.alpha * 0.6, ms: h.flash.ms });
+    if (frostHit(o, h, mulK, true) && first && h.slowMs) H.slow(h.slowMs);
+  }
+  // 바닥(캐릭터 밑): 폭풍 땅 = 하얗게 서리 낀 넓은 타원 + 얼음 금(깨질 때 밝게)
+  function drawFrostUnder(ctx, camX) {
+    frosts.forEach(function (o) {
+      var F = o.F, a = o.t < F.ms ? clamp(o.t / 200, 0, 1) : Math.max(0, 1 - (o.t - F.ms) / 600);
+      if (a <= 0) return;
+      var x = o.x - camX;
+      ctx.save(); ctx.translate(x, o.z); ctx.scale(1, o.D / o.w);
+      var g = ctx.createRadialGradient(0, 0, 0, 0, 0, o.w * 1.05);
+      g.addColorStop(0, 'rgba(220,248,255,' + (0.42 * a).toFixed(3) + ')'); g.addColorStop(0.7, 'rgba(150,215,255,' + (0.25 * a).toFixed(3) + ')'); g.addColorStop(1, 'rgba(120,200,255,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, o.w * 1.05, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      // 얼음 금(정해 둔 무늬)
+      function rnd(i) { var v = Math.sin(o.seed + i * 12.9898) * 43758.5453; return v - Math.floor(v); }
+      ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = '#e8fbff'; ctx.lineWidth = 1;
+      ctx.globalAlpha = (o.done ? 0.9 : 0.4) * a;
+      for (var i = 0; i < 9; i++) {
+        var cx = x + (rnd(i) * 2 - 1) * o.w * 0.85, cz = o.z + (rnd(i + 20) * 2 - 1) * o.D * 0.8, L = 10 + rnd(i + 40) * 16;
+        ctx.beginPath(); ctx.moveTo(cx - L, cz); ctx.lineTo(cx - L * 0.2, cz - 2); ctx.lineTo(cx + L * 0.3, cz + 1.5); ctx.lineTo(cx + L, cz - 1); ctx.stroke();
+      }
+      ctx.restore();
+    });
+  }
+  // 캐릭터 위: 폭풍 하늘빛 기둥(위에서 내려오는 차가운 빛) + 비스듬히 쏟아지는 얼음 조각 + 휘도는 눈
+  function drawFrosts(ctx, camX) {
+    frosts.forEach(function (o) {
+      var F = o.F, a = o.t < F.ms ? clamp(o.t / 200, 0, 1) : Math.max(0, 1 - (o.t - F.ms) / 300), x = o.x - camX;
+      ctx.save(); ctx.globalCompositeOperation = 'lighter';
+      if (a > 0) {
+        var g = ctx.createLinearGradient(0, o.z - 220, 0, o.z + o.D);
+        g.addColorStop(0, 'rgba(120,200,255,0)'); g.addColorStop(0.6, 'rgba(160,225,255,' + (0.16 * a).toFixed(3) + ')'); g.addColorStop(1, 'rgba(220,248,255,' + (0.22 * a).toFixed(3) + ')');
+        ctx.fillStyle = g; ctx.fillRect(x - o.w, o.z - 220, o.w * 2, 220 + o.D);
+        var now = o.t / 1000;   // 휘도는 눈(가로로 흐르며 아래위로 흔들림)
+        ctx.fillStyle = '#ffffff';
+        for (var s2 = 0; s2 < 26; s2++) {
+          var u = ((s2 * 0.137 + now * (0.35 + (s2 % 5) * 0.06)) % 1), sx = x - o.w + u * o.w * 2, sy = o.z - 20 - (s2 * 37 % 120) + Math.sin(now * 5 + s2) * 6;
+          ctx.globalAlpha = 0.7 * a; ctx.fillRect(sx, sy, 1.6, 1.6);
+        }
+      }
+      ctx.lineCap = 'round';
+      o.flakes.forEach(function (f) {
+        var u = f.t / f.life, px = f.x + (f.tx - f.x) * u - camX, py = f.y + (f.tz - f.y) * u, L = f.big ? 9 : 6;
+        var vx = (f.tx - f.x), vy = (f.tz - f.y), vl = Math.hypot(vx, vy) || 1;
+        ctx.globalAlpha = 0.55; ctx.strokeStyle = '#7fd8ff'; ctx.lineWidth = f.big ? 3 : 2;
+        ctx.beginPath(); ctx.moveTo(px - vx / vl * L, py - vy / vl * L); ctx.lineTo(px, py); ctx.stroke();
+        ctx.globalAlpha = 0.95; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = f.big ? 1.4 : 1;
+        ctx.beginPath(); ctx.moveTo(px - vx / vl * L * 0.6, py - vy / vl * L * 0.6); ctx.lineTo(px, py); ctx.stroke();
+      });
+      ctx.restore();
+    });
+  }
+  // 얼어붙은 적: 몸을 감싼 반투명 얼음 덩어리(하늘색 + 흰 테 + 비스듬한 빛줄) — 끝나기 직전 깜빡임
+  function drawFrozen(ctx, camX) {
+    H.targets().forEach(function (e) {
+      if (!e || !e.T || !(e.frozenT > 0) || (e.alive && !e.alive())) return;
+      if (e.frozenT < 250 && Math.floor(e.frozenT / 60) % 2) return;
+      var w = Math.max(14, e.T.radius * 2.3), h = e.T.height * 1.02, x = e.x - camX - w / 2, y = e.y - (e.flyZ ? e.flyZ() : 0) - h, now = performance.now() / 1000;
+      ctx.save();
+      ctx.globalAlpha = 0.32; ctx.fillStyle = '#bfefff'; ctx.fillRect(x, y, w, h);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.75; ctx.strokeStyle = '#e8fbff'; ctx.lineWidth = 1.2; ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+      ctx.globalAlpha = 0.5; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2;
+      var sh = (now * 0.6 + e.x * 0.01) % 1;
+      ctx.beginPath(); ctx.moveTo(x + w * (sh * 1.4 - 0.2), y + h); ctx.lineTo(x + w * (sh * 1.4 + 0.15), y); ctx.stroke();
+      ctx.restore();
+    });
+  }
+
+  // ---- 천둥 심판(대마법사 Lv39, 폭딜 필살) ----
+  // judge.at(1장) 에 과녁: 앞쪽 range 안(위아래 depth) — 보스 > 중간보스 > 체력이 가장 많은 적(소품 빼고). 없으면 법사 앞 x.
+  //   strikeAt - lockMs 까지 과녁을 따라감(모으는 동안 바닥 표시) → strikeAt 에 거대한 번개 기둥(judgeStrike)
+  //   앞쪽에 아무도 없으면 뒤쪽까지(range 안) 찾음(빙결 폭풍에 밀려 법사 뒤에 누운 적 등, 2026-11-08 시험에서 빈 땅에 떨어져 고침)
+  function judgePick(p, J, skip, both) {
+    var best = null, bs = -1;
+    H.targets().forEach(function (t) {
+      if (!t || t.isProp || t === skip || (t.alive && !t.alive())) return;   // 지금 못 맞는 적(넘어지는 중)도 과녁으로(내리꽂을 때는 대개 맞음)
+      var dx = (t.x - p.x) * p.dir;
+      if (both) dx = Math.abs(dx);
+      if (dx < -6 * AS() || dx > J.aim.range || Math.abs(t.y - p.y) > J.aim.depth) return;
+      var sc = (t.T && t.T.boss ? 3e6 : t.mid ? 2e6 : 0) + (t.hp || 0) - Math.abs(dx) * 0.01;
+      if (sc > bs) { bs = sc; best = t; }
+    });
+    return best || (both ? null : judgePick(p, J, skip, true));
+  }
+  function judgeStep(p, d, s, t0, t1) {
+    var J = d.judge;
+    if (!s.jg && t1 >= J.at) {
+      var tg = judgePick(p, J, null);
+      s.jg = { tgt: tg, x: tg ? tg.x : p.x + p.dir * J.x, z: tg ? tg.y : p.y, t0: t1, sparkT: 0 };
+      snd('charge');
+    }
+    if (!s.jg || s.jgDone) return;
+    var g = s.jg.tgt;
+    if (g && t1 < J.strikeAt - (J.lockMs || 100) && (!g.alive || g.alive())) { s.jg.x = g.x; s.jg.z = g.y; }
+    s.jg.sparkT -= t1 - t0;
+    if (s.jg.sparkT <= 0) {   // 모으는 동안: 지팡이 둘레 · 과녁 위로 작은 전기 불티
+      s.jg.sparkT = 50;
+      debris(p.x + p.dir * 14 * AS(), p.y - 70 * AS(), p.y, 2, { cols: ['#ffffff', '#bff8ff', '#fff6a0'], glow: true, sp: 120, size: 1.2, ms: 220, spread: 2.4 });
+      debris(s.jg.x, s.jg.z - 4, s.jg.z, 1, { cols: ['#ffffff', '#5ae6ff'], glow: true, sp: 90, size: 1.2, ms: 260, g: -200, spread: 0.4 });
+    }
+    if (t1 >= J.strikeAt) {
+      s.jgDone = true;
+      var o = { x: s.jg.x, z: s.jg.z, tgt: s.jg.tgt, dir: p.dir, wk: p.weaponKey, mul: s.mul, d: d, nb: (s.L.lv5 && s.L.lv5.bolts) || J.bolts };
+      judgeStrike(o, 1, true);
+      if (s.echo) {   // 각성 마력 폭주: 다음으로 센 적(없으면 같은 자리 조금 앞)에게 기둥 하나 더(60%)
+        var px = p.x, pz = p.y, pd = p.dir;
+        echo(d, function () {
+          var t2 = judgePick({ x: px, y: pz, dir: pd }, J, o.tgt);
+          judgeStrike({ x: t2 ? t2.x : o.x + pd * 50 * AS(), z: t2 ? t2.y : o.z, tgt: t2, dir: pd, wk: o.wk, mul: o.mul, d: d, nb: Math.ceil(o.nb / 2) }, 0.6, false);
+        });
+      }
+    }
+  }
+  var JUDGE_LOOK = { art: 'lightning_bolt', color: '#59e6ff', core: '#ffffff', glow: '#fff27a' };   // 둘레 번개 = 번개 기술 그림
+  function judgeStrike(o, mulK, first) {
+    var J = o.d.judge, h = J.hit, st = stOf(h, o.d), R = J.r, D = J.depth, any = false;
+    snd('lightning'); snd('meteorBoom'); if (first) snd('lightning', { k: 0.7 });
+    judges.push({ x: o.x, z: o.z, t: 0, life: 620, k: first ? 1 : 0.7, seed: Math.random() * 1000 });
+    H.hitstop(first ? 150 : 90);
+    FX.shake(CFG.juice.shakePx * (first ? 5 : 3), CFG.juice.shakeMs * 2.4);
+    doFlash(first ? h.flash : { color: '#e8ffff', alpha: 0.45, ms: 180 });
+    glow(o.x, o.z - 60 * AS(), 120 * AS() / 0.55, '#bff8ff', 460, 0.9);
+    glow(o.x, o.z - 20 * AS(), 60 * AS() / 0.55, '#ffffff', 260, 0.9);
+    wave(o.x, o.z, 150, { flat: 0.3, w: 6, ms: 520, color: '#ffffff', glow: '#59e6ff', ground: true });
+    wave(o.x, o.z, 80, { flat: 0.3, w: 4, ms: 340, color: '#fff6a0', glow: '#ffd23f', ground: true });
+    wave(o.x, o.z - 60 * AS(), 90, { flat: 0.85, w: 4, ms: 360, color: '#e8ffff', glow: '#59e6ff' });
+    debris(o.x, o.z - 6, o.z, first ? 26 : 14, { cols: ['#ffffff', '#bff8ff', '#fff6a0', '#59e6ff'], glow: true, sp: 320, size: 1.8, ms: 560, spread: 1.6 });
+    debris(o.x, o.z - 4, o.z, first ? 12 : 6, { cols: ['#3a3038', '#5a4e58', '#2a2020'], sp: 220, size: 2.6, ms: 800 });
+    H.dust(o.x - 16 * AS(), o.z, -1); H.dust(o.x + 16 * AS(), o.z, 1);
+    H.targets().forEach(function (t) {
+      if (!t || !H.canHit(t, h)) return;
+      if (t !== o.tgt && !inBox(t, o.x, o.z, R, D)) return;
+      var dir = Math.abs(t.x - o.x) < 3 ? o.dir : (t.x > o.x ? 1 : -1);
+      H.onHit(st, t, { dir: dir, wk: o.wk, x: t.x, y: t.y - 50 * AS(), mul: o.mul * mulK });
+      t.stunKind = 'shock';
+      any = true;
+    });
+    if (any && first && h.slowMs) H.slow(h.slowMs);
+    // 둘레 번개: 과녁 둘레(spread) 다른 적 가까운 순 → 모자라면 둘레 빈 땅. gapMs 마다 하나씩
+    var others = [];
+    H.targets().forEach(function (t) {
+      if (!t || t.isProp || t === o.tgt || (t.alive && !t.alive())) return;
+      var dd = Math.abs(t.x - o.x) + Math.abs(t.y - o.z);
+      if (Math.abs(t.x - o.x) <= J.spread && Math.abs(t.y - o.z) <= J.aim.depth) others.push({ t: t, d: dd });
+    });
+    others.sort(function (a, b) { return a.d - b.d; });
+    for (var k = 0; k < o.nb; k++) {
+      var e = others[k] && others[k].t, an = k * 2.39 + Math.random() * 0.6, rr = J.spread * (0.45 + 0.55 * Math.random());
+      jbolts.push({ t: J.gapMs * (k + 1), tgt: e || null, x: e ? e.x : o.x + Math.cos(an) * rr, z: e ? e.y : o.z + Math.sin(an) * J.aim.depth * 0.6,
+                    o: o, mulK: mulK, lv: curLv });
+    }
+  }
+  function judgeTick(dt) {
+    for (var i = jbolts.length - 1; i >= 0; i--) {
+      var b = jbolts[i]; b.t -= dt;
+      if (b.tgt && (!b.tgt.alive || b.tgt.alive())) { b.x = b.tgt.x; b.z = b.tgt.y; }
+      if (b.t <= 0) { jbolts.splice(i, 1); (function (b) { atLv(b.lv, function () { judgeBolt(b); }); })(b); }
+    }
+  }
+  function judgeBolt(b) {
+    var o = b.o, J = o.d.judge, h = J.boltHit, st = stOf(h, o.d), any = false;
+    snd('lightning', { v: 0.6 });
+    bolts.push({ x: b.x, z: b.z, t: 0, life: 200, K: JUDGE_LOOK, seed: Math.random() * 1000 });
+    var hitA = fxArt('lightning_impact');
+    if (hitA) spriteFrom(b.x, b.z, hitA.fr, hitA.fps, hitA.pivot, o.dir < 0, 1, 1);
+    glow(b.x, b.z - 20 * AS(), 30 * AS() / 0.55, '#9ff4ff', 200, 0.8);
+    wave(b.x, b.z, J.boltR * 2.4, { flat: 0.3, w: 3, ms: 300, color: '#f4ffff', glow: '#59e6ff', ground: true, noMax: true });
+    debris(b.x, b.z - 4, b.z, 6, { cols: ['#ffffff', '#bff8ff', '#fff6a0'], glow: true, sp: 180, size: 1.4, ms: 360, spread: 1.4 });
+    FX.shake(CFG.juice.shakePx * 1.4, CFG.juice.shakeMs);
+    H.targets().forEach(function (t) {
+      if (!t || !H.canHit(t, h) || !inBox(t, b.x, b.z, J.boltR, J.boltDepth)) return;
+      var dir = Math.abs(t.x - b.x) < 3 ? o.dir : (t.x > b.x ? 1 : -1);
+      H.onHit(st, t, { dir: dir, wk: o.wk, x: b.x, y: t.y - 40 * AS(), mul: o.mul * b.mulK });
+      t.stunKind = 'shock';
+      any = true;
+    });
+    if (any && h.flash) doFlash(h.flash);
+  }
+  // 모으는 동안 바닥 과녁(캐릭터 밑): 깜빡이며 좁혀지는 두 겹 고리 + 십자 눈금 + 하늘에서 내려오는 가는 빛줄
+  function drawJudgeMark(ctx, camX, p) {
+    var s = p && p.state === 'skill' && p.sk, J = s && s.d.judge;
+    if (!J || !s.jg || s.jgDone) return;
+    var u = clamp((s.t - s.jg.t0) / Math.max(1, J.strikeAt - s.jg.t0), 0, 1), x = s.jg.x - camX, z = s.jg.z, R = J.r * (2.4 - 1.4 * u), bl = Math.floor(s.t / 60) % 2;
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = 0.5 + 0.4 * u; ctx.strokeStyle = bl ? '#fff27a' : '#5ae6ff'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.ellipse(x, z, R, R * 0.3, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha = 0.35 + 0.4 * u; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.ellipse(x, z, J.r, J.r * 0.3, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x - J.r * 1.3, z); ctx.lineTo(x + J.r * 1.3, z); ctx.moveTo(x, z - J.r * 0.4); ctx.lineTo(x, z + J.r * 0.4); ctx.stroke();
+    var g = ctx.createLinearGradient(0, 0, 0, z);
+    g.addColorStop(0, 'rgba(190,248,255,0)'); g.addColorStop(1, 'rgba(190,248,255,' + (0.35 * u).toFixed(3) + ')');
+    ctx.globalAlpha = 1; ctx.fillStyle = g; ctx.fillRect(x - 2 - 3 * u, 0, 4 + 6 * u, z);
+    ctx.restore();
+  }
+  // 거대한 번개 기둥(캐릭터 위): 넓은 하늘빛 기둥(바깥 빛) + 지그재그 굵은 번개 심(흰색, 깜빡이며 모양이 바뀜) + 땅 닿은 곳 큰 빛 → 가늘어지며 사라짐
+  function drawJudges(ctx, camX) {
+    judges.forEach(function (j) {
+      var u = j.t / j.life, x = j.x - camX, gy = j.z - 2, a = u < 0.15 ? 1 : Math.max(0, 1 - (u - 0.15) / 0.85), W = 34 * j.k * (1.25 - 0.75 * u);
+      if (a <= 0) return;
+      ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      var g = ctx.createLinearGradient(x - W * 1.8, 0, x + W * 1.8, 0);
+      g.addColorStop(0, 'rgba(90,230,255,0)'); g.addColorStop(0.35, 'rgba(120,235,255,' + (0.35 * a).toFixed(3) + ')');
+      g.addColorStop(0.5, 'rgba(240,255,255,' + (0.85 * a).toFixed(3) + ')'); g.addColorStop(0.65, 'rgba(120,235,255,' + (0.35 * a).toFixed(3) + ')'); g.addColorStop(1, 'rgba(90,230,255,0)');
+      ctx.fillStyle = g; ctx.fillRect(x - W * 1.8, 0, W * 3.6, gy);
+      if (!(u > 0.5 && Math.floor(j.t / 45) % 2)) {
+        var seed = j.seed + Math.floor(j.t / 55) * 7.3, n = 12, pts = [];
+        function rnd(i) { var v = Math.sin(seed + i * 91.3) * 43758.5453; return v - Math.floor(v); }
+        for (var i = 0; i <= n; i++) pts.push([x + (i === 0 || i === n ? 0 : (rnd(i) * 2 - 1) * W * 0.5), gy * i / n]);
+        [[W * 0.9, '#59e6ff', 0.55], [W * 0.45, '#bff8ff', 0.9], [Math.max(2, W * 0.18), '#ffffff', 1]].forEach(function (L) {
+          ctx.globalAlpha = L[2] * a; ctx.strokeStyle = L[1]; ctx.lineWidth = L[0];
+          ctx.beginPath(); pts.forEach(function (q, k) { if (k) ctx.lineTo(q[0], q[1]); else ctx.moveTo(q[0], q[1]); }); ctx.stroke();
+        });
+        // 가지 번개 2줄기
+        ctx.globalAlpha = 0.8 * a; ctx.strokeStyle = '#e8ffff'; ctx.lineWidth = 1.5;
+        for (var b = 0; b < 2; b++) {
+          var k0 = 4 + b * 3, q0 = pts[k0], sd = b ? 1 : -1;
+          ctx.beginPath(); ctx.moveTo(q0[0], q0[1]);
+          ctx.lineTo(q0[0] + sd * (14 + rnd(50 + b) * 10), q0[1] + 16); ctx.lineTo(q0[0] + sd * (22 + rnd(60 + b) * 14), q0[1] + 36); ctx.stroke();
+        }
+      }
+      ctx.save(); ctx.translate(x, gy); ctx.scale(1, 0.3);   // 땅 닿은 곳
+      var r = 70 * j.k * (0.8 + 0.4 * u), gg = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+      gg.addColorStop(0, 'rgba(255,255,255,' + (0.9 * a).toFixed(3) + ')'); gg.addColorStop(0.4, 'rgba(160,240,255,' + (0.5 * a).toFixed(3) + ')'); gg.addColorStop(1, 'rgba(90,230,255,0)');
+      ctx.fillStyle = gg; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      ctx.restore();
+    });
+  }
+  // 매 장면(법사 새 기술): 조각 · 구체 · 소용돌이 · 연쇄 · 폭풍 · 심판 + 얼어붙은 시간 줄이기
+  function mageStep(dt) {
+    eshardStep(dt); gravStep(dt); vortexStep(dt); vortexTick(dt); chainStep(dt); frostStep(dt); judgeTick(dt);
+    for (var i = judges.length - 1; i >= 0; i--) { judges[i].t += dt; if (judges[i].t >= judges[i].life) judges.splice(i, 1); }
+    H.targets().forEach(function (t) { if (t && t.frozenT > 0) t.frozenT -= dt; });
+  }
+
   // ---- 늘 켜진 기술 ----
   // 투지: 체력이 from 밑으로 줄수록 물리 공격 +, full 이하에서 val(최대). main.js onHit 가 물리 공격에 더함
   function gritBonus(p) {
@@ -2137,6 +2832,7 @@
     bladeStep(dt); flameStep(dt); passiveStep(dt); tornadoStep(dt);   // 2차 기술(2026-11-06)
     crossStep(dt); aegisStep(H.player && H.player(), dt);              // 성기사 기술(2026-11-08)
     shardStep(dt); pullStep(dt);                                       // 칼날 파편 · 끌어당기는 검압(2026-11-08)
+    mageStep(dt);                                                      // 법사 새 기술 · 대마법사(2026-11-08)
     meteorStep(dt);
     [bolts, rings, ghosts, arts, waves, parts, glows, pillars].forEach(function (L) {
       for (var i = L.length - 1; i >= 0; i--) { L[i].t += dt; if (L[i].t >= L[i].life) L.splice(i, 1); }
@@ -2183,6 +2879,7 @@
     drawFlameMark(ctx, camX, p);  // 불기둥 마법진(2차)
     drawGrit(ctx, camX, p);       // 투지 발밑 붉은 기운(2차)
     drawCrossMarks(ctx, camX);    // 심판의 십자 땅에 새긴 십자(2026-11-08)
+    drawGravUnder(ctx, camX); drawFrostUnder(ctx, camX); drawJudgeMark(ctx, camX, p);   // 중력 구체 바닥 · 빙결 폭풍 땅 · 천둥 심판 과녁(2026-11-08)
     var s = p && p.state === 'skill' && p.sk, K = s && (s.K || s.d.strikes);
     if (!K) return;
     K.at.forEach(function (at, k) {
@@ -2286,6 +2983,7 @@
     drawMeteors(ctx, camX);       // 떨어지는 운석
     drawCrossBeams(ctx, camX); drawBarrier(ctx, camX);   // 심판의 십자 빛기둥 · 성스러운 돌격 방패(2026-11-08)
     drawPulls(ctx, camX); drawShards(ctx, camX);         // 끌어당기는 검압 바람 줄 · 칼날 파편(2026-11-08)
+    drawFrozen(ctx, camX); drawFrosts(ctx, camX); drawVortexes(ctx, camX); drawGravs(ctx, camX); drawJudges(ctx, camX); drawEshards(ctx, camX);   // 법사 새 기술(2026-11-08)
     waves.forEach(function (w) { if (!w.ground) drawWave(ctx, camX, w); });
     // 번쩍 빛(더하기)
     glows.forEach(function (gl) {
@@ -2503,10 +3201,11 @@
     // 떨어지는 중인 운석 자리(2026-11-06 무기 속성: 운석에도 속성 꼬리, js/enchant.js)
     meteorsNow: function () { return meteors.filter(function (m) { return !m.boom && m.t >= m.M.markMs; }).map(function (m) { return meteorPos(m, clamp((m.t - m.M.markMs) / m.M.fallMs, 0, 1)); }); },
     // 2차 기술(2026-11-06): 늘 켜진 기술(main.js 가 부름) · 순간이동 숨기 · 시험용
+    eshardHit: eshardHit, chainKill: chainKill,   // 법사 늘 켜진 기술(2026-11-08): 원소 파편(마법이 맞을 때) · 원소 연쇄(마법으로 쓰러질 때)
     shardKill: shardKill, comboPull: comboPull,   // 1차 기사 늘 켜진 기술(2026-11-08): 칼날 파편(적이 쓰러질 때) · 끌어당기는 검압(콤보 마무리 타 시작)
     gritBonus: gritBonus, tryCounter: tryCounter, shieldSplit: shieldSplit, shieldHit: shieldHit, brandMul: brandMul, brandMark: brandMark,
-    hidden: hidden, test: TEST, _fx: function () { return { blades: blades.length, flames: flames.length, beams: beams.length, arcs: arcs.length, shield: !!shieldFx, crosses: crosses.length, shards: shardFx.length, pulls: pulls.length }; },
-    clear: function () { crosses.length = 0; aegisT = 0; shardFx.length = 0; shardQ.length = 0; shardN = 0; pulls.length = 0; tornados.length = 0; blades.length = 0; flames.length = 0; beams.length = 0; arcs.length = 0; shieldFx = null; gritOn = false; curLv = 1; meteors.length = 0; pillars.length = 0; echoes.length = 0; bright = 1; noMpT = 0; bolts.length = 0; rings.length = 0; ghosts.length = 0; arts.length = 0; waves.length = 0; parts.length = 0; glows.length = 0; flash = null; },
+    hidden: hidden, test: TEST, _fx: function () { return { blades: blades.length, flames: flames.length, beams: beams.length, arcs: arcs.length, shield: !!shieldFx, crosses: crosses.length, shards: shardFx.length, pulls: pulls.length, gravs: gravs.length, eshards: eshFx.length, vortexes: vortexes.length, chains: chainQ.length, frosts: frosts.length, judges: judges.length }; },
+    clear: function () { gravs.length = 0; eshFx.length = 0; eshT = 0; vortexes.length = 0; vortexT = 0; chainQ.length = 0; chainN = 0; frosts.length = 0; judges.length = 0; jbolts.length = 0; crosses.length = 0; aegisT = 0; shardFx.length = 0; shardQ.length = 0; shardN = 0; pulls.length = 0; tornados.length = 0; blades.length = 0; flames.length = 0; beams.length = 0; arcs.length = 0; shieldFx = null; gritOn = false; curLv = 1; meteors.length = 0; pillars.length = 0; echoes.length = 0; bright = 1; noMpT = 0; bolts.length = 0; rings.length = 0; ghosts.length = 0; arts.length = 0; waves.length = 0; parts.length = 0; glows.length = 0; flash = null; },
     // 화면 번쩍(콤보 마무리 타도 씀): { color, alpha, ms }
     flash: function (f) { doFlash(f); },
     // 파편·둥근 빛(소품 나뭇조각·음식 반짝임도 씀, props.js)

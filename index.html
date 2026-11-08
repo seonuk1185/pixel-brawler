@@ -16,6 +16,17 @@
 <!-- UI 글꼴(갈무리, OFL — fonts/OFL-Galmuri.txt): 게임에 나오는 글자만 남긴 작은 파일 -->
 <link rel="preload" href="fonts/Galmuri11.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/Galmuri11-Bold.woff2" as="font" type="font/woff2" crossorigin>
+<!-- 기술 미리보기(2026-11-08, main.js 기술 창 「▶ 미리보기」): 기술 창이 이 게임을 작은 액자(iframe) 안에 ?pv=기술 로 한 번 더 띄움.
+     그 안에서는 저장을 아예 안 함(localStorage 쓰기 막음) · 화면 버튼 · 판 고르기 없이 허수아비 고블린 앞에서 그 기술만 되풀이(main.js pvBoot) -->
+<script>
+(function () {
+  var q = new URLSearchParams(location.search), id = q.get('pv');
+  if (!id || window.parent === window) return;
+  window.PV = { id: id, cls: q.get('pvc') || 'knight', chr: q.get('pvg') || 'male', lv: Math.max(1, Math.min(5, parseInt(q.get('pvl'), 10) || 1)), help: q.get('pvh') || null };
+  try { var S = Storage.prototype; S.setItem = function () {}; S.removeItem = function () {}; S.clear = function () {}; } catch (e) {}
+  document.documentElement.className += ' pvmode';
+})();
+</script>
 
 </head>
 <body>
@@ -132,6 +143,26 @@
         <div class="page pas"><div class="ph"><b>늘 켜진 기술</b><span>배우면 저절로</span></div><div class="cells" id="skPas"></div></div>
       </div>
       <div class="skbar" id="skBar"></div>
+    </div>
+  </div>
+  <!-- 기술 설명 · 미리보기 창 (2026-11-08): 기술 창에서 기술을 누르면 뜸(기술 창 위). 왼쪽 = 그림 · 이름 · 쉬운 설명 · 지금 Lv 숫자 · 다음 Lv · 잠김,
+       오른쪽 = 미리보기 액자(「▶ 미리보기」 = 이 게임을 작은 액자 안에 한 번 더 띄워 그 기술만 되풀이, 진짜 게임은 뒤에서 멈춤) + 칸에 끼우기 · 닫기 (main.js openDetail) -->
+  <div class="statpanel skdetail" id="skDetail" hidden>
+    <div class="box">
+      <h2 id="sdRib">기술</h2>
+      <button type="button" class="wbtn x sdx" id="btnSdX" aria-label="닫기">X</button>
+      <div class="sdwrap">
+        <div class="sdinfo">
+          <div class="sdhead"><span class="sdic" id="sdIcon"></span><div class="sdt"><b id="sdName"></b><span class="sdtags" id="sdTags"></span></div></div>
+          <p class="sddesc" id="sdDesc"></p>
+          <div class="sdnums" id="sdNums"></div>
+        </div>
+        <div class="sdpv">
+          <div class="pvbox" id="pvBox"><div class="pvph" id="pvPh"><span id="pvPhIc"></span><b id="pvPhTxt">▶ 미리보기를 누르면 움직여요</b></div></div>
+          <p class="pvcap" id="pvCap"></p>
+          <div class="rbtns"><button type="button" id="btnPv">▶ 미리보기</button><button type="button" class="sub" id="btnSdPut" hidden>칸에 끼우기</button><button type="button" class="sub" id="btnSdClose">닫기</button></div>
+        </div>
+      </div>
     </div>
   </div>
   <!-- 기술 칸 열림 알림 (2026-11-06): Lv10 · Lv13 · Lv15 에 새 기술 칸이 열리면 한 번(PC = Lv15 에 위 줄 6~10번 칸도). 칸 줄(새 칸 = 빛남) + 확인. 여는 동안 게임 멈춤(main.js openUnlock) -->

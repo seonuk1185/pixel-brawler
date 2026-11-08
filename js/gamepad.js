@@ -12,11 +12,11 @@
 //    LB(4) = 기술 1번 칸 · RB(5) = 2번 · LT(6) = 3번 · RT(7) = 4번
 //    오른쪽 막대 위 · 오른쪽 · 아래 · 왼쪽 = 5 · 6 · 7 · 8번 칸, 왼쪽 막대 누르기(L3, 10) = 9번 · 오른쪽 막대 누르기(R3, 11) = 10번 칸 (6~10번 = PC 칸)
 //    Start(9) = 설정 창(멈춤) 열기 · 닫기 · Back/Select(8) = 기술 창(견습 = 능력치 창) 열기 · 닫기
-//  창 안: 십자키 / 왼쪽 막대 = 고르기, A = 누르기, B = 닫기 · 뒤로(스테이지 고르기 · 결과 · 전직 화면은 닫을 창이 없어 B 는 그냥 둠)
+//  창 안: 십자키 / 왼쪽 막대 = 고르기, A = 누르기, B = 닫기 · 뒤로(기술 설명 · 미리보기 창 = 기술 창으로, 2026-11-08)(스테이지 고르기 · 결과 · 전직 화면은 닫을 창이 없어 B 는 그냥 둠)
 //    설정 창의 키 설정 칸은 키보드 전용(A 로 안 눌림)
 // =====================================================================
 (function () {
-  if (!navigator.getGamepads) return;
+  if (!navigator.getGamepads || window.PV) return;   // 기술 미리보기 액자(2026-11-08) 안에서는 패드를 안 읽음(바깥 기술 창이 읽음)
   var DZ = 0.25, RUN_AT = 0.85, RUN_KEEP = 0.6, NAV_AT = 0.5, RS_AT = 0.6;
   var REP_FIRST = 380, REP_NEXT = 140;   // 창 고르기: 누르고 있으면 0.38초 뒤부터 0.14초마다 다음 칸
   var SLOT_BTN = { 4: 'A', 5: 'B', 6: 'C', 7: 'D', 10: 'I', 11: 'J' };
@@ -62,7 +62,7 @@
   // ---------- 지금 열린 창 ----------
   function vis(id) { var el = document.getElementById(id); return el && !el.hidden ? el : null; }
   // B = 닫기: Esc 로 닫히는 창들(맨 위에 뜨는 것부터). 폰 조작 도움말은 Esc 가 없어 「확인」을 누름
-  var CLOSABLE = ['dgConfirm', 'phHelp', 'unlockPop', 'encPanel', 'skillPanel', 'statPanel', 'setPanel'];
+  var CLOSABLE = ['dgConfirm', 'phHelp', 'unlockPop', 'encPanel', 'skDetail', 'skillPanel', 'statPanel', 'setPanel'];
   var ROOT = ['classSel', 'result', 'stageSel'];
   function openWin() {
     for (var i = 0; i < CLOSABLE.length; i++) if (vis(CLOSABLE[i])) return CLOSABLE[i];
@@ -111,7 +111,7 @@
       Input.setPad(null); padRun = 0; dRun = 0;
       if (lay || loading) return;
       // Back = 기술 창(견습 = 능력치 창) 닫기
-      if (hit(8) && (win === 'skillPanel' || win === 'statPanel')) { key('Escape'); return; }
+      if (hit(8) && (win === 'skDetail' || win === 'skillPanel' || win === 'statPanel')) { key('Escape'); return; }
       var d = dy < 0 || ly < -NAV_AT ? 'ArrowUp' : dy > 0 || ly > NAV_AT ? 'ArrowDown' : dx < 0 || lx < -NAV_AT ? 'ArrowLeft' : dx > 0 || lx > NAV_AT ? 'ArrowRight' : null;
       var t = performance.now();
       if (d !== nav.dir) { nav = { dir: d, t: t, next: t + REP_FIRST }; if (d) key(d); }

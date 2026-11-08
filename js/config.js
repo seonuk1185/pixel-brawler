@@ -374,6 +374,33 @@
                      flash: { color: '#e6f2ff', alpha: 0.5, ms: 170 }, slowMs: 300 };
   // 칼날 폭풍 회오리 끝 터짐(2026-11-07): 넘어뜨리기 대신 크게 띄움(보스 · 큰 적은 휘청)
   var STORM_BURST = merge(STORM_LAST, { away: false, knockdown: false, launch: 1.2, knock: 0.6 });
+  // ---------- 법사 기술 다시 짜기 (2026-11-08 형님 승인, 기사와 같은 짜임) ----------
+  //   거리 값은 기사 새 기술(칼날 폭풍 · 심판의 십자)처럼 전부 화면 도트(actorScale 로 안 줄임, 아래 scaleActors 가 안 건드림)
+  // 원소 파편(1차 Lv15, 늘 켜짐): 법사 마법(지팡이 타 · 마법탄 · 터짐 · 기술)이 맞으면 작은 불 · 얼음 조각이 둘레 적에게 튐.
+  //   한 조각 = 이 값 x passive.val. 자주 나가서 가볍게: 작은 숫자(push) · 분노 안 채움 · 마나 안 채움(noMp) · 4번째 타 넘어짐 없음.
+  //   eshard = 조각 표시(조각이 또 조각을 튀기지 않게, main.js onHit)
+  var ESHARD_HIT = { dmg: 1.0, hitstop: 0.25, knock: 0.25, shake: 0.35, spark: 0.7, hitY: -40, hitsDown: true, noRage: true, noMp: true, noJuggle: true,
+                     numStyle: 'push', eshard: true };
+  // 중력 구체(1차 Lv17): 끌어당기는 동안 작게(GRAV_TICK, 가운데 가까운 적) → 크게 터짐(GRAV_BURST). 터질 때 거의 안 밀고(knock 0.35) 잠깐 멈춤(stunMs)
+  //   = 한데 모인 채 그대로 → 화염구 · 번개 · 메테오로 이어 쓸어 버림(몰이사냥). 데미지 합 = 0.3 x 4 + 2.6 = 3.8 (화염구 3.3 보다 조금 셈, 대신 쿨타임 11초)
+  var GRAV_TICK = { dmg: 0.3, hitstop: 0.2, knock: 0.05, shake: 0.4, spark: 0.7, hitsDown: true, noRage: true, noJuggle: true };
+  var GRAV_BURST = { dmg: 2.6, hitstop: 2.0, knock: 0.35, shake: 3.0, stunMs: 650, spark: 1.5, big: true, hitsDown: true, noJuggle: true,
+                     flash: { color: '#d8b0ff', alpha: 0.42, ms: 170 }, slowMs: 240 };
+  // 마력 소용돌이(1차 Lv18, 늘 켜짐): 작은 소용돌이가 둘레 적을 모으며 작게 3번(VORTEX_TICK) → 톡 터짐(VORTEX_POP). 합 = 0.35 x 3 + 0.9 = 1.95 (x passive.mul)
+  var VORTEX_TICK = { dmg: 0.35, hitstop: 0.2, knock: 0.05, shake: 0.3, spark: 0.7, hitsDown: true, noRage: true, noJuggle: true };
+  var VORTEX_POP = { dmg: 0.9, hitstop: 0.8, knock: 0.3, shake: 1.0, spark: 1.0, hitsDown: true, noRage: true, noJuggle: true };
+  // 원소 연쇄(대마법사 Lv28, 늘 켜짐): 법사 마법으로 쓰러진 적이 터짐(이 값 x passive.val). 터짐으로 쓰러진 적도 또 터짐(passive.chain 번까지)
+  var ECHAIN_HIT = { dmg: 1.2, hitstop: 0.5, knock: 0.8, shake: 0.9, spark: 1.0, big: true, hitsDown: true, noRage: true, noJuggle: true };
+  // 빙결 폭풍(대마법사 Lv35): 앞쪽 화면 대부분에 얼음 폭풍 → 작게 여러 번(FROST_TICK, 맞으면 얼어붙음 = 거의 멈춤) → 끝에 산산이 깨지며 크게(FROST_SHATTER, 넘어뜨림)
+  //   데미지 합 = 0.55 x 6 + 2.4 = 5.7 (심판의 십자 5.6 과 비슷, 범위는 더 넓음 = 광역딜)
+  var FROST_TICK = { dmg: 0.55, hitstop: 0.25, knock: 0.05, shake: 0.5, spark: 0.8, hitsDown: true, noRage: true, noJuggle: true };
+  var FROST_SHATTER = { dmg: 2.4, hitstop: 1.8, knock: 1.6, shake: 3.2, knockdown: true, spark: 1.5, big: true, hitsDown: true,
+                        flash: { color: '#e8fbff', alpha: 0.5, ms: 200 }, slowMs: 280 };
+  // 천둥 심판(대마법사 Lv39, 폭딜 필살): 큰 번개 기둥 한 방(JUDGE_HIT 9.0 = 법사 기술 중 가장 센 한 방, 메테오 5.0) + 둘레 번개(JUDGE_BOLT)
+  var JUDGE_HIT = { dmg: 9.0, hitstop: 2.6, knock: 2.6, shake: 4.5, knockdown: true, stunMs: 500, spark: 2.0, big: true, hitsDown: true,
+                    flash: { color: '#ffffff', alpha: 0.75, ms: 260 }, slowMs: 420 };
+  var JUDGE_BOLT = { dmg: 1.3, hitstop: 1.0, knock: 0.8, shake: 1.6, stunMs: 500, spark: 1.2, big: true, hitsDown: true, noJuggle: true,
+                     flash: { color: '#e8ffff', alpha: 0.22, ms: 80 } };
   var SKILLS = {
     knight: {
       // 돌진베기: 1~2장 동안 앞으로 약 120도트 미끄러지며 길 위의 적을 한 번씩 벤다(무적), 베는 장 다음 장에 「쾅」 멈춤
@@ -782,6 +809,68 @@
         female: {
           placeholder: { anim: 'attack3', f: [0, 1, 2, 2, 2, 3, 4], d: [80, 90, 160, 160, 120, 80, 70] }
         }
+      },
+      // ---- 법사 새 기술 (2026-11-08 형님 승인, 효과 = 전부 우리 코드 skills.js) ----
+      // 중력 구체(1차 Lv17, 몰이사냥): 「앞으로 던지기」 동작(화염구와 같음)으로 느린 보라 구체를 던짐 → dist 만큼 날아가거나 적에 닿으면 멈춤 →
+      //   holdMs(1.2초) 동안 넓은 둘레(pullR, 위아래 pullDepth)의 잡몹을 가운데로 세게 끌어당김(끌리는 동안 어질 = 느려짐) → 크게 터짐.
+      //   grav = { frame = 던지는 장, x · y = 나오는 곳(화면 도트), speed = 1초에 도트, dist = 최대 날아가는 거리, orb = 구체 반지름,
+      //            pullR · pullDepth = 끌어당기는 둘레, pullK = 끌어당기는 세기(클수록 빨리 가운데로), holdMs, tickMs · tick = 끌리는 동안 작게,
+      //            r · depth = 터짐 둘레, hit = 터짐 }. 보스 · 중간보스 · 소품은 안 끌림(데미지만). Lv5 = 끄는 둘레 · 터짐 +30%
+      gravity: {
+        name: '중력 구체', icon: '중', mp: 16, cooldownMs: 11000, damageStyle: 'skill_arcane', motion: 'motion_cast_forward', sfx: 'charge',
+        desc: '느린 보라 구체를 앞으로 던져요. 멈춘 자리에서 넓은 둘레의 적을 가운데로 세게 끌어당긴 뒤 크게 터져요(모인 적은 잠깐 멈춤 = 이어서 쓸어 버리기 좋아요)',
+        lv5: { area: 1.3, say: '끌어당기는 범위 · 폭발 +30%' },
+        darken: { ms: 520, alpha: 0.35 },
+        iframes: { frames: [0, 3] },
+        grav: { frame: 3, x: 66, y: -36, speed: 170, dist: 120, orb: 12, pullR: 175, pullDepth: 70, pullK: 7, holdMs: 1200,
+                tickMs: 300, tick: GRAV_TICK, r: 78, depth: 40, hit: GRAV_BURST },
+        fx: [ { frame: 3, type: 'spark', x: 127, y: -65, scale: 1.4, tint: '#c890ff' } ],
+        placeholder: { anim: 'attack3', f: [0, 1, 2, 3, 4, 5], d: [80, 90, 60, 150, 110, 110] },
+        female: {
+          grav: { frame: 2, x: 47, y: -41, speed: 170, dist: 120, orb: 12, pullR: 175, pullDepth: 70, pullK: 7, holdMs: 1200,
+                  tickMs: 300, tick: GRAV_TICK, r: 78, depth: 40, hit: GRAV_BURST },
+          fx: [ { frame: 2, type: 'spark', x: 85, y: -75, scale: 1.4, tint: '#c890ff' } ],
+          placeholder: { anim: 'attack3', f: [0, 1, 2, 3, 4], d: [70, 90, 150, 140, 150] }
+        }
+      },
+      // 빙결 폭풍(대마법사 Lv35, 광역딜): 「하늘로 들기」 동작. 3장에 앞쪽 넓은 땅(가운데 x 앞, 가로 반 w, 위아래 depth = 화면 앞쪽 대부분)에 얼음 폭풍.
+      //   ms 동안 tickMs 마다 작게(tick) + 맞은 적은 얼어붙음(freeze: ms 동안 시간이 mul 배 = 거의 멈춤, 보스 bossMul) → 끝에 깨지며 크게(shatter, 넘어뜨림).
+      //   frost = { frame, x, w, depth, ms, firstMs, tickMs, tick, shatter, freeze }. 법사가 다른 걸 해도 폭풍은 그대로. Lv5 = 폭풍 범위 +25%
+      frost: {
+        name: '빙결 폭풍', icon: '빙', mp: 38, cooldownMs: 18000, damageStyle: 'skill_ice', motion: 'motion_cast_sky', sfx: 'charge',
+        desc: '(2차) 앞쪽 화면 대부분에 얼음 폭풍을 일으켜요. 여러 번 맞히며 적을 얼려 멈추게 하고, 끝에 산산이 깨지며 크게 때려 넘어뜨려요(누운 적도 맞아요)',
+        lv5: { area: 1.25, say: '폭풍 범위 +25%' },
+        darken: { ms: 1400, alpha: 0.5 },
+        iframes: { frames: [0, 2] },
+        zoom: { k: 1.04, ms: 900 },
+        frost: { frame: 3, x: 165, w: 165, depth: 62, ms: 1500, firstMs: 150, tickMs: 220, tick: FROST_TICK, shatter: FROST_SHATTER,
+                 freeze: { ms: 1500, mul: 0.06, bossMul: 0.6 } },
+        placeholder: { anim: 'attack2', f: [0, 1, 2, 3, 3, 3, 4], d: [80, 90, 60, 160, 160, 110, 100] },
+        female: {
+          placeholder: { anim: 'attack3', f: [0, 1, 2, 2, 2, 3, 4], d: [80, 90, 160, 160, 120, 80, 70] }
+        }
+      },
+      // 천둥 심판(대마법사 Lv39, 폭딜 필살): 「하늘로 들기」 동작의 1~2장을 길게(모으기 약 0.6초, 지팡이 끝에서 하늘로 빛 줄기) →
+      //   1장에 과녁을 정함(앞쪽 range 안: 보스 > 중간보스 > 체력이 가장 많은 적, 없으면 앞 x) → lockMs 전까지 따라감 →
+      //   3장에 하늘에서 거대한 번개 기둥(r · depth = 판정, hit = 9.0 한 방) + 둘레 번개 bolts 줄기(다른 적 가까운 순, 모자라면 둘레 빈 땅, spread 안)
+      //   화면 하얗게 번쩍 · 크게 흔들림 · 멈춤. Lv5 = 둘레 번개 5 → 8줄기
+      judgment: {
+        name: '천둥 심판', icon: '천', mp: 40, cooldownMs: 22000, damageStyle: 'skill_bolt', motion: 'motion_cast_sky', sfx: 'charge',
+        motionMs: [110, 220, 380, 90, 260, 170],
+        desc: '(2차 필살) 잠깐 힘을 모은 뒤 가장 센 적(보스 먼저)에게 거대한 번개 기둥을 내리꽂아요. 법사 기술 중 가장 센 한 방 + 둘레에 번개가 여러 줄기 더 떨어져요',
+        lv5: { bolts: 8, say: '둘레 번개 5 → 8줄기' },
+        darken: { ms: 1500, alpha: 0.62 },
+        iframes: { frames: [0, 3] },
+        zoom: { k: 1.07, ms: 1100 },
+        judge: { frame: 1, strike: 3, x: 140, aim: { range: 300, depth: 70 }, lockMs: 110, r: 34, depth: 36, hit: JUDGE_HIT,
+                 bolts: 5, spread: 120, boltR: 22, boltDepth: 28, gapMs: 60, boltHit: JUDGE_BOLT },
+        fx: [ { frame: 1, type: 'beam', x: 30, y: -130, ms: 700, color: '#bff8ff' } ],
+        placeholder: { anim: 'attack2', f: [0, 1, 2, 3, 3, 4], d: [110, 220, 380, 90, 260, 170] },
+        female: {
+          motionMs: [80, 210, 360, 70, 240, 160],
+          fx: [ { frame: 1, type: 'beam', x: 20, y: -128, ms: 700, color: '#bff8ff' } ],
+          placeholder: { anim: 'attack3', f: [0, 1, 2, 2, 3, 4], d: [80, 210, 360, 70, 240, 160] }
+        }
       }
     }
   };
@@ -843,24 +932,52 @@
       { id: 'cross', unlock: 35, tier: 2, short: '땅의 십자에서 빛이 솟아요' },
       { id: 'charge', unlock: 39, tier: 2, short: '금빛 방패로 돌진해 터뜨려요' }
     ],
+    // 2026-11-08 형님 승인: 법사도 기사처럼 다시 배치(아래 mage 순서 = 기술 창 순서) + 2차 전직 Lv25 대마법사(tier: 2)
+    //   새 기술 원소 파편 · 중력 구체 · 마력 소용돌이(1차) / 원소 연쇄 · 빙결 폭풍 · 천둥 심판(2차) → 법사 17개(쓰는 기술 10 + 늘 켜진 기술 7). 1차 법사 = 원소 낙인(Lv24)까지
+    //   예전 저장: 지금 Lv 보다 늦게 열리게 바뀐 기술(마나 순환 11 → 12 · 마나 방패 19 → 21 · 원소 낙인 23 → 24, 2차 전 메테오 · 불기둥)은 저장을 읽을 때 빠짐
+    //     = 그 기술에 쓴 점수는 안 쓴 점수로 돌아옴(growth.js openLv, 기사와 같은 길)
     mage: [
+      // 전직(1차) 때: 화염구 = 첫 기술 점수(firstPts 1)로 배움, 땅 융기 = 기본기(config skills.basic, 공짜 Lv1 + 1번 칸) → 기사 올려베기처럼 unlock 0
       { id: 'fireball', unlock: 0, short: '큰 불덩이를 던져요' },
+      { id: 'rise', unlock: 0, short: '돌기둥으로 적을 띄워요' },     // 2026-11-08 Lv10 → 0(기본기라 늘 열림, 기사 올려베기와 같은 자리)
       { id: 'bolt', unlock: 8, short: '번개 세 줄기를 내리꽂아요' },
       { id: 'amp', unlock: 9, short: '모든 마법이 세져요', name: '원소 증폭', icon: '증', desc: '모든 마법(지팡이 타·마법탄·기술)이 세져요',
         passive: { stat: 'magic', val: [0.08, 0.12, 0.16, 0.2, 0.25] } },
-      { id: 'rise', unlock: 10, short: '돌기둥으로 적을 띄워요' },    // 2026-11-06 밤 콤보: 땅 융기(띄우기). 2차 「불기둥」 자리를 대신해 앞당김(2026-11-06 Lv9 → 10)
-      { id: 'flow', unlock: 11, short: '마나가 더 빨리 차요', name: '마나 순환', icon: '순', desc: '마나가 더 빨리 차요',
-        passive: { stat: 'mpRegen', val: [0.2, 0.35, 0.5, 0.65, 0.85] } },
-      { id: 'ice', unlock: 13, short: '맞은 적은 느려져요' },
-      { id: 'meteor', unlock: 15, short: '큰 운석을 떨어뜨려요' },
+      { id: 'ice', unlock: 11, short: '맞은 적은 느려져요' },          // 2026-11-08 Lv13 → 11(초반 법사가 덜 답답하게)
+      { id: 'flow', unlock: 12, short: '마나가 더 빨리 차요', name: '마나 순환', icon: '순', desc: '마나가 더 빨리 차요',
+        passive: { stat: 'mpRegen', val: [0.2, 0.35, 0.5, 0.65, 0.85] } },     // 2026-11-08 Lv11 → 12
+      { id: 'blink', unlock: 14, short: '사라졌다 나타나며 피해요' },  // 2026-11-08 Lv17 → 14
+      // 2026-11-08 새 늘 켜진 기술: passive.stat 'eshard' = 법사 마법(지팡이 · 완드 타 · 마법탄 · 터짐 · 기술)이 적에게 맞으면 작은 불 · 얼음 조각이 튀어
+      //   둘레(r, 위아래 depth) 다른 적 n 마리에게 날아가 꽂힘(둘레에 다른 적이 없으면 맞은 적에게 한 조각). icdMs 에 한 번까지(몹 떼에 한꺼번에 맞아도 한 번)
+      //   val = 조각 데미지 배율(ESHARD_HIT 에 곱함, 무기 데미지 · 지능 · 원소 증폭은 그대로 붙음)
+      { id: 'eshard', unlock: 15, short: '마법이 맞으면 불·얼음 조각이 튀어요', name: '원소 파편', icon: '파',
+        desc: '마법(평타 지팡이 타 · 마법탄 · 기술)이 적에게 맞으면 작은 불 · 얼음 조각이 튀어 둘레의 다른 적을 때려요(둘레에 적이 없으면 맞은 적에게 한 조각)',
+        passive: { stat: 'eshard', val: [0.3, 0.35, 0.4, 0.46, 0.52], n: [2, 3, 3, 4, 4], r: [80, 86, 92, 100, 110], depth: 34, icdMs: 280, hit: ESHARD_HIT } },
+      { id: 'gravity', unlock: 17, short: '구체가 적을 끌어모아 터져요' },
+      // 2026-11-08 새 늘 켜진 기술: passive.stat 'vortex' = val(ms) 마다 법사 둘레(find 안, 위아래 findDepth) 적이 있으면 그 적들 가운데에 작은 마력 소용돌이.
+      //   소용돌이 = ms 동안 둘레 r 의 잡몹을 가운데로 끌어모으며 작게 ticks 번 → 끝에 톡 터짐. mul = 데미지 배율(VORTEX_TICK · VORTEX_POP 에 곱함). 보스 · 중간보스는 안 끌림
+      { id: 'vortex', unlock: 18, short: '가끔 소용돌이가 적을 모아요', name: '마력 소용돌이', icon: '소',
+        desc: '몇 초마다 법사 둘레 적들 가운데에 작은 마력 소용돌이가 저절로 생겨, 둘레 적을 끌어모으며 여러 번 때리고 톡 터져요(보스 · 큰 적은 안 끌려옴)',
+        passive: { stat: 'vortex', val: [6500, 6000, 5500, 5000, 4500], mul: [1, 1.15, 1.3, 1.45, 1.6], r: [70, 76, 82, 90, 100], find: 190, findDepth: 60,
+                   depth: 40, ms: 900, ticks: 3, pullK: 4.5, tick: VORTEX_TICK, pop: VORTEX_POP } },
       // 2차(2026-11-06 넣음): passive.stat 'shield' = 받는 피해의 val 만큼을 마나가 대신 받음(마나 1 = 피해 1, 마나가 모자라면 있는 만큼)
       //   'brand' = 기술 마법에 맞은 적에게 ms 동안 낙인 → 그동안 그 적이 받는 모든 공격 +val
-      { id: 'blink', unlock: 17, short: '사라졌다 나타나며 피해요' },
-      { id: 'shield', unlock: 19, short: '피해 일부를 마나가 대신 받아요', name: '마나 방패', icon: '방', desc: '받는 피해 일부를 마나가 대신 받아요. 막을 때 몸 둘레에 파란 방패가 번쩍해요',
-        passive: { stat: 'shield', val: [0.2, 0.25, 0.3, 0.35, 0.4] } },
-      { id: 'pillar', unlock: 21, short: '큰 불기둥이 솟아 태워요' },
-      { id: 'brand', unlock: 23, short: '기술에 맞은 적이 더 아파요', name: '원소 낙인', icon: '낙', desc: '기술 마법에 맞은 적에게 4초 동안 낙인(머리 위 문양)이 찍혀, 그동안 모든 공격에 더 아프게 맞아요',
-        passive: { stat: 'brand', val: [0.1, 0.13, 0.16, 0.19, 0.22], ms: 4000 } }
+      { id: 'shield', unlock: 21, short: '피해 일부를 마나가 대신 받아요', name: '마나 방패', icon: '방', desc: '받는 피해 일부를 마나가 대신 받아요. 막을 때 몸 둘레에 파란 방패가 번쩍해요',
+        passive: { stat: 'shield', val: [0.2, 0.25, 0.3, 0.35, 0.4] } },        // 2026-11-08 Lv19 → 21
+      { id: 'brand', unlock: 24, short: '기술에 맞은 적이 더 아파요', name: '원소 낙인', icon: '낙', desc: '기술 마법에 맞은 적에게 4초 동안 낙인(머리 위 문양)이 찍혀, 그동안 모든 공격에 더 아프게 맞아요',
+        passive: { stat: 'brand', val: [0.1, 0.13, 0.16, 0.19, 0.22], ms: 4000 } },   // 2026-11-08 Lv23 → 24
+      // ---- 대마법사(2차 전직, 2026-11-08 형님 승인) ----
+      // tier: 2 = 2차 전직(classes.mage.tier2, Lv25 = 대마법사)을 한 뒤에만 열림(기사와 같음). 공짜 Lv 없음(기술 점수로 배움)
+      //   메테오(예전 Lv15) · 불기둥(예전 Lv21)을 1차에서 2차로 옮김
+      { id: 'meteor', unlock: 25, tier: 2, short: '큰 운석을 떨어뜨려요' },        // 2026-11-08 Lv15 → 2차 Lv25
+      // passive.stat 'echain' = 법사 마법으로 쓰러진 적이 그 자리에서 터져 둘레(r, 위아래 depth) 적을 때림(ECHAIN_HIT x val).
+      //   터짐으로 쓰러진 적도 chain 번까지 또 터짐(무한 반복 없음, 짧은 시간에 터지는 수도 상한). 예전 아이디어 「마나 가호」는 마나 순환과 겹쳐 이걸로 바꿈
+      { id: 'echain', unlock: 28, tier: 2, short: '쓰러진 적이 터져 둘레를 때려요', name: '원소 연쇄', icon: '연',
+        desc: '마법으로 쓰러뜨린 적이 그 자리에서 터져 둘레 적을 때려요. 터짐으로 쓰러진 적도 또 터져요(세 번까지) — 몹 떼가 줄줄이 터져요',
+        passive: { stat: 'echain', val: [0.7, 0.85, 1.0, 1.15, 1.3], r: [62, 68, 74, 82, 92], depth: 36, chain: 3, hit: ECHAIN_HIT } },
+      { id: 'pillar', unlock: 31, tier: 2, short: '큰 불기둥이 솟아 태워요' },     // 2026-11-08 Lv21 → 2차 Lv31
+      { id: 'frost', unlock: 35, tier: 2, short: '앞쪽 넓게 얼음 폭풍을 일으켜요' },
+      { id: 'judgment', unlock: 39, tier: 2, short: '거대한 번개 기둥 한 방' }
     ]
   };
 
@@ -1432,6 +1549,7 @@
     //   끝 = 주변 큰 폭발(end: r 반지름 · depth 위아래 · dmg = 무기 데미지 배율(레벨·능력치 공격력 그대로 곱함) · 넘어뜨림) → 원래 색
     //   knight 「광전사」: 콤보 빠르기 +atkSpd(민첩과 합쳐 spdCap 까지) · 타격마다 준 데미지 x lifesteal 만큼 체력(최소 1). 붉은 불꽃
     //   mage 「마력 폭주」: 기술 마나 0 · 기술이 한 번 더 터짐(화염구·얼음창 = 한 발 더, 번개 = 같은 자리에 한 번 더, 메테오·땅 융기 = 다른 적에게 하나 더, echoMs 뒤)
+    //     2026-11-08: 중력 구체 = 같은 자리에서 한 번 더 터짐(70%) · 빙결 폭풍 = 한 번 더 깨짐(60%) · 천둥 심판 = 다음 센 적에게 기둥 하나 더(60%)
     //   novice(전직 전 견습): 공통만(금색)
     //   거리 값(pushR·push·end.r·end.depth)은 원래 그림 크기 기준(쓸 때 actorScale 곱함)
     awaken: {
@@ -1439,7 +1557,7 @@
       end: { r: 170, depth: 70, dmg: 4 },
       knight: { name: '광전사', color: '#ff3a1a', glow: '#ff8a3a', atkSpd: 0.25, spdCap: 1.5, lifesteal: 0.05,
                 look: { hue: -18, sat: 1.25, bright: 0.72, color: '#8a0a0a', colorK: 0.38 } },
-      mage:   { name: '마력 폭주', color: '#b46aff', glow: '#5ae6ff', echoMs: { fireball: 160, ice: 130, bolt: 200, meteor: 260, rise: 190 },
+      mage:   { name: '마력 폭주', color: '#b46aff', glow: '#5ae6ff', echoMs: { fireball: 160, ice: 130, bolt: 200, meteor: 260, rise: 190, pillar: 200, gravity: 220, frost: 320, judgment: 300 },   // 2026-11-08 + 불기둥 · 중력 구체(한 번 더 터짐) · 빙결 폭풍(한 번 더 깨짐) · 천둥 심판(다음 적에게 한 번 더, 60%)
                 look: { hue: 12, sat: 1.35, bright: 0.72, color: '#3a0a6a', colorK: 0.3 } },
       novice: { name: '각성', color: '#ffd23f', glow: '#fff2a0' }
     },
@@ -3965,7 +4083,7 @@
               curve: { dmg: [1, 1.2, 1.4, 1.6, 1.85], cd: [1, 0.94, 0.88, 0.82, 0.75], mp: [1, 1.05, 1.1, 1.15, 1.2] },
               test: { pts: 24 },
               botPlan: { knight: ['dash', 'upper', 'wave', 'mastery', 'spin', 'skin', 'slam', 'shards', 'thrust', 'pressure', 'grit', 'counter', 'storm', 'aegis', 'holy', 'cross', 'charge'],
-                         mage: ['fireball', 'bolt', 'rise', 'amp', 'flow', 'ice', 'meteor', 'blink', 'shield', 'pillar', 'brand'] } },
+                         mage: ['fireball', 'rise', 'bolt', 'amp', 'ice', 'flow', 'blink', 'eshard', 'gravity', 'vortex', 'shield', 'brand', 'meteor', 'echain', 'pillar', 'frost', 'judgment'] } },   // 법사 다시 배치(2026-11-08)
 
     // ---------- 기술 효과 그림 (art\stage1\skills\fx 에서 복사 → assets/fx/skill/<이름>_01.png …, 크기·기준점은 fx.json) ----------
     // count = 장 수(0 = 그림 없음 → 기존 그림을 물들여 쓰거나 코드로 그림), fps = 1초에 장 수, pivot = 그림 속 기준점(원래 크기), loop = 반복

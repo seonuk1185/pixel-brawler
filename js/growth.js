@@ -66,6 +66,17 @@
   function tier2Lv(cls) { var c = CFG.classes && CFG.classes[cls], t = c && c.tier2; return t ? t.lv || 0 : 0; }
   function openLv(cls, e) { var u = e.unlock || 0; return e.tier === 2 ? Math.max(u, tier2Lv(cls)) : u; }
   function newSk(clsLv) { var o = { clsLv: clsLv, lv: {}, bar: [] }; if (LEARN) o.v = 2; return o; }
+  // 기술 미리보기 책(2026-11-08, index.html window.PV = 기술 창 「▶ 미리보기」 액자 안에서만): 미리 보는 기술(PV.id) 하나만 PV.lv,
+  //   도우미 기술(PV.help, 원소 낙인처럼 「기술에 맞으면」 늘 켜진 기술을 보일 때 쓰는 화염구) = Lv1, 나머지는 전부 안 배움(다른 늘 켜진 기술이 안 섞이게).
+  //   쓰는 기술은 1번 칸부터. 저장 안 함
+  var pvBooks = {};
+  function makePvBook(cls) {
+    var Q = window.PV, ids = [Q.id].concat(Q.help ? [Q.help] : []), st = newSk(1), B = makeBook(cls, st, true);
+    B.lv = function (id) { return id === Q.id ? Q.lv : ids.indexOf(id) >= 0 ? 1 : 0; };
+    st.bar = ids.filter(function (id) { return B.isActive(id); });
+    B.save = function () {};
+    return B;
+  }
   // 견습 책(2026-11-07): 기본기 올려치기(config skills.noviceSkill) 하나만, 1번 칸만 열림. 점수 · 기술 창 없음(main.js 가 novice 를 보고 숨김)
   var noviceBook = null;
   function makeNoviceBook() {
@@ -418,6 +429,7 @@
       if (cls === 'novice') return SK.noviceSkill && SK.novice && SK.novice[SK.noviceSkill] ? (noviceBook || (noviceBook = makeNoviceBook())) : null;   // 견습 기본기(2026-11-07)
       cls = cls || G.cls;
       if (!cls || !treeOf(cls)) return null;
+      if (window.PV) return pvBooks[cls] || (pvBooks[cls] = makePvBook(cls));   // 기술 미리보기 액자(2026-11-08): 그 기술 하나만
       if (cls === G.cls) return realBook || (realBook = makeBook(cls, G.sk, false));
       if (!testBooks[cls]) { testBooks[cls] = makeBook(cls, newSk(1), true); testBooks[cls].fill(); }
       return testBooks[cls];
