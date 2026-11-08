@@ -371,7 +371,7 @@
       var otg = target.state === 'down' && !!st.hitsDown;
       var wasAir = target.state === 'air';   // 띄워진 잡몹을 침(콤보 글자 「AIR」)
       if (otg) dmg = Math.max(1, Math.round(dmg * (CFG.ai.otg.dmgMul != null ? CFG.ai.otg.dmgMul : 1)));
-      var res = target.takeHit(dmg, dir, knock, !!st.finisher && !st.noKnockdown && !comboFin, { heavy: heavy, stunMs: comboFin ? Math.max(st.stunMs || 0, FS.stunMs) : st.stunMs, noJuggle: !!st.noJuggle || comboFin, flashK: st.flashK != null ? st.flashK : (heavyHit ? IM.flashHeavy || 1 : 1), otg: otg, launch: st.launch || 0, part: rpt && rpt.part });   // part = 레이드 보스 맞은 부위,  stunMs = 번개 기술, launch = 띄우기(ai.air)
+      var res = target.takeHit(dmg, dir, knock, !!st.finisher && !st.noKnockdown && !comboFin, { heavy: heavy, stunMs: comboFin ? Math.max(st.stunMs || 0, FS.stunMs) : Math.max(st.stunMs || 0, Skills.brStun ? Skills.brStun(st, target) : 0), noJuggle: !!st.noJuggle || comboFin, flashK: st.flashK != null ? st.flashK : (heavyHit ? IM.flashHeavy || 1 : 1), otg: otg, launch: st.launch || 0, part: rpt && rpt.part });   // part = 레이드 보스 맞은 부위,  stunMs = 번개 기술, launch = 띄우기(ai.air)
       // 콤보 기록·글자(2026-11-06 밤): 띄움 / 공중 타 / 누운 적 타
       var CS = G.cstats;
       if (res === 'launch') { CS.launch++; comboTag('LAUNCH'); }
@@ -420,6 +420,7 @@
     if (target === G.dummy || res) {
       if (!W.magic) Skills.infuseHit(p, target, st, hx, hy);
       else Skills.leechHit(p, target, dmg);
+      if (Skills.brHit) Skills.brHit(p, target, st, dmg);   // 갈래 맛 덤(2026-11-08): 성기사 기절 별 · 마검사 늦은 마력 터짐 + 마나 · 흑마법사 저주 + 흡수
     }
     // 무기 속성 효과(2026-11-06, js/enchant.js): 화상 · 독 · 느려짐 · 튀는 번개 · 흡혈 + 속성 색 불티. 법사 평타는 약하게(mageBasic)
     if (WP && target !== G.dummy && res) {
@@ -593,6 +594,7 @@
     var dmg = rand(spec.dmg[0], spec.dmg[1]);
     if (e.dmgMul !== 1) dmg = Math.max(1, Math.round(dmg * e.dmgMul));   // 판·변종 공격력 배율
     dmg = guardDmg(dmg);   // 늘 켜진 기술 「강철 피부」(받는 피해 -%)
+    if (Skills.brDefend) dmg = Skills.brDefend(p, e, dmg);   // 갈래 맛(2026-11-08): 저주 걸린 적 공격 -10% · 성기사 금빛 보호막
     var shA = Skills.shieldSplit(p, dmg);   // 늘 켜진 기술 「마나 방패」(2차, 2026-11-06): 피해 일부를 마나가 대신 받음
     dmg -= shA;
     var dir = p.x >= e.x ? 1 : -1;
@@ -3579,7 +3581,17 @@
     return keyLabel(CFG.keys['skill' + Skills.slots[i]]);
   }
   // 칸에 끼운 것의 이름(회피 = 「회피」, 2026-11-07)
-  function slotName(S, id) { return id === 'dodge' ? '회피' : (S[id] && S[id].name) || ''; }
+  function slotName(S, id) { return id === 'dodge' ? '회피' : brNm(id) || (S[id] && S[id].name) || ''; }
+  // 갈래 맛(2026-11-08, config skills.branchFx): 2차 갈래 뒤 바뀐 1차 기술 이름(없으면 null) · 늘 켜진 기술 추천 갈래 글
+  function brNm(id) { var b = Growth.brSkill ? Growth.brSkill(G.classKey, id) : null; return b ? b.name : null; }
+  function recE(e) {
+    var bk = Growth.book(G.classKey), r = e && e.rec && bk && bk.rec ? bk.rec(e.id) : null;
+    if (!r || !r.on || !e.passive || !e.passive.val) return e;
+    var P = {}, k; for (k in e.passive) P[k] = e.passive[k];
+    P.val = e.passive.val.map(function (v) { return e.recInv ? Math.round(v / r.k) : Math.round(v * r.k * 1000) / 1000; });
+    var o = {}; for (k in e) o[k] = e[k]; o.passive = P; return o;
+  }
+  function recTxt(bk, e) { var r = bk && bk.rec ? bk.rec(e.id) : null; return r ? r.name + ' 추천' + (r.on ? ' · 효과 +' + Math.round((r.k - 1) * 100) + '% 적용 중' : '') : ''; }
   function skillBadges() {
     var bk = Growth.book(G.classKey), n = bk ? bk.pts() : 0;
     if (bk && bk.novice) bk = null;   // 견습 기본기 책(2026-11-07)은 기술 창 없음
@@ -3602,6 +3614,7 @@
   // 늘 켜진 기술의 그 Lv 값: 「물리 공격 +12%」
   //   2차(2026-11-06): 투지 「체력 적으면 공격 최대 +20%」 · 반격 「반격 확률 30%」 · 마나 방패 「피해의 20% 마나로」 · 원소 낙인 「낙인 찍힌 적 피해 +10%」
   function passiveNow(e, lv) {
+    e = recE(e);   // 추천 갈래면 값 +25%(2026-11-08, 실제로 쓰는 값과 같게)
     var P = e.passive, v = pctTxt(P.val[Math.max(1, lv) - 1]);
     if (P.stat === 'shield') return '피해의 ' + v + ' 마나로';
     if (P.stat === 'shards') return '파편 피해 ' + v + ' · 반경 ' + (P.r ? P.r[Math.max(1, lv) - 1] : 0);   // 칼날 파편(2026-11-08)
@@ -3641,13 +3654,14 @@
     bk.list().forEach(function (e) {
       // 2026-11-07 배우기: open = 그 Lv 가 됨, learned = 배움. 열렸는데 안 배움 = 'learn'(회색 그림 + 「배울 수 있음」, + 로 1점 써서 배움)
       var d = S[e.id] && S[e.id].name ? S[e.id] : null, open = bk.unlocked(e.id), lv = bk.lv(e.id), learned = lv > 0, canPick = bk.isActive(e.id) && learned;
-      var name = d ? d.name : e.name, st = e.soon ? 'soon' : !open ? 'lock' : !learned ? 'learn' : '', at = bar.indexOf(e.id), max = bk.maxLv(e.id);   // 기술마다 최고 Lv(2026-11-08)
+      var name = brNm(e.id) || (d ? d.name : e.name), st = e.soon ? 'soon' : !open ? 'lock' : !learned ? 'learn' : '', at = bar.indexOf(e.id), max = bk.maxLv(e.id);   // 기술마다 최고 Lv(2026-11-08)
       var c = document.createElement('div');
       c.className = 'cell' + (st ? ' ' + st : '') + (skSel === e.id ? ' sel' : '');
       var info = !st || st === 'learn';
       c.title = name + ' — ' + ((d ? d.desc : e.desc) || '') + (info ? '\n' + skillNums(bk, e, d, lv) : '') +
         (d && d.lv5 && d.lv5.say && info ? '\nLv5: ' + d.lv5.say : '') + (st === 'learn' ? '\n기술 점수 1점으로 배워요' : '') +
-        (st === 'lock' && e.tier === 2 ? '\n2차 전직(' + t2Name(bk.cls, e) + ') 후 Lv' + bk.openLv(e.id) + '에 배울 수 있어요' : '');
+        (st === 'lock' && e.tier === 2 ? '\n2차 전직(' + t2Name(bk.cls, e) + ') 후 Lv' + bk.openLv(e.id) + '에 배울 수 있어요' : '') +
+        (bk.brSkill && bk.brSkill(e.id) ? '\n갈래 덤: ' + bk.brSkill(e.id).twist : '') + (recTxt(bk, e) ? '\n' + recTxt(bk, e) : '');
       // 그림 + 이름 · Lv · 짧은 설명 = 버튼(2026-11-08): 누르면 설명 · 미리보기 창(openDetail). 칸에 끼우기는 그 창의 「칸에 끼우기」
       var pick = document.createElement('button');
       pick.className = 'cpick'; pick.type = 'button'; pick.dataset.sk = e.id + ':info'; pick.setAttribute('aria-label', name + ' 설명 · 미리보기');
@@ -3697,7 +3711,7 @@
       gEl.appendChild(b);
     });
     var sd = skSel && S[skSel], sL = sd && Skills.lvStat(sd, bk.lv(skSel));
-    bEl.insertAdjacentHTML('beforeend', '<span class="hint">' + (sd ? '<b>' + sd.name + '</b> MP ' + sL.mp + ' · 쿨타임 ' + secTxt(sL.cd) :
+    bEl.insertAdjacentHTML('beforeend', '<span class="hint">' + (sd ? '<b>' + (brNm(skSel) || sd.name) + '</b> MP ' + sL.mp + ' · 쿨타임 ' + secTxt(sL.cd) :
       skSel === 'dodge' ? '<b>회피</b> 연속 ' + G.player.dodgeStats().n + '번 · 쿨타임 ' + secTxt(G.player.dodgeStats().cd) : '기술을 누르면 설명 · 미리보기') + '<br><em>' + (skSel ? '칸을 누르면 끼워져요' : '「칸에 끼우기」 → 칸을 누름') + '</em></span>');
     skEl.querySelectorAll('.spread button[data-sk], .skbar button[data-sk]').forEach(function (b) {
       b.addEventListener('click', function () {
@@ -3781,7 +3795,8 @@
     var bk = Growth.book(G.classKey), e = bk && bk.entry(detId);
     if (!e) return;
     var S = CFG.skills[bk.cls], d = S[e.id] && S[e.id].name ? S[e.id] : null, max = bk.maxLv(e.id);   // 기술마다 최고 Lv(2026-11-08)
-    var name = d ? d.name : e.name, lv = bk.lv(e.id), open = bk.unlocked(e.id), show = Math.max(1, lv);
+    var BS = bk.brSkill ? bk.brSkill(e.id) : null, RC = bk.rec ? bk.rec(e.id) : null;   // 갈래 맛 · 추천 갈래(2026-11-08)
+    var name = BS ? BS.name : d ? d.name : e.name, lv = bk.lv(e.id), open = bk.unlocked(e.id), show = Math.max(1, lv);
     var st = e.soon ? 'soon' : !open ? 'lock' : lv > 0 ? '' : 'learn', basic = CFG.skills.basic && CFG.skills.basic[bk.cls] === e.id;
     document.getElementById('sdRib').textContent = e.passive ? '늘 켜진 기술' : '쓰는 기술';
     var ic = document.getElementById('sdIcon'); ic.innerHTML = ''; ic.appendChild(skIcon(e.id, 56, !!st && st !== 'learn'));
@@ -3789,11 +3804,14 @@
     var tags = '<i class="tg ' + (e.passive ? 'pas' : 'act') + '">' + (e.passive ? '늘 켜진 기술' : '쓰는 기술') + '</i>' +
       '<i class="tg' + (e.tier === 2 ? ' t2' : '') + '">' + (e.tier === 2 ? '2차 · ' + t2Name(bk.cls, e) : '1차 · ' + ((CFG.classes[bk.cls] || {}).label || '')) + '</i>' +
       (basic ? '<i class="tg">기본기</i>' : '') +
+      (BS ? '<i class="tg t2">' + t2Name(bk.cls, null) + ' · ' + BS.tag + '</i>' : '') + (RC ? '<i class="tg' + (RC.on ? ' t2' : '') + '">' + RC.name + ' 추천</i>' : '') +
       (st === 'lock' ? '<i class="tg lk">잠김</i>' : st === 'learn' ? '<i class="tg ln">배울 수 있음</i>' : st === 'soon' ? '<i class="tg lk">준비 중</i>' : '<i class="tg lv">Lv ' + lv + '/' + max + '</i>');
     document.getElementById('sdTags').innerHTML = tags;
     document.getElementById('sdDesc').textContent = (d ? d.desc : e.desc) || e.short || '';
     // 숫자: 지금 Lv(안 배웠으면 Lv1 기준) · 다음 Lv · Lv5 덤 · 여는 법
     var h = '', now = lv > 0 ? '지금 Lv' + lv : 'Lv1 기준';
+    if (BS) h += detRow('갈래 덤', BS.twist + (d ? ' <small>(원래 이름 ' + d.name + ')</small>' : ''), 'l5');
+    if (RC) h += detRow(RC.name + ' 추천', RC.on ? '지금 ' + RC.name + ' → 효과 +' + Math.round((RC.k - 1) * 100) + '% 적용 중' : RC.name + '를 고르면 효과 +' + Math.round((RC.k - 1) * 100) + '%', RC.on ? 'l5' : '');
     if (d) {
       var L = Skills.lvStat(d, show), N = show < max ? Skills.lvStat(d, show + 1) : null;
       h += detRow(now, '마나 ' + L.mp + ' · 쿨타임 ' + secTxt(L.cd) + ' · 위력 ' + pctTxt(L.dmg));

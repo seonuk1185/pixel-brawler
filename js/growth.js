@@ -82,6 +82,16 @@
   }
   // 갈래 기술이 지금 갈래에 맞나: vis = 기술 창에 보임(2차 전 = 다 보임), ok = 배울 수 있는 갈래
   //   test = 시험 책(시험 버튼으로 입은 다른 직업): 2차 전이어도 첫 갈래(a)로 봄(예전처럼 2차 기술을 다 써 볼 수 있게)
+  // 갈래 맛(2026-11-08): config skills.branchFx[직업][갈래].names[기술] → { name, twist, tag, br, color, tw }
+  //   brOn = 갈래 맛이 켜졌나: 2차 Lv(tier2) 이 된 뒤의 지금 갈래(그 전 = null — ?lv=20&branch=a 시험처럼 갈래가 정해져 있어도 2차 전엔 원래대로)
+  function brOn(cls) { var t = tier2Lv(cls); return t && G.lv >= t ? branchOf(cls) : null; }
+  function brSkillOf(cls, id) {
+    var F = SK.branchFx && SK.branchFx[cls], b = brOn(cls), G2 = F && b && F[b], n = G2 && G2.names && G2.names[id];
+    return n ? { name: n[0], twist: n[1], tag: G2.tag, br: b, color: G2.color, tw: G2.tw } : null;
+  }
+  function recK0() { return (SK.branchFx && SK.branchFx.recK) || 1.25; }
+  // 늘 켜진 기술 추천 갈래 배율: 지금 갈래 = e.rec 이면 recK(값 x 1.25), 아니면 1
+  function recMul(cls, e) { return e && e.rec && brOn(cls) === e.rec ? recK0() : 1; }
   function brKey(cls, test) { var b = branchOf(cls); return b || (test && branchList(cls) ? branchList(cls)[0].key : null); }
   function brVis(cls, e, test) { if (!e || !e.branch) return true; var b = brKey(cls, test); return !b || b === e.branch; }
   function brOk(cls, e, test) { return !e || !e.branch || brKey(cls, test) === e.branch; }
@@ -136,6 +146,11 @@
       unlocked: function (id) { var e = byId[id]; return !!e && !e.soon && brOk(cls, e, test) && (test || id === BASIC || G.lv >= openLv(cls, e)); },
       // 2차 전직 갈래(2026-11-08): 지금 갈래 key(2차 전 = null) · 그 기술 갈래 이름(갈래 기술 아니면 null)
       branch: function () { return branchOf(cls); },
+      // 갈래 맛(2026-11-08, config skills.branchFx): 지금 갈래에서 바뀐 1차 기술 { name, twist, tag, br } (2차 전 · 해당 없음 = null)
+      brSkill: function (id) { return brSkillOf(cls, id); },
+      // 늘 켜진 기술 추천 갈래(rec): { br, name(갈래 이름), on(지금 그 갈래), k(배율) } 또는 null
+      rec: function (id) { var e = byId[id], b = e && e.rec ? branchDef(cls, e.rec) : null; return b ? { br: e.rec, name: b.name, on: brOn(cls) === e.rec, k: recK0() } : null; },
+      recK: function (id) { return recMul(cls, byId[id]); },
       branchName: function (id) { var e = byId[id], b = e && e.branch ? branchDef(cls, e.branch) : null; return b ? b.name : null; },
       openLv: function (id) { var e = byId[id]; return e ? openLv(cls, e) : 0; },
       // 2차 전직을 했나(2026-11-08): 이 직업에 2차가 있고 그 Lv 가 됨
@@ -217,7 +232,7 @@
       // 늘 켜진 기술 합: stat('phys' / 'magic' / 'guard' / 'mpRegen') → 0.12 = +12%
       bonus: function (stat) {
         var n = 0;
-        L.forEach(function (e) { var P = e.passive; if (P && P.val && P.stat === stat && B.learned(e.id)) n += P.val[B.lv(e.id) - 1] || 0; });
+        L.forEach(function (e) { var P = e.passive; if (P && P.val && P.stat === stat && B.learned(e.id)) n += (P.val[B.lv(e.id) - 1] || 0) * recMul(cls, e); });   // 추천 갈래 +25%(2026-11-08)
         return n;
       },
       save: function () { if (!test) G.save(); }
@@ -489,6 +504,9 @@
     // ---------- 2차 전직 갈래 (2026-11-08) ----------
     branches: function (cls) { return branchList(cls || G.cls); },
     branchOf: function (cls) { return branchOf(cls || G.cls); },
+    brSkill: function (cls, id) { return brSkillOf(cls || G.cls, id); },
+    brOn: function (cls) { return brOn(cls || G.cls); },                      // 갈래 맛이 켜진 갈래(2차 Lv 뒤만)   // 갈래 맛(2026-11-08): 바뀐 1차 기술 이름 · 덤
+    recMul: function (cls, e) { return recMul(cls || G.cls, e); },        // 추천 갈래 늘 켜진 기술 배율
     tier2Info: function (cls) { return tier2Info(cls || G.cls); },
     // 고르기 화면을 띄워야 하나: 갈래가 있는 직업 + 2차 Lv 이 됨 + 아직 안 고름(?lv 시험에 ?branch 를 붙였으면 고른 것으로 봄)
     needBranch: function () { return !!(G.cls && branchList(G.cls) && !G.branch && G.lv >= tier2Lv(G.cls)); },

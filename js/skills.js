@@ -178,6 +178,8 @@
 
   // 효과 그림(CFG.skillFx 이름): 불러와져 있으면 { fr = 그림들, fps, pivot(줄인 크기 기준), loop }, 없으면 null
   function fxArt(name, fps) {
+    if (brNow && BX_FX[name]) { var V = brFx(name, fps); if (V) return V; }
+    if (brNow && name === 'sword_wave_lv5' && brFx('sword_wave')) return null;   // 갈래 검기: Lv5 금테 그림 대신 갈래 그림을 크게(castWave)
     var F = H.fx(), fr = name && F && F['skill_' + name];
     if (!fr || !fr.length) return null;
     var M = CFG.magic['skill_' + name], S = CFG.skillFx[name] || {};
@@ -241,6 +243,8 @@
     // area = 효과·판정 크기 배율: 기술 Lv 마다 +6%(Lv5 +24%, 2026-11-06 형님 「Lv 오르면 세 보이게」), Lv5 덤(lv5.area)이 더 크면 그것
     //   x 사냥 손맛 넓은 범위(2026-11-07, config hunt.aoe, 켠 판에서만: 회전베기·대지 내려찍기·메테오·불기둥 +25%)
     if (q.L) p.mp = Math.max(0, (p.mp || 0) - mpCost(p, L));   // 마나 씀(각성 마력 폭주 = 0)
+    s.br = brOf(p, d);         // 갈래 맛(2026-11-08): 2차 갈래 뒤 1차 기술 = 이름 · 그림 · 작은 덤
+    if (s.br) brCast(p, d, s);
     s.echo = !!p.echoCast;   // 각성 마력 폭주: 이 기술이 한 번 더 터짐(쏘는 순간 echoes 에 넣음)
     if (s.echo) {            // 쓰는 순간 법사 둘레 보라·하늘 빛(더 크고 밝게)
       glow(p.x, p.y - 50 * AS(), 46 * AS() / 0.55, '#b46aff', 320, 0.6);
@@ -297,7 +301,7 @@
     var tr = d.trail;
     if (tr && t1 >= tr.from && t1 <= tr.to) {
       s.ghostT -= dt;
-      if (s.ghostT <= 0) { s.ghostT = tr.everyMs; addGhost(p, tr); }
+      if (s.ghostT <= 0) { s.ghostT = tr.everyMs; addGhost(p, s.br ? { color: s.br.color, lifeMs: tr.lifeMs, alpha: tr.alpha } : tr); }   // 갈래 잔상 색
     }
     // 효과
     (d.fx || []).forEach(function (f, i) {
@@ -488,10 +492,11 @@
   }
   // 판정 값 + 기술 숫자 모양(damageStyle) 합친 것 (한 번만 만들어 둠)
   function stOf(h, d) {
-    if (h._st && h._st.damageStyle === d.damageStyle) return h._st;
+    if (h._st && h._st.damageStyle === d.damageStyle && h._st.skId === (d.id || null)) return h._st;
     var st = {}, k;
     for (k in h) if (k !== '_st') st[k] = h[k];
     st.damageStyle = d.damageStyle;
+    st.skId = d.id || null;   // 어느 기술의 타인지(갈래 맛 덤, 2026-11-08 brHit)
     if (st.hitstop == null) st.hitstop = 1;
     if (st.shake == null) st.shake = 1;
     if (st.knock == null) st.knock = 1;
@@ -615,7 +620,9 @@
     }
     if (f.type === 'slash') {
       var spr = tintFx('slash', f.tint, 0.55), arc = { from: -100, to: 40, r: 50 * AS(), w: 10 * AS() }, ka = (p.sk && p.sk.area) || 1;   // ka = 기술 Lv 크기
-      FX.slash(x, y, dir, arc, f.tint || '#ffffff', f.ms || 200, spr, { rot: f.rot, sx: (f.sx || 1) * ka, sy: (f.sy || 1) * ka, flipY: f.flipY, top: true });
+      var bsl = p.sk && p.sk.br && p.classKey === 'knight' && brArt('slash');   // 갈래 베기 그림(금빛 · 보라, 2026-11-08)
+      if (bsl) spr = bsl;
+      FX.slash(x, y, dir, arc, bsl ? p.sk.br.color : f.tint || '#ffffff', f.ms || 200, spr, { rot: f.rot, sx: (f.sx || 1) * ka, sy: (f.sy || 1) * ka, flipY: f.flipY, top: true });
     }
   }
 
@@ -1092,8 +1099,8 @@
     if (!p || !p.classKey) return null;
     var bk = bookOf(p.classKey), e = bk && bk.entry(id);
     if (!e || !e.passive || !e.passive.val || !(bk.learned ? bk.learned(id) : bk.unlocked(id))) return null;   // 2026-11-07: 배운 것만
-    var lv = bk.lv(id);
-    return { v: e.passive.val[lv - 1] || 0, P: e.passive, lv: lv };
+    var lv = bk.lv(id), rk = Growth.recMul ? Growth.recMul(p.classKey, e) : 1;   // 추천 갈래면 +25%(2026-11-08), 「몇 초마다」(recInv)는 시간이 짧아짐
+    return { v: (e.passive.val[lv - 1] || 0) * (e.recInv ? 1 / rk : rk), P: e.passive, lv: lv, rk: rk };
   }
 
   // ---- 순간이동 ----
@@ -1123,6 +1130,7 @@
   function blinkBurst(p, d, s, x, z) {
     var B = d.blink, R = B.r * s.area, y = z - 55;
     FX.shake(CFG.juice.shakePx * 1.1, CFG.juice.shakeMs);
+    if (s.br) aiSpawn('bx_blink_burst_' + s.br.br, x, y, { sx: R * 1.15 / 65, dir: s.dir });   // 갈래 순간이동 터짐 그림(2026-11-08)
     glow(x, y, R * 1.2, '#b46aff', 260, 0.8);
     glow(x, y, R * 0.5, '#ffffff', 140, 0.4);
     wave(x, y, R * 1.1, { flat: 0.8, w: 3, ms: 260, color: '#f0e0ff', glow: '#8a4aff' });
@@ -3588,13 +3596,70 @@
     leech_absorb:      { n: 4, pv: [18.7, 23], fps: 14 },    // 40x46 법사에게 흡수(3장 하트는 togame.py 가 덮음)
     swamp_spread:      { n: 2, pv: [77.5, 45], fps: 10 },    // 155x45 퍼짐
     swamp_pool:        { n: 4, pv: [78, 60.1], fps: 8 },     // 156x97 늪 반복(기준 = 웅덩이 가운데)
-    swamp_dry:         { n: 2, pv: [76.5, 53], fps: 8 }      // 153x53 마름
+    swamp_dry:         { n: 2, pv: [76.5, 53], fps: 8 },     // 153x53 마름
+    // ---- 2026-11-08 갈래 맛: 1차 기술 갈래 그림(art/skill-fx-branch, brfx.py). bx_<원래 그림>_<a|b> = 원래 그림과 장 수 · 캔버스 · 기준점이 같음(1배 = 게임 도트)
+    //   br: 1 = 처음엔 안 불러옴(그 갈래가 되면 brPreload). 공용 덤 그림: holystun · holyshield(성기사) · arcburst(마검사) · curse(흑마법사)
+    bx_blink_burst_a:          { n: 4, pv: [65.7, 58.0], fps: 16, br: 1 },   // 130x116
+    bx_blink_burst_b:          { n: 4, pv: [65.7, 58.0], fps: 16, br: 1 },   // 130x116
+    bx_lightning_bolt_a:       { n: 4, pv: [52.8, 216.7], fps: 20, br: 1 },   // 106x218
+    bx_lightning_impact_a:     { n: 4, pv: [70.4, 69.3], fps: 16, br: 1 },   // 141x70
+    bx_lightning_bolt_b:       { n: 4, pv: [52.8, 216.7], fps: 20, br: 1 },   // 106x218
+    bx_lightning_impact_b:     { n: 4, pv: [70.4, 69.3], fps: 16, br: 1 },   // 141x70
+    bx_dash_trail_a:           { n: 4, pv: [147.4, 26.4], fps: 16, br: 1 },   // 150x53
+    bx_slash_wave_a:           { n: 4, pv: [61.6, 61.6], fps: 16, br: 1 },   // 124x124
+    bx_dash_trail_b:           { n: 4, pv: [147.4, 26.4], fps: 16, br: 1 },   // 150x53
+    bx_slash_wave_b:           { n: 4, pv: [61.6, 61.6], fps: 16, br: 1 },   // 124x124
+    bx_fireball_a:             { n: 4, pv: [57.2, 30.8], fps: 14, loop: true, br: 1 },   // 80x62
+    bx_fire_explosion_a:       { n: 6, pv: [70.4, 70.4], fps: 16, br: 1 },   // 141x141
+    bx_fireball_b:             { n: 4, pv: [57.2, 30.8], fps: 14, loop: true, br: 1 },   // 80x62
+    bx_fire_explosion_b:       { n: 6, pv: [70.4, 70.4], fps: 16, br: 1 },   // 141x141
+    bx_gravity_orb_a:          { n: 4, pv: [17.2, 16.0], fps: 12, loop: true, br: 1 },   // 34x32
+    bx_gravity_field_a:        { n: 4, pv: [66.2, 58.5], fps: 12, loop: true, br: 1 },   // 130x117
+    bx_gravity_boom_a:         { n: 4, pv: [65.7, 58.0], fps: 14, br: 1 },   // 130x116
+    bx_gravity_orb_b:          { n: 4, pv: [17.2, 16.0], fps: 12, loop: true, br: 1 },   // 34x32
+    bx_gravity_field_b:        { n: 4, pv: [66.2, 58.5], fps: 12, loop: true, br: 1 },   // 130x117
+    bx_gravity_boom_b:         { n: 4, pv: [65.7, 58.0], fps: 14, br: 1 },   // 130x116
+    bx_ice_crag_s_a:           { n: 1, pv: [24.5, 29.0], fps: 16, br: 1 },   // 49x29
+    bx_ice_crag_m_a:           { n: 1, pv: [27.5, 39.0], fps: 16, br: 1 },   // 55x39
+    bx_ice_crag_l_a:           { n: 1, pv: [32.0, 50.0], fps: 16, br: 1 },   // 64x50
+    bx_ice_spike_a:            { n: 1, pv: [28.5, 66.0], fps: 16, br: 1 },   // 57x66
+    bx_ice_shatter_a:          { n: 4, pv: [35.5, 58.0], fps: 16, br: 1 },   // 71x58
+    bx_ice_crag_s_b:           { n: 1, pv: [24.5, 29.0], fps: 16, br: 1 },   // 49x29
+    bx_ice_crag_m_b:           { n: 1, pv: [27.5, 39.0], fps: 16, br: 1 },   // 55x39
+    bx_ice_crag_l_b:           { n: 1, pv: [32.0, 50.0], fps: 16, br: 1 },   // 64x50
+    bx_ice_spike_b:            { n: 1, pv: [28.5, 66.0], fps: 16, br: 1 },   // 57x66
+    bx_ice_shatter_b:          { n: 4, pv: [35.5, 58.0], fps: 16, br: 1 },   // 71x58
+    bx_earth_circle_a:         { n: 10, pv: [42.0, 15.0], fps: 16, br: 1 },   // 84x30
+    bx_earth_pillar_a:         { n: 16, pv: [32.0, 102.0], fps: 22, br: 1 },   // 64x112
+    bx_earth_circle_b:         { n: 10, pv: [42.0, 15.0], fps: 16, br: 1 },   // 84x30
+    bx_earth_pillar_b:         { n: 16, pv: [32.0, 102.0], fps: 22, br: 1 },   // 64x112
+    bx_arcburst:               { n: 4, pv: [28.1, 53], fps: 14, br: 1 },   // 56x53
+    bx_curse:                  { n: 4, pv: [15.0, 44], fps: 8, loop: true, br: 1 },   // 30x44
+    bx_holystun:               { n: 4, pv: [23.0, 12.5], fps: 10, loop: true, br: 1 },   // 46x25
+    bx_holyshield:             { n: 4, pv: [34.5, 42.0], fps: 8, loop: true, br: 1 },   // 69x84
+    bx_ground_slam_a:          { n: 14, pv: [88.0, 56.0], fps: 18, br: 1 },   // 176x72
+    bx_ground_slam_b:          { n: 14, pv: [88.0, 56.0], fps: 18, br: 1 },   // 176x72
+    bx_spin_ring_a:            { n: 6, pv: [96.8, 74.8], fps: 18, br: 1 },   // 194x150
+    bx_spin_ring_b:            { n: 6, pv: [96.8, 74.8], fps: 18, br: 1 },   // 194x150
+    bx_thrust_stab_a:          { n: 4, pv: [123.0, 16.5], fps: 24, br: 1 },   // 123x33
+    bx_thrust_big_a:           { n: 4, pv: [140.0, 53.5], fps: 18, br: 1 },   // 140x107
+    bx_thrust_stab_b:          { n: 4, pv: [123.0, 16.5], fps: 24, br: 1 },   // 123x33
+    bx_thrust_big_b:           { n: 4, pv: [140.0, 53.5], fps: 18, br: 1 },   // 140x107
+    bx_slash_a:                { n: 4, pv: [23.2, 25.5], fps: 16, br: 1 },   // 46x51
+    bx_slash_b:                { n: 4, pv: [23.2, 25.5], fps: 16, br: 1 },   // 46x51
+    bx_sword_wave_a:           { n: 10, pv: [23.0, 31.0], fps: 18, br: 1 },   // 68x62
+    bx_sword_wave_b:           { n: 10, pv: [23.0, 31.0], fps: 18, br: 1 },   // 68x62
   };
   var aiImg = {}, aiAsked = false;
   function aiLoad() {   // 처음 그릴 때 한 번(그땐 HD manifest 를 이미 읽음)
     if (aiAsked || !window.Assets || !Assets.loadSet) return;
     aiAsked = true;
-    Object.keys(AIFX).forEach(function (g) {
+    Object.keys(AIFX).forEach(function (g) { if (!AIFX[g].br) aiLoad1(g); });
+  }
+  var brAsked = {};
+  function brLoad(g) { if (brAsked[g] || !AIFX[g] || !window.Assets || !Assets.loadSet) return; brAsked[g] = true; aiLoad1(g); }   // 갈래 그림: 처음 쓰일 때 한 번
+  function aiLoad1(g) {
+    {
       var A = AIFX[g], list = [], q = { x: A.pv[0], y: A.pv[1] };
       for (var i = 1; i <= A.n; i++) list.push('assets/fx/aifx/' + g + '/' + g + '_' + ('0' + i).slice(-2) + '.png');
       Assets.loadSet(list, 1, q).then(function (l) {
@@ -3603,7 +3668,7 @@
         aiImg[g] = { fr: l, pv: q };
         l.forEach(function (im) { if (im && im.decode) im.decode().catch(function () {}); });
       });
-    });
+    }
   }
   // 색을 k 만큼 회색 쪽으로 뺀 복사본(캔버스, HD 정보 그대로). 못 하면(그림 읽기 막힘) 원래 그림
   function desatCopy(im, k) {
@@ -3621,6 +3686,7 @@
   }
   // 그림 한 장: (x, y) = 기준점 자리, sx · sy = 배율(sx < 0 = 좌우 뒤집기), rot = 돌림, a = 투명도
   function aiDraw(ctx, g, i, x, y, sx, sy, rot, a) {
+    g = aiG(g);
     var S = aiImg[g], im = S && S.fr[i];
     if (!im || a <= 0) return false;
     ctx.save(); ctx.globalAlpha *= a; ctx.translate(x, y); if (rot) ctx.rotate(rot); ctx.scale(sx, sy);
@@ -3632,16 +3698,18 @@
   //   o = { sx, sy(없으면 sx), dir(1 / -1), rot, a, fps, loop, life(ms), fade(끝 ms 동안 흐려짐), delay, layer('over' 캐릭터 위 / 'under' 바닥 / 'back' 캐릭터 뒤),
   //         follow(따라갈 캐릭터) + ox · oy(그 캐릭터에서, ox 는 바라보는 쪽), add(더하기 빛), from(처음 장) }
   var aiFxs = [];
-  function aiOk(g) { return !!aiImg[g]; }
+  function aiOk(g) { if (AIFX[g] && AIFX[g].br) brLoad(g); return !!aiImg[aiG(g)]; }
   function aiIdx(g, t, fps, loop) { var A = AIFX[g], f = Math.floor(Math.max(0, t) * (fps || A.fps) / 1000); return loop ? f % A.n : Math.min(A.n - 1, f); }
   function aiSpawn(g, x, y, o) {
+    g = aiG(g);
+    if (AIFX[g] && AIFX[g].br) brLoad(g);
     if (!aiImg[g]) return false;
     o = o || {};
     var A = AIFX[g], fps = o.fps || A.fps, from = o.from || 0;
     aiFxs.push({ g: g, x: x, y: y, t: -(o.delay || 0), fps: fps, sx: o.sx || 1, sy: o.sy || o.sx || 1, dir: o.dir || 1, rot: o.rot || 0, a: o.a == null ? 1 : o.a,
                  layer: o.layer || 'over', add: !!o.add, p: o.follow || null, ox: o.ox || 0, oy: o.oy || 0, loop: !!o.loop, from: from,
                  life: o.life || (A.n - from) * 1000 / fps, fade: o.fade || 0 });
-    return true;
+    return aiFxs[aiFxs.length - 1];   // 효과 하나(참 값) — 갈래 보호막처럼 일찍 끝낼 때 life 를 바꿈
   }
   function aiFxStep(dt) { for (var i = aiFxs.length - 1; i >= 0; i--) { var f = aiFxs[i]; f.t += dt; if (f.t >= f.life) aiFxs.splice(i, 1); } }
   function drawAiFx(ctx, camX, layer) {
@@ -3655,6 +3723,166 @@
       aiDraw(ctx, f.g, i, x - camX, y, f.sx * d, f.sy, f.rot * d, a);
       if (f.add) ctx.restore();
     });
+  }
+
+  // ---- 갈래 맛(2026-11-08 형님 승인, config skills.branchFx): 2차 갈래(Lv25)를 고르면 1차 기술 6개의 이름 · 그림 · 작은 덤이 갈래마다 바뀜 ----
+  //   그림: 원래 그림(config skillFx 이름 = BX_FX / AI 그림 묶음 = BX_AI)을 갈래 그림 bx_<이름>_<a|b>(위 AIFX, 장 수 · 캔버스 · 기준점 같음)로 바꿔 끼움.
+  //     brNow = 지금 플레이어 갈래(2차 전 · 갈래 없는 직업 = null → 원래 그림 그대로). 갈래 그림을 아직 못 읽었으면 그동안 원래 그림
+  //   덤: 성기사 = 맞은 적 잠깐 기절(main.js 가 brStun 으로 stunMs) + 쓸 때 체력 조금 · 금빛 보호막 / 마검사 = 맞은 자리 늦게 터지는 마력 + 마나 돌려받음
+  //       대마법사 = 크기 +20%(start → brCast 에서 area) / 흑마법사 = 저주(지속 피해 · 그 적 공격 약하게, brDefend) + 체력 흡수
+  var BX_FX = { dash_trail: 1, slash_wave: 1, spin_ring: 1, sword_wave: 1, ground_slam: 1, fireball: 1, fire_explosion: 1, lightning_bolt: 1, lightning_impact: 1, earth_circle: 1, earth_pillar: 1 };
+  var BX_AI = { thrust_stab: 1, thrust_big: 1, ice_crag_s: 1, ice_crag_m: 1, ice_crag_l: 1, ice_spike: 1, ice_shatter: 1, gravity_orb: 1, gravity_field: 1, gravity_boom: 1 };
+  var BX_PRE = {   // 그 갈래가 되면 미리 불러 둘 그림(첫 기술부터 갈래 그림이 보이게)
+    knight: ['dash_trail', 'slash_wave', 'slash', 'sword_wave', 'spin_ring', 'ground_slam', 'thrust_stab', 'thrust_big'],
+    mage: ['fireball', 'fire_explosion', 'earth_circle', 'earth_pillar', 'lightning_bolt', 'lightning_impact', 'ice_crag_s', 'ice_crag_m', 'ice_crag_l', 'ice_spike', 'ice_shatter',
+           'gravity_orb', 'gravity_field', 'gravity_boom', 'blink_burst'],
+    shared: { 'knight.a': ['holystun', 'holyshield'], 'knight.b': ['arcburst'], 'mage.b': ['curse'] }
+  };
+  var brNow = null, brPre = null, brBursts = [], brCursed = [], brMpLeft = {}, brSteal = { t: 0, got: 0, acc: 0, vis: 0 };
+  var BR_BURST_D = { damageStyle: 'skill_arcane', id: null };   // 마검사 늦은 터짐 = 기술 숫자(작게)
+  function brG(name) { var g = 'bx_' + name + '_' + brNow; return AIFX[g] ? g : null; }
+  // AI 그림 묶음 이름 → 지금 갈래 그림(있고 읽혔으면)
+  function aiG(g) {
+    if (!brNow || !BX_AI[g]) return g;
+    var v = brG(g);
+    if (!v) return g;
+    if (!aiImg[v]) { brLoad(v); return g; }
+    return v;
+  }
+  function brArt(name) { if (!brNow) return null; var g = brG(name); if (!g) return null; brLoad(g); return aiImg[g] ? aiImg[g].fr : null; }
+  // config skillFx 그림 → 갈래 그림(fxArt 와 같은 모양). 원래 그림의 fps · 반복 구간 · ours 그대로
+  function brFx(name, fps) {
+    var g = brG(name);
+    if (!g) return null;
+    brLoad(g);
+    var I = aiImg[g];
+    if (!I) return null;
+    var S = CFG.skillFx[name] || {};
+    return { fr: I.fr, fps: fps || S.fps || AIFX[g].fps, pivot: I.pv, loop: !!S.loop, range: Array.isArray(S.loop) ? S.loop : null, ours: !!S.ours, hit: S.hit };
+  }
+  function brOf(p, d) { return p && p.classKey && d && d.id && window.Growth && Growth.brSkill ? Growth.brSkill(p.classKey, d.id) : null; }
+  function brName(cls, id) { var b = window.Growth && Growth.brSkill ? Growth.brSkill(cls, id) : null; return b ? b.name : null; }
+  function brPreload(cls, br) {
+    (BX_PRE[cls] || []).forEach(function (n) { brLoad('bx_' + n + '_' + br); });
+    (BX_PRE.shared[cls + '.' + br] || []).forEach(function (n) { brLoad('bx_' + n); });
+  }
+  // 쓰는 순간: 대마법사 = 크기 / 성기사 = 체력 조금 + 금빛 보호막(겹치지 않고 새로 채움) / 마검사 = 이번에 돌려받을 마나 한도
+  function brCast(p, d, s) {
+    var tw = s.br.tw || {};
+    if (tw.area) s.area *= tw.area;
+    if (tw.healPct && p.maxHp && p.state !== 'dead') {
+      var n = Math.min(p.maxHp - p.hp, Math.max(1, Math.round(p.maxHp * tw.healPct)));
+      if (n > 0) { p.hp += n; FX.damage(p.x, p.y - (p.z || 0) - 112 * AS(), n, false, CFG.juice, null, 'heal', 'player:brheal', true); }
+    }
+    if (tw.shieldPct && p.maxHp) {
+      p.brShield = Math.max(1, Math.round(p.maxHp * tw.shieldPct)); p.brShieldT = tw.shieldMs || 3000;
+      if (p.brShieldFx && p.brShieldFx.t < p.brShieldFx.life) { p.brShieldFx.life = p.brShieldFx.t + p.brShieldT; }
+      else p.brShieldFx = aiSpawn('bx_holyshield', 0, 0, { follow: p, oy: -30 * AS(), loop: true, life: p.brShieldT, fade: 220, a: 0.26, add: true, sx: 0.95 }) || null;
+      glow(p.x, p.y - 40 * AS(), 34 * AS() / 0.55, '#ffe9a0', 220, 0.5);
+    }
+    if (tw.mpPerHit) brMpLeft[d.id] = tw.mpCap || 4;
+  }
+  // 갈래 기술에 맞음(main.js onHit, 맞은 뒤): st.skId = 어느 기술의 타
+  function brHit(p, t, st, dmg) {
+    if (!st || !st.skId || !p || !t || t.isProp) return;
+    var b = brOf(p, { id: st.skId });
+    if (!b) return;
+    var tw = b.tw || {}, live = !t.alive || t.alive();
+    if (tw.stunMs && t.T && live && !t.T.boss && !t.mid && !t.raid) t.brHolyT = tw.stunMs + 250;   // 성기사: 머리 위 금빛 별(기절 자체는 brStun)
+    if (tw.burstMs && !(t._brBT > 0)) {   // 마검사: burstMs 뒤 맞은 자리 마력 터짐(한 적에 burstIcd 마다 한 번)
+      t._brBT = tw.burstIcd || 300;
+      brBursts.push({ x: t.x, z: t.y, t: -tw.burstMs, tw: tw, wk: p.weaponKey, dir: p.dir, art: false });
+    }
+    if (tw.mpPerHit && brMpLeft[st.skId] > 0 && p.maxMp) { brMpLeft[st.skId]--; p.mp = Math.min(p.maxMp, (p.mp || 0) + tw.mpPerHit); }
+    if (tw.curseMs && live) {   // 흑마법사: 저주(새로 걸면 지속 피해 시작, 또 맞으면 시간만 새로)
+      if (!(t.brCurseT > 0)) { brCursed.push(t); t.brCurseNext = tw.dotMs; }
+      t.brCurseT = tw.curseMs; t.brCurseTw = tw; t.brCurseDmg = Math.max(1, (dmg || 1) * (tw.dotDmg || 0.05));
+      var cs = clamp(((t.T && t.T.radius) || 20) * 1.4 / 30, 0.8, 2);
+      if (t.brCurseFx && t.brCurseFx.t < t.brCurseFx.life) t.brCurseFx.life = t.brCurseFx.t + tw.curseMs;
+      else t.brCurseFx = aiSpawn('bx_curse', 0, 0, { follow: t, oy: 1, loop: true, life: tw.curseMs, fade: 200, sx: cs }) || null;
+    }
+    if (tw.steal && dmg > 0 && p.maxHp && p.state !== 'dead') {   // 흑마법사: 준 피해의 steal 만큼 체력(1초에 최대 체력 stealCap 까지)
+      brSteal.acc += dmg * tw.steal;
+      var n = Math.floor(brSteal.acc);
+      if (n >= 1) {
+        brSteal.acc -= n;
+        n = Math.min(n, Math.max(1, Math.round(p.maxHp * (tw.stealCap || 0.02))) - brSteal.got, p.maxHp - p.hp);
+        if (n > 0) {
+          p.hp += n; brSteal.got += n;
+          FX.damage(p.x, p.y - (p.z || 0) - 112 * AS(), n, false, CFG.juice, null, 'heal', 'player:brsteal', true);
+          if (brSteal.vis <= 0 && t.T) { brSteal.vis = 160; aiSpawn('leech_rise', t.x, t.y - t.T.height * 0.5, { sx: 1 }); }
+        }
+      }
+    }
+  }
+  // 성기사 갈래: 맞은 적 기절 시간(main.js takeHit stunMs). 보스 · 중간보스 · 레이드 보스 = 0
+  function brStun(st, t) {
+    if (!st || !st.skId || !t || !t.T || t.T.boss || t.mid || t.raid) return 0;
+    var P = H.player && H.player(), b = P ? brOf(P, { id: st.skId }) : null;
+    return (b && b.tw && b.tw.stunMs) || 0;
+  }
+  // 적이 플레이어를 때릴 때(main.js onPlayerHit): 저주 걸린 적 = 피해 -weak / 금빛 보호막 = 피해를 대신 받음(최소 1은 들어감)
+  function brDefend(p, e, dmg) {
+    if (e && e.brCurseT > 0 && e.brCurseTw && e.brCurseTw.weak) dmg = Math.max(1, Math.round(dmg * (1 - e.brCurseTw.weak)));
+    if (p && p.brShield > 0 && p.brShieldT > 0 && dmg > 1) {
+      var a = Math.min(p.brShield, dmg - 1);
+      dmg -= a; p.brShield -= a;
+      glow(p.x, p.y - 40 * AS(), 30 * AS() / 0.55, '#ffe9a0', 200, 0.6);
+      FX.damage(p.x, p.y - (p.z || 0) - 128 * AS(), '보호막 -' + a, false, CFG.juice, null, 'shield', 'player:brshield', true);
+      if (p.brShield <= 0) brShieldEnd(p);
+    }
+    return dmg;
+  }
+  function brShieldEnd(p) {
+    p.brShield = 0; p.brShieldT = 0;
+    if (p.brShieldFx) { p.brShieldFx.life = Math.min(p.brShieldFx.life, p.brShieldFx.t + 200); p.brShieldFx.fade = 200; }
+    p.brShieldFx = null;
+  }
+  // 저주 한 번: 저주를 건 타 피해 x dotDmg. 움찔 · 멈춤 없음, 저주로는 안 쓰러짐(체력 1 남김)
+  function brDot(t) {
+    var n = Math.max(1, Math.round(t.brCurseDmg || 1));
+    if (t.hp != null && t.maxHp) { n = Math.min(n, t.hp - 1); if (n <= 0) return; t.hp -= n; }
+    FX.damage(t.x, t.y - (t.T ? t.T.height : 60 * AS()) - 6, n, false, CFG.juice, '#d58cff', 'push', (t.id || 'dummy') + ':curse', true);
+    debris(t.x, t.y - (t.T ? t.T.height * 0.5 : 30 * AS()), t.y, 3, { cols: ['#2a0838', '#8a2ad0', '#e070ff'], glow: true, sp: 50, size: 1.4, ms: 380, g: -90, spread: 1.2 });
+  }
+  function brBurstHit(o) {
+    var tw = o.tw, st = stOf(CFG.skills.brBurst || { dmg: 1 }, BR_BURST_D);
+    glow(o.x, o.z - 20 * AS(), tw.burstR * 1.2, '#c890ff', 200, 0.6);
+    H.targets().forEach(function (t) {
+      if (!t || !H.canHit(t, st)) return;
+      var hb = t.hurtbox();
+      if (Math.abs(hb.z - o.z) > (tw.burstD || 26) || hb.x1 < o.x - tw.burstR || hb.x0 > o.x + tw.burstR) return;
+      H.onHit(st, t, { dir: t.x >= o.x ? 1 : -1, wk: o.wk, x: t.x, y: o.z - 30 * AS(), mul: tw.burstDmg || 0.35 });
+    });
+  }
+  function brStep(dt) {
+    var P = H.player && H.player(), F = CFG.skills.branchFx;
+    brNow = P && P.classKey && F && F[P.classKey] && window.Growth && Growth.brOn ? Growth.brOn(P.classKey) || null : null;   // 2차 Lv 전 = null(원래 그림)
+    if (brNow && brPre !== P.classKey + brNow) { brPre = P.classKey + brNow; brPreload(P.classKey, brNow); }
+    if (P && P.brShieldT > 0) { P.brShieldT -= dt; if (P.brShieldT <= 0) brShieldEnd(P); }
+    H.targets().forEach(function (t) { if (!t) return; if (t.brHolyT > 0) t.brHolyT -= dt; if (t._brBT > 0) t._brBT -= dt; });
+    for (var i = brBursts.length - 1; i >= 0; i--) {
+      var o = brBursts[i]; o.t += dt;
+      if (!o.art && o.t >= -130) { o.art = true; aiSpawn('bx_arcburst', o.x, o.z + 2, { sx: o.tw.burstR * 1.6 / 56, dir: o.dir }); }   // 0 룬 → 1 번쩍 → 2 터짐(= 피해) → 3 불티
+      if (o.t >= 0) { brBursts.splice(i, 1); brBurstHit(o); }
+    }
+    for (var j = brCursed.length - 1; j >= 0; j--) {
+      var t = brCursed[j];
+      if (!(t.brCurseT > 0) || (t.alive && !t.alive())) {
+        t.brCurseT = 0;
+        if (t.brCurseFx) { t.brCurseFx.life = Math.min(t.brCurseFx.life, t.brCurseFx.t + 150); t.brCurseFx.fade = 150; t.brCurseFx = null; }
+        brCursed.splice(j, 1); continue;
+      }
+      t.brCurseT -= dt; t.brCurseNext -= dt;
+      if (t.brCurseNext <= 0) { t.brCurseNext += t.brCurseTw.dotMs || 500; brDot(t); }
+    }
+    brSteal.t += dt; if (brSteal.t >= 1000) { brSteal.t = 0; brSteal.got = 0; }
+    if (brSteal.vis > 0) brSteal.vis -= dt;
+  }
+  function brClear() {
+    brBursts.length = 0;
+    brCursed.forEach(function (t) { t.brCurseT = 0; t.brCurseFx = null; }); brCursed.length = 0;
+    var P = H.player && H.player(); if (P) { P.brShield = 0; P.brShieldT = 0; P.brShieldFx = null; }
   }
 
   // ---- 마검 해방(마검사 Lv39 필살, 2026-11-08 그림 바꿈): 칼을 든 동안 칼끝에 검은 기운이 모임 → strike 에 칼을 내리침 → 칼끝이 닿은 땅에서
@@ -4418,6 +4646,7 @@
     mageStep(dt);                                                      // 법사 새 기술 · 대마법사(2026-11-08)
     branchStep(dt);                                                    // 2차 갈래 B: 마검사 · 흑마법사(2026-11-08)
     meteorStep(dt); aiFxStep(dt);                                     // AI 그림 효과(2026-11-08)
+    brStep(dt);                                                        // 갈래 맛 덤(2026-11-08)
     [bolts, rings, ghosts, arts, waves, parts, glows, pillars].forEach(function (L) {
       for (var i = L.length - 1; i >= 0; i--) { L[i].t += dt; if (L[i].t >= L[i].life) L.splice(i, 1); }
     });
@@ -4537,10 +4766,15 @@
     arts.forEach(function (a) { if (a.split) drawArt(ctx, camX, a, 'bottom'); else if (!a.back) drawArt(ctx, camX, a); });
     var SH = fxArt('shock');
     H.targets().forEach(function (e) {   // 내려찍기 기절 = 머리 위 도는 별(2026-11-06, 감전 번개 표시 대신)
+      if (e && e.T && e.brHolyT > 0 && aiOk('bx_holystun')) {   // 성기사 갈래 기절 = 머리 위 금빛 별 고리(AI 그림, 2026-11-08)
+        var hs = clamp(e.T.radius * 1.5 / 46, 0.7, 1.6);
+        aiDraw(ctx, 'bx_holystun', aiIdx('bx_holystun', e.clock || 0, 0, true), e.x - camX, e.y - (e.az || 0) - e.T.height - 2 * AS(), hs, hs, 0, Math.min(1, e.brHolyT / 150));
+        return;
+      }
       if (e && e.T && e.stunT > 0 && e.state === 'hit' && e.stunKind === 'stars') drawStars(ctx, camX, e);
     });
     if (SH) H.targets().forEach(function (e) {
-      if (!e || !e.T || !(e.stunT > 0) || e.state !== 'hit' || e.stunKind === 'stars') return;
+      if (!e || !e.T || !(e.stunT > 0) || e.state !== 'hit' || e.stunKind === 'stars' || e.brHolyT > 0) return;
       var im = SH.fr[Math.floor(e.clock * SH.fps / 1000) % SH.fr.length], k = clamp(e.T.height / (100 * AS()), 0.6, 1.4);
       // 감전 그림은 기술 효과 배율(skillFxScale)로 커졌으므로 그만큼 되돌려 적 몸 크기에 맞춤
       k /= (CFG.skillFxScale || 1);
@@ -4726,7 +4960,7 @@
     var q = slotSkill({ classKey: G.classKey, gender: G.charKey }, i), d = q && q.d;
     if (!d) return null;
     var rem = p.skillCd ? Math.max(0, p.skillCd[d.key] || 0) : 0, cost = mpCost(p, q.L), cd = cdOf(p, q.L);
-    return { id: d.id, key: d.key, name: d.name, icon: d.icon, rem: rem, cd: cd, frac: Math.round(Math.min(1, rem / cd) * 100) / 100, cost: cost, nomp: (p.mp || 0) < cost };
+    return { id: d.id, key: d.key, name: brName(p.classKey, d.id) || d.name, icon: d.icon, rem: rem, cd: cd, frac: Math.round(Math.min(1, rem / cd) * 100) / 100, cost: cost, nomp: (p.mp || 0) < cost };
   }
   // 폰 기술 버튼 그림(2026-11-06 폰 UI): js/icons.js 의 32칸 액자 그림을 버튼 크기(기기 점)에 가장 가까운 정수 배로 → CSS 가 버튼 크기에 맞춤.
   //   같은 기술·같은 크기면 다시 안 그림. 화면 크기가 바뀌면(폴드 펴기 등) 다시 그림
@@ -4797,8 +5031,9 @@
     shardKill: shardKill, comboPull: comboPull,   // 1차 기사 늘 켜진 기술(2026-11-08): 칼날 파편(적이 쓰러질 때) · 끌어당기는 검압(콤보 마무리 타 시작)
     infuseMul: infuseMul, infuseHit: infuseHit, leechHit: leechHit, curseMul: curseMul,   // 갈래 B 늘 켜진 기술 · 저주(2026-11-08, main.js onHit)
     gritBonus: gritBonus, tryCounter: tryCounter, shieldSplit: shieldSplit, shieldHit: shieldHit, brandMul: brandMul, brandMark: brandMark,
+    brHit: brHit, brStun: brStun, brDefend: brDefend, brName: brName, _br: function () { return { now: brNow, bursts: brBursts.length, cursed: brCursed.length, mpLeft: brMpLeft }; },   // 갈래 맛 덤(2026-11-08, main.js onHit · onPlayerHit)
     hidden: hidden, test: TEST, _ai: function (g) { if (g) { var im = aiImg[g] && aiImg[g].fr[0]; return im ? { w: im.width, h: im.height, k: im._k, f: im._f, pv: aiImg[g].pv } : null; } return { loaded: Object.keys(aiImg).length, hd: Object.keys(aiImg).filter(function (g) { return aiImg[g].fr[0] && aiImg[g].fr[0]._hd; }).length, live: aiFxs.length }; }, _fx: function () { return { blades: blades.length, flames: flames.length, beams: beams.length, arcs: arcs.length, shield: !!shieldFx, crosses: crosses.length, shards: shardFx.length, pulls: pulls.length, gravs: gravs.length, eshards: eshFx.length, vortexes: vortexes.length, chains: chainQ.length, frosts: frosts.length, crags: crags.length, cragRows: cragRows.length, judges: judges.length, b: branchFx() }; },
-    clear: function () { branchClear(); aiFxs.length = 0; gravs.length = 0; eshFx.length = 0; eshT = 0; vortexes.length = 0; vortexT = 0; chainQ.length = 0; chainN = 0; frosts.length = 0; cragRows.length = 0; crags.length = 0; judges.length = 0; jbolts.length = 0; crosses.length = 0; aegisT = 0; shardFx.length = 0; shardQ.length = 0; shardN = 0; pulls.length = 0; tornados.length = 0; blades.length = 0; flames.length = 0; beams.length = 0; arcs.length = 0; shieldFx = null; gritOn = false; curLv = 1; meteors.length = 0; pillars.length = 0; echoes.length = 0; bright = 1; noMpT = 0; bolts.length = 0; rings.length = 0; ghosts.length = 0; arts.length = 0; waves.length = 0; parts.length = 0; glows.length = 0; flash = null; },
+    clear: function () { brClear(); branchClear(); aiFxs.length = 0; gravs.length = 0; eshFx.length = 0; eshT = 0; vortexes.length = 0; vortexT = 0; chainQ.length = 0; chainN = 0; frosts.length = 0; cragRows.length = 0; crags.length = 0; judges.length = 0; jbolts.length = 0; crosses.length = 0; aegisT = 0; shardFx.length = 0; shardQ.length = 0; shardN = 0; pulls.length = 0; tornados.length = 0; blades.length = 0; flames.length = 0; beams.length = 0; arcs.length = 0; shieldFx = null; gritOn = false; curLv = 1; meteors.length = 0; pillars.length = 0; echoes.length = 0; bright = 1; noMpT = 0; bolts.length = 0; rings.length = 0; ghosts.length = 0; arts.length = 0; waves.length = 0; parts.length = 0; glows.length = 0; flash = null; },
     // 화면 번쩍(콤보 마무리 타도 씀): { color, alpha, ms }
     flash: function (f) { doFlash(f); },
     // 파편·둥근 빛(소품 나뭇조각·음식 반짝임도 씀, props.js)
