@@ -311,14 +311,15 @@
     var WP = !target.isProp ? wpn() : null, wMul = WP && !!W.magic === (G.classKey === 'mage') ? WP.atkMul() : 1;
     var resEl = WP && G.classKey === 'mage' && st.damageStyle && ENC.skillEl[st.damageStyle], reso = resEl && WP.has(resEl);
     if (reso) { wMul *= 1 + ENC.resonance; Enchant.logAdd('resonance'); }
-    var dmg = Math.round(rand(W.damage[0], W.damage[1]) * st.dmg * (target.isProp ? 1 : Growth.atkMul(!!W.magic) * (1 + pas) * ((src && src.mul) || 1) * clubMul(src ? src.wk : p.weaponKey) * wMul));
+    //   2026-11-08 마검사 늘 켜진 기술 「마력 부여」: 평타(기술 아님 · 몸으로 때린 타) x (1 + val) (Skills.infuseMul)
+    var dmg = Math.round(rand(W.damage[0], W.damage[1]) * st.dmg * (target.isProp ? 1 : Growth.atkMul(!!W.magic) * (1 + pas) * ((src && src.mul) || 1) * clubMul(src ? src.wk : p.weaponKey) * wMul * Skills.infuseMul(p, st, src)));
     // 치명타(민첩, 2026-11-06): 적·허수아비를 때릴 때 확률 Growth.critChance() → 데미지 x critMul + 큰 주황 숫자(agicrit). GAME.test.crit 로 시험 고정
     //   무기(2026-11-06): 기사 +3 치명타 확률 + · 어둠 속성 = 확률 + · 배율 +
     var dark = WP && WP.has('darkness'), DK = ENC && ENC.fx.darkness;
     var crit = !target.isProp && (G.forceCrit != null ? G.forceCrit : Math.random() < Growth.critChance() + (WP ? WP.bonus('crit') : 0) + (dark ? DK.crit : 0));
     if (crit) { dmg = Math.round(dmg * (CFG.growth.stats.critMul + (dark ? DK.critDmg : 0))); if (dark) Enchant.logAdd('darkCrit'); }
     if (G.awk && !target.isProp) dmg = Math.round(dmg * CFG.awaken.atkMul);   // 각성: 공격 +30%(2026-11-06 밤)
-    if (!target.isProp) dmg = Math.round(dmg * Skills.brandMul(p, target));   // 늘 켜진 기술 「원소 낙인」(2차): 낙인 찍힌 적은 더 아프게
+    if (!target.isProp) dmg = Math.round(dmg * Skills.brandMul(p, target) * Skills.curseMul(target));   // 늘 켜진 기술 「원소 낙인」(2차): 낙인 찍힌 적은 더 아프게 · 흑마법사 저주의 늪 저주(2026-11-08)
     // 소품(상자·통): 단계만 넘김(데미지 숫자·콤보 수 없음). 기술(damageStyle) = 한 번에 부서짐, 맞은 곳 = 마법이면 그 자리, 아니면 몸 앞
     if (target.isProp) {
       Props.hit(target, { dmg: dmg, strong: !!st.damageStyle, finisher: !!st.finisher, dir: dir,
@@ -415,6 +416,11 @@
     //   각성 중(2026-11-06 밤) = 숫자 크게 직업 색(damageText.awk_직업)
     FX.damage(rpt ? hx : target.x, topY, dmg, crit || !!(st.finisher || st.crit || (st.damageStyle && st.knockdown)), J, null, G.awk ? 'awk_' + G.awk.cls : crit ? 'agicrit' : st.numStyle || st.damageStyle, target.id || 'dummy', !!st.mergeNum && !crit);
     if (crit) G.crits = (G.crits || 0) + 1;
+    // 2차 갈래 B 늘 켜진 기술(2026-11-08): 마검사 「마력 부여」 = 평타 맞은 곳 보라 불티 + 가끔 칼끝 마력 터짐 / 흑마법사 「생명 흡수」 = 마법 피해 일부만큼 체력
+    if (target === G.dummy || res) {
+      if (!W.magic) Skills.infuseHit(p, target, st, hx, hy);
+      else Skills.leechHit(p, target, dmg);
+    }
     // 무기 속성 효과(2026-11-06, js/enchant.js): 화상 · 독 · 느려짐 · 튀는 번개 · 흡혈 + 속성 색 불티. 법사 평타는 약하게(mageBasic)
     if (WP && target !== G.dummy && res) {
       var els = WP.els();
@@ -2467,6 +2473,8 @@
 
     wearOutfit();      // 2차 옷 레벨(기사 Lv25 = 성기사, 2026-11-08 30 → 25)이 되면 옷 그림이 바뀜(아니면 그대로)
     checkUnlock(up);   // 기술 칸이 늘었으면(Lv10 · Lv13 · Lv15, PC 는 Lv15 에 10칸) 「축하합니다!」 알림(아래 openUnlock)
+    // 2차 Lv(25)이 됨 → 그 자리에서 갈래 고르기(게임 멈춤). 칸 알림이 떠 있으면 그걸 닫은 뒤(2026-11-08)
+    if (needBranchChoice()) { if (upEl && !upEl.hidden) branchAfterUp = true; else openBranchChoice(null); }
   }
 
   function onBossDown(boss) {
@@ -2831,7 +2839,7 @@
     wpnApply(p);   // 무기 강화 · 속성(2026-11-06): 그림 · 오라 · 빠르기(+6 · 바람) · 범위 · 쿨타임 · 마나
     if (window.ElMob) ElMob.playerMods(p);   // 속성 몹에게 얼어붙음 = 느려짐 + 상태 몸 색(2026-11-07)
     // 플레이어는 화면 끝까지(2026-11-06 형님 폰 접은 화면: 버튼 앞이 벽처럼 막힘). 버튼 밑 비우기는 적·물약만
-    if (MODE === 'stage') { if (CFG.stage.dg) { world.minX = 14; world.maxX = world.width - 14; var rw = Raid.wallX(); if (rw != null) { world.minX = G.camX + 14; world.maxX = Math.min(world.maxX, rw); } } else { world.minX = G.camX + 14; world.maxX = G.camX + LW - 14; } }   // 던전 = 싸움터 끝까지
+    if (MODE === 'stage') { if (CFG.stage.dg) { world.minX = 14; world.maxX = world.width - 14; var rw = Raid.wallX(), rl = Raid.wallL && Raid.wallL(); if (rw != null || rl != null) { world.minX = rl != null ? rl : G.camX + 14; world.maxX = rw != null ? Math.min(world.maxX, rw) : Math.min(world.maxX, G.camX + LW - 14); } } else { world.minX = G.camX + 14; world.maxX = G.camX + LW - 14; } }   // 던전 = 싸움터 끝까지
     if (G.bot && MODE === 'stage' && !G.stage.result) botThink(dt);
     awkStep(dt, realMs);   // 각성 시간·불꽃·잔상·끝 폭발
     var pst0 = p.state;
@@ -2889,7 +2897,7 @@
     if (MODE === 'stage') {
       var E = G.ectx;
       E.now += dt; E.view.x0 = G.camX; E.view.x1 = G.camX + LW - (controlPad ? controlPad + 14 : 0);   // 적은 몸이 넓어서 버튼 쪽으로 조금 더 띄움
-      if (CFG.stage.dg) { E.view.x0 = 0; E.view.x1 = world.width - (controlPad ? controlPad + 14 : 0); var rw2 = Raid.wallX(); if (rw2 != null) { E.view.x0 = G.camX; E.view.x1 = Math.min(E.view.x1, rw2 + 10); } }   // 던전 = 싸움터 전체(카메라가 움직여도 적은 싸움터 안) · 레이드 보스 = 보스 앞까지
+      if (CFG.stage.dg) { E.view.x0 = 0; E.view.x1 = world.width - (controlPad ? controlPad + 14 : 0); var rw2 = Raid.wallX(), rl2 = Raid.wallL && Raid.wallL(); if (rw2 != null || rl2 != null) { E.view.x0 = rl2 != null ? rl2 - 10 : G.camX; E.view.x1 = rw2 != null ? Math.min(E.view.x1, rw2 + 10) : Math.min(E.view.x1, G.camX + LW); } }   // 빙결의 여왕이 왼쪽에 서면(2026-11-08) = 여왕 앞(오른쪽)부터   // 던전 = 싸움터 전체(카메라가 움직여도 적은 싸움터 안) · 레이드 보스 = 보스 앞까지
       G.enemies.forEach(function (e) {
         e.update(dt, E);
         if (e.state === 'air') { G.cstats.maxAirMs = Math.max(G.cstats.maxAirMs, e.airT); G.cstats.maxAirHits = Math.max(G.cstats.maxAirHits, e.airHits); }   // 콤보 기록
@@ -3209,7 +3217,8 @@
     var focus = clear && !last && !end ? nx : clear ? document.getElementById('btnSel') : document.getElementById('btnRetry');
     snd(clear ? 'stageClear' : 'fail');
     // 전직(2026-11-06): 전직 판(2026-11-07 = 1판) 보스를 처음 깸 + 아직 직업 없음 → 전직 화면 먼저, 고르고 나면 결과 화면
-    if (needClassChange()) { resultEl.hidden = true; openClassChange(function () { openMenu(resultEl, focus); }); }
+    //   2차 갈래(2026-11-08): Lv25 가 됐는데 아직 안 고름 → 갈래 고르기 먼저
+    if (needClassChange() || needBranchChoice()) { resultEl.hidden = true; jobGate(function () { openMenu(resultEl, focus); }); }
     else openMenu(resultEl, focus);
   }
   // 판 바꾸기: 그 판 배경·소품·적 그림을 (필요하면) 불러온 뒤 처음부터. 플레이어 직업·성별·옷은 그대로, 체력은 가득
@@ -3313,6 +3322,7 @@
   function openStageSelect(view) {
     if (view === 'stage' || view === 'dungeon') selView = view;
     if (needClassChange()) { G.paused = true; closeMenu(resultEl); openClassChange(openStageSelect); return; }   // 2단계를 깼는데 직업이 없음 → 전직 먼저
+    if (needBranchChoice()) { G.paused = true; closeMenu(resultEl); openBranchChoice(openStageSelect); return; }   // 2차 Lv 인데 갈래를 안 고름(예전 저장 포함) → 갈래 고르기 먼저(2026-11-08)
     var list = document.getElementById('stageList'), cleared = loadCleared(), focus = null;
     focus = viewTabs();   // 방금 누른 스테이지 · 던전 탭에 초점
     var mf = modeTabs();   // 난이도 탭(2026-11-06): 방금 탭을 눌렀으면 그 탭에 초점
@@ -3323,10 +3333,10 @@
     var ttl = document.getElementById('selTitle'); if (ttl) ttl.textContent = selView === 'dungeon' ? '던전 선택' : '스테이지 선택';
     if (selView === 'dungeon') ((CFG.dungeons && CFG.dungeons.order) || []).forEach(function (id) {
       var D = CFG.dungeons[id], open = dgOpen(id), best = Growth.dgBest(id), b = document.createElement('button');
-      b.type = 'button'; b.className = 'sbtn dbtn dg-' + id + (open ? '' : ' locked') + (D.trial ? ' trial' : '');
+      b.type = 'button'; b.className = 'sbtn dbtn dg-' + id + (open ? '' : ' locked') + (D.trial && !D.boss ? ' trial' : '');
       b.disabled = !open;
       if (D.color) b.style.setProperty('--dc', D.color);
-      var won = D.trial ? '돌파' : '토벌';
+      var won = D.trial && !D.boss ? '돌파' : '토벌';   // 얼음 동굴(2026-11-08) = 시련 웨이브 + 레이드 보스 = 토벌
       b.innerHTML = (D.tag ? '<em class="dtag">' + D.tag + '</em>' : '') + '<b>' + D.name + '</b><span>' + (open ? D.desc : D.lockHint || '잠김') + '</span>' +
         (open ? '<small>' + (D.rule === 'raid' ? (best && best.time ? '최고 · 클리어 ' + fmtTime(best.time) + ' · ' + won + ' ' + best.clears + '번' : best ? won + ' 기록 없음 · 처치 ' + best.kills : '기록 없음')
                                    : best ? '최고 · 처치 ' + best.kills + ' · 강화석 ' + best.stones : '기록 없음') + '</small>' : '');
@@ -3434,7 +3444,8 @@
   function outfitKey() {
     var c = CFG.classes && CFG.classes[G.classKey], A = CFG.art.characters;
     var k = c && c.outfit ? c.outfit + '_' + G.charKey : G.charKey;
-    var t2 = c && c.tier2, k2 = t2 ? t2.outfit + '_' + G.charKey : null;
+    //   2차 전직 갈래(2026-11-08): 고른 갈래의 옷(Growth.tier2Info — 마검사 · 흑마법사 = 그림이 올 때까지 1차 옷 물들임, config addSkillArt)
+    var t2 = c && c.tier2 ? (Growth.tier2Info ? Growth.tier2Info(G.classKey) : c.tier2) : null, k2 = t2 ? t2.outfit + '_' + G.charKey : null;
     if (k2 && A[k2] && window.Growth && Growth.lv >= t2.lv) return k2;
     return A[k] ? k : G.charKey;
   }
@@ -3599,6 +3610,8 @@
     if (P.stat === 'vortex') return (P.val[Math.max(1, lv) - 1] / 1000) + '초마다 · 피해 ' + pctTxt(P.mul[Math.max(1, lv) - 1]) + ' · 반경 ' + P.r[Math.max(1, lv) - 1];   // 마력 소용돌이(2026-11-08)
     if (P.stat === 'echain') return '터짐 피해 ' + v + ' · 반경 ' + P.r[Math.max(1, lv) - 1];   // 원소 연쇄(대마법사, 2026-11-08)
     if (P.stat === 'nimble') return '회피 ' + (P.charges ? P.charges[Math.max(1, lv) - 1] : 2) + '번 연달아 · 쿨타임 ' + secTxt(CFG.move.dodge.cdMs) + ' → ' + secTxt(P.val[Math.max(1, lv) - 1]) + ' · 거리 +' + pctTxt(P.dist[Math.max(1, lv) - 1]);   // 날렵한 몸놀림(2026-11-08)
+    if (P.stat === 'arcane') return '평타 마법 피해 +' + v + ' · 터짐 확률 ' + pctTxt(P.chance[Math.max(1, lv) - 1]);   // 마력 부여(마검사, 2026-11-08)
+    if (P.stat === 'leech') return '마법 피해의 ' + (Math.round(P.val[Math.max(1, lv) - 1] * 1000) / 10) + '% 흡수 · 1초에 최대 체력 ' + (Math.round(P.capS[Math.max(1, lv) - 1] * 1000) / 10) + '%까지';   // 생명 흡수(흑마법사, 2026-11-08)
     if (P.stat === 'regen') return '초당 체력 +' + (Math.round(P.val[Math.max(1, lv) - 1] * 1000) / 10) + '%';   // 신성 가호(2026-11-08): 최대 체력의 0.4~0.8%
     var k = { phys: '물리 공격 +', magic: '마법 공격 +', guard: '받는 피해 -', mpRegen: '마나 회복 +',
               grit: '체력 적으면 공격 최대 +', counter: '반격 확률 ', brand: '낙인 찍힌 적 피해 +' }[P.stat] || '';
@@ -3634,7 +3647,7 @@
       var info = !st || st === 'learn';
       c.title = name + ' — ' + ((d ? d.desc : e.desc) || '') + (info ? '\n' + skillNums(bk, e, d, lv) : '') +
         (d && d.lv5 && d.lv5.say && info ? '\nLv5: ' + d.lv5.say : '') + (st === 'learn' ? '\n기술 점수 1점으로 배워요' : '') +
-        (st === 'lock' && e.tier === 2 ? '\n2차 전직(' + (((CFG.classes[bk.cls] || {}).tier2 || {}).name || '2차') + ') 후 Lv' + bk.openLv(e.id) + '에 배울 수 있어요' : '');
+        (st === 'lock' && e.tier === 2 ? '\n2차 전직(' + t2Name(bk.cls, e) + ') 후 Lv' + bk.openLv(e.id) + '에 배울 수 있어요' : '');
       // 그림 + 이름 · Lv · 짧은 설명 = 버튼(2026-11-08): 누르면 설명 · 미리보기 창(openDetail). 칸에 끼우기는 그 창의 「칸에 끼우기」
       var pick = document.createElement('button');
       pick.className = 'cpick'; pick.type = 'button'; pick.dataset.sk = e.id + ':info'; pick.setAttribute('aria-label', name + ' 설명 · 미리보기');
@@ -3644,7 +3657,7 @@
       var t2Lock = st === 'lock' && e.tier === 2 && !bk.tier2();
       var tag = st === 'soon' ? '<span class="tag">준비 중</span>' : st === 'lock' ? '<span class="tag lk' + (t2Lock ? ' t2' : '') + '">' + (t2Lock ? '2차 ' : '') + 'Lv' + bk.openLv(e.id) + '</span>' :
         st === 'learn' ? '<span class="tag ln">배울 수 있음</span>' : '<span class="lvl">Lv ' + lv + '/' + max + '</span>';
-      var line = !st && e.passive && e.passive.val ? passiveNow(e, lv) : t2Lock ? '2차 전직 후 Lv' + bk.openLv(e.id) + '에 열려요' : (e.short || '');
+      var line = !st && e.passive && e.passive.val ? passiveNow(e, lv) : t2Lock ? (e.branch ? t2Name(bk.cls, e) + ' 전직 후 Lv' : '2차 전직 후 Lv') + bk.openLv(e.id) + '에 열려요' : (e.short || '');
       pick.insertAdjacentHTML('beforeend', '<span class="nm"><span class="l1"><b>' + name + '</b>' + tag + '</span><span class="sd">' + line + '</span></span>');
       c.appendChild(pick);
       var plus = document.createElement('button');
@@ -3668,7 +3681,7 @@
       actEl.appendChild(dc);
     }
     // 아래 띠: 기술 칸(열린 칸 = 누를 수 있음, 잠긴 칸 = 자물쇠 + 열리는 Lv) + 도움말
-    // PC(2026-11-07) = 10칸 두 줄(위 6~0 · 아래 1~5, 아래 막대와 같은 순서), 폰 = 5칸 한 줄
+    // PC(2026-11-07) = 10칸 두 줄(위 6~0 · 아래 1~5, 아래 막대와 같은 순서), 폰 = 7칸 한 줄(2026-11-08)
     var bEl = document.getElementById('skBar'), nAll = bk.maxSlots(pc), gEl = document.createElement('div');
     bEl.innerHTML = '<b class="bl">기술 칸</b>';
     gEl.className = 'bgrid'; bEl.appendChild(gEl);
@@ -3752,9 +3765,16 @@
     grit: '체력을 일부러 25%로 낮춰서 보여 줘요(발밑 붉은 기운)', counter: '고블린이 때리면 확률로 되받아 베요',
     regen: '몸 둘레 금빛 기운 · 체력이 천천히 차요', eshard: '마법이 맞으면 불 · 얼음 조각이 둘레 고블린에게 튀어요',
     vortex: '둘레 고블린 가운데에 마력 소용돌이가 저절로 생겨요', shield: '고블린이 때리면 마나가 피해 일부를 대신 받아요(파란 방패)',
-    brand: '화염구로 낙인을 찍은 뒤 평타 — 낙인 찍힌 적은 더 아파요', nimble: '회피를 두 번씩 좌우로 되풀이해요 — 더 멀리 · 더 자주 빠져요', echain: '마법으로 쓰러뜨리면 그 자리에서 터져 둘레를 때려요'
+    brand: '화염구로 낙인을 찍은 뒤 평타 — 낙인 찍힌 적은 더 아파요', nimble: '회피를 두 번씩 좌우로 되풀이해요 — 더 멀리 · 더 자주 빠져요', echain: '마법으로 쓰러뜨리면 그 자리에서 터져 둘레를 때려요',
+    arcane: '평타에 보라 마력이 실려요 — 가끔 칼끝에서 작은 마력이 터져요', leech: '체력을 일부러 50%로 낮춰서 보여 줘요 — 마법을 맞히면 붉은 기운이 빨려 들며 체력이 차요'
   };
-  function t2Name(cls) { return ((CFG.classes[cls] || {}).tier2 || {}).name || '2차'; }
+  // 2차 이름: 갈래 기술(e.branch)이면 그 갈래 이름(성기사 · 마검사 …), 아니면 지금 갈래 이름(2차 전 = 「성기사 / 마검사」) — 2026-11-08 갈래
+  function t2Name(cls, e) {
+    var bk = Growth.book(cls), bn = e && e.branch && bk && bk.branchName ? bk.branchName(e.id) : null;
+    if (bn) return bn;
+    var I = Growth.tier2Info ? Growth.tier2Info(cls) : ((CFG.classes[cls] || {}).tier2 || null);
+    return (I && I.name) || '2차';
+  }
   function detRow(k, v, cls) { return '<div class="sdrow' + (cls ? ' ' + cls : '') + '"><b>' + k + '</b><span>' + v + '</span></div>'; }
   function arrow(a, b) { return a === b ? a : a + ' → <em>' + b + '</em>'; }
   function renderDetail() {
@@ -3767,7 +3787,7 @@
     var ic = document.getElementById('sdIcon'); ic.innerHTML = ''; ic.appendChild(skIcon(e.id, 56, !!st && st !== 'learn'));
     document.getElementById('sdName').textContent = name;
     var tags = '<i class="tg ' + (e.passive ? 'pas' : 'act') + '">' + (e.passive ? '늘 켜진 기술' : '쓰는 기술') + '</i>' +
-      '<i class="tg' + (e.tier === 2 ? ' t2' : '') + '">' + (e.tier === 2 ? '2차 · ' + t2Name(bk.cls) : '1차 · ' + ((CFG.classes[bk.cls] || {}).label || '')) + '</i>' +
+      '<i class="tg' + (e.tier === 2 ? ' t2' : '') + '">' + (e.tier === 2 ? '2차 · ' + t2Name(bk.cls, e) : '1차 · ' + ((CFG.classes[bk.cls] || {}).label || '')) + '</i>' +
       (basic ? '<i class="tg">기본기</i>' : '') +
       (st === 'lock' ? '<i class="tg lk">잠김</i>' : st === 'learn' ? '<i class="tg ln">배울 수 있음</i>' : st === 'soon' ? '<i class="tg lk">준비 중</i>' : '<i class="tg lv">Lv ' + lv + '/' + max + '</i>');
     document.getElementById('sdTags').innerHTML = tags;
@@ -3786,7 +3806,7 @@
       if (show < max) h += detRow('Lv' + (show + 1) + ' 되면', '<em>' + passiveNow(e, show + 1) + '</em>', 'nx');
       else h += detRow('최고 Lv', '더 올릴 수 없어요', 'nx');
     }
-    if (st === 'lock') h += detRow('여는 법', e.tier === 2 && !bk.tier2() ? '2차 전직(' + t2Name(bk.cls) + ', Lv' + bk.tier2Lv() + ') 뒤 Lv' + bk.openLv(e.id) + '에 배울 수 있어요' : 'Lv' + bk.openLv(e.id) + '에 배울 수 있어요', 'lk');
+    if (st === 'lock') h += detRow('여는 법', e.tier === 2 && !bk.tier2() ? '2차 전직(' + t2Name(bk.cls, e) + ', Lv' + bk.tier2Lv() + ') 뒤 Lv' + bk.openLv(e.id) + '에 배울 수 있어요' : 'Lv' + bk.openLv(e.id) + '에 배울 수 있어요', 'lk');
     else if (st === 'learn') h += detRow('배우기', '기술 점수 1점으로 배워요(기술 창의 초록 +)', 'ln');
     document.getElementById('sdNums').innerHTML = h;
     var put = document.getElementById('btnSdPut');
@@ -3819,9 +3839,11 @@
     var q = new URLSearchParams();
     q.set('pv', e.id); q.set('pvc', bk.cls); q.set('pvg', G.charKey); q.set('pvl', Math.max(1, bk.lv(e.id)));
     if (e.passive && e.passive.stat === 'brand') q.set('pvh', 'fireball');   // 원소 낙인 = 기술 마법에 맞아야 → 도우미 화염구
+    var pvBr = e.branch || (bk.branch ? bk.branch() : null);   // 2차 갈래(2026-11-08): 그 갈래 옷(마검사 · 흑마법사 = 물들인 1차 옷)으로 보여 줌
+    if (pvBr) q.set('branch', pvBr);
     // 레벨: 2차 기술인데 아직 2차 Lv 전이면 2차 Lv 로(2차 옷), 아니면 지금 창의 시험 레벨(?lv=) 그대로 · 없으면 저장된 레벨(액자가 저장을 읽기만 함)
     var need = e.tier === 2 ? bk.tier2Lv() : 0, lvq = params.get('lv');
-    if (need && Growth.lv < need) q.set('lv', need); else if (lvq) q.set('lv', lvq);
+    if (need && Growth.lv < need) q.set('lv', need); else if (lvq) q.set('lv', Math.max(+lvq || 1, Growth.lv));   // 2026-11-08: 시험 중 레벨업한 만큼(Lv24 → 25 갈래 옷)
     ['rs', 'art'].forEach(function (k) { if (params.get(k)) q.set(k, params.get(k)); });
     var f = pvFrame = document.createElement('iframe');
     f.className = 'pvframe'; f.title = '기술 미리보기'; f.setAttribute('tabindex', '-1'); f.setAttribute('aria-hidden', 'true');
@@ -4074,6 +4096,7 @@
     var B = upBack || {}; upBack = null;
     G.paused = !!B.paused;
     if (B.menu && !B.menu.hidden) openMenu(B.menu, B.menu.querySelector('button:not([hidden])'));
+    if (branchAfterUp) { branchAfterUp = false; if (needBranchChoice()) openBranchChoice(null); }   // 2차 갈래 고르기(2026-11-08)
   }
   document.getElementById('btnUpOk').addEventListener('click', function () { closeUnlock(); this.blur(); });
   window.addEventListener('keydown', function (e) { if (e.code === 'Escape' && !upEl.hidden) { e.preventDefault(); closeUnlock(); } });
@@ -4081,7 +4104,7 @@
   // ---------- PC 아래 막대 (2026-11-07, 형님 승인) ----------
   //   body.pcui(input.js 가 붙임) 일 때 화면 맨 아래 띠: 행동 칸(각성 L · 평타 J · 점프 Space) | 기술 칸 10개(위 줄 6~0 · 아래 줄 1~5) |
   //   창 버튼(능력치 C · 기술 V · 강화 B · 설정 Esc · 소리 M). 게임 화면은 이 띠 위까지(resize 의 pcBarPx)
-  //   칸 = 기술 책(growth.js)의 칸 순서 그대로(폰은 앞 5칸만). 칸을 마우스로 눌러도 씀(Input.pressSlot: 회피를 끼운 칸이면 회피)
+  //   칸 = 기술 책(growth.js)의 칸 순서 그대로(폰은 앞 7칸만). 칸을 마우스로 눌러도 씀(Input.pressSlot: 회피를 끼운 칸이면 회피)
   //   칸 열림: 1~5번 = 폰과 같은 Lv(2칸 → Lv10 · 13 · 15), 6~10번 = Lv15 에 한꺼번에(config skills.pcSlots · pcLv). 견습 = 다 잠김
   function isPc() { return Input.mode() === 'pc'; }
   // 키 이름(첫 키): Digit1 → 1, KeyU → U, Escape → Esc, ShiftLeft → Shift … (이름표 = js/keys.js Keys.label, 키 설정에서 바꾼 키)
@@ -4477,7 +4500,8 @@
     var list = document.getElementById('classList'), ok = document.getElementById('btnClassOk'), pick = null, draws = [];
     var wasPaused = G.paused;
     G.paused = true; Input.setOverride(null);
-    list.innerHTML = '';
+    list.innerHTML = ''; list.classList.remove('br');
+    classTitle('전직', '견습 시절은 끝! 앞으로 함께할 직업을 고르세요. <b>한 번 고르면 바꿀 수 없어요.</b>');   // 같은 화면을 2차 갈래 고르기도 씀(2026-11-08)
     ok.disabled = true; ok.textContent = '직업을 골라 주세요';
     (CFG.classChange || []).forEach(function (q) {
       var b = document.createElement('button');
@@ -4518,6 +4542,94 @@
     openMenu(classEl, list.querySelector('.ccard:not([disabled])'));
   }
   G.openClassChange = function () { openClassChange(null); };
+  // 전직 화면 제목 · 안내(1차 전직 · 2차 갈래 고르기가 같은 화면을 씀)
+  function classTitle(t, hint) {
+    var h = document.getElementById('classTitle'), c = document.getElementById('classHint');
+    if (h) h.textContent = t;
+    if (c) c.innerHTML = hint;
+  }
+
+  // ---------- 2차 전직 갈래 고르기 (2026-11-08 형님, config classes.<직업>.tier2.branches · growth.js chooseBranch) ----------
+  // 뜨는 때: 판 모드 + 갈래가 있는 직업(기사 · 법사) + 2차 Lv(25)이 됨 + 아직 안 고름(Growth.needBranch).
+  //   = 판 도중 Lv25 가 된 순간(게임 멈춤) · 결과 화면 직전 · 스테이지 고르기 · 처음 켰을 때(예전 저장이 이미 Lv25 넘음 = 한 번 고르게 함, 고르기 전엔 갈래 a 로 봄)
+  //   1차 전직 화면(#classSel)을 그대로 씀: 카드 = 그 갈래 옷(마검사 · 흑마법사 = 그림이 올 때까지 1차 옷 물들임)을 입고 움직이는 모습 + 설명 + 그 갈래 기술 이름
+  //   터치 · 마우스(카드 누름) · 키보드(←→ · Enter) · 패드(gamepad.js 의 classSel 창) 모두 1차 전직과 같음. 한 번 고르면 못 바꿈
+  //   시험 자동 조종(?bot=1) · 미리보기 액자 · 시험 버튼으로 입은 다른 직업은 안 띄움. ?lv=N 시험은 ?branch=a|b 를 붙이면 고른 것으로 봄
+  var branchAfterUp = false;
+  function needBranchChoice() { return MODE === 'stage' && !G.bot && !PV && !!Growth.needBranch && Growth.needBranch() && G.classKey === Growth.cls; }
+  // 1차 전직 → 2차 갈래 → after 순서로(필요한 것만). 화면을 띄웠으면 true
+  function jobGate(after) {
+    if (needClassChange()) { openClassChange(function () { jobGate(after); }); return true; }
+    if (needBranchChoice()) { openBranchChoice(after); return true; }
+    if (after) after();
+    return false;
+  }
+  function branchPreview(cv, key) {
+    var g = cv.getContext('2d'), c = CFG.classes[G.classKey];
+    cv.width = 240; cv.height = 240;
+    return Assets.ensureChar(CFG.art.characters[key] ? key : G.charKey).then(function (a) {
+      if (!a) return null;
+      bakeFilter(a);
+      var p = new Player(CFG);
+      p.setCharacter(a); p.weaponKey = classWeapon(c); p.moveSet = c.moves;
+      p.x = 33; p.y = 71; p.dir = 1;
+      return function (dt) {
+        p.animT += dt / 1000;
+        g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, cv.width, cv.height);
+        g.setTransform(3.2, 0, 0, 3.2, 0, 0); g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+        p.draw(g, 0, G.assets.weapons, false);
+      };
+    });
+  }
+  function openBranchChoice(after) {
+    var cls = Growth.cls, BR = Growth.branches(cls), T2 = (CFG.classes[cls] || {}).tier2;
+    if (!BR || !T2) { if (after) after(); return; }
+    if (classEl && !classEl.hidden) return;   // 이미 떠 있음
+    var list = document.getElementById('classList'), ok = document.getElementById('btnClassOk'), pick = null, draws = [];
+    var wasPaused = G.paused, bk = Growth.book(cls), S = CFG.skills[cls] || {};
+    G.paused = true; Input.setOverride(null);
+    list.innerHTML = ''; list.classList.add('br');
+    classTitle('2차 전직', 'Lv' + T2.lv + ' 달성! 두 길 중 하나를 고르세요. 고른 길의 2차 기술만 배울 수 있어요. <b>한 번 고르면 바꿀 수 없어요.</b>');
+    ok.disabled = true; ok.textContent = '길을 골라 주세요';
+    BR.forEach(function (q) {
+      var names = (CFG.skills.tree[cls] || []).filter(function (e) { return e.branch === q.key; })
+        .map(function (e) { return (S[e.id] && S[e.id].name) || e.name || e.id; });
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'ccard'; b.dataset.k = q.key;
+      b.innerHTML = '<canvas></canvas><b>' + q.name + '</b><span class="wp">(2차 · ' + ((CFG.classes[cls] || {}).label || '') + ')</span><span class="d">' + (q.desc || '') + '</span>' +
+        '<span class="sk">' + names.join(' · ') + '</span>';
+      branchPreview(b.querySelector('canvas'), q.outfit + '_' + G.charKey).then(function (d) { if (d) draws.push(d); });
+      b.addEventListener('click', function () {
+        pick = q;
+        list.querySelectorAll('.ccard').forEach(function (x) { x.classList.toggle('on', x === b); });
+        ok.disabled = false; ok.textContent = josaRo(q.name) + ' 전직하기 · 바꿀 수 없어요';
+      });
+      list.appendChild(b);
+    });
+    ok.onclick = function () {
+      if (!pick) return;
+      Growth.chooseBranch(pick.key);   // 저장칸에 갈래 저장(한 번만) + 다른 갈래 기술 점수 돌려받음
+      wearOutfit();                    // 그 갈래 옷으로
+      cancelAnimationFrame(classAnim); classAnim = 0;
+      closeMenu(classEl);
+      list.classList.remove('br');
+      G.paused = wasPaused;
+      banner(josaRo(pick.name) + ' 전직했다!', 'small');
+      Skills.flash({ color: '#e8d0ff', alpha: 0.45, ms: 420 });
+      if (typeof skEl !== 'undefined' && skEl && !skEl.hidden) renderSkills();
+      ok.blur();
+      if (after) after();
+    };
+    var lastT = 0;
+    (function anim(now) {
+      var dt = lastT ? Math.min(100, now - lastT) : 0; lastT = now;
+      draws.forEach(function (d) { d(dt); });
+      classAnim = requestAnimationFrame(anim);
+    })(performance.now());
+    openMenu(classEl, list.querySelector('.ccard'));
+  }
+  G.openBranchChoice = function () { openBranchChoice(null); };
+  G.needBranchChoice = needBranchChoice;
 
   // 무기만 바꾸기(디버그·나중용): 콤보 묶음은 그대로
   function setWeapon(k) { if (CFG.weapons[k]) G.weaponKey = k; }
@@ -4737,7 +4849,7 @@
     p.setCharacter(outfitAssets()); p.weaponKey = G.weaponKey; p.setMoveSet(G.moveSet);
     p.x = Math.round(LW * (I.pas ? 0.3 : 0.24)); p.y = Math.round((world.laneTop + world.laneBottom) / 2); p.dir = 1;
     p.god = !PV_FIGHT[I.stat];
-    if (I.stat === 'regen') p.hp = Math.round(p.maxHp * 0.5);   // 신성 가호: 체력이 차는 중
+    if (I.stat === 'regen' || I.stat === 'leech') p.hp = Math.round(p.maxHp * 0.5);   // 신성 가호 · 생명 흡수(2026-11-08): 체력이 차는 중
     G.camX = 0;
     Input.setOverride({ x: 0, y: 0 });
     var slots = I.pas ? [{ dx: 46, k: 0.05 }, { dx: 92, k: -0.65 }, { dx: 132, k: 0.6 }, { dx: 172, k: -0.15 }]
@@ -4909,7 +5021,7 @@
       var urlDg = params.get('dg');
       if (urlDg && CFG.dungeons && CFG.dungeons[urlDg] && (!CFG.demo || dgOpen(urlDg))) goDungeon(urlDg);   // 던전 바로 시작(2026-11-07, ?dg=mine)
       else if (pick) openStageSelect();
-      else if (needClassChange()) openClassChange(null);   // ?stage=N 으로 바로 시작했는데 전직 안 한 저장(2단계 깸)
+      else jobGate(null);   // ?stage=N 으로 바로 시작했는데 전직 안 한 저장(2단계 깸) · 2차 갈래를 안 고른 저장(2026-11-08)
     }
     modeLink();
     bindToggles();

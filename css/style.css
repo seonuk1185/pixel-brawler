@@ -663,6 +663,9 @@ button.cpick { cursor: pointer; }
 .ccard.soon .tag { font: 400 11px/1 var(--ui); color: #f5e0a8; background: #5c3418; border: 2px solid var(--ink); padding: 2px 6px; }
 .ccard.soon .d { color: #6a5a40; }
 #btnClassOk { min-width: 220px; min-height: 44px; }
+/* 2차 갈래 고르기(2026-11-08): 카드 두 장을 넓게 + 그 갈래 기술 이름 줄 */
+.clist.br .ccard { width: 210px; }
+.ccard .sk { font: 700 10px/1.35 var(--ui); color: #5a2a8a; border-top: 1px dashed #b89a6a; padding-top: 3px; margin-top: 1px; }
 @media (max-height: 420px) {
   /* 2026-11-06 형님 폴드 접은 화면(높이 388): 카드 설명 끝줄이 잘림 → 제목·그림·여백 줄임 */
   .classsel { padding: 8px 10px; }
@@ -676,6 +679,8 @@ button.cpick { cursor: pointer; }
   #btnClassOk { min-height: 36px; }
   .ccard.soon { width: 92px; }
   .ccard.soon .ph { width: 46px; height: 46px; margin: 4px 0; }
+  .clist.br .ccard { width: 230px; }
+  .ccard .sk { font-size: 10px; line-height: 1.25; }
 }
 /* 폰 세로처럼 좁으면: 준비 중 카드는 작게 아래 줄로 */
 @media (max-width: 600px) {
@@ -739,7 +744,7 @@ button.cpick { cursor: pointer; }
   border-radius: 50%; background: radial-gradient(circle at 35% 35%, #ffe896, var(--gold2) 70%, var(--gold3)); border: 2px solid var(--ink);
 }
 /* 폰 조작판(2026-11-06 폰 UI, 형님 승인 시안 layout_844 · 폴드): 큰 공격(오른쪽 아래) · 점프(공격 왼쪽 아래) ·
-   기술 5칸 = 네모 도트 액자(js/icons.js 그림)가 공격 둘레 왼쪽 위로 반달(왼쪽 아래 1번 → 위로 돌아 5번) · 각성 마름모 = 반달 위 끝 너머.
+   기술 5칸 = 네모 도트 액자(js/icons.js 그림)가 공격 둘레 왼쪽 위로 반달(왼쪽 아래 1번 → 위로 돌아 5번) + 바깥 줄 6 · 7번(2026-11-08) · 각성 마름모 = 반달 위 끝 너머.
    자리·크기 = 공격 버튼(.btns 상자) 오른쪽·아래에서 잰 값 x --k (폰 1 / 낮은 폰(높이 360 이하) 0.9 / 폴드 편 화면 1.2 / 세로 1.3).
    반달(2026-11-07 5칸): 공격 가운데에서 왼쪽 12 · 위 2 옮긴 점을 가운데로 반지름 130, 각도 162 · 139.2 · 116.4 · 93.6 · 70.8°
      (예전 4칸 = 반지름 102, 155 · 126 · 97 · 68°. 5번째 칸이 화면 오른쪽 끝·점프와 안 겹치게 반지름을 키우고 간격을 맞춤)
@@ -791,6 +796,10 @@ button.cpick { cursor: pointer; }
 .touchui .btn.skC{ right: calc(86.8px * var(--k)); bottom: calc(135.4px * var(--k)); }
 .touchui .btn.skD{ right: calc(37.2px * var(--k)); bottom: calc(148.7px * var(--k)); }
 .touchui .btn.skE{ right: calc(-13.8px * var(--k)); bottom: calc(141.8px * var(--k)); }
+/* 기술 6 · 7번 칸(2026-11-08 형님: 폰 7칸): 같은 가운데에서 반지름 180 바깥 줄, 각도 150.6°(1·2번 사이) · 127.8°(2·3번 사이)
+   → 안쪽 칸 · 점프 · 회피 · 각성과 안 겹침(가장 가까운 칸 사이 가운데 거리 58) */
+.touchui .btn.skF{ right: calc(185.8px * var(--k)); bottom: calc(107.4px * var(--k)); }
+.touchui .btn.skG{ right: calc(139.3px * var(--k)); bottom: calc(161.2px * var(--k)); }
 .touchui .btn.sk .ic{ position: absolute; inset: 0; z-index: 0; }
 .touchui .btn.sk .ic canvas{ display: block; width: 100%; height: 100%; image-rendering: pixelated; filter: drop-shadow(0 3px 0 #000a); }
 .touchui .btn.sk .sweep{

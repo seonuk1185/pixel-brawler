@@ -51,7 +51,7 @@
   }
   // ---------- 기술 책 (2026-11-06, 성장 4단계. 수치 = config skills: tree·perLv·maxLv·slots·moreLv·test) ----------
   //   저장되는 것 sk = { clsLv = 전직한 Lv, lv = { 기술 id: 기술 점수로 올린 수 }, bar = [칸 1~10 에 끼운 기술 id] }
-  //     칸(2026-11-07 PC 아래 막대): PC · 폰이 같은 순서 하나. 폰 = 앞 5칸(slots()), PC = 10칸(slots(true), 위 줄 6~10 은 pcLv 에 열림)
+  //     칸(2026-11-07 PC 아래 막대): PC · 폰이 같은 순서 하나. 폰 = 앞 7칸(slots(), 2026-11-08), PC = 10칸(slots(true), 위 줄 6~10 은 pcLv 에 열림)
   //     'dodge' = 회피(PC 기술 창에서 아무 칸에나 끼움, 누르면 회피). 예전 저장(칸 4개) = 그대로 1~4번 칸
   //   기술 Lv = 열렸으면 1 + 올린 수(최고 maxLv), 안 열렸으면 0. 기술 점수 = (지금 Lv - 전직 Lv) x perLv - 쓴 점수
   //   2026-11-07 배우기(config skills.learn, 형님): 저절로 배우기 없음. 저장 sk.v = 2 → lv = { id: 배운 Lv 1~5 }(0 = 안 배움).
@@ -65,6 +65,35 @@
   //   tier2Lv(직업) = 2차 전직 Lv(없으면 0) / openLv(직업, 기술) = 그 기술이 열리는 Lv = unlock 과 2차 Lv 중 큰 것(2차 기술만)
   function tier2Lv(cls) { var c = CFG.classes && CFG.classes[cls], t = c && c.tier2; return t ? t.lv || 0 : 0; }
   function openLv(cls, e) { var u = e.unlock || 0; return e.tier === 2 ? Math.max(u, tier2Lv(cls)) : u; }
+  // ---------- 2차 전직 갈래 (2026-11-08, config classes.<직업>.tier2.branches · SKILL_TREE 의 branch) ----------
+  //   저장칸 tier2Branch = 고른 갈래 key('a' / 'b'). 2차 Lv(25)이 되면 고르기 화면(main.js openBranchChoice) → chooseBranch(key), 한 번 고르면 못 바꿈
+  //   branchOf(직업) = 지금 갈래: 고른 것 > (2차 Lv 이 됐는데 아직 안 고름 = 예전 저장 · 고르기 화면이 뜨기 전) 첫 갈래(a) > 2차 전 = null
+  //   갈래 기술(branch 붙은 것)은 그 갈래일 때만 기술 창에 보이고 배울 수 있음. 2차 전(null) = 두 갈래 다 자물쇠로 보임
+  //   ?lv=N 시험 · 기술 미리보기 액자 = 주소 ?branch=a|b 로 이번 창에서만(저장 안 함)
+  function branchList(cls) { var c = CFG.classes && CFG.classes[cls], t = c && c.tier2; return t && t.branches && t.branches.length ? t.branches : null; }
+  function branchDef(cls, k) { var L = branchList(cls) || []; for (var i = 0; i < L.length; i++) if (L[i].key === k) return L[i]; return null; }
+  function validBranch(cls, k) { return k && branchDef(cls, k) ? k : null; }
+  var urlBranch = !CFG.demo && /^[a-z]$/.test(params.get('branch') || '') ? params.get('branch') : null;
+  function branchOf(cls) {
+    if (!branchList(cls)) return null;
+    var k = validBranch(cls, cls === G.cls ? G.branch : urlBranch);
+    if (k) return k;
+    return G.lv >= tier2Lv(cls) ? branchList(cls)[0].key : null;
+  }
+  // 갈래 기술이 지금 갈래에 맞나: vis = 기술 창에 보임(2차 전 = 다 보임), ok = 배울 수 있는 갈래
+  //   test = 시험 책(시험 버튼으로 입은 다른 직업): 2차 전이어도 첫 갈래(a)로 봄(예전처럼 2차 기술을 다 써 볼 수 있게)
+  function brKey(cls, test) { var b = branchOf(cls); return b || (test && branchList(cls) ? branchList(cls)[0].key : null); }
+  function brVis(cls, e, test) { if (!e || !e.branch) return true; var b = brKey(cls, test); return !b || b === e.branch; }
+  function brOk(cls, e, test) { return !e || !e.branch || brKey(cls, test) === e.branch; }
+  // 2차 정보(이름 · 옷 · Lv): 지금 갈래 값을 tier2 위에 덮음. 2차 전(갈래 없음)이면 이름 = 「성기사 / 마검사」
+  function tier2Info(cls) {
+    var c = CFG.classes && CFG.classes[cls], t = c && c.tier2;
+    if (!t) return null;
+    var o = { lv: t.lv || 0, name: t.name, outfit: t.outfit, key: null }, L = branchList(cls), b = L && branchDef(cls, branchOf(cls));
+    if (b) { o.key = b.key; o.name = b.name || o.name; o.outfit = b.outfit || o.outfit; o.br = b; }
+    else if (L) o.name = L.map(function (q) { return q.name; }).join(' / ');
+    return o;
+  }
   function skMax(e) { return (e && e.maxLv) || SK.maxLv || 5; }   // 기술마다 최고 Lv(2026-11-08, config SKILL_TREE 의 maxLv)
   function newSk(clsLv) { var o = { clsLv: clsLv, lv: {}, bar: [] }; if (LEARN) o.v = 2; return o; }
   // 기술 미리보기 책(2026-11-08, index.html window.PV = 기술 창 「▶ 미리보기」 액자 안에서만): 미리 보는 기술(PV.id) 하나만 PV.lv,
@@ -96,7 +125,7 @@
     L.forEach(function (e) { byId[e.id] = e; });
     var B = {
       cls: cls, test: !!test,
-      list: function () { return L; },
+      list: function () { return L.filter(function (e) { return brVis(cls, e, test); }); },   // 2차 갈래(2026-11-08): 다른 갈래 기술은 안 보임
       entry: function (id) { return byId[id] || null; },
       // 그 기술 최고 Lv(2026-11-08): 기술마다 maxLv(날렵한 몸놀림 = 1), 없으면 config skills.maxLv(5)
       maxLv: function (id) { return skMax(byId[id]); },
@@ -104,7 +133,10 @@
       isActive: function (id) { var e = byId[id]; return !!(e && !e.soon && !e.passive && SK[cls] && SK[cls][id]); },
       // 열렸나: 시험 책 = 준비 중 빼고 전부, 저장 책 = 그 레벨이 됨(unlock 0 = 전직 즉시)
       //   2차 기술(tier 2, 2026-11-08) = 2차 전직 Lv 도 돼야 함(openLv). 2차 전 기술 창 = 「2차 전직 후 LvN」(main.js)
-      unlocked: function (id) { var e = byId[id]; return !!e && !e.soon && (test || id === BASIC || G.lv >= openLv(cls, e)); },
+      unlocked: function (id) { var e = byId[id]; return !!e && !e.soon && brOk(cls, e, test) && (test || id === BASIC || G.lv >= openLv(cls, e)); },
+      // 2차 전직 갈래(2026-11-08): 지금 갈래 key(2차 전 = null) · 그 기술 갈래 이름(갈래 기술 아니면 null)
+      branch: function () { return branchOf(cls); },
+      branchName: function (id) { var e = byId[id], b = e && e.branch ? branchDef(cls, e.branch) : null; return b ? b.name : null; },
       openLv: function (id) { var e = byId[id]; return e ? openLv(cls, e) : 0; },
       // 2차 전직을 했나(2026-11-08): 이 직업에 2차가 있고 그 Lv 가 됨
       tier2: function () { var t = tier2Lv(cls); return !!t && G.lv >= t; },
@@ -121,7 +153,7 @@
         if (test) return (SK.test && SK.test.pts) || 0;
         return (LEARN ? (SK.firstPts || 0) : 0) + Math.max(0, G.lv - st.clsLv) * (SK.perLv || 1);
       },
-      used: function () { var n = 0; Object.keys(st.lv).forEach(function (k) { n += k === BASIC ? Math.max(0, B.lv(k) - 1) : st.lv[k]; }); return n; },   // 기본기 Lv1 = 공짜
+      used: function () { var n = 0; Object.keys(st.lv).forEach(function (k) { if (byId[k] && !brOk(cls, byId[k], test)) return; n += k === BASIC ? Math.max(0, B.lv(k) - 1) : st.lv[k]; }); return n; },   // 기본기 Lv1 = 공짜 · 다른 갈래에 써 둔 점수는 안 셈(2026-11-08)
       pts: function () { return Math.max(0, B.total() - B.used()); },
       // 기술 점수 1점 → 그 기술 Lv +1 (열려 있고 최고 Lv 아님)
       //   배우기(2026-11-07): 안 배운 기술 + 1점 = 배움(Lv1). 처음 배운 쓰는 기술은 빈 칸(PC 기준 열린 칸 앞에서부터)이 있으면 그 칸에 끼움
@@ -301,6 +333,7 @@
     lv: clampLv(cur.lv || 1),
     xp: 0,
     cls: CFG.classes[cur['class']] && cur['class'] !== 'novice' ? cur['class'] : null,   // 전직한 직업(없으면 null = 견습)
+    branch: null,       // 2차 전직 갈래(2026-11-08, 저장칸 tier2Branch). 아래에서 읽음
     stats: zero(),      // 올린 능력치
     pts: 0,             // 안 쓴 점수
     noSave: false,      // ?lv=N 시험 중이면 true(저장 안 함)
@@ -441,6 +474,7 @@
     testSetup: function (cls, clsLv, plan) {
       if (!G.noSave || !treeOf(cls)) return null;
       G.cls = cls; G.sk = newSk(Math.min(G.lv, clsLv || SK.classLv)); realBook = null; G._realW = null;
+      G.branch = validBranch(cls, urlBranch);   // 2차 갈래(2026-11-08): 시험 = 주소 ?branch 만(없으면 고르기 화면이 뜰 수 있음)
       var b = G.book(cls);
       var ids = plan || (SK.botPlan && SK.botPlan[cls]) || [], guard = 0;
       while (b.pts() > 0 && guard++ < 200) {
@@ -452,9 +486,27 @@
       var o = {}; treeOf(cls).forEach(function (e) { if (b.learned(e.id)) o[e.id] = b.lv(e.id); });
       return { lv: o, pts: b.pts(), bar: b.bar(true) };
     },
+    // ---------- 2차 전직 갈래 (2026-11-08) ----------
+    branches: function (cls) { return branchList(cls || G.cls); },
+    branchOf: function (cls) { return branchOf(cls || G.cls); },
+    tier2Info: function (cls) { return tier2Info(cls || G.cls); },
+    // 고르기 화면을 띄워야 하나: 갈래가 있는 직업 + 2차 Lv 이 됨 + 아직 안 고름(?lv 시험에 ?branch 를 붙였으면 고른 것으로 봄)
+    needBranch: function () { return !!(G.cls && branchList(G.cls) && !G.branch && G.lv >= tier2Lv(G.cls)); },
+    // 갈래 고르기(한 번만): 다른 갈래 기술에 써 둔 점수는 돌려받고(예전 저장의 성기사 기술 등) 칸에서도 뺌 → 저장
+    chooseBranch: function (k) {
+      if (!G.cls || G.branch || !validBranch(G.cls, k)) return false;
+      G.branch = k;
+      (treeOf(G.cls) || []).forEach(function (e) {
+        if (!e.branch || e.branch === k) return;
+        delete G.sk.lv[e.id];
+        var j = G.sk.bar.indexOf(e.id); if (j >= 0) G.sk.bar[j] = null;
+      });
+      G.save();
+      return true;
+    },
     save: function () {
       if (G.noSave) return;
-      data.slots[data.slot] = { lv: G.lv, xp: G.xp, 'class': G.cls, stats: G.stats, pts: G.pts, skills: G.cls ? G.sk : undefined, club: G.club || undefined, modes: MSsaved,
+      data.slots[data.slot] = { lv: G.lv, xp: G.xp, 'class': G.cls, tier2Branch: G.cls && G.branch ? G.branch : undefined, stats: G.stats, pts: G.pts, skills: G.cls ? G.sk : undefined, club: G.club || undefined, modes: MSsaved,
         wpn: G.cls ? G.wpn : undefined, stones: G.stones, crys: G.crys, dg: G.dg };
       try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch (e) {}
     },
@@ -506,6 +558,9 @@
   // ?lv=N 시험: 이번 창에서만
   var dbgLv = CFG.demo ? 0 : parseInt(params.get('lv'), 10);   // 친구 시험 모드(?demo=1) = 무시
   if (dbgLv > 0) { G.lv = clampLv(dbgLv); G.xp = 0; G.stats = zero(); G.pts = ptsFor(G.lv); G.noSave = true; }
+  // 2차 전직 갈래(2026-11-08): 저장된 것. ?lv 시험 · 미리보기 액자는 주소 ?branch 가 있으면 그것(이번 창만)
+  G.branch = G.cls ? validBranch(G.cls, cur.tier2Branch) : null;
+  if ((dbgLv > 0 || window.PV) && G.cls && validBranch(G.cls, urlBranch)) G.branch = urlBranch;
   // 기술 책(2026-11-06): 저장에 있으면 그대로(이상한 값은 버림). 직업은 있는데 기술 책이 없는 예전 저장 = 전직 Lv 를 classLv(7)로 보고
   //   (지금 Lv - 전직 Lv) 점을 안 쓴 채로 줌. 쓴 점수가 받은 점수보다 많으면(저장이 꼬임 · ?lv 로 낮춤) 초기화
   // 직업 기본기(2026-11-07, config skills.basic): 기술 책에 Lv1 이상으로 + 칸에 없으면 끼움(first = 전직 순간 → 1번 칸, 아니면 1번 칸이 비었으면 거기, 아니면 빈 칸)
@@ -536,11 +591,11 @@
         var n = cs.lv[e.id] | 0;
         // 2026-11-08: 2차 기술(칼날 폭풍 · 성검 낙뢰를 1차 Lv19 · 23 에서 2차 Lv25 · 31 로 옮김)도 2차 전직 Lv 로 봄(openLv) + 1차 기사 다시 배치(반격 21 → 24 등) →
         //   예전 저장에서 미리 배워 둔 2차 기술 · 지금 Lv 보다 늦게 열리게 바뀐 기술은 여기서 빠짐 = 그 기술 점수는 안 쓴 점수로 돌아옴(기술 칸에 끼운 것도 저절로 빈 칸)
-        if (e.soon || G.lv < openLv(G.cls, e)) return;
+        if (e.soon || G.lv < openLv(G.cls, e) || !brOk(G.cls, e)) return;   // 2026-11-08: 고른 갈래가 아닌 2차 기술도 빠짐(점수 돌려받음)
         if (newFmt) { if (n > 0) G.sk.lv[e.id] = Math.min(LEARN ? skMax(e) : skMax(e) - 1, n); }
         else G.sk.lv[e.id] = 1 + Math.max(0, Math.min(skMax(e) - 1, n));   // 예전(저절로 배움) = 열린 기술은 Lv1 + 올린 수
       });
-      else if (!newFmt) L0.forEach(function (e) { if (!e.soon && G.lv >= openLv(G.cls, e)) G.sk.lv[e.id] = 1; });
+      else if (!newFmt) L0.forEach(function (e) { if (!e.soon && G.lv >= openLv(G.cls, e) && brOk(G.cls, e)) G.sk.lv[e.id] = 1; });
     } else G.sk.clsLv = Math.min(G.lv, SK.classLv || 7);
     var bk = G.book(G.cls);
     // 예전 저장 바꾸기(2026-11-07 배우기): 배운 Lv 합이 새 점수(전직 1 + 레벨마다 1)보다 많으면

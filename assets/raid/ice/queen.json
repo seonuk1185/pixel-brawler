@@ -1,0 +1,1938 @@
+{
+ "name": "빙결의 여왕 (ice raid queen)",
+ "version": "2026-11-08",
+ "status": "ART COMPLETE (not integrated in the game yet)",
+ "remaining": [
+  "integration into the game code (see integrationPlan)",
+  "optional: hurt_02 / groggy_02 for 2-frame loops; minion idle/hurt frames"
+ ],
+ "note": "ONE giant stationary sprite. Art faces LEFT. All frames share ONE 1x canvas and ONE pivot (ground point = centre of the ice-crystal base). Box coords (1x px, same convention as dragon_fire.json): x = distance IN FRONT of the pivot (positive = facing side, art-left), yTop/yBot = height relative to the ground (negative = up). Box = [x0, x1, yTop, yBot]. Multiply by actorScale (0.55) for world units. Generated on chroma GREEN (not magenta) and keyed with green despill: no purple fringes.",
+ "actorScale": 0.55,
+ "hdScale": 1.1,
+ "canvas1x": [
+  713,
+  409
+ ],
+ "pivot1x": [
+  411,
+  400
+ ],
+ "worldHeight": 195,
+ "knightWorldHeight": 57.5,
+ "files": {
+  "frames1x": "frames/<anim>_NN.png (full 1x canvas, hard alpha, one 96-colour palette for all frames)",
+  "framesHD": "hd/<anim>_NN.webp (tight crop, q88)",
+  "raw": "sheets_raw/*.png (untouched AI sheets, green bg): 01-05 v1, 06-13 v2 (06 = top half only: blizzard)",
+  "scripts": "scripts/ (v1: prompts, cut, split, place, build, boxes, spec, gifs; v2: split2, scale2, build2, boxes2, preview2)",
+  "fx1x": "frames/fx/<name>.png",
+  "fxHD": "hd/fx/<name>.webp",
+  "minion1x": "frames/minion/<anim>.png",
+  "minionHD": "hd/minion/<anim>.webp"
+ },
+ "hdEntry": "hd = [w, h, ox, oy, f, fullW, fullH] exactly like assets/hd/manifest.json: crop size, crop offset inside the full HD canvas (1x canvas x 1.1), f = 1.1",
+ "hurtKinds": {
+  "head": "full damage (crit)",
+  "body": "gown/torso/hair band 60-250 px up: full damage",
+  "base": "ice-crystal mound 0-60 px up (what a standing knight reaches): reduced damage (suggest x0.5)",
+  "weak": "weak spot, bonus damage (glowing hand in cast_01, head while groggy/down)"
+ },
+ "anims": {
+  "idle": {
+   "n": 4,
+   "fps": 4,
+   "loop": true,
+   "playback": [
+    1,
+    2,
+    3,
+    4
+   ],
+   "note": "floating/breathing; code adds bob 1-2px + staff-crystal glow pulse",
+   "frames": [
+    "idle_01",
+    "idle_02",
+    "idle_03",
+    "idle_04"
+   ]
+  },
+  "cast": {
+   "n": 4,
+   "fps": 7,
+   "loop": false,
+   "playback": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    2,
+    3,
+    3,
+    3,
+    4,
+    4,
+    4,
+    4,
+    4
+   ],
+   "telegraph": [
+    1,
+    2,
+    3
+   ],
+   "active": [
+    4
+   ],
+   "note": "BLIZZARD: 1 = wind-up (glowing hand at the chest = weak spot), 2-3 = arms raised (storm gathers above), 4 = arms swept forward: release the blizzard from castAt. storm art NOT in this sheet (needs fx sheet)",
+   "frames": [
+    "cast_01",
+    "cast_02",
+    "cast_03",
+    "cast_04"
+   ]
+  },
+  "spear": {
+   "n": 2,
+   "fps": 8,
+   "loop": false,
+   "playback": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    2,
+    2,
+    2,
+    2
+   ],
+   "telegraph": [
+    1
+   ],
+   "active": [
+    2
+   ],
+   "note": "ICE SPEAR thrust: 1 = spear drawn back (telegraph ~600ms), 2 = thrust (reach box, chest height -> anti-air). return via idle_01",
+   "frames": [
+    "spear_01",
+    "spear_02"
+   ]
+  },
+  "summon": {
+   "n": 2,
+   "fps": 6,
+   "loop": false,
+   "playback": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    2,
+    2,
+    2,
+    2
+   ],
+   "telegraph": [
+    1
+   ],
+   "active": [
+    2
+   ],
+   "note": "ICICLE RAIN: 1 = staff raised (show red floor circles at the targets), 2 = staff slashes down -> icicles fall/land (fx needed)",
+   "frames": [
+    "summon_01",
+    "summon_02"
+   ]
+  },
+  "roar": {
+   "n": 4,
+   "fps": 7,
+   "loop": false,
+   "playback": [
+    1,
+    1,
+    1,
+    2,
+    2,
+    3,
+    3,
+    3,
+    3,
+    4,
+    4,
+    4
+   ],
+   "telegraph": [
+    1,
+    2
+   ],
+   "active": [
+    3
+   ],
+   "note": "FREEZING ROAR / enrage (phase change): 3 = scream (radial knockback / freeze from mouth), 4 = enraged stance (bigger crown spikes); hold 4 then back to idle",
+   "frames": [
+    "roar_01",
+    "roar_02",
+    "roar_03",
+    "roar_04"
+   ]
+  },
+  "hurt": {
+   "n": 1,
+   "fps": 10,
+   "loop": false,
+   "playback": [
+    1,
+    1,
+    1
+   ],
+   "note": "flinch (only on big hits/break; super armour otherwise). code: white flash",
+   "frames": [
+    "hurt_01"
+   ]
+  },
+  "groggy": {
+   "n": 1,
+   "fps": 3,
+   "loop": true,
+   "playback": [
+    1
+   ],
+   "note": "break/groggy: kneeling, head = weak spot (but ~180-260 px up: jump attacks; code may lower the box or add bob)",
+   "frames": [
+    "groggy_01"
+   ]
+  },
+  "down": {
+   "n": 1,
+   "fps": 3,
+   "loop": false,
+   "playback": [
+    1
+   ],
+   "note": "collapsed on the floor: head on the ground = weak spot. use as long groggy / defeat pose",
+   "frames": [
+    "down_01"
+   ]
+  },
+  "shatter": {
+   "n": 1,
+   "fps": 3,
+   "loop": false,
+   "playback": [
+    1
+   ],
+   "note": "death finish: frozen grey-blue ice statue breaking apart. suggested death = hurt_01 -> (white freeze flash) -> shatter_01 + ice-chunk particles, then fade. no hurtboxes",
+   "frames": [
+    "shatter_01"
+   ]
+  },
+  "stomp": {
+   "n": 4,
+   "fps": 7,
+   "loop": false,
+   "playback": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    2,
+    2,
+    3,
+    3,
+    3,
+    3,
+    3,
+    4,
+    4
+   ],
+   "telegraph": [
+    1
+   ],
+   "active": [
+    2,
+    3
+   ],
+   "note": "STAFF SLAM / ice-spike stomp: 1 = staff overhead (telegraph), 2 = slam at impactAt (shake + fx spikes row), 3 = hold, 4 = recover -> idle",
+   "frames": [
+    "stomp_01",
+    "stomp_02",
+    "stomp_03",
+    "stomp_04"
+   ]
+  },
+  "conjure": {
+   "n": 2,
+   "fps": 6,
+   "loop": false,
+   "playback": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    2,
+    2,
+    2,
+    2,
+    2
+   ],
+   "telegraph": [
+    1
+   ],
+   "active": [
+    2
+   ],
+   "note": "SUMMON ice wall / minions: 1 = hand forward (telegraph), 2 = staff swept forward -> spawn fx icewall_01 and/or minions on the floor",
+   "frames": [
+    "conjure_01",
+    "conjure_02"
+   ]
+  },
+  "teleport": {
+   "n": 4,
+   "fps": 8,
+   "loop": false,
+   "playback": [
+    1,
+    1,
+    1,
+    2,
+    2,
+    2,
+    3,
+    3,
+    3,
+    4,
+    4,
+    4
+   ],
+   "invulnerable": [
+    2,
+    3
+   ],
+   "note": "TELEPORT: 1 = breaking into snow, 2 = snow column (move the actor while hidden, or fade out/in), 3 = reforming, 4 = back (snowflakes) -> idle",
+   "frames": [
+    "teleport_01",
+    "teleport_02",
+    "teleport_03",
+    "teleport_04"
+   ]
+  },
+  "death": {
+   "n": 4,
+   "fps": 5,
+   "loop": false,
+   "playback": [
+    1,
+    1,
+    1,
+    2,
+    2,
+    2,
+    3,
+    3,
+    3,
+    3,
+    4,
+    4,
+    4,
+    4,
+    4
+   ],
+   "no_hurtboxes": true,
+   "note": "DEATH: 1 = mortal hit, 2 = freezing over, 3 = frozen cracked statue (white flash), 4 = shatter + spawn fx chunk01-09 flying out, then fade. replaces shatter_01",
+   "frames": [
+    "death_01",
+    "death_02",
+    "death_03",
+    "death_04"
+   ]
+  }
+ },
+ "frames": {
+  "idle_01": {
+   "hd": [
+    518,
+    392,
+    193,
+    49,
+    1.1,
+    784,
+    450
+   ],
+   "head": [
+    -10,
+    62,
+    -358,
+    -258
+   ],
+   "base": [
+    -227,
+    232,
+    -60,
+    0
+   ],
+   "body": [
+    -178,
+    166,
+    -250,
+    -60
+   ]
+  },
+  "idle_02": {
+   "hd": [
+    519,
+    392,
+    193,
+    49,
+    1.1,
+    784,
+    450
+   ],
+   "head": [
+    -10,
+    62,
+    -358,
+    -258
+   ],
+   "base": [
+    -226,
+    232,
+    -60,
+    0
+   ],
+   "body": [
+    -157,
+    168,
+    -250,
+    -60
+   ]
+  },
+  "idle_03": {
+   "hd": [
+    520,
+    399,
+    192,
+    42,
+    1.1,
+    784,
+    450
+   ],
+   "head": [
+    -10,
+    62,
+    -366,
+    -266
+   ],
+   "base": [
+    -227,
+    233,
+    -60,
+    0
+   ],
+   "body": [
+    -184,
+    170,
+    -250,
+    -60
+   ]
+  },
+  "idle_04": {
+   "hd": [
+    519,
+    379,
+    193,
+    63,
+    1.1,
+    784,
+    450
+   ],
+   "head": [
+    -10,
+    62,
+    -340,
+    -255
+   ],
+   "base": [
+    -226,
+    233,
+    -60,
+    0
+   ],
+   "body": [
+    -151,
+    171,
+    -250,
+    -60
+   ]
+  },
+  "cast_01": {
+   "hd": [
+    498,
+    379,
+    189,
+    70,
+    1.1,
+    784,
+    450
+   ],
+   "head": [
+    45,
+    110,
+    -330,
+    -230
+   ],
+   "base": [
+    -209,
+    229,
+    -60,
+    0
+   ],
+   "body": [
+    -159,
+    226,
+    -250,
+    -60
+   ],
+   "weak": [
+    40,
+    110,
+    -235,
+    -170
+   ]
+  },
+  "cast_02": {
+   "hd": [
+    491,
+    434,
+    207,
+    8,
+    1.1,
+    784,
+    450
+   ],
+   "head": [
+    -8,
+    62,
+    -331,
+    -236
+   ],
+   "base": [
+    -220,
+    215,
+    -60,
+    0
+   ],
+   "body": [
+    -174,
+    158,
+    -250,
+    -60
+   ]
+  },
+  "cast_03": {
+   "hd": [
+    491,
+    426,
+    206,
+    16,
+    1.1,
+    784,
+    450
+   ],
+   "head": [
+    -24,
+    45,
+    -319,
+    -224
+   ],
+   "base": [
+    -217,
+    215,
+    -60,
+    0
+   ],
+   "body": [
+    -174,
+    155,
+    -250,
+    -60
+   ]
+  },
+  "cast_04": {
+   "hd": [
+    611,
+    339,
+    93,
+    103,
+    1.1,
+    784,
+    450
+   ],
+   "head": [
+    35,
+    104,
+    -300,
+    -199
+   ],
+   "base": [
+    -223,
+    222,
+    -60,
+    0
+   ],
+   "body": [
+    -182,
+    308,
+    -250,
+    -60
+   ],
+   "castAt": [
+    312,
+    -192
+   ],
+   "note": "staff crystal: spawn the blizzard here"
+  },
+  "spear_01": {
+   "hd": [
+    563,
+    392,
+    173,
+    50,
+    1.1,
+    784,
+    450
+   ],
+   "head": [
+    9,
+    78,
+    -350,
+    -243
+   ],
+   "base": [
+    -245,
+    250,
+    -60,
+    0
+   ],
+   "body": [
+    -197,
+    191,
+    -250,
+    -60
+   ],
+   "note": "wind-up, spear held back (telegraph)"
+  },
+  "spear_02": {
+   "hd": [
+    701,
+    356,
+    5,
+    85,
+    1.1,
+    784,
+    450
+   ],
+   "head": [
+    30,
+    105,
+    -318,
+    -224
+   ],
+   "base": [
+    -224,
+    225,
+    -60,
+    0
+   ],
+   "body": [
+    -156,
+    387,
+    -250,
+    -60
+   ],
+   "reach": [
+    150,
+    405,
+    -240,
+    -190
+   ],
+   "tip": [
+    405,
+    -214
+   ],
+   "note": "spear thrust at chest height (~210 px up = above a standing knight): only hits jumping players; ground threat must come from an ice-spike fx"
+  },
+  "summon_01": {
+   "hd": [
+    488,
+    437,
+    208,
+    5,
+    1.1,
+    784,
+    450
+   ],
+   "head": [
+    -24,
+    45,
+    -290,
+    -195
+   ],
+   "base": [
+    -215,
+    217,
+    -60,
+    0
+   ],
+   "body": [
+    -158,
+    163,
+    -250,
+    -60
+   ],
+   "castAt": [
+    150,
+    -380
+   ],
+   "note": "staff raised (telegraph: show floor circles for icicles)"
+  },
+  "summon_02": {
+   "hd": [
+    612,
+    348,
+    96,
+    94,
+    1.1,
+    784,
+    450
+   ],
+   "head": [
+    41,
+    111,
+    -306,
+    -211
+   ],
+   "base": [
+    -226,
+    295,
+    -60,
+    0
+   ],
+   "body": [
+    -188,
+    316,
+    -250,
+    -60
+   ],
+   "castAt": [
+    287,
+    -86
+   ],
+   "note": "staff slashes down: icicles land now (fx)"
+  },
+  "roar_01": {
+   "hd": [
+    568,
+    395,
+    168,
+    47,
+    1.1,
+    784,
+    450
+   ],
+   "head": [
+    9,
+    72,
+    -325,
+    -224
+   ],
+   "base": [
+    -251,
+    249,
+    -60,
+    0
+   ],
+   "body": [
+    -207,
+    187,
+    -250,
+    -60
+   ]
+  },
+  "roar_02": {
+   "hd": [
+    559,
+    402,
+    173,
+    40,
+    1.1,
+    784,
+    450
+   ],
+   "head": [
+    -14,
+    43,
+    -331,
+    -236
+   ],
+   "base": [
+    -248,
+    246,
+    -60,
+    0
+   ],
+   "body": [
+    -201,
+    198,
+    -250,
+    -60
+   ]
+  },
+  "roar_03": {
+   "hd": [
+    569,
+    373,
+    168,
+    68,
+    1.1,
+    784,
+    450
+   ],
+   "head": [
+    14,
+    89,
+    -350,
+    -236
+   ],
+   "base": [
+    -253,
+    250,
+    -60,
+    0
+   ],
+   "body": [
+    -216,
+    210,
+    -250,
+    -60
+   ],
+   "mouth": [
+    83,
+    -243
+   ],
+   "note": "freezing roar: radial knockback/freeze from the mouth, no damage box"
+  },
+  "roar_04": {
+   "hd": [
+    635,
+    383,
+    108,
+    59,
+    1.1,
+    784,
+    450
+   ],
+   "head": [
+    35,
+    111,
+    -343,
+    -230
+   ],
+   "base": [
+    -259,
+    257,
+    -60,
+    0
+   ],
+   "body": [
+    -233,
+    301,
+    -250,
+    -60
+   ]
+  },
+  "hurt_01": {
+   "hd": [
+    538,
+    405,
+    183,
+    37,
+    1.1,
+    784,
+    450
+   ],
+   "head": [
+    21,
+    91,
+    -350,
+    -255
+   ],
+   "base": [
+    -237,
+    234,
+    -60,
+    0
+   ],
+   "body": [
+    -202,
+    177,
+    -250,
+    -60
+   ]
+  },
+  "groggy_01": {
+   "hd": [
+    559,
+    300,
+    167,
+    142,
+    1.1,
+    784,
+    450
+   ],
+   "head": [
+    80,
+    156,
+    -262,
+    -180
+   ],
+   "base": [
+    -242,
+    251,
+    -60,
+    0
+   ],
+   "body": [
+    -178,
+    237,
+    -250,
+    -60
+   ],
+   "weak": [
+    80,
+    156,
+    -262,
+    -180
+   ]
+  },
+  "down_01": {
+   "hd": [
+    669,
+    194,
+    110,
+    249,
+    1.1,
+    784,
+    450
+   ],
+   "head": [
+    203,
+    265,
+    -85,
+    -20
+   ],
+   "base": [
+    -288,
+    302,
+    -60,
+    0
+   ],
+   "weak": [
+    150,
+    270,
+    -95,
+    0
+   ]
+  },
+  "shatter_01": {
+   "hd": [
+    563,
+    329,
+    171,
+    112,
+    1.1,
+    784,
+    450
+   ]
+  },
+  "stomp_01": {
+   "hd": [
+    520,
+    407,
+    192,
+    35,
+    1.1,
+    784,
+    450
+   ],
+   "head": [
+    20,
+    90,
+    -310,
+    -215
+   ],
+   "base": [
+    -228,
+    232,
+    -60,
+    0
+   ],
+   "body": [
+    -178,
+    168,
+    -250,
+    -60
+   ],
+   "note": "wind-up: staff raised overhead (telegraph ~700 ms; show a line of red floor marks in front)"
+  },
+  "stomp_02": {
+   "hd": [
+    546,
+    364,
+    163,
+    78,
+    1.1,
+    784,
+    450
+   ],
+   "head": [
+    50,
+    120,
+    -295,
+    -200
+   ],
+   "base": [
+    -224,
+    255,
+    -60,
+    0
+   ],
+   "body": [
+    -179,
+    175,
+    -250,
+    -60
+   ],
+   "impactAt": [
+    180,
+    0
+   ],
+   "note": "staff butt hits the floor here: spawn fx/spikes in a row forward from impactAt (ground threat, standing players must jump)"
+  },
+  "stomp_03": {
+   "hd": [
+    516,
+    335,
+    194,
+    107,
+    1.1,
+    784,
+    450
+   ],
+   "head": [
+    55,
+    125,
+    -300,
+    -205
+   ],
+   "base": [
+    -226,
+    231,
+    -60,
+    0
+   ],
+   "body": [
+    -181,
+    192,
+    -250,
+    -60
+   ],
+   "impactAt": [
+    180,
+    0
+   ],
+   "note": "hold while the spike row travels"
+  },
+  "stomp_04": {
+   "hd": [
+    522,
+    380,
+    191,
+    62,
+    1.1,
+    784,
+    450
+   ],
+   "head": [
+    -10,
+    62,
+    -350,
+    -255
+   ],
+   "base": [
+    -227,
+    233,
+    -60,
+    0
+   ],
+   "body": [
+    -159,
+    171,
+    -250,
+    -60
+   ]
+  },
+  "conjure_01": {
+   "hd": [
+    516,
+    391,
+    194,
+    51,
+    1.1,
+    784,
+    450
+   ],
+   "head": [
+    15,
+    90,
+    -350,
+    -255
+   ],
+   "base": [
+    -227,
+    232,
+    -60,
+    0
+   ],
+   "body": [
+    -177,
+    189,
+    -250,
+    -60
+   ],
+   "note": "telegraph: hand forward (show floor marks where the wall / minions appear)"
+  },
+  "conjure_02": {
+   "hd": [
+    553,
+    368,
+    157,
+    74,
+    1.1,
+    784,
+    450
+   ],
+   "head": [
+    30,
+    105,
+    -340,
+    -245
+   ],
+   "base": [
+    -226,
+    231,
+    -60,
+    0
+   ],
+   "body": [
+    -177,
+    258,
+    -250,
+    -60
+   ],
+   "castAt": [
+    233,
+    -239
+   ],
+   "note": "staff swept forward: spawn icewall / minions on the floor in front"
+  },
+  "teleport_01": {
+   "hd": [
+    519,
+    410,
+    192,
+    32,
+    1.1,
+    784,
+    450
+   ],
+   "head": [
+    15,
+    90,
+    -345,
+    -250
+   ],
+   "base": [
+    -229,
+    233,
+    -60,
+    0
+   ],
+   "body": [
+    -178,
+    167,
+    -250,
+    -60
+   ]
+  },
+  "teleport_02": {
+   "hd": [
+    521,
+    415,
+    192,
+    27,
+    1.1,
+    784,
+    450
+   ],
+   "note": "mostly a snow column: invulnerable, no hurtboxes"
+  },
+  "teleport_03": {
+   "hd": [
+    522,
+    415,
+    191,
+    27,
+    1.1,
+    784,
+    450
+   ],
+   "note": "reforming at the new spot: invulnerable, no hurtboxes"
+  },
+  "teleport_04": {
+   "hd": [
+    535,
+    409,
+    178,
+    33,
+    1.1,
+    784,
+    450
+   ],
+   "head": [
+    -5,
+    70,
+    -350,
+    -255
+   ],
+   "base": [
+    -228,
+    233,
+    -60,
+    0
+   ],
+   "body": [
+    -160,
+    171,
+    -250,
+    -60
+   ]
+  },
+  "death_01": {
+   "hd": [
+    515,
+    390,
+    195,
+    52,
+    1.1,
+    784,
+    450
+   ]
+  },
+  "death_02": {
+   "hd": [
+    515,
+    392,
+    195,
+    49,
+    1.1,
+    784,
+    450
+   ]
+  },
+  "death_03": {
+   "hd": [
+    516,
+    397,
+    194,
+    44,
+    1.1,
+    784,
+    450
+   ]
+  },
+  "death_04": {
+   "hd": [
+    525,
+    373,
+    182,
+    69,
+    1.1,
+    784,
+    450
+   ]
+  }
+ },
+ "sources": {
+  "sheets": {
+   "01_idle": "idle 1-4",
+   "02_cast": "cast 1-4",
+   "03_spear": "spear 1-2 + summon 1-2",
+   "04_roar": "roar 1-4",
+   "05_hurt": "hurt, groggy, down, shatter",
+   "06_fxA": "top half only: blizzard storm band A + B (tileable). bottom half unused (dirty bg, painterly)",
+   "07_spikes": "ground spike eruption 3 stages (small/medium/full) + frozen-floor decal",
+   "08_fxB": "ice spear projectile + hit spark / falling icicle + icicle shatter / frost shock ring / 8 death ice chunks",
+   "09_stomp": "staff slam 1-4 (wind-up, slam, hold, recover), queen only",
+   "10_summon": "conjure 1-2 + ice wall (+ unused front-facing minion, replaced by 13_minion)",
+   "11_teleport": "teleport 1-4 (dissolve to snow, column, reform, reappear)",
+   "12_death": "death 1-4 (hurt, freezing over, frozen cracked statue, shatter)",
+   "13_minion": "ice-spirit minion walk A, walk B, attack, death (drawn facing right, mirrored)"
+  },
+  "higgsfieldJobs": {
+   "01_idle": "92053b97-64b2-4210-a4f2-6701f3dd3d83",
+   "02_cast": "1644179f-5ad1-445f-a46f-e918d17783bf",
+   "03_spear": "f2169ddb-77fc-44e5-bfe0-a9e95e76dd33",
+   "04_roar": "1cbf7049-f085-40ee-9865-fe197e85b37e",
+   "05_hurt": "5cadfda9-b14c-4bac-a82e-7b9236495899",
+   "06_fxA": "a5eed71b-ae57-4b42-b3a6-89dd439ec0df",
+   "07_spikes": "7996f4ad-2467-4f30-abfc-5cafc49bf36c",
+   "08_fxB": "8a9e8791-0032-4966-898a-493b72aac769",
+   "09_stomp": "0ff50aab-a997-4b8b-8247-19581ff55f8d",
+   "10_summon": "3777e229-a908-41a4-b10d-1bf5ae571158",
+   "11_teleport": "5c590e7d-a5c4-4b7b-bc21-af15a803549b",
+   "12_death": "577a7428-3922-4607-b0c9-c022eb355858",
+   "13_minion": "fb116a8b-16f1-4f69-92d3-4fffbe52fe15"
+  },
+  "model": "gpt_image_2_5 medium 2k 16:9, refs = concept_v1_raw.png + idle crop recomposited on green",
+  "model2": "sheets 06-12 (2026-11-08): nano_banana_2_1 on Higgsfield, 16:9, refs = concept_v1_raw.png + sheets_raw/01_idle.png; 06 at 4k (3 cr), 07-12 at 2k (2 cr each)"
+ },
+ "preview": {
+  "arenaGroundY": 212,
+  "queenPivotX": 389,
+  "logical": [
+   559,
+   240
+  ],
+  "note": "preview placement on the ice arena, same as the fire dragon previews"
+ },
+ "fx": {
+  "note": "effects on their own canvases (1x png hard alpha, shared 64-colour palette; hd webp tight crop, same hd entry format, f = 1.1). pivot = 1x canvas px of the anchor: bottom = ground point (bottom centre), center = centre, tip = spear point (left end), tipdown = icicle point (bottom). Drawn facing LEFT where it matters (spear). Scale already matched to the queen 1x scale; multiply by actorScale 0.55 like the queen.",
+  "use": {
+   "blizzard_01/02": "cast_04 storm band: spawn at castAt and travel/tile forward, alternate 01/02 at ~8 fps (ends are cut straight for tiling; seam not perfect, overlap a few px)",
+   "spikes_01..03": "ground spike eruption (stomp row, also usable alone): 01 warning / 02 rising / 03 full (hitbox only on 02-03), then reverse to vanish",
+   "icefloor_01": "slippery floor decal (draw under actors, low alpha optional): slide/low friction zone",
+   "spear_01 + spark_01": "thrown ice spear projectile (fly left from the tip) + hit spark on impact",
+   "icicle_01 + icicleshatter_01": "icicle rain (summon_02): fall onto the red floor circles, shatter on landing",
+   "frostring_01": "freezing roar ring (roar_03 mouth) or stomp shockwave: scale up 0.4 -> 1.6 while fading",
+   "icewall_01": "summoned ice wall (blocks / pushes players), bottom pivot on the floor",
+   "chunk01..09": "death / wall-break debris: physics particles"
+  },
+  "frames": {
+   "blizzard_01": {
+    "group": "blizzard",
+    "canvas": [
+     304,
+     132
+    ],
+    "pivot": [
+     152,
+     66
+    ],
+    "pivotMode": "center",
+    "k": 0.23,
+    "hd": [
+     327,
+     138,
+     3,
+     4,
+     1.1,
+     334,
+     145
+    ]
+   },
+   "blizzard_02": {
+    "group": "blizzard",
+    "canvas": [
+     304,
+     132
+    ],
+    "pivot": [
+     152,
+     66
+    ],
+    "pivotMode": "center",
+    "k": 0.23,
+    "hd": [
+     329,
+     138,
+     3,
+     4,
+     1.1,
+     334,
+     145
+    ]
+   },
+   "spikes_01": {
+    "group": "spikes",
+    "canvas": [
+     172,
+     139
+    ],
+    "pivot": [
+     86,
+     135
+    ],
+    "pivotMode": "bottom",
+    "k": 0.184,
+    "hd": [
+     142,
+     49,
+     29,
+     102,
+     1.1,
+     189,
+     153
+    ]
+   },
+   "spikes_02": {
+    "group": "spikes",
+    "canvas": [
+     172,
+     139
+    ],
+    "pivot": [
+     86,
+     135
+    ],
+    "pivotMode": "bottom",
+    "k": 0.184,
+    "hd": [
+     149,
+     122,
+     21,
+     29,
+     1.1,
+     189,
+     153
+    ]
+   },
+   "spikes_03": {
+    "group": "spikes",
+    "canvas": [
+     172,
+     139
+    ],
+    "pivot": [
+     86,
+     135
+    ],
+    "pivotMode": "bottom",
+    "k": 0.184,
+    "hd": [
+     183,
+     147,
+     4,
+     4,
+     1.1,
+     189,
+     153
+    ]
+   },
+   "icefloor_01": {
+    "group": "icefloor",
+    "canvas": [
+     236,
+     68
+    ],
+    "pivot": [
+     118,
+     64
+    ],
+    "pivotMode": "bottom",
+    "k": 0.184,
+    "hd": [
+     254,
+     71,
+     4,
+     2,
+     1.1,
+     260,
+     75
+    ]
+   },
+   "spear_01": {
+    "group": "spear",
+    "canvas": [
+     237,
+     40
+    ],
+    "pivot": [
+     4,
+     20
+    ],
+    "pivotMode": "tip",
+    "k": 0.2,
+    "hd": [
+     255,
+     38,
+     3,
+     3,
+     1.1,
+     261,
+     44
+    ]
+   },
+   "spark_01": {
+    "group": "spark",
+    "canvas": [
+     82,
+     82
+    ],
+    "pivot": [
+     41,
+     41
+    ],
+    "pivotMode": "center",
+    "k": 0.2,
+    "hd": [
+     83,
+     82,
+     3,
+     4,
+     1.1,
+     90,
+     90
+    ]
+   },
+   "icicle_01": {
+    "group": "icicle",
+    "canvas": [
+     41,
+     120
+    ],
+    "pivot": [
+     20,
+     116
+    ],
+    "pivotMode": "tipdown",
+    "k": 0.2,
+    "hd": [
+     39,
+     128,
+     2,
+     2,
+     1.1,
+     45,
+     132
+    ]
+   },
+   "icicleshatter_01": {
+    "group": "icicleshatter",
+    "canvas": [
+     151,
+     56
+    ],
+    "pivot": [
+     74,
+     52
+    ],
+    "pivotMode": "bottom",
+    "k": 0.2,
+    "hd": [
+     161,
+     58,
+     3,
+     2,
+     1.1,
+     166,
+     62
+    ]
+   },
+   "frostring_01": {
+    "group": "frostring",
+    "canvas": [
+     252,
+     110
+    ],
+    "pivot": [
+     126,
+     55
+    ],
+    "pivotMode": "center",
+    "k": 0.2,
+    "hd": [
+     270,
+     117,
+     3,
+     2,
+     1.1,
+     277,
+     121
+    ]
+   },
+   "icewall_01": {
+    "group": "icewall",
+    "canvas": [
+     181,
+     128
+    ],
+    "pivot": [
+     91,
+     124
+    ],
+    "pivotMode": "bottom",
+    "k": 0.19,
+    "hd": [
+     193,
+     136,
+     4,
+     3,
+     1.1,
+     199,
+     141
+    ]
+   },
+   "chunk01_01": {
+    "group": "chunk01",
+    "canvas": [
+     82,
+     78
+    ],
+    "pivot": [
+     41,
+     39
+    ],
+    "pivotMode": "center",
+    "k": 0.2,
+    "hd": [
+     85,
+     80,
+     2,
+     3,
+     1.1,
+     90,
+     86
+    ]
+   },
+   "chunk02_01": {
+    "group": "chunk02",
+    "canvas": [
+     74,
+     70
+    ],
+    "pivot": [
+     37,
+     35
+    ],
+    "pivotMode": "center",
+    "k": 0.2,
+    "hd": [
+     77,
+     71,
+     2,
+     3,
+     1.1,
+     81,
+     77
+    ]
+   },
+   "chunk03_01": {
+    "group": "chunk03",
+    "canvas": [
+     66,
+     52
+    ],
+    "pivot": [
+     33,
+     26
+    ],
+    "pivotMode": "center",
+    "k": 0.2,
+    "hd": [
+     68,
+     52,
+     2,
+     3,
+     1.1,
+     73,
+     57
+    ]
+   },
+   "chunk04_01": {
+    "group": "chunk04",
+    "canvas": [
+     54,
+     66
+    ],
+    "pivot": [
+     27,
+     33
+    ],
+    "pivotMode": "center",
+    "k": 0.2,
+    "hd": [
+     53,
+     65,
+     3,
+     4,
+     1.1,
+     59,
+     73
+    ]
+   },
+   "chunk05_01": {
+    "group": "chunk05",
+    "canvas": [
+     58,
+     58
+    ],
+    "pivot": [
+     29,
+     29
+    ],
+    "pivotMode": "center",
+    "k": 0.2,
+    "hd": [
+     57,
+     58,
+     4,
+     2,
+     1.1,
+     64,
+     64
+    ]
+   },
+   "chunk06_01": {
+    "group": "chunk06",
+    "canvas": [
+     48,
+     48
+    ],
+    "pivot": [
+     24,
+     24
+    ],
+    "pivotMode": "center",
+    "k": 0.2,
+    "hd": [
+     46,
+     49,
+     3,
+     2,
+     1.1,
+     53,
+     53
+    ]
+   },
+   "chunk07_01": {
+    "group": "chunk07",
+    "canvas": [
+     28,
+     32
+    ],
+    "pivot": [
+     14,
+     16
+    ],
+    "pivotMode": "center",
+    "k": 0.2,
+    "hd": [
+     24,
+     31,
+     3,
+     2,
+     1.1,
+     31,
+     35
+    ]
+   },
+   "chunk08_01": {
+    "group": "chunk08",
+    "canvas": [
+     26,
+     32
+    ],
+    "pivot": [
+     13,
+     16
+    ],
+    "pivotMode": "center",
+    "k": 0.2,
+    "hd": [
+     22,
+     31,
+     4,
+     2,
+     1.1,
+     29,
+     35
+    ]
+   },
+   "chunk09_01": {
+    "group": "chunk09",
+    "canvas": [
+     24,
+     26
+    ],
+    "pivot": [
+     12,
+     13
+    ],
+    "pivotMode": "center",
+    "k": 0.2,
+    "hd": [
+     21,
+     24,
+     3,
+     2,
+     1.1,
+     26,
+     29
+    ]
+   }
+  }
+ },
+ "minion": {
+  "name": "얼음 정령 (ice-spirit minion)",
+  "note": "own canvas, faces LEFT (AI drew it facing right; mirrored in split2.py). pivot = feet (bottom centre). files frames/minion/<anim>.png, hd/minion/<anim>.webp. ~100 px tall at 1x (a bit shorter than a knight).",
+  "anims": {
+   "walk": {
+    "frames": [
+     "walk_01",
+     "walk_02"
+    ],
+    "fps": 5,
+    "loop": true
+   },
+   "attack": {
+    "frames": [
+     "walk_01",
+     "attack_01"
+    ],
+    "fps": 6,
+    "loop": false,
+    "active": [
+     2
+    ]
+   },
+   "death": {
+    "frames": [
+     "death_01"
+    ],
+    "fps": 3,
+    "loop": false,
+    "note": "then spawn chunk08/09 fx and fade"
+   }
+  },
+  "frames": {
+   "walk_01": {
+    "group": "minion",
+    "canvas": [
+     157,
+     106
+    ],
+    "pivot": [
+     84,
+     102
+    ],
+    "pivotMode": "bottom",
+    "k": 0.155,
+    "hd": [
+     108,
+     105,
+     40,
+     9,
+     1.1,
+     173,
+     117
+    ]
+   },
+   "walk_02": {
+    "group": "minion",
+    "canvas": [
+     157,
+     106
+    ],
+    "pivot": [
+     84,
+     102
+    ],
+    "pivotMode": "bottom",
+    "k": 0.155,
+    "hd": [
+     96,
+     106,
+     38,
+     7,
+     1.1,
+     173,
+     117
+    ]
+   },
+   "attack_01": {
+    "group": "minion",
+    "canvas": [
+     157,
+     106
+    ],
+    "pivot": [
+     84,
+     102
+    ],
+    "pivotMode": "bottom",
+    "k": 0.155,
+    "hd": [
+     160,
+     112,
+     3,
+     3,
+     1.1,
+     173,
+     117
+    ]
+   },
+   "death_01": {
+    "group": "minion",
+    "canvas": [
+     157,
+     106
+    ],
+    "pivot": [
+     84,
+     102
+    ],
+    "pivotMode": "bottom",
+    "k": 0.155,
+    "hd": [
+     155,
+     78,
+     14,
+     36,
+     1.1,
+     173,
+     117
+    ]
+   }
+  }
+ },
+ "integrationPlan": [
+  "Pattern pool (phase 1): blizzard cast, ice spear, icicle rain, staff stomp. Phase 2 after roar/enrage: add conjure (wall + 2 minions) and teleport; shorter telegraphs.",
+  "stomp: anim stomp; on stomp_02 spawn a row of spikes fx (spikes_01->03) forward from impactAt every ~45 px (world ~25) with ~80 ms delay per spike; hitbox = spike box 0..70 px up, only while 02/03; standing players must jump. Optional icefloor_01 patches left behind for 4 s (slide).",
+  "blizzard (existing cast anim): on cast_04 spawn blizzard band at castAt, travelling forward, alternating blizzard_01/02; damage + slow while inside.",
+  "spear (existing): on spear_02 optionally launch spear_01 as a projectile from tip; spark_01 on hit.",
+  "icicle rain (existing summon anim): red floor circles on summon_01, icicle_01 falls on summon_02, icicleshatter_01 on landing.",
+  "roar (existing): frostring_01 expanding from mouth, knockback/freeze.",
+  "conjure: on conjure_02 spawn icewall_01 in front (blocks melee for ~6 s, breakable, breaks into chunks) and/or 2 minions (frames/minion walk/attack/death) that walk to the players; minion HP low, contact/claw damage.",
+  "teleport: frames 2-3 invulnerable and hidden; move the queen to the other side of the arena (or same spot with a reposition of players) during frame 2; flip facing if the engine supports it (art faces LEFT).",
+  "death: play death 1-4 instead of hurt_01 -> shatter_01; on death_04 spawn chunk01-09 with physics, then fade out. No hurtboxes.",
+  "Boxes: new frames use the same box format/convention; teleport_02/03 and death_* have no hurtboxes."
+ ]
+}

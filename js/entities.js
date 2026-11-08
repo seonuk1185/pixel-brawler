@@ -715,7 +715,8 @@
     var back = anc && wImg && (anc.layer ? anc.layer === 'back' : wDef.layer === 'back');
     var k = (img && img._k) || 1;   // 그림 점 → 도트 (HD 0.5, 예전 도트 그림 1). 손 위치·기준점은 그림 점 단위
     // 각성 덧칠(2026-11-06 밤, main.js 가 look 을 넣음): 몸 둘레 빛 테두리(몸 뒤) → 다시 칠한 몸(갑옷 검붉게 · 로브 진보라)
-    var L = this.look, body = img && L && L.paint ? L.paint(img) : img;
+    //   2차 갈래 임시 옷(2026-11-08, config classes.<직업>.tier2.branches 의 look → def.look): 1차 옷 그림을 물들이고(tint) 빛 테두리(outline). 각성 덧칠이 있으면 그것 먼저
+    var L = this.look || def.look || null, body = img && L && L.paint ? L.paint(img) : img && L && L.tint ? tinted(img, L.tint) : img;
     if (img && L && L.outline) drawOutline(ctx, img, def.pivot, L.outline);
     var els = anc && wImg ? this.els : null;   // 무기 속성 오라(js/enchant.js)
     if (back) drawWeapon(ctx, def, anc, wDef, wImg, k, els);
@@ -766,6 +767,18 @@
     g.globalCompositeOperation = 'source-in'; g.fillStyle = color; g.fillRect(0, 0, c.width, c.height);
     if (window.Assets && Assets.copyMeta) Assets.copyMeta(img, c);
     if (silCache) { m = m || {}; m[color] = c; silCache.set(img, m); }
+    return c;
+  }
+  // 그림 한 장을 색으로 덧칠(T = { color, k = 세기 0~1 }): 몸 모양(투명 아닌 곳)에만 color 를 k 만큼 겹침. 그림 · 색마다 한 번만 만듦(2026-11-08 갈래 임시 옷)
+  var tintCache = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
+  function tinted(img, T) {
+    var key = T.color + '|' + T.k, m = tintCache && tintCache.get(img);
+    if (m && m[key]) return m[key];
+    var c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+    var g = c.getContext('2d'); g.drawImage(img, 0, 0);
+    g.globalCompositeOperation = 'source-atop'; g.globalAlpha = T.k == null ? 0.25 : T.k; g.fillStyle = T.color; g.fillRect(0, 0, c.width, c.height);
+    if (window.Assets && Assets.copyMeta) Assets.copyMeta(img, c);
+    if (tintCache) { m = m || {}; m[key] = c; tintCache.set(img, m); }
     return c;
   }
   function drawOutline(ctx, img, pv, O) {

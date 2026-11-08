@@ -417,6 +417,37 @@
                     flash: { color: '#ffffff', alpha: 0.75, ms: 260 }, slowMs: 420 };
   var JUDGE_BOLT = { dmg: 1.3, hitstop: 1.0, knock: 0.8, shake: 1.6, stunMs: 500, spark: 1.2, big: true, hitsDown: true, noJuggle: true,
                      flash: { color: '#e8ffff', alpha: 0.22, ms: 80 } };
+  // ---------- 2차 전직 갈래 B (2026-11-08): 마검사(기사) · 흑마법사(법사). 효과 = 전부 우리 코드(skills.js 「갈래 B」) ----------
+  //   거리 값은 대마법사 · 성기사 새 기술처럼 화면 도트(scaleActors 가 안 건드림. 단 차원 베기 move.dist 는 돌진베기처럼 줄어듦)
+  //   데미지 = 같은 칸(Lv)의 갈래 A 기술과 비슷하게 맞춤(아래 「합」은 한 적이 다 맞을 때)
+  // 마력 검기(마검사 Lv25 ↔ 칼날 폭풍 약 5.7): 보라 검기 3줄기(위아래로 조금씩 비켜 남) x 1.9 = 5.7. 꿰뚫음, 적마다 줄기마다 한 번
+  var ARCW_HIT = { dmg: 1.9, hitstop: 0.55, knock: 0.9, shake: 1.0, spark: 1.2, big: true, hitY: -58, hitsDown: true };
+  // 마력 부여(마검사 Lv28, 늘 켜짐): 가끔 칼끝에서 터지는 작은 마력(둘레 적, 기술 Lv 마다 조금 셈)
+  var INFUSE_BURST = { dmg: 0.9, hitstop: 0.45, knock: 0.6, shake: 0.7, spark: 1.0, big: true, hitsDown: true, noRage: true, noJuggle: true };
+  // 차원 베기(마검사 Lv31 ↔ 성검 낙뢰 6.2): 지나가며 벰 0.9 + 그 자리 균열이 터짐 3.4 = 4.3 (터짐은 한 적에게 한 번만). 줄 위 적이 다 맞으므로 한 적 몫은 낙뢰보다 낮게(시험: 고블린 3마리 합 낙뢰 254 ↔ 처음 값 484 → 낮춤)
+  var RIFT_CUT = { dmg: 0.9, hitstop: 0.4, knock: 0.2, shake: 0.8, spark: 1.2, big: true, hitY: -56, hitsDown: true, noJuggle: true, noKnockdown: true };
+  var RIFT_BOOM = { dmg: 3.4, hitstop: 1.8, knock: 1.4, shake: 2.6, launch: 0.9, spark: 1.5, big: true, hitsDown: true,
+                    flash: { color: '#e0c0ff', alpha: 0.32, ms: 140 }, slowMs: 200 };
+  // 마검 소환(마검사 Lv35 ↔ 심판의 십자 5.6): 마력 검 6자루 = 0.95 x 5 + 마지막 1.7 = 6.45 (한 적에게 다 꽂힐 때, 적이 많으면 나눠 꽂힘 · 꽂힌 둘레 r 도 맞음)
+  var MSW_HIT = { dmg: 0.95, hitstop: 0.7, knock: 0.4, shake: 1.2, spark: 1.2, big: true, hitsDown: true, noJuggle: true, noRage: true };
+  var MSW_LAST = { dmg: 1.7, hitstop: 1.6, knock: 1.8, shake: 2.4, knockdown: true, spark: 1.5, big: true, hitsDown: true,
+                   flash: { color: '#e8d0ff', alpha: 0.35, ms: 150 }, slowMs: 200 };
+  // 마검 해방(마검사 Lv39 필살 ↔ 성스러운 돌격 약 7.7): 거대한 마력 검 내리침 6.6 + 갈라진 땅 마력 1.0 = 7.6
+  var UNL_HIT = { dmg: 6.6, hitstop: 2.6, knock: 2.4, shake: 4.4, knockdown: true, stunMs: 400, spark: 0.7, big: true, hitsDown: true,   // spark 2.0 → 0.7(2026-11-08 형님: 칼끝 큰 별 번쩍 뺌)
+                  flash: { color: '#f0e0ff', alpha: 0.7, ms: 240 }, slowMs: 400 };
+  var UNL_WAVE = { dmg: 1.0, hitstop: 0.6, knock: 0.6, shake: 1.4, spark: 1.1, big: true, hitsDown: true, noRage: true, noJuggle: true };
+  // 어둠의 구체(흑마법사 Lv25 ↔ 메테오 5.0): 지나가며 0.22초마다 0.45(닿은 동안 약 5번 = 2.25) + 끝 터짐 4.2 = 약 6.4 (메테오처럼 적을 겨누지 않고 끝 자리에서 터져서 길 위 적 몫을 크게)
+  var DORB_TICK = { dmg: 0.45, hitstop: 0.2, knock: 0.05, shake: 0.3, spark: 0.7, hitsDown: true, noRage: true, noJuggle: true, noMp: true };
+  var DORB_BOOM = { dmg: 4.2, hitstop: 2.0, knock: 2.2, shake: 3.0, knockdown: true, spark: 1.5, big: true, hitsDown: true,
+                    flash: { color: '#c080e0', alpha: 0.42, ms: 170 }, slowMs: 240 };
+  // 저주의 늪(흑마법사 Lv31 ↔ 불기둥 3.8): 0.32초마다 0.2 x 10번 = 2.0 + 늪 안 적은 모든 공격에 +15% 아프게 · 느려짐(늪 안 적이 다 맞으므로 한 적 몫은 낮게)
+  var SWAMP_TICK = { dmg: 0.2, hitstop: 0.15, knock: 0.02, shake: 0.25, spark: 0.6, hitsDown: true, noRage: true, noJuggle: true, noMp: true };
+  // 악령 회오리(흑마법사 Lv35 ↔ 빙결 폭풍 5.7, 2026-11-08 망령 소환을 바꿈): 화면 안 적마다 0.3초마다 0.9 (2.2초 동안 6번, 시험 실측) = 약 5.4 (Lv5 2.6초 = 7번 약 6.3). 판정 = 보이는 화면 전체
+  var SPIRIT_HIT = { dmg: 0.9, hitstop: 0.2, knock: 0.1, shake: 0.3, spark: 0.7, hitsDown: true, noRage: true, noJuggle: true };
+  // 심연의 문(흑마법사 Lv39 필살 ↔ 천둥 심판 9.0 + 둘레 번개): 빨아들이는 동안 0.3 x 4 + 터짐 5.0 = 6.2, 둘레 적 모두(한 적 몫은 심판보다 낮고 넓게)
+  var ABYSS_TICK = { dmg: 0.3, hitstop: 0.2, knock: 0.05, shake: 0.4, spark: 0.7, hitsDown: true, noRage: true, noJuggle: true };
+  var ABYSS_BOOM = { dmg: 5.0, hitstop: 2.6, knock: 3.0, shake: 4.4, knockdown: true, stunMs: 300, spark: 2.0, big: true, hitsDown: true,
+                     flash: { color: '#e0b0ff', alpha: 0.7, ms: 260 }, slowMs: 420 };
   var SKILLS = {
     knight: {
       // 돌진베기: 1~2장 동안 앞으로 약 120도트 미끄러지며 길 위의 적을 한 번씩 벤다(무적), 베는 장 다음 장에 「쾅」 멈춤
@@ -677,6 +708,70 @@
           placeholder: { anim: 'attack1', f: [0, 1, 1, 1, 1, 2, 3, 3], d: [110, 110, 110, 110, 110, 150, 140, 130] }
         }
       },
+      // ---- 마검사(2차 전직 갈래 B, 2026-11-08) : 효과 = 전부 우리 코드(skills.js 「갈래 B」) ----
+      // 마력 검기: 검기 날리기처럼 휘둘러(공격 그림) 2장부터 보라 검기 n 줄기를 gapMs 간격으로 날림(lanes = 줄기마다 위아래 비킴, 화면 도트)
+      //   awave = { frame, n, gapMs, x, y = 나오는 앞 거리 · 높이, lanes, speed, range, w · h = 검기 크기(판정 = w), depth, hit }
+      arcwave: {
+        name: '마력 검기', icon: '마', mp: 20, cooldownMs: 12000, damageStyle: 'skill_arcane', sfx: 'skWave',
+        desc: '(2차) 칼을 크게 휘둘러 보라색 마력 검기 세 줄기를 앞으로 날려요. 검기는 길 위의 적을 모두 꿰뚫어요(누운 적도 맞아요)',
+        lv5: { n: 4, say: '검기 3줄기 → 4줄기' },
+        darken: { ms: 600, alpha: 0.4 },
+        iframes: [0, 400],
+        awave: { frame: 2, n: 3, gapMs: 90, x: 26, y: -34, lanes: [0, -14, 14, -7], speed: 400, range: 330, w: 26, h: 62, depth: 20, hit: ARCW_HIT },
+        trail: { frames: [1, 3], everyMs: 35, lifeMs: 180, alpha: 0.38, color: '#c890ff' },
+        fx: [ { frame: 2, type: 'slash', x: 30, y: -62, rot: -8, sx: 1.5, sy: 1.3, tint: '#c890ff', ms: 220 } ],
+        placeholder: { anim: 'attack1', f: [0, 1, 3, 3, 3, 4], d: [80, 50, 130, 120, 110, 110] }
+      },
+      // 차원 베기: 돌진베기 동작으로 순식간에 앞으로(move) → 지나간 줄 위 적을 벰(cut) + 그 자리에 차원 균열 → delayMs 뒤 차례로(gapMs) 터짐(boom, 한 적에게 한 번)
+      //   rift = { depth = 베는 위아래 폭, delayMs, gapMs, r · rdepth = 균열 터짐 둘레, cut, boom }
+      rift: {
+        name: '차원 베기', icon: '차', mp: 30, cooldownMs: 18000, damageStyle: 'skill_arcane', motion: 'motion_dash', sfx: 'blink',
+        desc: '(2차) 눈 깜짝할 새 앞으로 순간 돌진하며 길 위의 적을 모두 베어요. 잠깐 뒤 벤 자리마다 보랏빛 차원 균열이 터져 크게 때려요(누운 적도 맞아요)',
+        lv5: { dist: 1.3, say: '돌진 거리 +30%' },
+        darken: { ms: 1000, alpha: 0.5 },
+        iframes: { frames: [0, 5] },
+        move: { frames: [1, 2], dist: 300 },
+        rift: { depth: 32, delayMs: 380, gapMs: 70, r: 44, rdepth: 34, cut: RIFT_CUT, boom: RIFT_BOOM },
+        trail: { frames: [1, 3], everyMs: 18, lifeMs: 260, alpha: 0.5, color: '#b46aff' },
+        fx: [ { frame: 0, type: 'dust' }, { frame: 3, type: 'slash', x: 20, y: -62, rot: 0, sx: 1.8, sy: 0.7, tint: '#c890ff', ms: 240 } ],
+        placeholder: { anim: 'attack1', f: [0, 1, 3, 3, 4, 4], d: [140, 70, 70, 90, 120, 160] },
+        female: { placeholder: { anim: 'attack1', f: [0, 1, 2, 2, 3, 3], d: [90, 60, 80, 70, 140, 120] } }
+      },
+      // 마검 소환: 성검 낙뢰처럼 칼을 하늘로 들면 머리 위에 마력 검 n 자루가 나타남(appearMs) → gapMs 마다 하나씩 가까운 적에게 날아가 꽂힘(flyMs).
+      //   swords = { frame, n, appearMs, gapMs, flyMs, aim, x = 적이 없을 때 앞 거리들, r · depth = 꽂히는 둘레, stayMs, hit, last }
+      msword: {
+        name: '마검 소환', icon: '소', mp: 34, cooldownMs: 16000, damageStyle: 'skill_arcane', sfx: 'charge',
+        desc: '(2차) 머리 위에 마력 검 여섯 자루를 불러내요. 검이 하나씩 차례로 날아가 가까운 적부터 꿰찔러요(적이 적으면 같은 적을 또 찔러요). 마지막 검은 적을 넘어뜨려요',
+        lv5: { n: 8, say: '마력 검 6자루 → 8자루' },
+        darken: { ms: 1500, alpha: 0.5 },
+        iframes: [0, 1000],
+        zoom: { k: 1.05, ms: 1200 },
+        swords: { frame: 1, n: 6, appearMs: 280, gapMs: 115, flyMs: 140, aim: { range: 300, depth: 80 }, x: [60, 100, 140, 180, 220, 260], r: 40, depth: 32, stayMs: 380,
+                  hit: MSW_HIT, last: MSW_LAST },
+        fx: [ { frame: 0, type: 'dust' }, { frame: 1, type: 'beam', x: 34, y: -128, ms: 900, color: '#d8b0ff' } ],
+        placeholder: { anims: ['attack3', 'attack2', 'attack2', 'attack2'], f: [0, 3, 3, 4], d: [140, 160, 820, 240] },
+        female: {
+          fx: [ { frame: 0, type: 'dust' }, { frame: 1, type: 'beam', x: 20, y: -132, ms: 900, color: '#d8b0ff' } ],
+          placeholder: { anims: ['jump', 'motion_dash', 'motion_dash', 'attack3'], f: [0, 2, 2, 5], d: [140, 160, 820, 240] }
+        }
+      },
+      // 마검 해방(필살, 2026-11-08 그림 바꿈): 칼을 머리 위로 들고 버티면(frame) 칼끝에 검은 기운이 모임 → strike 장에 내리침 → 칼끝 땅에서 검은 기운 덩어리가
+      //   travelMs 동안 앞으로 땅을 타고 부풀며 밀려감(앞머리가 지나가는 적에게 hit) → 흩어질 때(waveMs 뒤) 줄 위 적 모두 wave
+      //   cleave = { frame, strike, x = 내리치는 땅 시작(앞 거리), len = 길이, depth, h = 덩어리 가장 높은 키(그림, x0.78), w = (안 씀), travelMs, waveMs, hit, wave }
+      unleash: {
+        name: '마검 해방', icon: '해', mp: 32, cooldownMs: 16000, damageStyle: 'skill_arcane', sfx: 'charge',
+        desc: '(2차 필살) 칼에 마력을 한껏 모아 땅을 내리쳐요. 칼끝에서 검은 기운이 솟아 앞쪽 땅을 타고 점점 크게 부풀며 밀려가, 지나가는 적을 크게 때리고 흩어질 때 한 번 더 때려요(누운 적도 맞아요)',
+        lv5: { area: 1.25, say: '내리치는 범위 +25%' },
+        darken: { ms: 1700, alpha: 0.62 },
+        iframes: [0, 1300],
+        zoom: { k: 1.07, ms: 1300 },
+        cleave: { frame: 1, strike: 3, x: 16, len: 230, depth: 58, h: 200, w: 30, travelMs: 380, waveMs: 260, hit: UNL_HIT, wave: UNL_WAVE },
+        fx: [ { frame: 0, type: 'dust' }, { frame: 3, type: 'dust' } ],
+        placeholder: { anims: ['attack3', 'attack3', 'attack3', 'attack3', 'attack3', 'attack3'], f: [0, 2, 2, 3, 4, 5], d: [110, 260, 420, 70, 420, 180] },
+        female: {
+          placeholder: { anims: ['attack3', 'motion_dash', 'motion_dash', 'attack3', 'attack3', 'attack3'], f: [0, 3, 3, 2, 2, 0], d: [90, 260, 420, 70, 420, 180] }
+        }
+      },
       // 반격(늘 켜진 기술 counter)이 나갈 때 쓰는 되받아 베기 한 칼. 칸에 끼우는 기술이 아님(기술 책엔 「반격」만 보임).
       //   auto = 저절로 나감(마나·포만감 안 씀), keepDir = 방향 그대로(때린 적 쪽). cooldownMs = 다시 나갈 때까지(반격 Lv 마다 curve 로 줄어듦)
       counterSlash: {
@@ -885,6 +980,73 @@
           fx: [ { frame: 1, type: 'beam', x: 20, y: -128, ms: 700, color: '#bff8ff' } ],
           placeholder: { anim: 'attack3', f: [0, 1, 2, 2, 3, 4], d: [80, 210, 360, 70, 240, 160] }
         }
+      },
+      // ---- 흑마법사(2차 전직 갈래 B, 2026-11-08) : 효과 = 전부 우리 코드(skills.js 「갈래 B」) ----
+      // 어둠의 구체: 「앞으로 던지기」 동작(중력 구체와 같음)으로 느린 검은 구체 → dist 만큼 굴러가며 tickMs 마다 둘레(r, depth) 적을 깎음(살짝 느려짐) → 끝에서 크게 터짐(boom, br · bdepth)
+      darkorb: {
+        name: '어둠의 구체', icon: '구', mp: 30, cooldownMs: 16000, damageStyle: 'skill_dark', motion: 'motion_cast_forward', sfx: 'charge',
+        desc: '(2차) 느리게 나아가는 검은 구체를 앞으로 보내요. 구체가 지나가는 동안 닿은 적을 계속 깎고, 끝에서 크게 터져 둘레 적을 넘어뜨려요(누운 적도 맞아요)',
+        lv5: { area: 1.3, say: '구체 · 폭발 크기 +30%' },
+        darken: { ms: 700, alpha: 0.42 },
+        iframes: { frames: [0, 3] },
+        dorb: { frame: 3, x: 60, y: -36, speed: 85, dist: 220, orb: 14, r: 34, depth: 30, tickMs: 220, tick: DORB_TICK, br: 100, bdepth: 46, boom: DORB_BOOM },
+        fx: [ { frame: 3, type: 'spark', x: 127, y: -65, scale: 1.4, tint: '#a040c0' } ],
+        placeholder: { anim: 'attack3', f: [0, 1, 2, 3, 4, 5], d: [80, 90, 60, 150, 110, 110] },
+        female: {
+          dorb: { frame: 2, x: 44, y: -41, speed: 85, dist: 220, orb: 14, r: 34, depth: 30, tickMs: 220, tick: DORB_TICK, br: 100, bdepth: 46, boom: DORB_BOOM },
+          fx: [ { frame: 2, type: 'spark', x: 85, y: -75, scale: 1.4, tint: '#a040c0' } ],
+          placeholder: { anim: 'attack3', f: [0, 1, 2, 3, 4], d: [70, 90, 150, 140, 150] }
+        }
+      },
+      // 저주의 늪: 「하늘로 들기」 동작. 3장에 앞쪽 가까운 적 발밑(없으면 x 앞)에 늪 → ms 동안 tickMs 마다 작게(tick) + 늪 안 적 = 느려짐(slow 배) · 모든 공격 +curse(저주, 늪을 나가도 curseMs 동안)
+      //   swamp = { frame, x, aim, w = 가로 반지름, depth, ms, tickMs, tick, slow, curse, curseMs }
+      swamp: {
+        name: '저주의 늪', icon: '늪', mp: 18, cooldownMs: 9000, damageStyle: 'skill_dark', motion: 'motion_cast_sky', sfx: 'charge',
+        desc: '(2차) 앞쪽 땅에 검보라 저주의 늪을 펼쳐요. 늪 안의 적은 느려지고, 계속 피해를 입고, 모든 공격에 더 아프게 맞아요',
+        lv5: { area: 1.3, say: '늪 크기 +30%' },
+        darken: { ms: 800, alpha: 0.4 },
+        iframes: { frames: [0, 2] },
+        swamp: { frame: 3, x: 120, aim: { range: 230, depth: 60 }, w: 78, depth: 34, ms: 3200, tickMs: 320, tick: SWAMP_TICK, slow: 0.5, curse: 0.15, curseMs: 700 },
+        placeholder: { anim: 'attack2', f: [0, 1, 2, 3, 3, 3, 4], d: [80, 90, 60, 160, 160, 110, 100] },
+        female: {
+          placeholder: { anim: 'attack3', f: [0, 1, 2, 2, 2, 3, 4], d: [80, 90, 160, 160, 120, 80, 70] }
+        }
+      },
+      // 악령 회오리(2026-11-08 망령 소환을 바꿈, 기술 id 는 그대로 wraith = 배운 점수 그대로): 「하늘로 들기」 동작. 3장에 법사 발밑 검은 마법진(circle) →
+      //   검은 악령 n 마리가 화면 끝에서 몰려와 ms 동안 화면 전체를 크게 휘돎(배경 dim 만큼 어둡게). 보이는 화면 가로 전체 x 법사 줄 위아래 depth 안 적은
+      //   firstMs 뒤부터 적마다 hitMs 마다 hit 한 번. 각성 마력 폭주 = 끝에 한 번 더 휩쓺(hit x echoK)
+      //   spirits = { frame, n, ms, firstMs, hitMs, depth, hit, circle = 마법진 반지름, dim = 어둡기, echoK }
+      wraith: {
+        name: '악령 회오리', icon: '악', mp: 38, cooldownMs: 18000, damageStyle: 'skill_dark', motion: 'motion_cast_sky', sfx: 'charge',
+        desc: '(2차) 검은 악령 떼를 불러내 화면 전체를 휘감는 회오리를 일으켜요. 화면 안의 적은 몇 초 동안 악령에게 여러 번 맞아요(누운 적도 맞아요) — 몹 떼 사냥에 좋아요',
+        lv5: { n: 19, ms: 2600, say: '악령 13 → 19마리 · 회오리 +0.4초' },   // 2026-11-08 형님: 악령 5마리 줄임(데미지는 적마다 따로라 그대로)
+        darken: { ms: 900, alpha: 0.45 },
+        iframes: { frames: [0, 2] },
+        spirits: { frame: 3, n: 13, ms: 2200, firstMs: 250, hitMs: 300, depth: 100, hit: SPIRIT_HIT, circle: 46, dim: 0.3, echoK: 1.5 },
+        placeholder: { anim: 'attack2', f: [0, 1, 2, 3, 3, 3, 4], d: [80, 90, 60, 160, 160, 110, 100] },
+        female: {
+          placeholder: { anim: 'attack3', f: [0, 1, 2, 2, 2, 3, 4], d: [80, 90, 160, 160, 120, 80, 70] }
+        }
+      },
+      // 심연의 문(필살): 천둥 심판처럼 모았다가(1~2장 길게) 3장에 앞쪽(가까운 적 쪽, 없으면 x 앞)에 거대한 검은 문 → openMs 동안 열림 →
+      //   holdMs 동안 둘레(pullR, pullDepth) 잡몹을 세게 빨아들이며 tickMs 마다 작게 → 크게 터짐(boom, r · depth). 보스 · 중간보스는 안 끌림(데미지만)
+      abyss: {
+        name: '심연의 문', icon: '문', mp: 40, cooldownMs: 22000, damageStyle: 'skill_dark', motion: 'motion_cast_sky', sfx: 'charge',
+        motionMs: [110, 220, 380, 90, 260, 170],
+        desc: '(2차 필살) 앞쪽에 거대한 검은 문을 열어요. 문이 둘레의 적을 세게 빨아들인 뒤 크게 터져 모두 날려 버려요(보스 · 큰 적은 안 끌려와도 터짐에는 맞아요)',
+        lv5: { area: 1.25, say: '빨아들이는 범위 · 폭발 +25%' },
+        darken: { ms: 2300, alpha: 0.65 },
+        iframes: { frames: [0, 3] },
+        zoom: { k: 1.06, ms: 1500 },
+        abyss: { frame: 3, x: 150, aim: { range: 260, depth: 70 }, pullR: 220, pullDepth: 80, pullK: 5, openMs: 260, holdMs: 1300, tickMs: 320, tick: ABYSS_TICK,
+                 r: 120, depth: 60, h: 120, boom: ABYSS_BOOM },
+        fx: [ { frame: 1, type: 'beam', x: 30, y: -130, ms: 700, color: '#c060ff' } ],
+        placeholder: { anim: 'attack2', f: [0, 1, 2, 3, 3, 4], d: [110, 220, 380, 90, 260, 170] },
+        female: {
+          motionMs: [80, 210, 360, 70, 240, 160],
+          fx: [ { frame: 1, type: 'beam', x: 20, y: -128, ms: 700, color: '#c060ff' } ],
+          placeholder: { anim: 'attack3', f: [0, 1, 2, 2, 3, 4], d: [80, 210, 360, 70, 240, 160] }
+        }
       }
     }
   };
@@ -942,13 +1104,23 @@
       // tier: 2 = 2차 전직(config classes.<직업>.tier2, 기사 Lv25 = 성기사)을 한 뒤에만 열림 + 그 기술 Lv(unlock)가 돼야 함.
       //   전직할 때 공짜로 주는 Lv 없음(기술 점수로 배움). 2차 전 기술 창에는 자물쇠 + 「2차 LvN」
       //   칼날 폭풍(예전 Lv19) · 성검 낙뢰(예전 Lv23)를 1차에서 2차로 옮김
-      { id: 'storm', unlock: 25, tier: 2, short: '칼날 회오리를 앞으로 보내요' },   // 2026-11-06 사냥 기술(몹 떼를 끌어모아 쓸어 버림), 2026-11-08 Lv19 → 2차 Lv25
+      { id: 'storm', unlock: 25, tier: 2, branch: 'a', short: '칼날 회오리를 앞으로 보내요' },   // 2026-11-06 사냥 기술(몹 떼를 끌어모아 쓸어 버림), 2026-11-08 Lv19 → 2차 Lv25
       // passive.stat 'regen' = 1초마다 최대 체력의 val 만큼 체력이 참(늘). 켜져 있으면 몸 둘레에 옅은 금빛 기운
-      { id: 'aegis', unlock: 28, tier: 2, short: '체력이 천천히 차요', name: '신성 가호', icon: '가', desc: '성스러운 힘이 몸을 감싸 체력이 늘 조금씩 차요. 몸 둘레에 옅은 금빛 기운이 감돌아요',
+      { id: 'aegis', unlock: 28, tier: 2, branch: 'a', short: '체력이 천천히 차요', name: '신성 가호', icon: '가', desc: '성스러운 힘이 몸을 감싸 체력이 늘 조금씩 차요. 몸 둘레에 옅은 금빛 기운이 감돌아요',
         passive: { stat: 'regen', val: [0.004, 0.005, 0.006, 0.007, 0.008] } },
-      { id: 'holy', unlock: 31, tier: 2, short: '금빛 번개 칼을 내리꽂아요' },      // 2026-11-08 Lv23 → 2차 Lv31
-      { id: 'cross', unlock: 35, tier: 2, short: '땅의 십자에서 빛이 솟아요' },
-      { id: 'charge', unlock: 39, tier: 2, short: '금빛 방패로 돌진해 터뜨려요' }
+      { id: 'holy', unlock: 31, tier: 2, branch: 'a', short: '금빛 번개 칼을 내리꽂아요' },      // 2026-11-08 Lv23 → 2차 Lv31
+      { id: 'cross', unlock: 35, tier: 2, branch: 'a', short: '땅의 십자에서 빛이 솟아요' },
+      { id: 'charge', unlock: 39, tier: 2, branch: 'a', short: '금빛 방패로 돌진해 터뜨려요' },
+      // ---- 마검사(2차 전직 갈래 B, 2026-11-08) ----
+      // branch = 2차 전직 갈래(config classes.<직업>.tier2.branches 의 key). 고른 갈래의 기술만 기술 창에 보이고 배울 수 있음(고르기 전 = 둘 다 자물쇠)
+      //   passive.stat 'arcane' = 평타(콤보 · 달리며 · 점프 공격)에 마법 피해 +val, chance 확률로 칼끝에서 작은 마력이 터짐(icdMs 에 한 번, r · depth = 둘레, hit = INFUSE_BURST)
+      { id: 'arcwave', unlock: 25, tier: 2, branch: 'b', short: '보라 마력 검기 세 줄기를 날려요' },
+      { id: 'infuse', unlock: 28, tier: 2, branch: 'b', short: '평타에 마력이 실려요', name: '마력 부여', icon: '부',
+        desc: '칼에 마력을 실어 평타(콤보 · 달리며 · 점프 공격)가 마법 피해를 더 줘요. 가끔 칼끝에서 작은 마력이 터져 둘레 적까지 때려요',
+        passive: { stat: 'arcane', val: [0.1, 0.12, 0.14, 0.17, 0.2], chance: [0.18, 0.2, 0.22, 0.25, 0.3], icdMs: 450, r: 46, depth: 30, hit: INFUSE_BURST } },
+      { id: 'rift', unlock: 31, tier: 2, branch: 'b', short: '순간 돌진해 베고 균열이 터져요' },
+      { id: 'msword', unlock: 35, tier: 2, branch: 'b', short: '마력 검 여섯 자루가 차례로 꽂혀요' },
+      { id: 'unleash', unlock: 39, tier: 2, branch: 'b', short: '검은 기운이 땅을 타고 밀려가요' }
     ],
     // 2026-11-08 형님 승인: 법사도 기사처럼 다시 배치(아래 mage 순서 = 기술 창 순서) + 2차 전직 Lv25 대마법사(tier: 2)
     //   새 기술 원소 파편 · 중력 구체 · 마력 소용돌이(1차) / 원소 연쇄 · 빙결 폭풍 · 천둥 심판(2차) → 법사 17개(쓰는 기술 10 + 늘 켜진 기술 7). 1차 법사 = 원소 낙인(Lv24)까지
@@ -991,15 +1163,24 @@
       // ---- 대마법사(2차 전직, 2026-11-08 형님 승인) ----
       // tier: 2 = 2차 전직(classes.mage.tier2, Lv25 = 대마법사)을 한 뒤에만 열림(기사와 같음). 공짜 Lv 없음(기술 점수로 배움)
       //   메테오(예전 Lv15) · 불기둥(예전 Lv21)을 1차에서 2차로 옮김
-      { id: 'meteor', unlock: 25, tier: 2, short: '큰 운석을 떨어뜨려요' },        // 2026-11-08 Lv15 → 2차 Lv25
+      { id: 'meteor', unlock: 25, tier: 2, branch: 'a', short: '큰 운석을 떨어뜨려요' },        // 2026-11-08 Lv15 → 2차 Lv25
       // passive.stat 'echain' = 법사 마법으로 쓰러진 적이 그 자리에서 터져 둘레(r, 위아래 depth) 적을 때림(ECHAIN_HIT x val).
       //   터짐으로 쓰러진 적도 chain 번까지 또 터짐(무한 반복 없음, 짧은 시간에 터지는 수도 상한). 예전 아이디어 「마나 가호」는 마나 순환과 겹쳐 이걸로 바꿈
-      { id: 'echain', unlock: 28, tier: 2, short: '쓰러진 적이 터져 둘레를 때려요', name: '원소 연쇄', icon: '연',
+      { id: 'echain', unlock: 28, tier: 2, branch: 'a', short: '쓰러진 적이 터져 둘레를 때려요', name: '원소 연쇄', icon: '연',
         desc: '마법으로 쓰러뜨린 적이 그 자리에서 터져 둘레 적을 때려요. 터짐으로 쓰러진 적도 또 터져요(세 번까지) — 몹 떼가 줄줄이 터져요',
         passive: { stat: 'echain', val: [0.7, 0.85, 1.0, 1.15, 1.3], r: [62, 68, 74, 82, 92], depth: 36, chain: 3, hit: ECHAIN_HIT } },
-      { id: 'pillar', unlock: 31, tier: 2, short: '큰 불기둥이 솟아 태워요' },     // 2026-11-08 Lv21 → 2차 Lv31
-      { id: 'frost', unlock: 35, tier: 2, short: '앞쪽 넓게 얼음 폭풍을 일으켜요' },
-      { id: 'judgment', unlock: 39, tier: 2, short: '거대한 번개 기둥 한 방' }
+      { id: 'pillar', unlock: 31, tier: 2, branch: 'a', short: '큰 불기둥이 솟아 태워요' },     // 2026-11-08 Lv21 → 2차 Lv31
+      { id: 'frost', unlock: 35, tier: 2, branch: 'a', short: '앞쪽 넓게 얼음 폭풍을 일으켜요' },
+      { id: 'judgment', unlock: 39, tier: 2, branch: 'a', short: '거대한 번개 기둥 한 방' },
+      // ---- 흑마법사(2차 전직 갈래 B, 2026-11-08) ----
+      //   passive.stat 'leech' = 법사 마법으로 준 피해 x val 만큼 체력이 참(1초에 최대 체력 x capS 까지). 적 → 법사로 붉은 기운이 빨려 듦
+      { id: 'darkorb', unlock: 25, tier: 2, branch: 'b', short: '검은 구체가 지나가며 깎고 터져요' },
+      { id: 'leech', unlock: 28, tier: 2, branch: 'b', short: '마법 피해 일부만큼 체력이 차요', name: '생명 흡수', icon: '흡',
+        desc: '마법으로 적에게 준 피해의 일부만큼 체력이 차요. 붉은 기운이 적에게서 법사에게 빨려 들어와요(1초에 최대 체력의 몇 %까지만)',
+        passive: { stat: 'leech', val: [0.03, 0.035, 0.04, 0.045, 0.05], capS: [0.03, 0.035, 0.04, 0.045, 0.05] } },
+      { id: 'swamp', unlock: 31, tier: 2, branch: 'b', short: '늪 안 적이 느려지고 더 아파요' },
+      { id: 'wraith', unlock: 35, tier: 2, branch: 'b', short: '악령 떼가 화면 전체를 휩쓸어요' },
+      { id: 'abyss', unlock: 39, tier: 2, branch: 'b', short: '검은 문이 빨아들이고 터져요' }
     ]
   };
 
@@ -1508,10 +1689,26 @@
     classes: {
       novice: { label: '견습(맨손)', weapon: 'fist',  moves: 'fist' },
       // tier2 = 2차 옷(2026-11-07, 2026-11-08 기사 Lv30 → 25 = 성기사 전직 · 2차 기술도 이 Lv 부터): 레벨이 lv 이상이면 outfit 대신 이 옷(characters 의 「옷_성별」, 그 성별 그림이 없으면 1차 옷 그대로). 그림만 바뀜
-      knight: { label: '기사(검)',   weapon: 'sword', moves: 'sword', outfit: 'knight', tier2: { lv: 25, outfit: 'knight_t2', name: '성기사' } },
+      // 2차 전직 갈래(2026-11-08 형님): tier2.branches = Lv25 에 둘 중 하나를 고름(저장칸 tier2Branch, 한 번 고르면 못 바꿈). 갈래마다
+      //   key = 'a' / 'b'(기술 책 SKILL_TREE 의 branch 와 같은 값), name = 2차 이름, outfit = 2차 옷(characters 의 「옷_성별」), desc = 고르기 카드 설명,
+      //   look = 그 옷 그림이 아직 없을 때 임시: base(1차 옷)를 코드로 물들이고(tint = 색 · k = 세기) 몸 둘레 빛 테두리(outline) → 아래 addSkillArt 가 「옷_성별」을 만들어 줌.
+      //     진짜 그림이 오면 characters 에 outfit_성별(예: knight_t2b_male)을 넣기만 하면 그 그림을 씀(look 은 무시됨)
+      //   tier2.outfit · name = 예전 값(갈래 a 와 같음, 갈래가 없는 직업도 이것만 있으면 됨)
+      //   앞으로 궁수(저격수 / 레인저) · 암살자(그림자 무사 / 독술사)도 여기 branches + SKILL_TREE 의 branch 만 적으면 됨(코드 그대로)
+      knight: { label: '기사(검)',   weapon: 'sword', moves: 'sword', outfit: 'knight', tier2: { lv: 25, outfit: 'knight_t2', name: '성기사',
+                branches: [
+                  { key: 'a', name: '성기사', outfit: 'knight_t2', desc: '성스러운 금빛 힘. 회오리 · 번개 칼 · 빛의 십자로 넓게 쓸고, 체력이 저절로 차요' },
+                  { key: 'b', name: '마검사', outfit: 'knight_t2b', desc: '칼에 마력을 실은 보라빛 검사. 검기 · 순간 돌진 · 마력 검으로 몰아치고, 평타가 마법으로 세져요',
+                    look: { base: 'knight', tint: '#8a3aff', k: 0.2, outline: { color: '#b46aff', alpha: 0.55, glow: true } } }
+                ] } },
       // 법사: 무기가 성별마다 다름(남 지팡이 staff / 여 짧은 지팡이 wand)
-      //   법사 2차(2026-11-08) = Lv25 대마법사: 남 = mage_t2_male, 여 = mage_t2_female
-      mage:   { label: '법사(지팡이)', weapon: { male: 'staff', female: 'wand' }, moves: 'magic', outfit: 'mage', tier2: { lv: 25, outfit: 'mage_t2', name: '대마법사' } }
+      //   법사 2차(2026-11-08) = Lv25 대마법사: 남 = mage_t2_male, 여 = mage_t2_female / 갈래 b 흑마법사 = 그림이 올 때까지 법사 옷을 어둡게 + 검보라 빛
+      mage:   { label: '법사(지팡이)', weapon: { male: 'staff', female: 'wand' }, moves: 'magic', outfit: 'mage', tier2: { lv: 25, outfit: 'mage_t2', name: '대마법사',
+                branches: [
+                  { key: 'a', name: '대마법사', outfit: 'mage_t2', desc: '불 · 얼음 · 번개를 다루는 대마법사. 운석 · 불기둥 · 얼음 폭풍 · 천둥으로 화면을 덮어요' },
+                  { key: 'b', name: '흑마법사', outfit: 'mage_t2b', desc: '어둠과 저주의 마법사. 구체 · 늪 · 악령 회오리 · 검은 문으로 적을 깎고, 준 피해로 체력을 빨아들여요',
+                    look: { base: 'mage', tint: '#1a0626', k: 0.38, outline: { color: '#8a2ad0', alpha: 0.6, glow: true } } }
+                ] } }
       // , axe: { label: '도끼', weapon: 'axe', moves: 'sword' }
     },
     defaultClass: 'novice',
@@ -1584,7 +1781,8 @@
       end: { r: 170, depth: 70, dmg: 4 },
       knight: { name: '광전사', color: '#ff3a1a', glow: '#ff8a3a', atkSpd: 0.25, spdCap: 1.5, lifesteal: 0.05,
                 look: { hue: -18, sat: 1.25, bright: 0.72, color: '#8a0a0a', colorK: 0.38 } },
-      mage:   { name: '마력 폭주', color: '#b46aff', glow: '#5ae6ff', echoMs: { fireball: 160, ice: 240, bolt: 200, meteor: 260, rise: 190, pillar: 200, gravity: 220, frost: 320, judgment: 300 },   // 2026-11-08 + 불기둥 · 중력 구체(한 번 더 터짐) · 빙결 폭풍(한 번 더 깨짐) · 천둥 심판(다음 적에게 한 번 더, 60%)
+      mage:   { name: '마력 폭주', color: '#b46aff', glow: '#5ae6ff', echoMs: { fireball: 160, ice: 240, bolt: 200, meteor: 260, rise: 190, pillar: 200, gravity: 220, frost: 320, judgment: 300, darkorb: 240, abyss: 320, wraith: 260 },   // 2026-11-08 흑마법사: 어둠의 구체 · 심연의 문 = 한 번 더 터짐(60%), 악령 회오리 = 끝에 한 번 더 휩쓺
+                  // 2026-11-08 + 불기둥 · 중력 구체(한 번 더 터짐) · 빙결 폭풍(한 번 더 깨짐) · 천둥 심판(다음 적에게 한 번 더, 60%)
                 look: { hue: 12, sat: 1.35, bright: 0.72, color: '#3a0a6a', colorK: 0.3 } },
       novice: { name: '각성', color: '#ffd23f', glow: '#fff2a0' }
     },
@@ -1624,7 +1822,8 @@
       flashy: { hitBits: 7, glow: 0.55, flashMul: 1.3,
                 cols: { skill_knight: ['#ffffff', '#cfe8ff', '#8fc4ff'], skill_fire: ['#fff4d0', '#ffb040', '#ff5a1e'], skill_bolt: ['#ffffff', '#fff6a0', '#5ae6ff'],
                         skill_ice: ['#ffffff', '#d8f8ff', '#7fe0ff'], skill_earth: ['#ffffff', '#ead8ff', '#b892ff'],
-                        skill_holy: ['#ffffff', '#fff6c8', '#ffd23f'], skill_arcane: ['#ffffff', '#e8d0ff', '#8ff0ff'] } }
+                        skill_holy: ['#ffffff', '#fff6c8', '#ffd23f'], skill_arcane: ['#ffffff', '#e8d0ff', '#8ff0ff'],
+                        skill_dark: ['#ffd8f4', '#c060d0', '#6a1a8a'] } }   // skill_dark = 흑마법사(2026-11-08)
     },
 
     // ---------- 사냥 손맛 (2026-11-07, 형님 「우리 게임 = 사냥 중심, 몹 떼를 화려하게 쓸어버리는 맛, 던파처럼 화려한 연출」) ----------
@@ -1699,6 +1898,9 @@
                       pop: { top: '#ffffff', bottom: '#fff6c8' } },
       skill_arcane: { font: 'giant', scale: 1, bold: true, zoom: 1.2, top: '#ffffff', bottom: '#c890ff', outline: '#24083e', shadow: 'rgba(16,6,30,0.45)',
                       pop: { top: '#ffffff', bottom: '#e8d0ff' } },
+      // 흑마법사(2026-11-08): 연분홍 → 검붉은 보라
+      skill_dark:   { font: 'giant', scale: 1, bold: true, zoom: 1.2, top: '#ffe0f4', bottom: '#b03ad0', outline: '#1a0420', shadow: 'rgba(16,4,20,0.5)',
+                      pop: { top: '#ffffff', bottom: '#f0b0ff' } },
       // 늘 켜진 기술 알림 글자(2026-11-06): 「투지!」(붉은 주황) · 「반격!」(금색) · 마나 방패가 막은 마나 「MP -12」(파랑)
       grit:    { font: 'large', scale: 1, bold: true, top: '#ffe0c8', bottom: '#ff5a2a', outline: '#4a0e04', shadow: 'rgba(30,6,4,0.4)',
                  pop: { top: '#ffffff', bottom: '#ffb080' } },
@@ -3624,7 +3826,49 @@
       //   웨이브 1~5 그 속성 몹 큰 무리 + 대장 → 「OO 수호자」(champ: L = 누구 · amp = 능력 강화). 레이드 보스가 생기면 boss 를 넣으면 됨
       //   amp = 그 속성 능력(elMobs.els)을 이 값으로 덮어씀: 얼음 = 걸으면 빙결 장판 · 번개 = 돌진 자주 · 세게 · 독 = 웅덩이 자주 · 크게 /
       //         바람 = 돌풍 자주 · 멀리 · 세게 · 어둠 = 체력 빨기 2배 · 자주 흐려짐 · 빛 = 빛 퍼짐 자주 · 넓게 · 보호막 길게(self: false = 자기는 안 고침, 둘레 몹만) + 심판의 빛(dmg: 금빛 예고 원 warnMs 뒤 둘레 데미지, 벗어나거나 뛰면 피함)
-      ice: dgTrial({ name: '얼음 동굴', desc: '속성 시련 · 얼음 수호자', el: 'ice', color: '#8fd8ff', bg: BG_DG_ICE, bgTop: '#070910',
+      // 얼음 동굴(2026-11-08): 웨이브 1~5(속성 시련 그대로) 뒤 레이드 보스 「빙결의 여왕」(js/raid.js Queen, 그림 · 부위 상자 = assets/raid/ice/queen.json, art\raid-ice-queen 에서 복사)
+      //   boss 가 있으면 수호자(champ) 대신 보스. 수치 단위 = 화염룡과 같음(거리 = 화면 도트, 부위 상자 = 1배 그림 점 x actorScale)
+      ice: dgTrial({ name: '얼음 동굴', desc: '레이드 · 빙결의 여왕', tag: null, el: 'ice', color: '#8fd8ff', bg: BG_DG_ICE, bgTop: '#070910',
+        boss: {
+          kind: 'queen', type: 'frostqueen', name: '빙결의 여왕', title: '얼음 동굴의 주인',
+          json: 'assets/raid/ice/queen.json', dir: 'assets/raid/ice/',   // 그림 = dir + 장 이름.png, 효과 = dir + fx/, 졸개 = dir + minion/ (HD = assets/hd/raid/ice/…webp)
+          hp: 6400, lineHp: 200, dmgMul: 1,
+          groundY: 212, viewK: 0.7, fromRight: 170,
+          wall: 175,            // 플레이어가 기준점(얼음 받침 가운데)에서 이만큼(1배 그림 점) 앞까지만 = 받침 앞쪽(평타가 몸 · 받침에 닿음)
+          front: 240,           // 「가까이」 기준(near): 기준점 앞 이만큼(1배)
+          // 부위: 머리 = 조금 더, 몸(드레스 · 몸통) = 그대로, 얼음 받침(서 있는 기사가 닿는 낮은 곳) = 절반, 약점(빛나는 손 · 쓰러진 머리) = 2배
+          parts: { head: 1.2, body: 1, base: 0.5, weak: 2 },
+          groggy: { max: 100, head: 7, weak: 10, decay: 1, ms: 4500 },
+          gap: [1000, 1600],
+          rageAt: 0.55, rage: { warnK: 0.82, gapK: 0.7, color: '#7fd8ff', cols: ['#ffffff', '#cfeeff', '#7fd8ff'] },   // 2단계(체력 55% 아래): 예고 x warnK · 쉬는 시간 x gapK
+          summon: { type: 'wolf', n: 0 },   // (main.js 가 그림을 미리 부르는 값. 여왕은 conjure 로 얼음 정령을 부름)
+          enter: { rumbleMs: 1000, formMs: 900, roarMs: 1400 },
+          roar: { warnMs: 700, r: 300, push: 110, chillMs: 1500 },   // 포효: 입에서 r 도트 안 = 밀어냄 + 얼어붙음(데미지 없음)
+          // 얼음 정령(conjure 로 2 마리): hp = 체력(여왕과 같은 배율), dmg = 할퀴기, 쓰러지면 경험치(단단한 잡몹)
+          minion: { name: '얼음 정령', hp: 75, speedX: 46, speedY: 30, cooldown: [1300, 2100], dmg: [7, 9] },
+          pats: {
+            // 눈보라(cast, 2026-11-08 형님 3 · 4차): 손이 빛남(약점) → 팔 듦(예고 = 바닥 빨강) → 눈 그림은 화면 전체. 걷는 길 거의 전부가 위험,
+            //   위 또는 아래 끝(매번 무작위) safe 도트 띠(≈ 한 줄)만 안전(점프로는 못 피함). tickMs 마다 그 띠 밖이면 맞음 + 얼어붙음(chillMs)
+            //   그림(코드로 그림): feather = 안전 띠 경계 빨강이 흐려지는 폭(도트), haze = 흰 안개 진하기, wind = 바람 속도(도트/초), flakes = 눈송이 수, puffs = 안개 뭉치 수, wisps = 바람결 곡선 수
+            blizzard: { weight: 3, warnMs: 1050, fireMs: 1400, tickMs: 200, dmg: [7, 9], flinchMs: 160, knock: 6, chillMs: 1600,
+                        safe: 20, feather: 10, haze: 0.4, wind: 270, flakes: 560, puffs: 18, wisps: 26 },
+            // (얼음 창 던지기 spear = 2026-11-08 형님: 이상한 화살 같아서 뺌. 코드는 raid.js 에 남아 있음 — 여기 spear 값을 다시 넣으면 다시 나옴)
+            // 고드름 비(summon): 지팡이 듦(바닥 빨간 원) → 원마다 everyMs 씩 고드름이 fallMs 동안 떨어져 깨짐(점프로 못 피함). n = 1단계 수, n2 = 2단계 수, aimK = 플레이어를 노리는 비율
+            icicle:   { weight: 3, warnMs: 850, fallMs: 340, fallH: 170, everyMs: 120, n: 6, n2: 8, aimK: 0.5, radius: 20, depth: 10, dodgeZ: 99, dmg: [14, 18], knock: 10, flinchMs: 320, k: 0.7 },
+            // 지팡이 내려찍기(stomp): 지팡이 머리 위(예고 = 줄 빨간 자국) → 쾅 → 얼음 가시가 줄을 따라 gap 도트 · delayMs 씩 솟으며 왼쪽 끝까지(점프 dodgeZ 넘게 · 회피 · 줄 바꾸기로 피함)
+            //   life = 가시 하나 [예고 · 솟음 · 다 솟음 · 들어감] ms(솟음 · 다 솟음 동안만 맞음), hitW = 가시 하나 맞는 가로 반폭, k = 가시 그림 크기
+            stomp:    { weight: 3, near: 160, nearK: 1.6, warnMs: 750, holdMs: 700, gap: 24, delayMs: 70, life: [140, 90, 300, 180], hitW: 12, depth: 11, dodgeZ: 14, k: 0.42,
+                        dmg: [18, 24], heavy: true, knock: 14 },
+            // (2단계) 얼음 벽 + 정령(conjure): 예고 = 생길 자리 빨간 원 → 벽(받침 앞 dist 도트, hp · ms 뒤 저절로 깨짐, 길 · 마법을 막음, 때려서 부숨) + 정령 minions 마리(벽 앞 minionDx 간격)
+            conjure:  { weight: 3, phase2: true, warnMs: 800, wall: { dist: 58, hp: 240, ms: 6500 }, minions: 2, minionDx: 34 },
+            // (2단계) 순간이동(teleport, 2026-11-08 형님: 오른쪽에만 있으면 지루함): 플레이어 반대편(싸움터 오른쪽 ↔ 왼쪽, 왼쪽이면 그림 · 공격 방향 뒤집음)으로.
+            //   ms = [부서짐, 눈기둥(무적 · 사라짐) = 도착할 곳 눈 소용돌이 예고, 다시 모임(무적), 나타남] → 바로 내려찍기 또는 눈보라(예고 + followMs)
+            teleport: { weight: 2, phase2: true, near: 120, nearK: 2.2, warnMs: 300, ms: [300, 600, 380, 300], followMs: 220 }
+          },
+          drop: { el: 'ice', crys: [8, 11], stones: [5, 7], burstMs: 900 },
+          magnet: { r: 9999, depth: 9999, delayMs: 700, ms: 800, turns: 1.4, shrink: 0.45 },
+          deathMs: 3400
+        },
         champ: { L: ['yeti', '얼음 수호자', 'el_ice'], scale: 1.75, hp: 3200, dmgMul: 3.8, adds: { firstMs: 5000, everyMs: 8000, n: 5, max: 9 },
                  amp: { walk: { art: 'ice_puddle', every: 50, chance: 0.75, cd: 1500, ms: 4200, r: 24, depth: 9, chill: true, k: 1.05 },
                         death: { ground: { art: 'ice_puddle', ms: 6000, r: 40, depth: 14, chill: true, k: 1.6 } } } } }),
@@ -4080,8 +4324,9 @@
     //   slots = 기술 칸 수 [처음, moreLv[0] 부터, moreLv[1] 부터, …] (폰 = 공격 둘레 반달 동그라미, PC = 아래 막대 아래 줄 1~5)
     //     2026-11-06 밤 콤보: Lv10 에 3번째 칸(띄우기 기술 올려베기·땅 융기가 열리면서 바로 끼워짐, 2026-11-06 Lv9 → 10), Lv13 에 4번째 칸
     //     2026-11-07(형님 승인): Lv15 에 5번째 칸(대지 내려찍기·메테오가 열리는 Lv). 폰 = 5칸까지
+    //     2026-11-08 형님: 폰 = 7칸(6 · 7번 칸 = 반달 바깥 줄, PC 아래 막대 6 · 7번과 같은 칸). Lv15 에 5 → 7칸(slotsAllOpen 이면 전직하면 다 열림)
     //   pcSlots · pcLv = PC 아래 막대 위 줄(6~10번 칸): Lv15(5번째 칸과 같이)에 한꺼번에 열림 → PC 는 10칸.
-    //     1~5번 칸은 폰과 같은 Lv 에 열림. 칸 순서는 PC · 폰이 하나(폰은 앞 5칸만 보임). PC 는 회피도 칸에 끼울 수 있음(Shift 는 늘 회피)
+    //     1~5번 칸은 폰과 같은 Lv 에 열림. 칸 순서는 PC · 폰이 하나(폰은 앞 7칸만 보임, 2026-11-08). PC 는 회피도 칸에 끼울 수 있음(Shift 는 늘 회피)
     //   cancel = 캔슬(콤보, 2026-11-06 밤): 평타 1·2·3타는 판정 장에 들어선 뒤(이미 맞힌 뒤)부터 기술로 끊고 나감(fromActive).
     //     기술 끝무렵(그 기술의 마지막 판정·발사 + padMs 부터, 기술마다 chainFrom = 장 번호로 바꿀 수 있음)에 다른 기술로 이어짐.
     //     한 번 이어지는 동안 같은 기술은 한 번만 → 같은 기술로 되돌아가는 무한 반복 없음(쿨타임도 있음). 점프 착지 웅크림에서도 기술 나감
@@ -4096,7 +4341,7 @@
               // 2026-11-07 형님: 저절로 배우기 · 저절로 끼우기 없앰. 기술 점수 = 전직 때 firstPts(1) + 그 뒤 레벨마다 perLv(1).
               //   그 기술 Lv(unlock)가 되면 「배울 수 있음」 → 1점으로 배움(기술 Lv1) → 점수로 Lv5 까지. 늘 켜진 기술도 같음.
               //   처음 배운 쓰는 기술은 빈 칸이 있으면 그 칸에 끼움(배우기는 플레이어가 고른 것). 초기화 = 쓴 점수 전부 돌려받음(배운 것도 다 지움)
-              //   slotsAllOpen = 전직하면 기술 칸 전부 열림(폰 5 · PC 10). 견습은 그대로 잠김. 아래 slots · moreLv · pcLv 는 false 로 되돌릴 때 쓰는 값
+              //   slotsAllOpen = 전직하면 기술 칸 전부 열림(폰 7 · PC 10). 견습은 그대로 잠김. 아래 slots · moreLv · pcLv 는 false 로 되돌릴 때 쓰는 값
               // 2026-11-07 형님: 기술 무적 없앰 → 슈퍼아머(superArmor). 기술 쓰는 동안 맞으면 데미지는 그대로 받지만 움찔 · 밀림 · 넘어짐 · 잡힘 없이 기술이 끝까지 나감
               //   (무거운 보스 타도 데미지만). armorNoHitMs = 한 번 맞은 뒤 아주 잠깐 안 맞음(한 장면에 여러 번 겹쳐 맞지 않게). 완전 무적은 회피 · 각성만
               //   기술마다 적힌 iframes 는 남겨 둠(superArmor 를 false 로 하면 예전처럼 무적)
@@ -4106,11 +4351,11 @@
               //   전직 때 공짜 Lv1(기술 점수 안 씀, unlock Lv 무시) + 1번 칸. Lv2~5 는 보통처럼 점수. 초기화해도 Lv1 은 남음
               noviceSkill: 'nupper', basic: { knight: 'upper', mage: 'rise' },
               novice: SKILLS.novice,
-              tree: SKILL_TREE, perLv: 1, maxLv: 5, classLv: 7, slots: [2, 3, 4, 5], moreLv: [10, 13, 15], pcSlots: 10, pcLv: 15, noMpMs: 500,
+              tree: SKILL_TREE, perLv: 1, maxLv: 5, classLv: 7, slots: [2, 3, 4, 5, 7], moreLv: [10, 13, 15, 15], pcSlots: 10, pcLv: 15, noMpMs: 500,
               curve: { dmg: [1, 1.2, 1.4, 1.6, 1.85], cd: [1, 0.94, 0.88, 0.82, 0.75], mp: [1, 1.05, 1.1, 1.15, 1.2] },
               test: { pts: 24 },
-              botPlan: { knight: ['dash', 'upper', 'nimble', 'wave', 'mastery', 'spin', 'skin', 'slam', 'shards', 'thrust', 'pressure', 'grit', 'counter', 'storm', 'aegis', 'holy', 'cross', 'charge'],
-                         mage: ['fireball', 'rise', 'nimble', 'bolt', 'amp', 'ice', 'flow', 'blink', 'eshard', 'gravity', 'vortex', 'shield', 'brand', 'meteor', 'echain', 'pillar', 'frost', 'judgment'] } },   // 법사 다시 배치(2026-11-08)
+              botPlan: { knight: ['dash', 'upper', 'nimble', 'wave', 'mastery', 'spin', 'skin', 'slam', 'shards', 'thrust', 'pressure', 'grit', 'counter', 'storm', 'aegis', 'holy', 'cross', 'charge', 'arcwave', 'infuse', 'rift', 'msword', 'unleash'],
+                         mage: ['fireball', 'rise', 'nimble', 'bolt', 'amp', 'ice', 'flow', 'blink', 'eshard', 'gravity', 'vortex', 'shield', 'brand', 'meteor', 'echain', 'pillar', 'frost', 'judgment', 'darkorb', 'leech', 'swamp', 'wraith', 'abyss'] } },   // 2026-11-08 갈래 B 기술도(고른 갈래 것만 배워짐)   // 법사 다시 배치(2026-11-08)
 
     // ---------- 기술 효과 그림 (art\stage1\skills\fx 에서 복사 → assets/fx/skill/<이름>_01.png …, 크기·기준점은 fx.json) ----------
     // count = 장 수(0 = 그림 없음 → 기존 그림을 물들여 쓰거나 코드로 그림), fps = 1초에 장 수, pivot = 그림 속 기준점(원래 크기), loop = 반복
@@ -4207,6 +4452,27 @@
       });
       MT2F.motionAnchors = 'assets/chars/stage1/anchors_motions_mage_t2_female.json';
     }
+    // 2차 전직 갈래 임시 옷(2026-11-08, classes.<직업>.tier2.branches 의 look): 그 갈래 옷 그림(「옷_성별」)이 아직 없으면
+    //   1차 옷(look.base) 묶음을 그대로 빌려 쓰고 그릴 때 물들임 + 빛 테두리(entities.js Player.draw 의 def.look). 그림 · 손 위치 · 동작 = 1차 옷과 똑같음
+    //   anims 는 묶음마다 새로 복사(아래 scaleActors 가 걷기 보폭을 옷마다 한 번씩 줄이므로)
+    Object.keys(C.classes).forEach(function (ck) {
+      var T = C.classes[ck].tier2, BR = T && T.branches;
+      (BR || []).forEach(function (b) {
+        if (!b.look || !b.outfit) return;
+        ['male', 'female'].forEach(function (g) {
+          var key = b.outfit + '_' + g, base = C.art.characters[(b.look.base || C.classes[ck].outfit) + '_' + g];
+          if (C.art.characters[key] || !base) return;
+          var d = {}, k;
+          for (k in base) d[k] = base[k];
+          d.pivot = { x: base.pivot.x, y: base.pivot.y };
+          d.anims = {};
+          Object.keys(base.anims).forEach(function (n) { var a = {}, q; for (q in base.anims[n]) a[q] = base.anims[n][q]; d.anims[n] = a; });
+          d.look = { tint: { color: b.look.tint, k: b.look.k }, outline: b.look.outline || null };
+          d.lookOf = (b.look.base || C.classes[ck].outfit) + '_' + g;   // 빌린 1차 옷(참고용)
+          C.art.characters[key] = d;
+        });
+      });
+    });
   })(window.CFG);
 
   // ---------- 속성 시련 웨이브 펼치기(2026-11-07): trial 던전 = elMobs.dungeons[속성] 의 mobs · mids 를 wavePlan 웨이브로 ----------

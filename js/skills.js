@@ -124,7 +124,10 @@
     if (o.frost && o.frost.at == null) o.frost = cp(o.frost, { at: st(o.frost.frame) });
     if (o.crag && o.crag.at == null) o.crag = cp(o.crag, { at: st(o.crag.frame) });                                    // 빙산 솟구치기(2026-11-08)                               // 빙결 폭풍(대마법사, 2026-11-08)
     if (o.judge && o.judge.at == null) o.judge = cp(o.judge, { at: st(o.judge.frame), strikeAt: st(o.judge.strike) });  // 천둥 심판(대마법사, 2026-11-08)
-    if (o.tornado && o.tornado.at == null) o.tornado = cp(o.tornado, { at: st(o.tornado.frame) });                     // 칼날 폭풍 회오리(2026-11-07)                         // 성검 낙뢰(2차)
+    if (o.tornado && o.tornado.at == null) o.tornado = cp(o.tornado, { at: st(o.tornado.frame) });
+    // 2차 갈래 B(2026-11-08): 마력 검기 · 마검 소환 · 마검 해방 / 어둠의 구체 · 저주의 늪 · 악령 회오리 · 심연의 문
+    ['awave', 'swords', 'dorb', 'swamp', 'spirits', 'abyss'].forEach(function (k) { if (o[k] && o[k].at == null) o[k] = cp(o[k], { at: st(o[k].frame) }); });
+    if (o.cleave && o.cleave.at == null) o.cleave = cp(o.cleave, { at: st(o.cleave.frame), strikeAt: st(o.cleave.strike) });                     // 칼날 폭풍 회오리(2026-11-07)                         // 성검 낙뢰(2차)
     if (o.strikes && !Array.isArray(o.strikes.at)) {
       var t0 = st(o.strikes.frame), gap = o.strikes.gapMs || 120;
       o.strikes = cp(o.strikes, { at: o.strikes.x.map(function (x, k) { return t0 + k * gap; }) });
@@ -141,6 +144,8 @@
       if (o.tornado) mx(o.tornado.at);
       if (o.cross) mx(o.cross.at + o.cross.telegraphMs); if (o.charge) mx(o.charge.burst.at);   // 성기사(2026-11-08)
       if (o.grav) mx(o.grav.at); if (o.frost) mx(o.frost.at); if (o.crag) mx(o.crag.at); if (o.judge) mx(o.judge.strikeAt);   // 대마법사 · 법사 새 기술(2026-11-08)
+      if (o.awave) mx(o.awave.at + (o.awave.n - 1) * o.awave.gapMs); if (o.rift) mx(o.move.to + 80); if (o.swords) mx(o.swords.at + o.swords.appearMs);   // 갈래 B(2026-11-08)
+      if (o.cleave) mx(o.cleave.strikeAt + 120); if (o.dorb) mx(o.dorb.at); if (o.swamp) mx(o.swamp.at); if (o.spirits) mx(o.spirits.at); if (o.abyss) mx(o.abyss.at);
       if (o.quake) mx(o.quake.at); if (o.leap) mx(o.leap.at[1]); if (o.finale) mx(o.finale.at); if (o.strikes) mx(o.strikes.at[o.strikes.at.length - 1]);
       o.chainAt = o.chainFrom != null ? st(o.chainFrom) : Math.min(o.ms - 1, last + pad);
     }
@@ -336,7 +341,8 @@
     if (d.grav && !s.gravDone && t1 >= d.grav.at) { s.gravDone = true; castGrav(p, d, s); }           // 중력 구체(법사, 2026-11-08)
     if (d.frost && !s.frostDone && t1 >= d.frost.at) { s.frostDone = true; castFrost(p, d, s); }      // 빙결 폭풍(대마법사, 2026-11-08)
     if (d.crag && !s.cragDone && t1 >= d.crag.at) { s.cragDone = true; castCrags(p, d, s); }          // 빙산 솟구치기(2026-11-08)
-    if (d.judge) judgeStep(p, d, s, t0, t1);                                                                // 천둥 심판(대마법사, 2026-11-08)
+    if (d.judge) judgeStep(p, d, s, t0, t1);
+    branchAdvance(p, d, s, t0, t1);                                                                          // 2차 갈래 B 기술(2026-11-08)                                                                // 천둥 심판(대마법사, 2026-11-08)
     if (d.shot) {
       var nShot = 1 + ((s.L.lv5 && s.L.lv5.extra) || 0);
       while (s.shotDone < nShot && t1 >= d.shot.at + s.shotDone * (d.shot.gapMs || 150)) { castWave(p, d, s.shotDone); s.shotDone++; }
@@ -1075,7 +1081,7 @@
 
   // ========== 2차 기술 (2026-11-06, 형님 승인): 성검 낙뢰 · 순간이동 · 불기둥 + 늘 켜진 기술 투지 · 반격 · 마나 방패 · 원소 낙인 ==========
   // 효과는 전부 이 파일의 코드로 그림(남의 그림·코드 안 씀). 수치는 config SKILLS(holy·counterSlash / blink·pillar) · SKILL_TREE(passive)
-  var TEST = { counter: null };   // 시험용: counter = true 면 반격 늘 나감(GAME.test 에서)
+  var TEST = { counter: null, infuse: null };   // infuse = true 면 마력 부여 터짐 늘(2026-11-08)   // 시험용: counter = true 면 반격 늘 나감(GAME.test 에서)
 
   // 그 직업 기술 책의 늘 켜진 기술 값: { v = 지금 Lv 값, P = config passive, lv } (안 열렸으면 null)
   function pasOf(p, id) {
@@ -3037,6 +3043,1075 @@
     });
   }
 
+  // ======================================================================
+  // ---------- 2차 전직 갈래 B (2026-11-08): 마검사(기사) · 흑마법사(법사) — 효과는 전부 우리 코드 ----------
+  //   값 = config SKILLS.knight.arcwave · rift · msword · unleash / SKILLS.mage.darkorb · swamp · wraith · abyss,
+  //   늘 켜진 기술 = SKILL_TREE 의 infuse(stat 'arcane') · leech(stat 'leech'). 거리는 화면 도트(대마법사 기술과 같음)
+  //   기사 · 법사가 다른 걸 해도 이미 나간 검기 · 균열 · 마력 검 · 구체 · 늪 · 악령 회오리 · 문은 그대로 움직임
+  // ======================================================================
+  var ARCC = ['#ffffff', '#f0d8ff', '#c890ff', '#8a4ae0'];        // 마검사 보라
+  var DARKC = ['#ffd8f4', '#d070e0', '#8a2ab0', '#3a0a50'];       // 흑마법사 검보라
+  var BLOODC = ['#ffd0d0', '#ff5a6a', '#c01a3a', '#5a0a1a'];      // 생명 흡수 붉은 기운
+  var DARKST = { damageStyle: 'skill_dark' };
+  var awaves = [], riftMarks = [], riftLines = [], mswords = [], cleaves = [], dorbs = [], swamps = [], wraiths = [], abysses = [], leechFx = [], infuseQ = [];
+  var infuseT = 0, leechVisT = 0, leechWin = { t: 0, got: 0 };
+  function idOf(t) { return t.id || 'dummy'; }
+  function alive(t) { return !!t && (!t.alive || t.alive()); }
+
+  // ---- 마력 검기(마검사 Lv25): 보라 검기 n 줄기(gapMs 간격, 줄기마다 위아래로 조금씩 비킴) → 꿰뚫으며 날아감(줄기마다 적에게 한 번) ----
+  function awaveStep(p, d, s, t1) {
+    var A = d.awave, n = (s.L.lv5 && s.L.lv5.n) || A.n;
+    s.awN = s.awN || 0;
+    while (s.awN < n && t1 >= A.at + s.awN * A.gapMs) { castAwave(p, d, s, s.awN); s.awN++; }
+  }
+  function castAwave(p, d, s, i) {
+    var A = d.awave, k = s.area, lane = A.lanes[i % A.lanes.length] || 0;
+    var o = { x: p.x + p.dir * A.x, z: p.y + lane, y: A.y, dir: p.dir, t: 0, flown: 0, A: A, d: d, k: k, mul: s.mul, wk: p.weaponKey, lv: curLv, hit: {}, dead: false, deadT: 0, trailT: 0 };
+    awaves.push(o);
+    snd('skWave');
+    glow(o.x, o.z + o.y, 24 * k, '#c890ff', 180, 0.6);
+    FX.shake(CFG.juice.shakePx * 0.5, CFG.juice.shakeMs);
+  }
+  function awaveTick(dt) {
+    for (var i = awaves.length - 1; i >= 0; i--) {
+      var o = awaves[i], A = o.A;
+      o.t += dt;
+      if (o.dead) { if (o.t > o.deadT + 200) awaves.splice(i, 1); continue; }
+      var mv = A.speed * dt / 1000; o.x += o.dir * mv; o.flown += mv;
+      var W = A.w * o.k, D = A.depth * Math.sqrt(o.k), st = stOf(A.hit, o.d);
+      H.targets().forEach(function (t) {
+        if (!t || o.hit[idOf(t)] || !H.canHit(t, A.hit)) return;
+        var hb = t.hurtbox();
+        if (Math.abs(hb.z - o.z) > D || hb.x1 < o.x - W / 2 || hb.x0 > o.x + W / 2) return;
+        o.hit[idOf(t)] = true;
+        var hy = t.state === 'down' ? t.y - 10 * AS() : o.z + o.y;
+        atLv(o.lv, function () {
+          H.onHit(st, t, { dir: o.dir, wk: o.wk, x: o.x, y: hy, mul: o.mul });
+          debris(o.x, hy, t.y, 6, { cols: ARCC, glow: true, sp: 160, size: 1.4, ms: 280 });
+          glow(o.x, hy, 18 * o.k, '#d8b0ff', 150, 0.5);
+        });
+      });
+      o.trailT -= dt;
+      if (o.trailT <= 0) {
+        o.trailT = 40;
+        atLv(o.lv, function () { debris(o.x - o.dir * 8, o.z + o.y + (Math.random() * 2 - 1) * A.h * 0.3 * o.k, o.z, 1, { cols: ARCC, glow: true, sp: 50, size: 1.2, ms: 260, g: -40, spread: 1.4 }); });
+      }
+      if (o.flown >= A.range) {
+        o.dead = true; o.deadT = o.t;
+        atLv(o.lv, function () { glow(o.x, o.z + o.y, 24 * o.k, '#c890ff', 200, 0.5); debris(o.x, o.z + o.y, o.z, 8, { cols: ARCC, glow: true, sp: 120, size: 1.3, ms: 300, spread: 2 }); });
+      }
+    }
+  }
+  // 검기 그림: 앞으로 볼록한 보라 초승달(바깥 진보라 → 보라 → 흰 심) + 뒤로 끌리는 꼬리 빛 + 날 위 반짝이는 룬 점
+  function drawAwaves(ctx, camX) {
+    awaves.forEach(function (o) {
+      var A = o.A, a = o.dead ? Math.max(0, 1 - (o.t - o.deadT) / 200) : Math.min(1, o.t / 50), k = o.k, R = A.h * 0.5 * k;
+      if (a <= 0) return;
+      ctx.save(); ctx.translate(o.x - camX, o.z + o.y); ctx.scale(o.dir, 1); ctx.globalCompositeOperation = 'lighter';
+      var L = R * 2.4, tg = ctx.createLinearGradient(-L, 0, 0, 0);
+      tg.addColorStop(0, 'rgba(120,60,220,0)'); tg.addColorStop(1, 'rgba(200,150,255,' + (0.45 * a).toFixed(3) + ')');
+      ctx.fillStyle = tg; ctx.beginPath(); ctx.ellipse(-L / 2, 0, L / 2, R * 0.5, 0, 0, Math.PI * 2); ctx.fill();
+      var g = ctx.createRadialGradient(0, 0, 0, 0, 0, R * 1.2);
+      g.addColorStop(0, 'rgba(220,180,255,' + (0.5 * a).toFixed(3) + ')'); g.addColorStop(1, 'rgba(110,40,220,0)');
+      ctx.fillStyle = g; ctx.fillRect(-R * 1.2, -R * 1.2, R * 2.4, R * 2.4);
+      ctx.lineCap = 'round';
+      [['#6a2ad0', 9, 0.5], ['#b46aff', 5.5, 0.85], ['#f0d8ff', 2.6, 1], ['#ffffff', 1.2, 1]].forEach(function (S) {
+        ctx.globalAlpha = S[2] * a; ctx.strokeStyle = S[0]; ctx.lineWidth = S[1] * Math.sqrt(k);
+        ctx.beginPath(); ctx.arc(-R * 0.55, 0, R, -1.15, 1.15); ctx.stroke();
+      });
+      ctx.globalAlpha = a; ctx.fillStyle = '#ffffff';
+      for (var j = 0; j < 3; j++) { var an = -0.8 + j * 0.8 + Math.sin(o.t / 90 + j) * 0.12; ctx.fillRect(-R * 0.55 + Math.cos(an) * R * 0.8 - 1, Math.sin(an) * R * 0.8 - 1, 2, 2); }
+      ctx.restore();
+    });
+  }
+
+  // ---- 마력 부여(마검사 Lv28, 늘 켜짐) ----
+  // infuseMul = 평타(기술 아님 · 몸으로 때린 타)면 데미지 x (1 + val) (main.js onHit) / infuseHit = 맞은 곳 보라 불티 + chance 로 칼끝 마력 터짐(icdMs 에 한 번, 조금 뒤 터짐)
+  function infuseMul(p, st, src) { if (!st || st.damageStyle || src) return 1; var q = pasOf(p, 'infuse'); return q ? 1 + q.v : 1; }
+  function infuseHit(p, t, st, x, y) {
+    if (!st || st.damageStyle || !t) return;
+    var q = pasOf(p, 'infuse'); if (!q) return;
+    glow(x, y, 12 * AS() / 0.55, '#c890ff', 120, 0.5);
+    debris(x, y, t.y, 3, { cols: ARCC, glow: true, sp: 120, size: 1.1, ms: 220 });
+    if (infuseT > 0) return;
+    var ch = q.P.chance ? q.P.chance[q.lv - 1] : 0.2;
+    if (!(TEST.infuse != null ? TEST.infuse : Math.random() < ch)) return;
+    infuseT = q.P.icdMs || 450;
+    infuseQ.push({ t: 40, x: x, y: y, z: t.y, P: q.P, lv: q.lv, wk: p.weaponKey, px: p.x });
+  }
+  function infuseBoom(o) {
+    var P = o.P, R = P.r, D = P.depth, h = P.hit, st = stOf(h, ARC), mul = 1 + 0.12 * (o.lv - 1);
+    snd('blink', { v: 0.5 });
+    glow(o.x, o.y, R * 0.8, '#b46aff', 220, 0.75); glow(o.x, o.y, R * 0.35, '#ffffff', 140, 0.7);
+    wave(o.x, o.z, R, { flat: 0.3, w: 3, ms: 260, color: '#f0d8ff', glow: '#8a4ae0', ground: true, noMax: true });
+    wave(o.x, o.y, R * 0.7, { flat: 0.85, w: 2, ms: 220, color: '#ffffff', glow: '#b46aff', noMax: true });
+    debris(o.x, o.y, o.z, 10, { cols: ARCC, glow: true, sp: 200, size: 1.4, ms: 340, spread: 2.6 });
+    FX.shake(CFG.juice.shakePx * 0.8, CFG.juice.shakeMs);
+    H.targets().forEach(function (e) {
+      if (!e || !H.canHit(e, h) || !inBox(e, o.x, o.z, R, D)) return;
+      var dir = e.x >= o.px ? 1 : -1;
+      H.onHit(st, e, { dir: dir, wk: o.wk, x: e.x - dir * 4 * AS(), y: e.y - 44 * AS(), mul: mul });
+    });
+  }
+
+  // ---- 차원 베기(마검사 Lv31): 돌진(move) 동안 지나간 줄 위 적을 벰 + 그 자리에 균열 → delayMs 뒤 차례로 터짐(터짐은 한 적에게 한 번) ----
+  function riftStep(p, d, s, t0, t1) {
+    var R = d.rift, m = d.move;
+    if (s.rx0 == null && t1 >= m.from) {
+      s.rx0 = p.x; s.rHit = {}; s.rN = 0; s.rSet = {};
+      s.rLine = { x0: p.x, x1: p.x, z: p.y, t: 0, life: 560, k: s.area };
+      riftLines.push(s.rLine);
+      glow(p.x, p.y - 40 * AS(), 30 * AS() / 0.55, '#b46aff', 200, 0.7);
+      debris(p.x, p.y - 40 * AS(), p.y, 10, { cols: ARCC, glow: true, sp: 180, size: 1.4, ms: 300, spread: 2.6 });
+    }
+    if (s.rx0 == null || t0 > m.to + 40) return;
+    s.rLine.x1 = p.x; s.rLine.t = 0;
+    var lo = Math.min(s.rx0, p.x), hi = Math.max(s.rx0, p.x), st = stOf(R.cut, d);
+    H.targets().forEach(function (t) {
+      if (!t || s.rHit[idOf(t)] || !H.canHit(t, R.cut)) return;
+      var hb = t.hurtbox();
+      if (Math.abs(hb.z - p.y) > R.depth * s.area || hb.x1 < lo || hb.x0 > hi) return;
+      s.rHit[idOf(t)] = true;
+      H.onHit(st, t, { dir: p.dir, wk: p.weaponKey, x: t.x, y: t.y - 46 * AS(), mul: s.mul });
+      riftMarks.push({ x: t.x, z: t.y, t: -(R.delayMs + s.rN * R.gapMs), R: R, d: d, k: s.area, mul: s.mul, wk: p.weaponKey, dir: p.dir, lv: curLv, set: s.rSet,
+                       boom: false, seed: Math.random() * 100, h: (t.T ? t.T.height : 60 * AS()) });
+      s.rN++;
+      glow(t.x, t.y - 40 * AS(), 20 * AS() / 0.55, '#f0d8ff', 160, 0.7);
+      debris(t.x, t.y - 40 * AS(), t.y, 6, { cols: ARCC, glow: true, sp: 200, size: 1.3, ms: 260, spread: 0.6 });
+    });
+  }
+  function riftTick(dt) {
+    for (var i = riftMarks.length - 1; i >= 0; i--) {
+      var o = riftMarks[i];
+      o.t += dt;
+      if (!o.boom && o.t >= 0) { o.boom = true; (function (o) { atLv(o.lv, function () { riftBoom(o); }); })(o); }
+      if (o.t > 420) riftMarks.splice(i, 1);
+    }
+    for (var j = riftLines.length - 1; j >= 0; j--) { riftLines[j].t += dt; if (riftLines[j].t >= riftLines[j].life) riftLines.splice(j, 1); }
+  }
+  function riftBoom(o) {
+    var R = o.R, h = R.boom, st = stOf(h, o.d), r = R.r * o.k, D = R.rdepth * o.k, y = o.z - o.h * 0.5, any = false;
+    snd('skSlam', { v: 0.7 }); snd('blink', { v: 0.6, k: 0.8 });
+    H.hitstop(45);
+    FX.shake(CFG.juice.shakePx * 2, CFG.juice.shakeMs * 1.4);
+    glow(o.x, y, r * 1.2, '#b46aff', 320, 0.85); glow(o.x, y, r * 0.5, '#ffffff', 180, 0.75);
+    wave(o.x, y, r * 1.1, { flat: 0.85, w: 4, ms: 300, color: '#f0d8ff', glow: '#8a4ae0' });
+    wave(o.x, o.z, r * 1.5, { flat: 0.3, w: 4, ms: 380, color: '#e8d0ff', glow: '#6a3ad8', ground: true });
+    debris(o.x, y, o.z, 16, { cols: ARCC, glow: true, sp: 260, size: 1.6, ms: 460, spread: 2.6 });
+    debris(o.x, y, o.z, 5, { cols: ['#1a0630', '#3a1460'], sp: 80, size: 3, ms: 700, g: -60, spread: 0.8 });
+    H.targets().forEach(function (t) {
+      if (!t || o.set[idOf(t)] || !H.canHit(t, h) || !inBox(t, o.x, o.z, r, D)) return;
+      o.set[idOf(t)] = true;
+      var dir = Math.abs(t.x - o.x) < 3 ? o.dir : (t.x > o.x ? 1 : -1);
+      H.onHit(st, t, { dir: dir, wk: o.wk, x: t.x, y: t.y - 44 * AS(), mul: o.mul });
+      any = true;
+    });
+    if (h.flash) doFlash(h.flash);
+    if (any && h.slowMs) H.slow(h.slowMs);
+  }
+  // 돌진한 줄: 몸 높이에 남는 가는 보라 베기 자국(가운데가 밝고 끝으로 갈수록 가늘게) + 균열(터지기 전 = 세로로 찢어진 틈이 벌어짐)
+  function drawRifts(ctx, camX) {
+    ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
+    riftLines.forEach(function (L) {
+      var a = 1 - L.t / L.life, y = L.z - 40 * AS(), x0 = L.x0 - camX, x1 = L.x1 - camX;
+      if (Math.abs(x1 - x0) < 2) return;
+      [['#6a2ad0', 7, 0.35], ['#c890ff', 3.5, 0.75], ['#ffffff', 1.4, 1]].forEach(function (S) {
+        ctx.globalAlpha = S[2] * a; ctx.strokeStyle = S[0]; ctx.lineWidth = S[1] * Math.sqrt(L.k) * (0.6 + 0.4 * a);
+        ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y); ctx.stroke();
+      });
+    });
+    riftMarks.forEach(function (o) {
+      var x = o.x - camX, cy = o.z - o.h * 0.5, H2 = o.h * 0.75 * Math.sqrt(o.k);
+      if (o.t < 0) {   // 터지기 전: 세로 틈이 벌어지며 깜빡임
+        var full = o.R.delayMs, u = clamp(1 + o.t / full, 0, 1), w = 1.5 + 4 * u, bl = Math.floor(o.t / 50) % 2 ? 1 : 0.7;
+        ctx.globalAlpha = 0.5 * bl; ctx.fillStyle = '#8a4ae0';
+        ctx.beginPath(); ctx.ellipse(x, cy, w * 2.2, H2 * 0.55 * (0.4 + 0.6 * u), 0, 0, Math.PI * 2); ctx.fill();
+        ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 0.9;
+        ctx.fillStyle = '#12041e'; ctx.beginPath(); ctx.ellipse(x, cy, w * 0.7, H2 * 0.5 * (0.4 + 0.6 * u), 0, 0, Math.PI * 2); ctx.fill();
+        ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = bl; ctx.strokeStyle = '#f0d8ff'; ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.ellipse(x, cy, w * 0.9, H2 * 0.5 * (0.4 + 0.6 * u), 0, 0, Math.PI * 2); ctx.stroke();
+      } else {         // 터진 뒤: 틈이 닫히며 흰 빛이 사라짐
+        var v = clamp(o.t / 420, 0, 1);
+        ctx.globalAlpha = 1 - v; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2 * (1 - v) + 0.5;
+        ctx.beginPath(); ctx.moveTo(x, cy - H2 * 0.5 * (1 - v)); ctx.lineTo(x, cy + H2 * 0.5 * (1 - v)); ctx.stroke();
+      }
+    });
+    ctx.restore();
+  }
+
+  // ---- 마검 소환(마검사 Lv35): 머리 위 마력 검 n 자루 → gapMs 마다 하나씩 가까운 적(돌아가며)에게 날아가 꽂힘(둘레 r 도 맞음) ----
+  function castMswords(p, d, s) {
+    var W = d.swords, n = (s.L.lv5 && s.L.lv5.n) || W.n;
+    for (var i = 0; i < n; i++) {
+      var u = n > 1 ? i / (n - 1) : 0.5;
+      mswords.push({ p: p, i: i, ox: p.dir * (0.5 - u) * 110, oy: -92 - Math.sin(u * Math.PI) * 22, t: 0, go: W.appearMs + i * W.gapMs, ph: 0,
+                     W: W, d: d, k: s.area, mul: s.mul, wk: p.weaponKey, dir: p.dir, lv: curLv, last: i === n - 1, x: p.x, y: p.y - 100, ang: Math.PI / 2,
+                     tgt: null, tx: 0, tz: 0, sx: 0, sy: 0, ht: 0, seed: Math.random() * 6.28 });
+    }
+    snd('blink');
+    glow(p.x, p.y - 100, 40, '#c890ff', 300, 0.6);
+  }
+  function mswordPick(o) {
+    var p = o.p, W = o.W, list = [];
+    H.targets().forEach(function (t) {
+      if (!t || t.isProp || !t.T || !alive(t) || !H.canHit(t, W.hit)) return;
+      var dx = (t.x - p.x) * o.dir;
+      if (dx < -30 || dx > W.aim.range || Math.abs(t.y - p.y) > W.aim.depth) return;
+      list.push({ t: t, d: Math.abs(dx) + Math.abs(t.y - p.y) * 0.5 });
+    });
+    list.sort(function (a, b) { return a.d - b.d; });
+    return list.length ? list[o.i % list.length].t : null;
+  }
+  function mswordTick(dt) {
+    for (var i = mswords.length - 1; i >= 0; i--) {
+      var o = mswords[i], W = o.W, p = o.p;
+      o.t += dt;
+      if (o.ph === 0) {   // 떠 있음: 기사 머리 위를 따라다니며 살짝 흔들림, 칼끝은 아래로
+        o.x = p.x + o.ox; o.y = p.y + o.oy + Math.sin(o.t / 140 + o.seed) * 3; o.ang = Math.PI / 2 + Math.sin(o.t / 200 + o.seed) * 0.12;
+        if (o.t >= o.go) {
+          o.ph = 1; o.ht = 0; o.sx = o.x; o.sy = o.y;
+          o.tgt = mswordPick(o);
+          var fx = W.x[o.i % W.x.length];
+          o.tx = o.tgt ? o.tgt.x : p.x + o.dir * fx; o.tz = o.tgt ? o.tgt.y : p.y;
+          snd('skWave', { v: 0.6, k: 1.3 });
+        }
+      } else if (o.ph === 1) {   // 날아감: 과녁 발밑 조금 위로(살아 있으면 따라감)
+        o.ht += dt;
+        if (o.tgt && alive(o.tgt)) { o.tx = o.tgt.x; o.tz = o.tgt.y; }
+        var u = clamp(o.ht / W.flyMs, 0, 1), e = u * u, ty = o.tz - 14;
+        o.x = o.sx + (o.tx - o.sx) * e; o.y = o.sy + (ty - o.sy) * e;
+        o.ang = Math.atan2(ty - o.sy, o.tx - o.sx);
+        if (u >= 1) { o.ph = 2; o.ht = 0; (function (o) { atLv(o.lv, function () { mswordLand(o); }); })(o); }
+      } else {
+        o.ht += dt;
+        if (o.ht >= W.stayMs) mswords.splice(i, 1);
+      }
+    }
+  }
+  function mswordLand(o) {
+    var W = o.W, h = o.last ? W.last : W.hit, st = stOf(h, o.d), R = W.r * o.k, D = W.depth * o.k, any = false;
+    snd(o.last ? 'skSlam' : 'hit', { v: 0.7 });
+    if (o.last) H.hitstop(60);
+    FX.shake(CFG.juice.shakePx * (o.last ? 2.2 : 1), CFG.juice.shakeMs);
+    glow(o.tx, o.tz - 20, R * (o.last ? 1.8 : 1.1), '#c890ff', o.last ? 320 : 200, 0.8);
+    wave(o.tx, o.tz, R * (o.last ? 2.6 : 1.6), { flat: 0.3, w: o.last ? 4 : 3, ms: 320, color: '#f0d8ff', glow: '#8a4ae0', ground: true, noMax: !o.last });
+    debris(o.tx, o.tz - 10, o.tz, o.last ? 18 : 8, { cols: ARCC, glow: true, sp: o.last ? 240 : 170, size: 1.4, ms: 380, spread: 1.4 });
+    H.dust(o.tx, o.tz, o.dir);
+    H.targets().forEach(function (t) {
+      if (!t || !H.canHit(t, h) || !(inBox(t, o.tx, o.tz, R * (o.last ? 1.8 : 1), D) || t === o.tgt)) return;
+      var dir = Math.abs(t.x - o.tx) < 3 ? o.dir : (t.x > o.tx ? 1 : -1);
+      H.onHit(st, t, { dir: dir, wk: o.wk, x: t.x, y: t.y - 40 * AS(), mul: o.mul });
+      any = true;
+    });
+    if (h.flash) doFlash(h.flash);
+    if (any && h.slowMs) H.slow(h.slowMs);
+  }
+  // 마력 검 그림: 보라 빛 칼날(흰 심) + 금빛 가드 + 검보라 손잡이. ang = 칼끝 방향(0 = 오른쪽)
+  function drawMagicSword(ctx, x, y, ang, L, a, glowK) {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(ang);
+    ctx.globalCompositeOperation = 'lighter';
+    var g = ctx.createRadialGradient(-L * 0.35, 0, 0, -L * 0.35, 0, L * 0.75);
+    g.addColorStop(0, 'rgba(200,140,255,' + (0.45 * a * glowK).toFixed(3) + ')'); g.addColorStop(1, 'rgba(110,40,220,0)');
+    ctx.fillStyle = g; ctx.fillRect(-L * 1.1, -L * 0.75, L * 1.5, L * 1.5);
+    ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = a;
+    var w = Math.max(2, L * 0.13);
+    ctx.fillStyle = '#6a2ad0';
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-L * 0.72, -w); ctx.lineTo(-L * 0.72, w); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#c890ff';
+    ctx.beginPath(); ctx.moveTo(-1, 0); ctx.lineTo(-L * 0.7, -w * 0.62); ctx.lineTo(-L * 0.7, w * 0.62); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(-L * 0.66, -0.6, L * 0.6, 1.2);
+    ctx.fillStyle = '#ffd86a'; ctx.fillRect(-L * 0.78, -w * 1.9, L * 0.07, w * 3.8);
+    ctx.fillStyle = '#3a1460'; ctx.fillRect(-L, -w * 0.45, L * 0.22, w * 0.9);
+    ctx.fillStyle = '#e8d0ff'; ctx.fillRect(-L - 2, -1.5, 3, 3);
+    ctx.restore();
+  }
+  function drawMswords(ctx, camX) {
+    mswords.forEach(function (o) {
+      var L = 30 * Math.sqrt(o.k), a = o.ph === 0 ? clamp(o.t / 160, 0, 1) : o.ph === 2 ? Math.max(0, 1 - o.ht / o.W.stayMs) : 1;
+      if (o.ph === 1) {   // 날아가는 꼬리
+        ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = '#b46aff'; ctx.lineWidth = 4; ctx.globalAlpha = 0.45; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(o.x - camX - Math.cos(o.ang) * L * 1.6, o.y - Math.sin(o.ang) * L * 1.6); ctx.lineTo(o.x - camX, o.y); ctx.stroke(); ctx.restore();
+      }
+      var y = o.ph === 2 ? o.tz - 6 : o.y, x = o.ph === 2 ? o.tx : o.x;
+      drawMagicSword(ctx, x - camX, y, o.ang, L, a, o.ph === 0 ? 1 + 0.25 * Math.sin(o.t / 80) : 1.2);
+    });
+  }
+
+  // ---- AI 도트 그림(2026-11-08 v3, art/skill-fx-b/scripts/build.py): 마검 해방 검은 파동 6장 · 악령 회오리 악령 6마리 · 마법진 ----
+  //   1배 그림 = 게임 도트(assets/fx/aifx/<묶음>/<묶음>_NN.png), HD = assets/hd/fx/aifx/...webp(2배, manifest.json). 묶음마다 같은 캔버스 · 같은 기준점(pv)
+  //   unleash_wave: pv = 칼끝이 닿는 바닥 왼쪽 끝, front = 장마다 덩어리 앞머리(pv 에서 도트), h = 키 / wraith_*: pv = 빨간 눈 가운데(머리) / circle: rx · ry = 반지름
+  //   그림을 아직 못 읽었으면 예전 코드 그림으로 그림(잠깐)
+  var AIFX = {
+    unleash_wave:  { n: 6, pv: [3, 184], front: [62, 208, 208, 227, 229.5, 174], h: [31, 60, 118, 146, 181, 161] },
+    // 악령 = 형님 고른 후보 2번(2026-11-08): 얼굴 없는 두건 그림자 + 긴 뼈 발톱. fly = 날기 4장, lunge = 낮게 덮치는 변형, wisp = 가는 연기 꼬리 변형
+    wraith_fly:    { n: 4, pv: [66, 17], desat: 0.4 },    // desat = 색 빼기(2026-11-08 형님: 악령을 더 흐릿하게)
+    wraith_lunge:  { n: 1, pv: [62, 16], desat: 0.4 },
+    wraith_wisp:   { n: 1, pv: [68, 13], desat: 0.4 },
+    wraith_circle: { n: 1, pv: [62, 17], rx: 59, ry: 14 }
+  };
+  var aiImg = {}, aiAsked = false;
+  function aiLoad() {   // 처음 그릴 때 한 번(그땐 HD manifest 를 이미 읽음)
+    if (aiAsked || !window.Assets || !Assets.loadSet) return;
+    aiAsked = true;
+    Object.keys(AIFX).forEach(function (g) {
+      var A = AIFX[g], list = [], q = { x: A.pv[0], y: A.pv[1] };
+      for (var i = 1; i <= A.n; i++) list.push('assets/fx/aifx/' + g + '/' + g + '_' + ('0' + i).slice(-2) + '.png');
+      Assets.loadSet(list, 1, q).then(function (l) {
+        if (l.length !== A.n) return;
+        if (A.desat) l = l.map(function (im) { return desatCopy(im, A.desat); });
+        aiImg[g] = { fr: l, pv: q };
+        l.forEach(function (im) { if (im && im.decode) im.decode().catch(function () {}); });
+      });
+    });
+  }
+  // 색을 k 만큼 회색 쪽으로 뺀 복사본(캔버스, HD 정보 그대로). 못 하면(그림 읽기 막힘) 원래 그림
+  function desatCopy(im, k) {
+    try {
+      var c = document.createElement('canvas'); c.width = im.width; c.height = im.height;
+      var g = c.getContext('2d'); g.drawImage(im, 0, 0);
+      var D = g.getImageData(0, 0, c.width, c.height), a = D.data;
+      for (var i = 0; i < a.length; i += 4) {
+        var y = 0.3 * a[i] + 0.59 * a[i + 1] + 0.11 * a[i + 2];
+        a[i] += (y - a[i]) * k; a[i + 1] += (y - a[i + 1]) * k; a[i + 2] += (y - a[i + 2]) * k;
+      }
+      g.putImageData(D, 0, 0);
+      return Assets.copyMeta(im, c);
+    } catch (e) { return im; }
+  }
+  // 그림 한 장: (x, y) = 기준점 자리, sx · sy = 배율(sx < 0 = 좌우 뒤집기), rot = 돌림, a = 투명도
+  function aiDraw(ctx, g, i, x, y, sx, sy, rot, a) {
+    var S = aiImg[g], im = S && S.fr[i];
+    if (!im || a <= 0) return false;
+    ctx.save(); ctx.globalAlpha *= a; ctx.translate(x, y); if (rot) ctx.rotate(rot); ctx.scale(sx, sy);
+    Assets.blit(ctx, im, S.pv.x, S.pv.y); ctx.restore();
+    return true;
+  }
+
+  // ---- 마검 해방(마검사 Lv39 필살, 2026-11-08 그림 바꿈): 칼을 든 동안 칼끝에 검은 기운이 모임 → strike 에 칼을 내리침 → 칼끝이 닿은 땅에서
+  //   검은 기운 덩어리 하나가 낮고 작게 시작해 앞으로 땅을 타고 travelMs 동안 밀려가며 점점 높이 부풂(찢긴 불꽃 같은 볏 · 검보라 테 빛 · 검은 속 · 돌 조각이 튀어오름)
+  //   → 끝에서 가장 크게 솟은 뒤 흩어짐. 판정: 앞머리가 지나가는 적에게 hit 한 번씩 → 흩어질 때(waveMs 뒤) 줄 위 적 모두 wave 한 번 ----
+  var CLEAVE_SWING = 120;
+  var CLV_DARK = ['#0e0214', '#2a0838', '#6a1a8a', '#d070e0'];
+  var CLV_STONE = ['#5a5a66', '#7a7a86', '#3e3e4a', '#8a8a96'];
+  function castCleave(p, d, s) {
+    var C = d.cleave;
+    cleaves.push({ p: p, t: 0, C: C, d: d, k: s.area, mul: s.mul, wk: p.weaponKey, dir: p.dir, lv: curLv, x: p.x, z: p.y, st: C.strikeAt - C.at,
+                   hit: false, waved: false, partT: 0, rockT: 0, got: {}, any: false, seed: Math.random() * 10 });
+    snd('charge');
+  }
+  function cleaveTravel(o) { return o.C.travelMs || 380; }
+  // 앞머리 거리(내리친 땅 시작점에서, 화면 도트 x 범위 배): 0 → len
+  function cleaveFront(o, tau) { var u = clamp(tau / cleaveTravel(o), 0, 1); return o.C.len * o.k * (0.06 + 0.94 * Math.pow(u, 0.85)); }
+  function cleaveTick(dt) {
+    for (var i = cleaves.length - 1; i >= 0; i--) {
+      var o = cleaves[i], C = o.C, p = o.p;
+      o.t += dt;
+      if (o.t < o.st) {   // 모으는 동안: 기사를 따라감 + 둘레에서 검은 기운이 칼로 모여듦
+        o.x = p.x; o.z = p.y; o.dir = p.dir;
+        o.partT -= dt;
+        if (o.partT <= 0) {
+          o.partT = 40;
+          (function (o) { atLv(o.lv, function () {
+            var an = Math.random() * Math.PI * 2, rr = 50 + Math.random() * 30;
+            debris(o.x + Math.cos(an) * rr, o.z - 60 + Math.sin(an) * rr * 0.6, o.z + 40, 1, { cols: CLV_DARK, glow: true, sp: 40, size: 1.6, ms: 260, g: -120, spread: 0.6 });
+          }); })(o);
+        }
+      }
+      var tS = o.st + CLEAVE_SWING, tau = o.t - tS;
+      if (!o.hit && tau >= 0) { o.hit = true; (function (o) { atLv(o.lv, function () { cleaveImpact(o); }); })(o); }
+      if (o.hit && tau <= cleaveTravel(o) + 40) {
+        (function (o, tau) { atLv(o.lv, function () { cleaveSweep(o, Math.min(tau, cleaveTravel(o))); }); })(o, tau);
+        o.rockT -= dt;
+        if (o.rockT <= 0 && tau < cleaveTravel(o)) {   // 앞머리에서 돌 조각 · 검은 불티가 튀어오름
+          o.rockT = 26;
+          (function (o, tau) { atLv(o.lv, function () {
+            var fx = o.x + o.dir * (o.C.x * o.k + cleaveFront(o, tau)), big = tau / cleaveTravel(o);
+            debris(fx, o.z - 4, o.z, 2, { cols: CLV_STONE, sp: 200 + 160 * big, size: 2.4 + 1.6 * big, ms: 700, spread: 0.55 });
+            debris(fx, o.z - 10 - 30 * big, o.z, 2, { cols: CLV_DARK, glow: true, sp: 160, size: 1.5, ms: 380, spread: 1.2, g: -60 });
+          }); })(o, tau);
+        }
+      }
+      if (!o.waved && tau >= cleaveTravel(o) + C.waveMs) { o.waved = true; (function (o) { atLv(o.lv, function () { cleaveHit(o, true); }); })(o); }
+      if (tau >= cleaveTravel(o) + C.waveMs + 700) cleaves.splice(i, 1);
+    }
+  }
+  function cleaveBox(o) { var C = o.C, a = o.x + o.dir * C.x * o.k, b = o.x + o.dir * (C.x + C.len) * o.k; return { lo: Math.min(a, b), hi: Math.max(a, b), D: C.depth * o.k }; }
+  // 칼끝이 땅에 닿는 순간: 소리 · 멈춤 · 크게 흔들림 · 번쩍(데미지는 앞머리가 지나갈 때)
+  function cleaveImpact(o) {
+    var C = o.C, h = C.hit, x0 = o.x + o.dir * C.x * o.k;
+    snd('skSlam'); snd('meteorBoom', { v: 0.7 });
+    H.hitstop(110);
+    FX.shake(CFG.juice.shakePx * 4, CFG.juice.shakeMs * 2.2);
+    glow(x0, o.z - 8, 40, '#6a1a8a', 360, 0.85);   // 2026-11-08 형님: 칼끝 흰 · 노란 번쩍(별) 뺌 → 검보라 빛 · 검은 불티만
+    wave(x0, o.z, 50, { flat: 0.26, w: 4, ms: 360, color: '#d070e0', glow: '#1a0628', ground: true, noMax: true });
+    debris(x0, o.z - 2, o.z, 10, { cols: CLV_DARK, glow: true, sp: 220, size: 1.3, ms: 300, spread: 1.4 });
+    H.dust(x0, o.z, o.dir);
+    if (h.flash) doFlash(h.flash);
+  }
+  // 앞머리가 지나간 적에게 hit 한 번씩(적마다 한 번)
+  function cleaveSweep(o, tau) {
+    var C = o.C, h = C.hit, x0 = o.x + o.dir * C.x * o.k, xf = x0 + o.dir * cleaveFront(o, tau), lo = Math.min(x0, xf), hi = Math.max(x0, xf), D = C.depth * o.k;
+    H.targets().forEach(function (t) {
+      if (!t || o.got[idOf(t)] || !H.canHit(t, h)) return;
+      var hb = t.hurtbox();
+      if (Math.abs(hb.z - o.z) > D || hb.x1 < lo || hb.x0 > hi) return;
+      o.got[idOf(t)] = true;
+      // 첫 적만 크게 멈춤 · 나머지는 짧게(앞머리가 지나가며 적마다 멈추면 덩어리가 뚝뚝 끊김)
+      if (o.any && !C._lite) { C._lite = {}; for (var kk in h) if (kk !== '_st') C._lite[kk] = h[kk]; C._lite.hitstop = 0.5; C._lite.shake = 1.2; delete C._lite.flash; delete C._lite.slowMs; }
+      H.onHit(stOf(o.any ? C._lite : h, o.d), t, { dir: o.dir, wk: o.wk, x: t.x, y: t.y - 44 * AS(), mul: o.mul });
+      glow(t.x, t.y - 40 * AS(), 26, '#4a0a70', 260, 0.7);
+      debris(t.x, t.y - 30 * AS(), t.y, 8, { cols: CLV_DARK, glow: true, sp: 240, size: 1.6, ms: 420, spread: 1.6 });
+      if (!o.any) { o.any = true; if (h.slowMs) H.slow(h.slowMs); }
+    });
+  }
+  // 흩어질 때(isWave) 줄 위 적 모두 한 번 · (예전 한꺼번에 내리침도 이 함수 = isWave false)
+  function cleaveHit(o, isWave) {
+    var C = o.C, h = isWave ? C.wave : C.hit, st = stOf(h, o.d), B = cleaveBox(o), mid = (B.lo + B.hi) / 2, len = B.hi - B.lo;
+    snd('blink', { v: 0.7, k: 0.7 });
+    FX.shake(CFG.juice.shakePx * 1.6, CFG.juice.shakeMs * 1.2);
+    for (var q = 0; q <= 8; q++) {
+      var xq = B.lo + len * q / 8, up = o.dir > 0 ? q / 8 : 1 - q / 8;
+      glow(xq, o.z - 16 - 40 * up, 18 + 20 * up, '#6a1a8a', 300, 0.55);
+      debris(xq, o.z - 10 - 50 * up, o.z, 3, { cols: CLV_DARK, glow: true, sp: 120, size: 1.6, ms: 520, spread: 1.0, g: -80 });
+    }
+    H.targets().forEach(function (t) {
+      if (!t || !H.canHit(t, h)) return;
+      var hb = t.hurtbox();
+      if (Math.abs(hb.z - o.z) > B.D || hb.x1 < B.lo || hb.x0 > B.hi) return;
+      H.onHit(st, t, { dir: o.dir, wk: o.wk, x: t.x, y: t.y - 44 * AS(), mul: o.mul });
+    });
+  }
+  // 검은 기운 덩어리 높이(앞으로 갈수록 높게, 앞머리 = 가장 높은 볏 · 지나간 뒤쪽은 천천히 가라앉음)
+  function cleaveH(o, u, f, tau, Hm) {   // u = 시작점에서 거리, f = 앞머리 거리
+    var L = o.C.len * o.k, g = Math.pow(clamp(f / L, 0, 1), 0.8) * Math.pow(clamp(u / Math.max(1, f), 0, 1), 1.6);   // 앞머리가 멀리 갈수록 덩어리 전체가 커짐 · 앞쪽이 가장 높음
+    var tip = clamp((f - u) / 6, 0, 1), crest = 1 + 0.12 * clamp(1 - (f - u) / 40, 0, 1);
+    var passed = Math.max(0, tau - cleaveTravel(o) * (u / L)), sink = clamp(1 - passed / 1600, 0.7, 1);
+    return Hm * (0.06 + 0.94 * g) * (0.6 + 0.4 * tip) * crest * sink;
+  }
+  // 마검 해방 v3(2026-11-08 형님 고른 그림 #1): AI 도트 파동 6장. 칼끝이 닿은 땅(X = 화면 자리)에 기준점(바닥 왼쪽 끝)을 놓고
+  //   travelMs 동안 1~5장(작은 불씨 → 가장 큰 볏)을 넘기며, 가로 배율 = 판정 앞머리(f) / 그 장의 앞머리 → 그림 앞끝이 판정과 같이 감.
+  //   세로 = 볏 높이(Hm). 끝에 5장으로 잠깐 버틴 뒤 6장(흩어짐)으로 넘어가며 흐려짐. 바닥 검보라 빛 · 칼끝 불꽃은 그대로
+  function drawCleaveArt(ctx, o, X, tau, T, endT, f, Hm, fade, swell) {
+    var A = AIFX.unleash_wave;
+    if (!aiImg.unleash_wave) return false;
+    var u = clamp(tau / T, 0, 1), sy = Hm / 172, d = o.dir, Z = Math.round(o.z) + 1;
+    var gw = Math.max(f, 30) / 2 + 14, gm = X + d * gw * 0.8;   // 바닥 검보라 빛
+    ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.translate(gm, o.z); ctx.scale(1, 0.12);
+    var gb = ctx.createRadialGradient(0, 0, 0, 0, 0, gw);
+    gb.addColorStop(0, 'rgba(170,80,240,' + (0.55 * fade).toFixed(3) + ')'); gb.addColorStop(1, 'rgba(110,30,170,0)');
+    ctx.fillStyle = gb; ctx.beginPath(); ctx.arc(0, 0, gw, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+    function one(i, a, sMul) {
+      var sx = clamp(f / A.front[i], 0.4, 1.5);
+      aiDraw(ctx, 'unleash_wave', i, X, Z, d * sx, sy * sMul, 0, a);
+    }
+    if (tau < T) one(u < 0.14 ? 0 : u < 0.38 ? 1 : u < 0.62 ? 2 : u < 0.86 ? 3 : 4, 1, 1);
+    else if (tau < endT) one(4, 1, 1 + 0.04 * (tau - T) / (endT - T));
+    else {   // 흩어짐: 6장 + 처음 120ms 는 5장이 겹쳐 사라짐
+      var v = clamp((tau - endT) / 120, 0, 1);
+      if (v < 1) one(4, 1 - v, 1.04);
+      one(5, fade, 1.04 * swell);
+    }
+    return true;   // (칼끝 흰 불꽃은 2026-11-08 형님 말씀으로 뺌)
+  }
+  function drawCleaves(ctx, camX) {
+    cleaves.forEach(function (o) {
+      var C = o.C, x0 = o.x + o.dir * C.x * o.k, tS = o.st + CLEAVE_SWING, tau = o.t - tS, now = o.t / 1000;
+      if (tau < 0) {   // 모으는 동안: 칼 쪽(기사 앞 위)에 검은 기운 덩이 + 검보라 빛
+        var ga = clamp(o.t / Math.max(1, o.st), 0, 1), cx = o.x + o.dir * 10 - camX, cy = o.z - 70, r = 6 + 10 * ga;
+        ctx.save(); ctx.globalCompositeOperation = 'lighter';
+        var g0 = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 2.4);
+        g0.addColorStop(0, 'rgba(140,50,200,' + (0.55 * ga).toFixed(3) + ')'); g0.addColorStop(1, 'rgba(60,10,90,0)');
+        ctx.fillStyle = g0; ctx.fillRect(cx - r * 2.4, cy - r * 2.4, r * 4.8, r * 4.8);
+        ctx.restore();   // (검은 별 모양 덩이는 2026-11-08 형님 말씀으로 뺌 → 검보라 빛만)
+        return;
+      }
+      var T = cleaveTravel(o), Hm = C.h * 0.85 * Math.sqrt(o.k), f = cleaveFront(o, Math.min(tau, T));
+      var endT = T + 150, fade = tau > endT ? clamp(1 - (tau - endT) / (C.waveMs + 300), 0, 1) : 1;
+      if (fade <= 0) return;
+      var swell = tau > endT ? 1 + 0.25 * (1 - fade) : 1;   // 흩어질 때 위로 조금 더 솟으며 흐려짐
+      if (drawCleaveArt(ctx, o, x0 - camX, tau, T, endT, f, Hm, fade, swell)) return;   // AI 도트 그림(v3) — 못 읽었으면 아래 코드 그림
+      var step = 3, n = Math.max(2, Math.ceil(f / step)), top = [];
+      for (var q = 0; q <= n; q++) {
+        var u = Math.min(f, q * step), hh = cleaveH(o, u, f, tau, Hm) * swell;
+        var jag = 0.72 + 0.28 * Math.abs(Math.sin(u * 0.21 + o.seed + now * 9)) + (q % 4 === 0 ? 0.16 : 0) * Math.sin(now * 14 + q);   // 찢긴 불꽃 볏
+        var lean = hh * 0.22;   // 볏이 앞으로 기울어짐
+        top.push([x0 + o.dir * (u + lean * jag) - camX, o.z - hh * jag]);
+      }
+      var hf = cleaveH(o, f, f, tau, Hm) * swell;   // 앞머리 볏: 앞으로 넘어지듯 기울어진 뾰족한 끝
+      top.push([x0 + o.dir * (f + hf * 0.32) - camX, o.z - hf * 1.05]);
+      top.push([x0 + o.dir * (f + hf * 0.16) - camX, o.z - hf * 0.55]);
+      var xf = x0 + o.dir * (f + 6) - camX;
+      ctx.save(); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+      ctx.globalCompositeOperation = 'lighter';   // 바닥 검보라 빛
+      var gm = (x0 - camX + xf) / 2, gw = Math.abs(xf - (x0 - camX)) / 2 + 10;
+      ctx.save(); ctx.translate(gm, o.z); ctx.scale(1, 0.12);
+      var gb = ctx.createRadialGradient(0, 0, 0, 0, 0, gw);
+      gb.addColorStop(0, 'rgba(170,80,240,' + (0.5 * fade).toFixed(3) + ')'); gb.addColorStop(1, 'rgba(110,30,170,0)');
+      ctx.fillStyle = gb; ctx.beginPath(); ctx.arc(0, 0, gw, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+      var mass = function () { ctx.beginPath(); ctx.moveTo(x0 - camX, o.z + 2); top.forEach(function (P) { ctx.lineTo(P[0], P[1]); }); ctx.lineTo(xf, o.z + 2); ctx.closePath(); };
+      var edge = function () { ctx.beginPath(); top.forEach(function (P, k) { if (k) ctx.lineTo(P[0], P[1]); else ctx.moveTo(P[0], P[1]); }); };
+      [[9, '#3a0a50', 0.5], [5, '#6a1a8a', 0.7]].forEach(function (S) { ctx.globalAlpha = S[2] * fade; ctx.strokeStyle = S[1]; ctx.lineWidth = S[0]; edge(); ctx.stroke(); });   // 바깥 빛
+      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 0.96 * fade; ctx.fillStyle = '#06000a'; mass(); ctx.fill();   // 검은 속
+      ctx.save(); mass(); ctx.clip();   // 속 안쪽 검보라 결(위로 흐르는 줄)
+      ctx.globalCompositeOperation = 'lighter'; ctx.lineWidth = 1.5;
+      for (var s2 = 0; s2 < 7; s2++) {
+        var uu = ((s2 / 7 + now * 0.9) % 1) * f, xx = x0 + o.dir * uu - camX, hh2 = cleaveH(o, uu, f, tau, Hm);
+        ctx.globalAlpha = 0.45 * fade; ctx.strokeStyle = s2 % 2 ? '#4a0a70' : '#8a2ab0';
+        ctx.beginPath(); ctx.moveTo(xx, o.z); ctx.quadraticCurveTo(xx + o.dir * hh2 * 0.1, o.z - hh2 * 0.5, xx + o.dir * hh2 * 0.25, o.z - hh2 * 0.85); ctx.stroke();
+      }
+      ctx.restore();
+      ctx.globalCompositeOperation = 'lighter';   // 테: 검보라 → 보라 → 밝은 심
+      [[2.6, '#a040e0', 0.95], [1.2, '#f0c8ff', 0.9]].forEach(function (S) { ctx.globalAlpha = S[2] * fade; ctx.strokeStyle = S[1]; ctx.lineWidth = S[0]; edge(); ctx.stroke(); });
+      ctx.globalAlpha = 0.9 * fade; ctx.strokeStyle = '#c070ff'; ctx.lineWidth = 2;   // 바닥 줄
+      ctx.beginPath(); ctx.moveTo(x0 - camX, o.z + 1); ctx.lineTo(xf, o.z + 1); ctx.stroke();
+      if (tau < 160) {   // 칼끝이 닿은 자리 불꽃
+        var ia = 1 - tau / 160; ctx.globalAlpha = ia; ctx.fillStyle = '#ffffff';
+        for (var sp = 0; sp < 6; sp++) { var an2 = -Math.PI * (0.1 + 0.8 * sp / 5); ctx.fillRect(x0 - camX + Math.cos(an2) * 12 * (1.2 - ia) - 1, o.z + Math.sin(an2) * 9 * (1.2 - ia) - 1, 2.5, 2.5); }
+      }
+      ctx.restore();
+    });
+  }
+
+  // ---- 어둠의 구체(흑마법사 Lv25): 느린 검은 구체 → dist 만큼 가며 tickMs 마다 둘레 적을 깎음(살짝 느려짐) → 끝에서 크게 터짐 ----
+  function castDorb(p, d, s) {
+    var O = d.dorb;
+    dorbs.push({ x: p.x + p.dir * O.x, z: p.y, y: O.y, dir: p.dir, t: 0, flown: 0, O: O, d: d, k: s.area, mul: s.mul, wk: p.weaponKey, lv: curLv,
+                 next: 60, boom: false, bt: 0, echo: !!s.echo, seed: Math.random() * 6.28, trailT: 0 });
+    snd('magicShot');
+    glow(p.x + p.dir * O.x, p.y + O.y, 26 * AS() / 0.55, '#8a2ab0', 220, 0.7);
+  }
+  function dorbTick(dt) {
+    for (var i = dorbs.length - 1; i >= 0; i--) {
+      var o = dorbs[i], O = o.O;
+      o.t += dt;
+      if (o.boom) { o.bt += dt; if (o.bt > 500) dorbs.splice(i, 1); continue; }
+      var mv = O.speed * dt / 1000; o.x += o.dir * mv; o.flown += mv;
+      o.next -= dt;
+      if (o.next <= 0) { o.next = O.tickMs; (function (o) { atLv(o.lv, function () { dorbHit(o); }); })(o); }
+      o.trailT -= dt;
+      if (o.trailT <= 0) { o.trailT = 45; debris(o.x - o.dir * 8, o.z + o.y, o.z, 1, { cols: DARKC, glow: true, sp: 30, size: 1.6, ms: 360, g: -50, spread: 1.4 }); }
+      if (o.flown >= O.dist) {
+        o.boom = true; o.bt = 0;
+        (function (o) { atLv(o.lv, function () {
+          dorbBoom(o, 1, true);
+          if (o.echo) echo(o.d, function () { dorbBoom(o, 0.6, false); });   // 각성 마력 폭주: 같은 자리 한 번 더(60%)
+        }); })(o);
+      }
+    }
+  }
+  function dorbHit(o) {
+    var O = o.O, st = stOf(O.tick, o.d), R = O.r * o.k, D = O.depth * o.k, any = false;
+    H.targets().forEach(function (t) {
+      if (!t || !H.canHit(t, O.tick) || !inBox(t, o.x, o.z, R, D)) return;
+      H.onHit(st, t, { dir: o.dir, wk: o.wk, x: t.x, y: t.y - 40 * AS(), mul: o.mul });
+      if (pullable(t)) daze(t, 260, 0.55);
+      any = true;
+    });
+    if (any) { glow(o.x, o.z + o.y, R * 0.9, '#a040c0', 140, 0.45); debris(o.x, o.z + o.y, o.z, 3, { cols: DARKC, glow: true, sp: 140, size: 1.3, ms: 240, spread: 2.4 }); }
+  }
+  function dorbBoom(o, mulK, first) {
+    var O = o.O, h = O.boom, st = stOf(h, o.d), R = O.br * o.k, D = O.bdepth * o.k, y = o.z + o.y, any = false;
+    snd('skSlam'); snd('fireBoom', { v: 0.6, k: 0.6 });
+    H.hitstop(first ? 80 : 55);
+    FX.shake(CFG.juice.shakePx * (first ? 2.8 : 2), CFG.juice.shakeMs * 1.6);
+    glow(o.x, y, R * 1.3, '#8a2ab0', 380, 0.9); glow(o.x, y, R * 0.5, '#ffd8f4', 200, 0.7);
+    wave(o.x, y, R * 1.1, { flat: 0.8, w: 5, ms: 360, color: '#ffd8f4', glow: '#6a1a8a' });
+    wave(o.x, o.z, R * 1.5, { flat: 0.3, w: 5, ms: 440, color: '#e8b0ff', glow: '#4a0a70', ground: true });
+    debris(o.x, y, o.z, first ? 22 : 12, { cols: DARKC, glow: true, sp: 280, size: 1.7, ms: 520, spread: 2.6 });
+    debris(o.x, y, o.z, first ? 10 : 5, { cols: ['#0e0214', '#2a0838', '#4a1060'], sp: 80, size: 3.2, ms: 900, g: -60, spread: 0.9 });   // 검은 연기
+    H.dust(o.x - 14 * AS(), o.z, -1); H.dust(o.x + 14 * AS(), o.z, 1);
+    H.targets().forEach(function (t) {
+      if (!t || !H.canHit(t, h) || !inBox(t, o.x, o.z, R, D)) return;
+      var dir = Math.abs(t.x - o.x) < 3 ? o.dir : (t.x > o.x ? 1 : -1);
+      H.onHit(st, t, { dir: dir, wk: o.wk, x: t.x, y: t.y - 44 * AS(), mul: o.mul * mulK });
+      any = true;
+    });
+    if (h.flash) doFlash(first ? h.flash : { color: h.flash.color, alpha: h.flash.alpha * 0.6, ms: h.flash.ms });
+    if (any && first && h.slowMs) H.slow(h.slowMs);
+  }
+  // 구체 그림: 검은 속(빛을 삼킴) + 검붉은 보라 테 + 둘레를 도는 어둠 조각 3개 + 바깥 흐린 빛
+  function drawDorbs(ctx, camX) {
+    dorbs.forEach(function (o) {
+      var O = o.O, x = o.x - camX, y = o.z + o.y, now = o.t / 1000;
+      if (o.boom) {
+        var u = o.bt / 500; ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = Math.max(0, 1 - u); ctx.fillStyle = '#ffd8f4';
+        ctx.beginPath(); ctx.arc(x, y, O.orb * o.k * (1 - u) * 0.7 + 0.5, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+        return;
+      }
+      var r = O.orb * Math.sqrt(o.k) * (1 + 0.08 * Math.sin(now * 14)) * Math.min(1, 0.4 + o.t / 200);
+      ctx.save(); ctx.globalCompositeOperation = 'lighter';
+      var g = ctx.createRadialGradient(x, y, r * 0.4, x, y, r * 2.6);
+      g.addColorStop(0, 'rgba(180,70,200,0.8)'); g.addColorStop(0.45, 'rgba(110,20,140,0.4)'); g.addColorStop(1, 'rgba(60,0,80,0)');
+      ctx.fillStyle = g; ctx.fillRect(x - r * 2.6, y - r * 2.6, r * 5.2, r * 5.2);
+      for (var k = 0; k < 3; k++) {   // 도는 어둠 조각
+        var an = now * 4.4 + k * 2.094 + o.seed, px = x + Math.cos(an) * r * 1.5, py = y + Math.sin(an) * r * 0.6;
+        ctx.globalAlpha = 0.85; ctx.fillStyle = k % 2 ? '#ff9af0' : '#d070e0'; ctx.fillRect(px - 1.5, py - 1.5, 3, 3);
+      }
+      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+      ctx.fillStyle = '#0a0210'; ctx.beginPath(); ctx.arc(x, y, r * 0.85, 0, Math.PI * 2); ctx.fill();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.strokeStyle = '#d070e0'; ctx.lineWidth = 1.6; ctx.globalAlpha = 0.95;
+      ctx.beginPath(); ctx.arc(x, y, r * 0.88, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = '#ff9af0'; ctx.lineWidth = 1; ctx.globalAlpha = 0.6;
+      ctx.beginPath(); ctx.arc(x, y, r * 0.88, now * 6, now * 6 + 1.6); ctx.stroke();
+      ctx.restore();
+    });
+  }
+
+  // ---- 저주의 늪(흑마법사 Lv31): 앞쪽 가까운 적 발밑(없으면 x 앞)에 늪 → ms 동안: 안 적 = 느려짐 + tickMs 마다 작게 + 저주(curseMs 동안 모든 공격 +curse) ----
+  function castSwamp(p, d, s) {
+    var S = d.swamp, best = null, bd = 1e9;
+    H.targets().forEach(function (t) {
+      if (!t || t.isProp || !t.T || !alive(t)) return;
+      var dx = (t.x - p.x) * p.dir;
+      if (dx < -6 || dx > S.aim.range || Math.abs(t.y - p.y) > S.aim.depth) return;
+      var dd = dx + Math.abs(t.y - p.y) * 0.5; if (dd < bd) { bd = dd; best = t; }
+    });
+    var x = best ? best.x : p.x + p.dir * S.x, z = best ? best.y : p.y;
+    swamps.push({ x: x, z: z, t: 0, S: S, d: d, k: s.area, mul: s.mul, wk: p.weaponKey, lv: curLv, next: 200, bubT: 0, seed: Math.random() * 100 });
+    snd('earthRise', { v: 0.7, k: 0.7 });
+    glow(x, z - 6, S.w * s.area * 0.6, '#6a1a8a', 300, 0.6);
+    wave(x, z, S.w * s.area, { r0: S.w * s.area * 0.2, flat: 0.32, w: 4, ms: 360, color: '#e8b0ff', glow: '#4a0a70', ground: true });
+  }
+  function inSwamp(o, t) { var S = o.S; return Math.abs(t.y - o.z) <= S.depth * o.k && Math.abs(t.x - o.x) <= S.w * o.k + (t.T ? t.T.radius || 0 : 0) * 0.5; }
+  function swampTick(dt) {
+    for (var i = swamps.length - 1; i >= 0; i--) {
+      var o = swamps[i], S = o.S;
+      o.t += dt;
+      if (o.t < S.ms) {
+        H.targets().forEach(function (t) {   // 안 적: 느려짐(보스 · 큰 적은 덜) + 저주
+          if (!t || t.isProp || !t.T || !alive(t) || !inSwamp(o, t)) return;
+          daze(t, 160, t.T.boss || t.mid ? (1 + S.slow) / 2 : S.slow);
+          t.curseT = Math.max(t.curseT || 0, S.curseMs); t.curseK = S.curse;
+        });
+        o.next -= dt;
+        if (o.next <= 0) {
+          o.next = S.tickMs;
+          (function (o) { atLv(o.lv, function () {
+            var st = stOf(S.tick, o.d);
+            H.targets().forEach(function (t) {
+              if (!t || !H.canHit(t, S.tick) || !inSwamp(o, t)) return;
+              H.onHit(st, t, { dir: t.x >= o.x ? 1 : -1, wk: o.wk, x: t.x, y: t.y - 20 * AS(), mul: o.mul });
+              debris(t.x, t.y - 4, t.y, 2, { cols: DARKC, glow: true, sp: 90, size: 1.3, ms: 360, g: -120, spread: 0.5 });
+            });
+          }); })(o);
+        }
+        o.bubT -= dt;
+        if (o.bubT <= 0) { o.bubT = 70; var u = Math.random() * 2 - 1, v = Math.random() * 2 - 1; debris(o.x + u * S.w * o.k * 0.85, o.z + v * S.depth * o.k * 0.6, o.z + S.depth, 1, { cols: DARKC, glow: true, sp: 40, size: 1.8, ms: 500, g: -90, spread: 0.3 }); }
+      }
+      if (o.t >= S.ms + 400) swamps.splice(i, 1);
+    }
+  }
+  function curseMul(t) { return t && t.curseT > 0 ? 1 + (t.curseK || 0) : 1; }
+  // 늪 그림(캐릭터 밑): 납작한 검보라 웅덩이(가장자리 빛) + 안쪽 소용돌이 줄 + 테두리 룬 점. 끝에 줄어들며 사라짐
+  function drawSwamps(ctx, camX) {
+    swamps.forEach(function (o) {
+      var S = o.S, rx = S.w * o.k, ry = S.depth * o.k, now = o.t / 1000;
+      var a = clamp(o.t / 200, 0, 1) * (o.t > S.ms ? Math.max(0, 1 - (o.t - S.ms) / 400) : 1), sc = o.t > S.ms ? 1 - 0.3 * (o.t - S.ms) / 400 : Math.min(1, 0.5 + o.t / 300);
+      if (a <= 0) return;
+      ctx.save(); ctx.translate(o.x - camX, o.z); ctx.scale(sc, sc * ry / rx);
+      var g = ctx.createRadialGradient(0, 0, 0, 0, 0, rx);
+      g.addColorStop(0, 'rgba(20,2,30,' + (0.75 * a).toFixed(3) + ')'); g.addColorStop(0.7, 'rgba(60,10,80,' + (0.6 * a).toFixed(3) + ')'); g.addColorStop(1, 'rgba(110,30,150,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, rx, 0, Math.PI * 2); ctx.fill();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.strokeStyle = '#a040c0'; ctx.lineWidth = 3; ctx.globalAlpha = 0.55 * a;
+      ctx.beginPath(); ctx.arc(0, 0, rx * 0.96, 0, Math.PI * 2); ctx.stroke();
+      ctx.lineWidth = 2;
+      for (var k = 0; k < 3; k++) {
+        ctx.globalAlpha = 0.4 * a; ctx.strokeStyle = k % 2 ? '#d070e0' : '#6a1a8a';
+        ctx.beginPath();
+        for (var j = 0; j <= 16; j++) { var u = j / 16, rr = rx * (0.15 + 0.75 * u), an = o.seed + k * 2.09 + u * 4 - now * 1.6; if (j) ctx.lineTo(Math.cos(an) * rr, Math.sin(an) * rr); else ctx.moveTo(Math.cos(an) * rr, Math.sin(an) * rr); }
+        ctx.stroke();
+      }
+      ctx.fillStyle = '#ff9af0'; ctx.globalAlpha = 0.8 * a;
+      for (var r = 0; r < 12; r++) { var an2 = now * 0.8 + r * Math.PI / 6; ctx.fillRect(Math.cos(an2) * rx * 0.9 - 1.5, Math.sin(an2) * rx * 0.9 - 1.5, 3, 3); }
+      ctx.restore();
+    });
+    // 저주 걸린 적: 발밑 작은 검보라 고리
+    H.targets().forEach(function (t) {
+      if (!t || !(t.curseT > 0) || !t.T || !alive(t)) return;
+      var rr = Math.max(8, (t.T.radius || 12) * 0.9);
+      ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.6; ctx.strokeStyle = '#c060d0'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.ellipse(t.x - camX, t.y, rr, rr * 0.3, 0, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+    });
+  }
+
+  // ---- 악령 회오리(흑마법사 Lv35, 2026-11-08 망령 소환을 바꿈): 법사 발밑 검은 마법진(쓰는 신호) → 검은 악령 n 마리가 화면 끝에서 몰려 들어와
+  //   화면 전체를 크게 휘돌며 ms 동안 휩쓺(화면이 살짝 어두워짐). 판정 = 보이는 화면 가로 전체 x 법사 줄 위아래 depth.
+  //   적마다 따로 hitMs 마다 한 번(처음은 적마다 조금씩 어긋나게). 각성 마력 폭주 = 끝에 한 번 더 휩쓺(hit x echoK)
+  var viewCam = null, viewW = 0, viewH = 0;   // drawBackdrop · drawUnder 가 지난 장면의 화면 자리 · 크기를 남김(판정 = 보이는 화면)
+  function screenSpan(p) {
+    var W = viewW || 480, x0 = viewCam != null ? viewCam : p.x - W * 0.42;
+    return { x0: x0, x1: x0 + W, W: W };
+  }
+  function castSpirits(p, d, s) {
+    var S = d.spirits, L5 = s.L.lv5 || {}, n = L5.n || S.n, ms = L5.ms || S.ms;
+    var o = { p: p, x: p.x, z: p.y, t: 0, life: ms, S: S, d: d, mul: s.mul, wk: p.weaponKey, lv: curLv, echo: !!s.echo, next: {}, sp: [], shakeT: 380, sndT: 700, done: false };
+    for (var i = 0; i < n; i++) {
+      var left = i % 2 === 0;
+      o.sp.push({ ph: (i / n) * Math.PI * 2 + Math.random() * 0.6,          // 돌기 시작 각도
+                  w: (0.0024 + Math.random() * 0.0014) * 0.78 * (i % 4 === 3 ? -1 : 1),   // 1ms 에 도는 각도(넷에 하나는 거꾸로 = 엇갈려 휘몰아침) · 2026-11-08 형님: 22% 느리게
+                  rx: 0.22 + Math.random() * 0.34, ry: 34 + Math.random() * 56,      // 화면 가로 x rx, 세로 도트
+                  cx: 0.3 + Math.random() * 0.4, drift: (0.0006 + Math.random() * 0.0008) * 0.78, tilt: (Math.random() * 2 - 1) * 0.45,
+                  yc: -48 + (Math.random() * 2 - 1) * 26, in: 260 + Math.random() * 360,
+                  ex: left ? -30 : 1, ey: -60 + (Math.random() * 2 - 1) * 90, r: 7 + Math.random() * 4, seed: Math.random() * 6.28 });
+    }
+    wraiths.push(o);
+    snd('blink', { v: 0.85, k: 0.55 }); snd('skWave');
+    FX.shake(CFG.juice.shakePx * 0.8, CFG.juice.shakeMs);
+    glow(p.x, p.y - 30, 40, '#3a0a50', 420, 0.75);
+    debris(p.x, p.y - 20, p.y, 10, { cols: ['#0e0214', '#2a0838', '#6a1a8a'], sp: 140, size: 2.2, ms: 600, g: -120, spread: 2.4 });
+  }
+  // 악령 하나의 화면 자리(화면 도트, 카메라 기준): 화면 끝에서 들어와(in ms) → 기울어진 큰 고리로 휘돎(가운데도 천천히 흔들림) → 끝 300ms 에 화면 밖으로 흩어짐
+  function spiritPos(o, q, t, W) {
+    var th = q.ph + q.w * t, cx = W * (q.cx + Math.sin(t * q.drift + q.seed) * 0.12);
+    var lx = Math.cos(th) * W * q.rx, ly = Math.sin(th) * q.ry;
+    var x = cx + lx * Math.cos(q.tilt) - ly * Math.sin(q.tilt) * 2, y = o.z + q.yc + lx * Math.sin(q.tilt) * 0.28 + ly * Math.cos(q.tilt);
+    var a = 1;
+    if (t < q.in) {
+      var u = ease(t / q.in), sx = q.ex < 0 ? -30 : W + 30, sy = o.z + q.ey;
+      x = sx + (x - sx) * u; y = sy + (y - sy) * u; a = Math.min(1, t / 120);
+    } else if (t > o.life) {
+      var v = clamp((t - o.life) / 300, 0, 1), ox = x < W / 2 ? -40 : W + 40;
+      x += (ox - x) * v * v; a = 1 - v;
+    }
+    return { x: x, y: y, a: a };
+  }
+  function spiritSweep(o, k) {   // 화면 안 적 모두 한 번(각성 끝 휩쓸기)
+    var S = o.S, st = stOf(S.hit, o.d), sp = screenSpan(o.p), p = o.p;
+    snd('skWave'); FX.shake(CFG.juice.shakePx * 1.2, CFG.juice.shakeMs);
+    wave(p.x, p.y, sp.W * 0.45, { flat: 0.3, w: 5, ms: 420, color: '#8a2ab0', glow: '#1a0628', ground: true, noMax: true });
+    H.targets().forEach(function (t) {
+      if (!t || !H.canHit(t, S.hit)) return;
+      var hb = t.hurtbox();
+      if (Math.abs(hb.z - p.y) > S.depth || hb.x1 < sp.x0 || hb.x0 > sp.x1) return;
+      var dir = t.x >= p.x ? 1 : -1;
+      H.onHit(st, t, { dir: dir, wk: o.wk, x: t.x, y: t.y - 40 * AS(), mul: o.mul * k });
+      glow(t.x, t.y - 40 * AS(), 20, '#6a1a8a', 200, 0.6);
+    });
+  }
+  function wraithTick(dt) {
+    for (var i = wraiths.length - 1; i >= 0; i--) {
+      var o = wraiths[i], S = o.S, p = o.p;
+      o.t += dt;
+      if (o.t >= o.life + 400) { wraiths.splice(i, 1); continue; }
+      if (o.t >= o.life) {
+        if (!o.done) { o.done = true; if (o.echo) (function (o) { atLv(o.lv, function () { echo(o.d, function () { spiritSweep(o, S.echoK || 1.5); }); }); })(o); }
+        continue;
+      }
+      o.shakeT -= dt; if (o.shakeT <= 0) { o.shakeT = 420; FX.shake(CFG.juice.shakePx * 0.35, CFG.juice.shakeMs); }
+      o.sndT -= dt; if (o.sndT <= 0) { o.sndT = 700; snd('skWave', { v: 0.4 }); }
+      if (o.t < S.firstMs) continue;
+      var sp = screenSpan(p), st = stOf(S.hit, o.d), now = o.t;
+      H.targets().forEach(function (t) {
+        if (!t || !H.canHit(t, S.hit)) return;
+        var hb = t.hurtbox();
+        if (Math.abs(hb.z - p.y) > S.depth || hb.x1 < sp.x0 || hb.x0 > sp.x1) return;
+        var id = idOf(t);
+        if (o.next[id] == null) { o.next[id] = now + Math.random() * S.hitMs * 0.5; return; }   // 처음 = 적마다 조금씩 어긋나게
+        if (now < o.next[id]) return;
+        o.next[id] = now + S.hitMs;
+        atLv(o.lv, function () {
+          var dir = t.x >= p.x ? 1 : -1, hy = t.y - 40 * AS();
+          H.onHit(st, t, { dir: dir, wk: o.wk, x: t.x, y: hy, mul: o.mul });
+          glow(t.x, hy, 16, '#4a0a70', 160, 0.55);
+          debris(t.x, hy, t.y, 4, { cols: ['#0e0214', '#2a0838', '#8a2ab0', '#ff3a4a'], sp: 130, size: 1.6, ms: 300, spread: 2.6 });
+        });
+      });
+    }
+  }
+  // 바닥: 법사 발밑 검은 마법진(쓰는 신호, 1.1초) + 회오리 동안 배경 살짝 어둡게
+  function drawSpiritsUnder(ctx, camX) {
+    wraiths.forEach(function (o) {
+      var S = o.S, life = o.life, dk = clamp(o.t / 250, 0, 1) * (o.t > life ? Math.max(0, 1 - (o.t - life) / 400) : 1);
+      if (dk > 0 && viewW) { ctx.save(); ctx.fillStyle = 'rgba(4,0,8,' + (S.dim * dk).toFixed(3) + ')'; ctx.fillRect(-8, -8, viewW + 16, (viewH || 400) + 16); ctx.restore(); }
+      if (aiImg.wraith_circle) {   // v2(2026-11-08): AI 도트 마법진 — 회오리 동안 내내 법사 발밑(쓴 자리), 숨 쉬듯 보라 빛
+        var cA = clamp(o.t / 160, 0, 1) * (o.t > life ? Math.max(0, 1 - (o.t - life) / 400) : 1);
+        if (cA <= 0) return;
+        var cs = S.circle * (0.7 + 0.3 * ease(clamp(o.t / 220, 0, 1))) / AIFX.wraith_circle.rx * 1.15, cx = Math.round(o.x - camX), cz = Math.round(o.z);
+        aiDraw(ctx, 'wraith_circle', 0, cx, cz, cs, cs * 1.2, 0, cA);
+        ctx.save(); ctx.globalCompositeOperation = 'lighter';
+        aiDraw(ctx, 'wraith_circle', 0, cx, cz, cs, cs * 1.2, 0, cA * (0.25 + 0.2 * Math.sin(o.t / 140)));
+        ctx.restore();
+        return;
+      }
+      var ca = o.t < 120 ? o.t / 120 : Math.max(0, 1 - (o.t - 700) / 400);
+      if (ca <= 0) return;
+      var R = S.circle * (0.7 + 0.3 * ease(clamp(o.t / 200, 0, 1))), now = o.t / 1000;
+      ctx.save(); ctx.translate(Math.round(o.x - camX), Math.round(o.z)); ctx.scale(1, 0.3);
+      ctx.globalAlpha = 0.6 * ca; ctx.fillStyle = '#06000a'; ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.fill();
+      ctx.globalCompositeOperation = 'lighter';
+      [[R, 3, '#6a1a8a'], [R * 0.72, 2, '#8a2ab0'], [R * 0.4, 1.5, '#4a0a70']].forEach(function (c) {
+        ctx.globalAlpha = 0.85 * ca; ctx.strokeStyle = c[2]; ctx.lineWidth = c[1]; ctx.beginPath(); ctx.arc(0, 0, c[0], 0, Math.PI * 2); ctx.stroke();
+      });
+      ctx.fillStyle = '#c060d0';
+      for (var r = 0; r < 8; r++) { var an = now * 2.2 + r * Math.PI / 4; ctx.globalAlpha = 0.9 * ca; ctx.fillRect(Math.round(Math.cos(an) * R * 0.86) - 2, Math.round(Math.sin(an) * R * 0.86) - 2, 4, 4); }
+      ctx.fillStyle = '#ff3a4a';
+      for (var r2 = 0; r2 < 3; r2++) { var an2 = -now * 3 + r2 * 2.09; ctx.fillRect(Math.round(Math.cos(an2) * R * 0.56) - 1, Math.round(Math.sin(an2) * R * 0.56) - 1, 3, 3); }
+      ctx.restore();
+    });
+  }
+  // 악령 그림(화면 전체): 거의 검은 해골 머리(검보라 빛 테) + 흐린 빨간 눈 둘 + 뒤로 끌리는 검은 꼬리(지난 자리 7개, 점점 작고 흐리게)
+  // v2(2026-11-08): AI 도트 악령(후보 2번: 얼굴 없는 두건 그림자 · 빨간 눈 · 긴 뼈 발톱 · 뒤로 끌리는 찢긴 수의). 날아가는 쪽으로 머리를 돌리고(왼쪽이면 좌우 뒤집음)
+  //   뒤에 잔상 3개(흐리게) + 검보라 빛 꼬리. 다섯에 하나 = 덮치는 변형(lunge), 일곱에 하나 = 연기 꼬리 변형(wisp), 나머지 = 날기 4장 반복(악령마다 어긋나게)
+  var WRAITH_A = 0.62;   // 악령 투명도(2026-11-08 형님: 더 흐릿하게, 예전 1)
+  function drawWraithArt(ctx, o, q, P, W, qi) {
+    var kind = qi % 7 === 6 ? 'wraith_wisp' : qi % 5 === 4 ? 'wraith_lunge' : 'wraith_fly';
+    var s = 0.55 + (q.r - 7) / 4 * 0.25;   // (변형도 날기 장과 같은 폭으로 구워 둠)
+    function pose(t) {
+      var A = spiritPos(o, q, t, W), B = spiritPos(o, q, Math.max(0, t - 40), W), dx = A.x - B.x, dy = A.y - B.y;
+      if (Math.abs(dx) + Math.abs(dy) < 0.01) dx = 1;
+      var fl = dx < 0, rot = fl ? Math.atan2(-dy, -dx) : Math.atan2(dy, dx);
+      return { x: A.x, y: A.y, a: A.a, fl: fl, rot: clamp(rot, -1.1, 1.1) };
+    }
+    var fi = kind === 'wraith_fly' ? Math.floor(o.t / 85 + q.seed * 3) % 4 : 0;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';   // 검보라 빛 꼬리(지난 자리)
+    for (var k = 6; k >= 1; k--) {
+      var Q = spiritPos(o, q, Math.max(0, o.t - k * 34), W);
+      ctx.globalAlpha = 0.22 * P.a * (1 - k / 7); ctx.fillStyle = '#6a1a9a';
+      ctx.beginPath(); ctx.arc(Q.x, Q.y + 4 * s, (9 - k) * s * 1.6, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+    for (var j = 3; j >= 1; j--) {   // 잔상
+      var R = pose(o.t - j * 55);
+      if (R.a > 0) aiDraw(ctx, kind, fi, R.x, R.y, (R.fl ? -s : s) * (1 - j * 0.06), s * (1 - j * 0.06), R.rot, P.a * WRAITH_A * 0.16 * (4 - j) / 3);
+    }
+    var N = pose(o.t), x = N.x, y = N.y, r = q.r * s * 1.6;
+    var g = ctx.createRadialGradient(x, y, r * 0.3, x, y, r * 2.4);   // 머리 둘레 검보라 빛
+    g.addColorStop(0, 'rgba(120,40,170,' + (0.45 * P.a).toFixed(3) + ')'); g.addColorStop(1, 'rgba(60,10,90,0)');
+    ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 1; ctx.fillStyle = g; ctx.fillRect(x - r * 2.4, y - r * 2.4, r * 4.8, r * 4.8);
+    ctx.globalCompositeOperation = 'source-over';
+    aiDraw(ctx, kind, fi, x, y, N.fl ? -s : s, s, N.rot, P.a * WRAITH_A);
+    ctx.restore();
+  }
+  function drawWraiths(ctx, camX) {
+    var W = viewW || 480;
+    wraiths.forEach(function (o) {
+      o.sp.forEach(function (q, qi) {
+        var P = spiritPos(o, q, o.t, W);
+        if (P.a <= 0) return;
+        if (aiImg.wraith_fly) { drawWraithArt(ctx, o, q, P, W, qi); return; }
+        ctx.save();
+        for (var k = 8; k >= 1; k--) {   // 꼬리
+          var Q = spiritPos(o, q, Math.max(0, o.t - k * 30), W), rr = q.r * (1 - k * 0.09), qa = P.a * (1 - k / 9.5);
+          ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.35 * qa; ctx.fillStyle = '#5a1a7a';
+          ctx.beginPath(); ctx.arc(Q.x, Q.y, rr + 1.6, 0, Math.PI * 2); ctx.fill();
+          ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 0.8 * qa; ctx.fillStyle = '#0a0210';
+          ctx.fillRect(Math.round(Q.x - rr), Math.round(Q.y - rr), Math.round(rr * 2), Math.round(rr * 2));
+        }
+        var x = Math.round(P.x), y = Math.round(P.y), r = q.r;
+        var g = ctx.createRadialGradient(x, y, r * 0.6, x, y, r * 2.6);
+        g.addColorStop(0, 'rgba(120,40,170,' + (0.5 * P.a).toFixed(3) + ')'); g.addColorStop(1, 'rgba(60,10,90,0)');
+        ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 1; ctx.fillStyle = g; ctx.fillRect(x - r * 2.6, y - r * 2.6, r * 5.2, r * 5.2);
+        ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = P.a;
+        ctx.fillStyle = '#7a2aa0';   // 테
+        ctx.fillRect(x - r - 1, y - r, r * 2 + 2, r * 1.6); ctx.fillRect(x - r * 0.6 - 1, y + r * 0.5, r * 1.2 + 2, r * 0.7 + 1);
+        ctx.fillStyle = '#08010c';   // 해골 머리 + 턱
+        ctx.fillRect(x - r, y - r + 1, r * 2, r * 1.6 - 2); ctx.fillRect(x - r * 0.6, y + r * 0.5, r * 1.2, r * 0.7);
+        var fl = 0.55 + 0.45 * Math.sin(o.t / 90 + q.seed);
+        ctx.globalAlpha = P.a * (0.6 + 0.4 * fl); ctx.fillStyle = '#ff2a3a';   // 흐린 빨간 눈
+        ctx.fillRect(Math.round(x - r * 0.55), Math.round(y - r * 0.2), 2, 2); ctx.fillRect(Math.round(x + r * 0.2), Math.round(y - r * 0.2), 2, 2);
+        ctx.restore();
+      });
+    });
+  }
+
+  // ---- 심연의 문(흑마법사 Lv39 필살): 앞쪽(가까운 센 적 쪽)에 거대한 검은 문 → openMs 열림 → holdMs 동안 빨아들이며 tickMs 마다 작게 → 크게 터짐 ----
+  function castAbyss(p, d, s) {
+    var A = d.abyss, best = null, bd = 1e9;
+    H.targets().forEach(function (t) {
+      if (!t || t.isProp || !t.T || !alive(t)) return;
+      var dx = (t.x - p.x) * p.dir;
+      if (dx < 20 || dx > A.aim.range || Math.abs(t.y - p.y) > A.aim.depth) return;
+      var dd = Math.abs(dx - A.x) + Math.abs(t.y - p.y);
+      if (dd < bd) { bd = dd; best = t; }
+    });
+    var x = best ? best.x : p.x + p.dir * A.x, z = best ? best.y : p.y;
+    abysses.push({ x: x, z: z, t: 0, A: A, d: d, k: s.area, mul: s.mul, wk: p.weaponKey, lv: curLv, dir: p.dir, next: A.openMs + A.tickMs, boom: false, bt: 0,
+                   echo: !!s.echo, caught: [], seed: Math.random() * 6.28 });
+    snd('blink', { v: 0.9, k: 0.6 });
+    FX.shake(CFG.juice.shakePx * 1.2, CFG.juice.shakeMs * 1.4);
+    glow(x, z - A.h * 0.5, A.h * 0.5 * s.area, '#6a1a8a', 400, 0.7);
+  }
+  function abyssTick(dt) {
+    for (var i = abysses.length - 1; i >= 0; i--) {
+      var o = abysses[i], A = o.A;
+      o.t += dt;
+      if (o.boom) { o.bt += dt; if (o.bt > 700) abysses.splice(i, 1); continue; }
+      o.caught = [];
+      if (o.t >= A.openMs * 0.5) {
+        var R = A.pullR * o.k, D = A.pullDepth * o.k;
+        H.targets().forEach(function (t) {
+          if (!pullable(t) || Math.abs(t.x - o.x) > R || Math.abs(t.y - o.z) > D) return;
+          pullTo(t, o.x, o.z, A.pullK, dt, 5);
+          daze(t, 160, 0.35);
+          o.caught.push(t);
+        });
+      }
+      while (o.t >= o.next && o.next < A.openMs + A.holdMs) {
+        o.next += A.tickMs;
+        (function (o) { atLv(o.lv, function () {
+          var st = stOf(A.tick, o.d), r = A.r * o.k * 0.8, D2 = A.depth * o.k;
+          H.targets().forEach(function (t) { if (t && H.canHit(t, A.tick) && inBox(t, o.x, o.z, r, D2)) H.onHit(st, t, { dir: t.x > o.x ? -1 : 1, wk: o.wk, x: t.x, y: t.y - 40 * AS(), mul: o.mul }); });
+          glow(o.x, o.z - A.h * 0.5 * o.k, 30, '#8a2ab0', 160, 0.45);
+        }); })(o);
+      }
+      if (o.t >= A.openMs + A.holdMs) {
+        o.boom = true; o.bt = 0;
+        (function (o) { atLv(o.lv, function () {
+          abyssBoom(o, 1, true);
+          if (o.echo) echo(o.d, function () { abyssBoom(o, 0.6, false); });   // 각성 마력 폭주: 한 번 더 터짐(60%)
+        }); })(o);
+      }
+    }
+  }
+  function abyssBoom(o, mulK, first) {
+    var A = o.A, h = A.boom, st = stOf(h, o.d), R = A.r * o.k, D = A.depth * o.k, cy = o.z - A.h * 0.5 * o.k, any = false;
+    snd('meteorBoom'); snd('skSlam');
+    H.hitstop(first ? 120 : 70);
+    FX.shake(CFG.juice.shakePx * (first ? 4.2 : 2.6), CFG.juice.shakeMs * 2);
+    glow(o.x, cy, R * 1.5, '#8a2ab0', 520, 0.95); glow(o.x, cy, R * 0.6, '#ffffff', 260, 0.85);
+    wave(o.x, cy, R * 1.3, { flat: 0.85, w: 6, ms: 420, color: '#ffd8f4', glow: '#6a1a8a' });
+    wave(o.x, o.z, R * 1.8, { flat: 0.3, w: 6, ms: 520, color: '#e8b0ff', glow: '#4a0a70', ground: true });
+    debris(o.x, cy, o.z, first ? 30 : 14, { cols: DARKC, glow: true, sp: 340, size: 1.9, ms: 600, spread: 2.8 });
+    debris(o.x, cy, o.z, first ? 14 : 6, { cols: ['#0e0214', '#2a0838', '#4a1060'], sp: 110, size: 3.6, ms: 1000, g: -50, spread: 1.2 });
+    H.dust(o.x - 20 * AS(), o.z, -1); H.dust(o.x + 20 * AS(), o.z, 1);
+    H.targets().forEach(function (t) {
+      if (!t || !H.canHit(t, h) || !inBox(t, o.x, o.z, R, D)) return;
+      var dir = Math.abs(t.x - o.x) < 3 ? o.dir : (t.x > o.x ? 1 : -1);
+      H.onHit(st, t, { dir: dir, wk: o.wk, x: t.x, y: t.y - 44 * AS(), mul: o.mul * mulK });
+      any = true;
+    });
+    if (h.flash) doFlash(first ? h.flash : { color: h.flash.color, alpha: h.flash.alpha * 0.6, ms: h.flash.ms });
+    if (any && first && h.slowMs) H.slow(h.slowMs);
+  }
+  function drawAbyssUnder(ctx, camX) {
+    abysses.forEach(function (o) {
+      var A = o.A, R = A.pullR * o.k, a = o.boom ? Math.max(0, 1 - o.bt / 300) : clamp(o.t / A.openMs, 0, 1);
+      if (a <= 0) return;
+      ctx.save(); ctx.translate(o.x - camX, o.z); ctx.scale(1, 0.28);
+      var g = ctx.createRadialGradient(0, 0, 0, 0, 0, R);
+      g.addColorStop(0, 'rgba(10,0,16,' + (0.6 * a).toFixed(3) + ')'); g.addColorStop(0.5, 'rgba(60,10,80,' + (0.3 * a).toFixed(3) + ')'); g.addColorStop(1, 'rgba(60,10,80,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    });
+  }
+  // 문 그림: 땅에 선 세로 타원(검은 속 + 안으로 감기는 검보라 소용돌이) + 빛나는 테(룬 점이 돎) + 빨려드는 빛 점 + 끌려오는 적에서 문으로 보라 줄. 터지면 하얗게 번쩍하며 닫힘
+  function drawAbysses(ctx, camX) {
+    abysses.forEach(function (o) {
+      var A = o.A, x = o.x - camX, ry0 = A.h * 0.5 * Math.sqrt(o.k), now = o.t / 1000;
+      var open = o.boom ? Math.max(0, 1 - o.bt / 260) : ease(clamp(o.t / A.openMs, 0, 1)), ry = ry0 * (0.25 + 0.75 * open), rx = ry0 * 0.48 * open, cy = o.z - ry;
+      if (open <= 0) return;
+      ctx.save(); ctx.lineCap = 'round';
+      ctx.globalCompositeOperation = 'lighter';
+      o.caught.forEach(function (t) {
+        if (Math.abs(t.x - o.x) < 10) return;
+        var ty = t.y - 36 * AS();
+        ctx.globalAlpha = 0.35; ctx.strokeStyle = '#8a2ab0'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(t.x - camX, ty); ctx.lineTo(x, cy); ctx.stroke();
+        ctx.globalAlpha = 0.7; ctx.strokeStyle = '#ffd8f4'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(t.x - camX, ty); ctx.lineTo(x, cy); ctx.stroke();
+      });
+      var g = ctx.createRadialGradient(x, cy, rx * 0.5, x, cy, ry * 1.5);
+      g.addColorStop(0, 'rgba(160,50,200,0.55)'); g.addColorStop(1, 'rgba(80,0,120,0)');
+      ctx.globalAlpha = open; ctx.fillStyle = g; ctx.fillRect(x - ry * 1.5, cy - ry * 1.5, ry * 3, ry * 3);
+      for (var j = 0; j < 26; j++) {   // 빨려드는 빛 점
+        var ph = (now * 1.4 + j / 26) % 1, rr = 1 - ph, an = o.seed + j * 2.4 - ph * 3;
+        ctx.globalAlpha = 0.8 * ph * open; ctx.fillStyle = j % 3 ? '#e8b0ff' : '#ffffff';
+        ctx.fillRect(x + Math.cos(an) * rx * 3 * rr - 1, cy + Math.sin(an) * ry * 1.4 * rr - 1, 2.2, 2.2);
+      }
+      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+      ctx.fillStyle = '#06000a'; ctx.beginPath(); ctx.ellipse(x, cy, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.save(); ctx.beginPath(); ctx.ellipse(x, cy, rx, ry, 0, 0, Math.PI * 2); ctx.clip();
+      ctx.globalCompositeOperation = 'lighter'; ctx.lineWidth = 2;
+      for (var k = 0; k < 3; k++) {
+        ctx.globalAlpha = 0.5; ctx.strokeStyle = k % 2 ? '#8a2ab0' : '#d070e0';
+        ctx.beginPath();
+        for (var q = 0; q <= 20; q++) { var u = q / 20, rr2 = 1 - u, an2 = o.seed + k * 2.09 + u * 5 + now * 3.5; var px = x + Math.cos(an2) * rx * rr2, py = cy + Math.sin(an2) * ry * rr2; if (q) ctx.lineTo(px, py); else ctx.moveTo(px, py); }
+        ctx.stroke();
+      }
+      ctx.restore();
+      ctx.globalCompositeOperation = 'lighter';
+      [[6, '#6a1a8a', 0.5], [3, '#d070e0', 0.85], [1.2, '#ffd8f4', 1]].forEach(function (S) {
+        ctx.globalAlpha = S[2] * open; ctx.strokeStyle = S[1]; ctx.lineWidth = S[0];
+        ctx.beginPath(); ctx.ellipse(x, cy, rx, ry, 0, 0, Math.PI * 2); ctx.stroke();
+      });
+      ctx.fillStyle = '#ffffff';
+      for (var r = 0; r < 10; r++) { var an3 = now * 1.3 + r * Math.PI / 5; ctx.globalAlpha = 0.9 * open; ctx.fillRect(x + Math.cos(an3) * rx - 1, cy + Math.sin(an3) * ry - 1, 2.5, 2.5); }
+      if (o.boom) { ctx.globalAlpha = Math.max(0, 1 - o.bt / 200); ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.ellipse(x, cy, rx * 0.8 + 2, ry * 0.8, 0, 0, Math.PI * 2); ctx.fill(); }
+      ctx.restore();
+    });
+  }
+
+  // ---- 생명 흡수(흑마법사 Lv28, 늘 켜짐): 법사 마법으로 준 피해 x val → 체력(1초에 최대 체력 x capS 까지). 적 → 법사로 붉은 기운(0.11초에 한 줄기) ----
+  function leechHit(p, t, dmg) {
+    var q = pasOf(p, 'leech');
+    if (!q || !t || !(dmg > 0) || !p || p.state === 'dead') return;
+    if (leechVisT <= 0) {
+      leechVisT = 110;
+      leechFx.push({ x0: t.x, y0: t.y - (t.T ? t.T.height * 0.5 : 40 * AS()), t: 0, life: 380 + Math.random() * 80, arc: 12 + Math.random() * 18, p: p });
+    }
+    p.leechAcc = (p.leechAcc || 0) + dmg * q.v;
+    var n = Math.floor(p.leechAcc);
+    if (n < 1) return;
+    p.leechAcc -= n;
+    var cap = Math.max(1, Math.round(p.maxHp * (q.P.capS ? q.P.capS[q.lv - 1] : 0.04)));
+    n = Math.min(n, cap - leechWin.got, p.maxHp - p.hp);
+    if (n <= 0) return;
+    p.hp += n; leechWin.got += n;
+    FX.damage(p.x, p.y - (p.z || 0) - 112 * AS(), n, false, CFG.juice, null, 'heal', 'player:leech', true);
+  }
+  function leechTick(dt) {
+    if (leechVisT > 0) leechVisT -= dt;
+    leechWin.t += dt; if (leechWin.t >= 1000) { leechWin.t = 0; leechWin.got = 0; }
+    for (var i = leechFx.length - 1; i >= 0; i--) {
+      var f = leechFx[i]; f.t += dt;
+      if (f.t >= f.life) { leechFx.splice(i, 1); glow(f.p.x, f.p.y - 40 * AS(), 14, '#ff5a6a', 140, 0.45); }
+    }
+  }
+  function leechPos(f, u) { var p = f.p, x1 = p.x, y1 = p.y - (p.z || 0) - 40 * AS(); return { x: f.x0 + (x1 - f.x0) * u, y: f.y0 + (y1 - f.y0) * u - f.arc * Math.sin(Math.PI * u) }; }
+  function drawLeech(ctx, camX) {
+    if (!leechFx.length) return;
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    leechFx.forEach(function (f) {
+      var u = clamp(f.t / f.life, 0, 1), e = u * u;
+      for (var k = 0; k < 4; k++) {
+        var q = leechPos(f, clamp(e - k * 0.06, 0, 1));
+        ctx.globalAlpha = (1 - k * 0.22) * 0.9; ctx.fillStyle = k ? BLOODC[Math.min(3, k)] : '#ffd0d0';
+        var sz = 3 - k * 0.5; ctx.fillRect(q.x - camX - sz / 2, q.y - sz / 2, sz, sz);
+      }
+    });
+    ctx.restore();
+  }
+
+  // ---- 매 장면 · 그리기 · 쓰는 기술 진행(advance0 이 부름) ----
+  function branchStep(dt) {
+    if (infuseT > 0) infuseT -= dt;
+    for (var qi = infuseQ.length - 1; qi >= 0; qi--) { var Q = infuseQ[qi]; Q.t -= dt; if (Q.t <= 0) { infuseQ.splice(qi, 1); (function (Q) { atLv(Q.lv, function () { infuseBoom(Q); }); })(Q); } }
+    awaveTick(dt); riftTick(dt); mswordTick(dt); cleaveTick(dt);
+    dorbTick(dt); swampTick(dt); wraithTick(dt); abyssTick(dt); leechTick(dt);
+    H.targets().forEach(function (t) { if (t && t.curseT > 0) t.curseT -= dt; });
+  }
+  function branchAdvance(p, d, s, t0, t1) {
+    if (d.awave) awaveStep(p, d, s, t1);
+    if (d.rift) riftStep(p, d, s, t0, t1);
+    if (d.swords && !s.swDone && t1 >= d.swords.at) { s.swDone = true; castMswords(p, d, s); }
+    if (d.cleave && !s.clDone && t1 >= d.cleave.at) { s.clDone = true; castCleave(p, d, s); }
+    if (d.dorb && !s.dorbDone && t1 >= d.dorb.at) { s.dorbDone = true; castDorb(p, d, s); }
+    if (d.swamp && !s.swampDone && t1 >= d.swamp.at) { s.swampDone = true; castSwamp(p, d, s); }
+    if (d.spirits && !s.spDone && t1 >= d.spirits.at) { s.spDone = true; castSpirits(p, d, s); }
+    if (d.abyss && !s.abDone && t1 >= d.abyss.at) { s.abDone = true; castAbyss(p, d, s); }
+  }
+  function drawBranchUnder(ctx, camX) { viewCam = camX; aiLoad(); drawSpiritsUnder(ctx, camX); drawSwamps(ctx, camX); drawAbyssUnder(ctx, camX); }
+  function drawBranchOver(ctx, camX) {
+    drawRifts(ctx, camX); drawAwaves(ctx, camX); drawCleaves(ctx, camX); drawMswords(ctx, camX);
+    drawDorbs(ctx, camX); drawAbysses(ctx, camX); drawWraiths(ctx, camX); drawLeech(ctx, camX);
+  }
+  function branchClear() {
+    [awaves, riftMarks, riftLines, mswords, cleaves, dorbs, swamps, wraiths, abysses, leechFx, infuseQ].forEach(function (L) { L.length = 0; });
+    infuseT = 0; leechVisT = 0; leechWin.t = 0; leechWin.got = 0;
+  }
+  function branchFx() { return { awaves: awaves.length, riftMarks: riftMarks.length, mswords: mswords.length, cleaves: cleaves.length, dorbs: dorbs.length, swamps: swamps.length, wraiths: wraiths.length, abysses: abysses.length, leechFx: leechFx.length, infuseQ: infuseQ.length }; }
+
   // ---------- 매 장면 (효과들 시간 흐름) ----------
   function update(dt) {
     for (var ei = echoes.length - 1; ei >= 0; ei--) { var E = echoes[ei]; E.t -= dt; if (E.t <= 0) { echoes.splice(ei, 1); atLv(E.lv, E.fn); } }   // 각성: 한 번 더
@@ -3044,6 +4119,7 @@
     crossStep(dt); aegisStep(H.player && H.player(), dt);              // 성기사 기술(2026-11-08)
     shardStep(dt); pullStep(dt);                                       // 칼날 파편 · 끌어당기는 검압(2026-11-08)
     mageStep(dt);                                                      // 법사 새 기술 · 대마법사(2026-11-08)
+    branchStep(dt);                                                    // 2차 갈래 B: 마검사 · 흑마법사(2026-11-08)
     meteorStep(dt);
     [bolts, rings, ghosts, arts, waves, parts, glows, pillars].forEach(function (L) {
       for (var i = L.length - 1; i >= 0; i--) { L[i].t += dt; if (L[i].t >= L[i].life) L.splice(i, 1); }
@@ -3074,6 +4150,7 @@
   // ---------- 그리기 ----------
   // 배경 위·캐릭터 아래: 기술 쓰는 동안 배경을 어둡게(캐릭터·적은 그대로 밝음)
   function drawBackdrop(ctx, W, Hh, p) {
+    viewW = W; viewH = Hh;   // 악령 회오리 판정 = 보이는 화면(2026-11-08)
     var s = p && p.state === 'skill' && p.sk, D = s && s.d.darken;
     if (!D) return;
     var k = s.t / D.ms;
@@ -3090,6 +4167,7 @@
     drawFlameMark(ctx, camX, p);  // 불기둥 마법진(2차)
     drawGrit(ctx, camX, p);       // 투지 발밑 붉은 기운(2차)
     drawCrossMarks(ctx, camX);    // 심판의 십자 땅에 새긴 십자(2026-11-08)
+    drawBranchUnder(ctx, camX);   // 저주의 늪 · 심연의 문 바닥(2026-11-08 갈래 B)
     drawGravUnder(ctx, camX); drawFrostUnder(ctx, camX); drawCragUnder(ctx, camX); drawJudgeMark(ctx, camX, p);   // 중력 구체 바닥 · 빙결 폭풍 땅 · 천둥 심판 과녁(2026-11-08)
     var s = p && p.state === 'skill' && p.sk, K = s && (s.K || s.d.strikes);
     if (!K) return;
@@ -3194,6 +4272,7 @@
     drawMeteors(ctx, camX);       // 떨어지는 운석
     drawCrossBeams(ctx, camX); drawBarrier(ctx, camX);   // 심판의 십자 빛기둥 · 성스러운 돌격 방패(2026-11-08)
     drawPulls(ctx, camX); drawShards(ctx, camX);         // 끌어당기는 검압 바람 줄 · 칼날 파편(2026-11-08)
+    drawBranchOver(ctx, camX);    // 갈래 B 기술(2026-11-08): 검기 · 균열 · 마력 검 · 거대 마력 검 · 구체 · 문 · 악령 회오리 · 생명 흡수
     drawFrozen(ctx, camX); drawFrosts(ctx, camX); drawVortexes(ctx, camX); drawGravs(ctx, camX); drawJudges(ctx, camX); drawEshards(ctx, camX);   // 법사 새 기술(2026-11-08)
     waves.forEach(function (w) { if (!w.ground) drawWave(ctx, camX, w); });
     // 번쩍 빛(더하기)
@@ -3415,9 +4494,10 @@
     // 2차 기술(2026-11-06): 늘 켜진 기술(main.js 가 부름) · 순간이동 숨기 · 시험용
     eshardHit: eshardHit, chainKill: chainKill,   // 법사 늘 켜진 기술(2026-11-08): 원소 파편(마법이 맞을 때) · 원소 연쇄(마법으로 쓰러질 때)
     shardKill: shardKill, comboPull: comboPull,   // 1차 기사 늘 켜진 기술(2026-11-08): 칼날 파편(적이 쓰러질 때) · 끌어당기는 검압(콤보 마무리 타 시작)
+    infuseMul: infuseMul, infuseHit: infuseHit, leechHit: leechHit, curseMul: curseMul,   // 갈래 B 늘 켜진 기술 · 저주(2026-11-08, main.js onHit)
     gritBonus: gritBonus, tryCounter: tryCounter, shieldSplit: shieldSplit, shieldHit: shieldHit, brandMul: brandMul, brandMark: brandMark,
-    hidden: hidden, test: TEST, _fx: function () { return { blades: blades.length, flames: flames.length, beams: beams.length, arcs: arcs.length, shield: !!shieldFx, crosses: crosses.length, shards: shardFx.length, pulls: pulls.length, gravs: gravs.length, eshards: eshFx.length, vortexes: vortexes.length, chains: chainQ.length, frosts: frosts.length, crags: crags.length, cragRows: cragRows.length, judges: judges.length }; },
-    clear: function () { gravs.length = 0; eshFx.length = 0; eshT = 0; vortexes.length = 0; vortexT = 0; chainQ.length = 0; chainN = 0; frosts.length = 0; cragRows.length = 0; crags.length = 0; judges.length = 0; jbolts.length = 0; crosses.length = 0; aegisT = 0; shardFx.length = 0; shardQ.length = 0; shardN = 0; pulls.length = 0; tornados.length = 0; blades.length = 0; flames.length = 0; beams.length = 0; arcs.length = 0; shieldFx = null; gritOn = false; curLv = 1; meteors.length = 0; pillars.length = 0; echoes.length = 0; bright = 1; noMpT = 0; bolts.length = 0; rings.length = 0; ghosts.length = 0; arts.length = 0; waves.length = 0; parts.length = 0; glows.length = 0; flash = null; },
+    hidden: hidden, test: TEST, _fx: function () { return { blades: blades.length, flames: flames.length, beams: beams.length, arcs: arcs.length, shield: !!shieldFx, crosses: crosses.length, shards: shardFx.length, pulls: pulls.length, gravs: gravs.length, eshards: eshFx.length, vortexes: vortexes.length, chains: chainQ.length, frosts: frosts.length, crags: crags.length, cragRows: cragRows.length, judges: judges.length, b: branchFx() }; },
+    clear: function () { branchClear(); gravs.length = 0; eshFx.length = 0; eshT = 0; vortexes.length = 0; vortexT = 0; chainQ.length = 0; chainN = 0; frosts.length = 0; cragRows.length = 0; crags.length = 0; judges.length = 0; jbolts.length = 0; crosses.length = 0; aegisT = 0; shardFx.length = 0; shardQ.length = 0; shardN = 0; pulls.length = 0; tornados.length = 0; blades.length = 0; flames.length = 0; beams.length = 0; arcs.length = 0; shieldFx = null; gritOn = false; curLv = 1; meteors.length = 0; pillars.length = 0; echoes.length = 0; bright = 1; noMpT = 0; bolts.length = 0; rings.length = 0; ghosts.length = 0; arts.length = 0; waves.length = 0; parts.length = 0; glows.length = 0; flash = null; },
     // 화면 번쩍(콤보 마무리 타도 씀): { color, alpha, ms }
     flash: function (f) { doFlash(f); },
     // 파편·둥근 빛(소품 나뭇조각·음식 반짝임도 씀, props.js)

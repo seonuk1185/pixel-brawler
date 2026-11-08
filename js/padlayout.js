@@ -1,6 +1,6 @@
 // =====================================================================
 //  폰 버튼 위치 바꾸기 (padlayout.js, 2026-11-07 폰 설정, 형님 승인)
-//  - 설정 창 「버튼 위치 · 바꾸기」 → 멈춘 게임 위에 폰 버튼 9개(공격 · 점프 · 회피 · 각성 · 기술 1~5)를 전부 보여 주고 끌어서 옮김
+//  - 설정 창 「버튼 위치 · 바꾸기」 → 멈춘 게임 위에 폰 버튼 11개(공격 · 점프 · 회피 · 각성 · 기술 1~7, 2026-11-08 6 · 7번 더함)를 전부 보여 주고 끌어서 옮김
 //    끌면 작은 칸(GRID 8px)에 맞춰 붙음 · 화면 안(노치 등 안전 영역 + 위 TOP 줄은 비움) · 다른 버튼과 안 겹침(겹치면 그 자리로 안 감)
 //    고른 버튼 크기(작게 0.8 · 보통 1 · 크게 1.25) + 전체 크기(80~130%, 모서리 기준으로 같이 커짐) · 기본 배치로 · 취소 · 저장
 //  - 저장 = 화면 모양마다 따로(가로/세로 비율: 넓은 ≥ 1.9 · 보통 1.5~1.9 · 네모난 < 1.5 → 폴드 접음 · 펼침이 각자 배치)
@@ -10,13 +10,15 @@
 //  - 폰 화면(body.touchui) 가로일 때만. 세로(가로로 돌려 주세요) · PC 화면은 원래대로
 //  - 기술 1~5 칸(2026-11-07 폴드 펼침 고침): 화면 % 가 아니라 「공격 버튼 가운데에서 얼마나」(공격 원래 폭 x 전체 크기 단위)로 저장
 //    → 넓은 화면 · 네모난 화면 · 주소창 있고 없고 어디서나 반달이 공격 버튼에 똑같이 붙음. 예전(화면 %) 저장의 기술 칸 자리는 원래 반달로(크기 고른 건 그대로)
+//  - 기술 6 · 7번 칸(2026-11-08): 예전 저장(5칸 때)에는 자리가 없음 → 원래 자리(반달 바깥 줄, 공격 기준)에 두되
+//    옮겨 둔 다른 버튼과 겹치면 그 둘레에서 가장 가까운 빈 곳으로(newSpot)
 //  - 조이스틱: 버튼이 조이스틱 칸보다 위(누름 먼저) + 버튼 둘레 JOYGAP 안에서 누르면 조이스틱이 안 생김(Input.setJoyBlock)
 // =====================================================================
 (function () {
   var CFG = window.CFG;
   var SAVE = CFG.demo ? 'pixelBrawler.demo.pad' : 'pixelBrawler.pad';
-  var IDS = ['btnAtk', 'btnJump', 'btnDodge', 'btnAwk', 'btnSkA', 'btnSkB', 'btnSkC', 'btnSkD', 'btnSkE'];
-  var SKS = ['btnSkA', 'btnSkB', 'btnSkC', 'btnSkD', 'btnSkE'];
+  var IDS = ['btnAtk', 'btnJump', 'btnDodge', 'btnAwk', 'btnSkA', 'btnSkB', 'btnSkC', 'btnSkD', 'btnSkE', 'btnSkF', 'btnSkG'];
+  var SKS = ['btnSkA', 'btnSkB', 'btnSkC', 'btnSkD', 'btnSkE', 'btnSkF', 'btnSkG'];
   function isSk(id) { return SKS.indexOf(id) >= 0; }
   var SIZES = [0.8, 1, 1.25], GS = [0.8, 0.9, 1, 1.1, 1.2, 1.3];
   var GRID = 8, GAP = 2, TOP = 48, JOYGAP = 8;
@@ -79,13 +81,30 @@
       out[id] = clampBox({ cx: cx, cy: cy, w: w, h: h }, S);
     });
     // 기술 칸: 그려진 공격 버튼 가운데 기준(예전 화면 % 저장이면 원래 반달 자리, 크기는 그대로)
-    var A = out.btnAtk;
+    var A = out.btnAtk, fresh = [];
     SKS.forEach(function (id) {
-      var q = rec.b[id]; if (!q || !q.a) q = skDef(id, D, q && q.s);
+      var q = rec.b[id]; if (!q || !q.a) { if (!q) fresh.push(id); q = skDef(id, D, q && q.s); }
       var k = (q.s || 1) * g;
       out[id] = clampBox({ cx: A.cx + q.rx * u, cy: A.cy + q.ry * u, w: D[id].w * k, h: D[id].h * k }, S);
     });
+    // 저장에 없던 칸(예전 5칸 저장의 6 · 7번): 원래 자리가 다른 버튼과 겹치면 가까운 빈 곳
+    fresh.forEach(function (id) { out[id] = newSpot(out, id, S); });
     return out;
+  }
+  function newSpot(L, id, S) {
+    var b0 = L[id];
+    if (!overlapsAny(L, id, b0)) return b0;
+    for (var r = GRID; r <= 400; r += GRID) {
+      var best = null, n = Math.max(8, Math.round(2 * Math.PI * r / GRID));
+      for (var i = 0; i < n; i++) {
+        var a = i / n * 2 * Math.PI, c = clampBox({ cx: b0.cx + Math.cos(a) * r, cy: b0.cy + Math.sin(a) * r, w: b0.w, h: b0.h }, S);
+        if (overlapsAny(L, id, c)) continue;
+        var dd = Math.hypot(c.cx - b0.cx, c.cy - b0.cy);
+        if (!best || dd < best.d) best = { d: dd, b: c };
+      }
+      if (best) return best.b;
+    }
+    return b0;
   }
   function clampBox(b, S) {
     S = S || safe();
@@ -144,10 +163,13 @@
     DEF = defaults();
     var rec = data[bucket()];
     work = rec ? JSON.parse(JSON.stringify(rec)) : fromDefaults(DEF);
-    IDS.forEach(function (id) {
+    IDS.forEach(function (id) { if (!isSk(id) && !work.b[id]) work.b[id] = toRel(DEF[id].cx, DEF[id].cy, work.g || 1, 1); });
+    // 기술 칸: 예전 화면 % 저장 = 원래 반달, 저장에 없던 칸(6 · 7번) = 그려질 자리(겹치면 비켜 둔 곳) 그대로 공격 기준 값으로
+    var L0 = layout(work, DEF);
+    SKS.forEach(function (id) {
       var q = work.b[id];
-      if (isSk(id)) { if (!q || !q.a) work.b[id] = skDef(id, DEF, q && q.s); }
-      else if (!q) work.b[id] = toRel(DEF[id].cx, DEF[id].cy, work.g || 1, 1);
+      if (!q) work.b[id] = skRel(id, L0[id], L0.btnAtk, DEF, work.g || 1, 1);
+      else if (!q.a) work.b[id] = skDef(id, DEF, q.s);
     });
     workDef = !rec; sel = 'btnAtk';
     document.body.classList.add('layedit');

@@ -28,7 +28,7 @@
   var THEME = {
     steel: ['#3e5478', '#1c2640'], fire: ['#7a2412', '#2e0c08'], ice: ['#2a5a8e', '#0e1e3a'],
     storm: ['#4a2e86', '#1a1036'], earth: ['#5e3e22', '#24160a'], arcane: ['#4e2a74', '#1c0e2e'],
-    holy: ['#8a6418', '#2e2008'], blood: ['#6e1a26', '#26080c']
+    holy: ['#8a6418', '#2e2008'], blood: ['#6e1a26', '#26080c'], dark: ['#3e1048', '#120416']   // dark = 흑마법사(2026-11-08)
   };
   // 액자(테두리) 색: [밝은, 가운데, 어두운] — 작게 봐도 갈래가 보이게 원소 색으로
   var FRAME = {
@@ -39,7 +39,8 @@
     storm: ['#fffbb0', '#f0d020', '#8a6a08'],   // 번개 = 노랑
     earth: ['#e8c490', '#a8743c', '#4e2c12'],   // 흙 = 갈색
     arcane:['#f0d8ff', '#a868f0', '#4e2290'],   // 마법 = 보라
-    blood: ['#ffa0a0', '#d0303a', '#6a0c14']    // 투지·반격 = 진홍
+    blood: ['#ffa0a0', '#d0303a', '#6a0c14'],   // 투지·반격 = 진홍
+    dark:  ['#f0b8ff', '#9a2ac0', '#3a0848']    // 어둠 = 검보라(흑마법사, 2026-11-08)
   };
 
   // ---------- 24 x 24 그림판 ----------
@@ -320,6 +321,94 @@
       g.rect(0, 6, 5, 1, K.g1); g.rect(1, 11, 4, 1, K.g0); g.rect(0, 16, 5, 1, K.g1); g.rect(2, 19, 3, 1, K.g2);
       g.spark(22, 3, false);
     },
+    // ===== 2차 갈래 B (2026-11-08): 마검사 · 흑마법사 =====
+    arcwave: function (g) {                 // 마력 검기: 겹쳐 날아가는 보라 초승달 세 줄기
+      [[9, 5, 0.7], [15, 12, 1], [9, 19, 0.7]].forEach(function (q) {
+        g.disc(q[0], q[1], 5.5 * q[2] + 1.5, function (d, x, y) { var dx = x - (q[0] - 3), dy = y - q[1]; if (Math.sqrt(dx * dx + dy * dy) <= 5.4 * q[2] + 1) return null; return d > 5.2 * q[2] + 0.8 ? K.wht : d > 4 * q[2] ? K.p0 : K.p1; });
+      });
+      g.outline();
+      g.rect(0, 11, 6, 1, K.p1); g.rect(0, 5, 3, 1, K.p2); g.rect(0, 19, 3, 1, K.p2);
+      g.spark(22, 4, false, K.p0);
+    },
+    infuse: function (g) {                  // 마력 부여(늘 켜짐): 보라 기운이 감도는 비스듬한 칼 + 칼끝 작은 터짐
+      diagSword(g, 19, 3, 13, 1);
+      g.outline();
+      g.ring(12, 13, 7.5, 9, 120, 300, function (t) { return t > 0.4 && t < 0.6 ? K.wht : K.p1; });
+      g.disc(20, 4, 2.6, function (d) { return d < 1.2 ? K.wht : K.p0; });
+      g.px(4, 6, K.p0); g.px(6, 3, K.p1); g.px(17, 20, K.p1);
+    },
+    rift: function (g) {                    // 차원 베기: 가로로 그은 보라 베기 줄 + 줄 위로 찢어진 세로 틈 셋
+      g.rect(1, 12, 22, 2, K.p1); g.rect(3, 12, 18, 1, K.wht);
+      [[6, 0.8], [12, 1], [18, 0.8]].forEach(function (q) {
+        var hh = Math.round(6 * q[1]);
+        g.ellipse(q[0], 12.5, 2, hh, function (v) { return v < 0.45 ? '#12041e' : v < 0.85 ? K.p3 : K.p0; });
+      });
+      g.outline();
+      g.spark(21, 4, false, K.p0); g.spark(3, 20, false, K.p0);
+    },
+    msword: function (g) {                  // 마검 소환: 아래를 향해 떠 있는 보라 마력 검 셋(가운데 크게)
+      [[4, 2, 13], [10, 0, 19], [17, 2, 13]].forEach(function (q, i) {
+        var x = q[0];
+        g.rect(x, q[1], 3, 2, K.g1); g.rect(x - 1, q[1] + 2, 5, 1, K.g2);
+        for (var y = q[1] + 3; y < q[2]; y++) { g.px(x, y, K.p0); g.px(x + 1, y, i === 1 ? K.wht : K.p1); g.px(x + 2, y, K.p2); }
+        g.px(x + 1, q[2], K.p0);
+      });
+      g.outline();
+      g.rect(2, 21, 20, 1, K.p1); g.px(11, 21, K.wht); g.spark(21, 17, false, K.p0);
+    },
+    unleash: function (g) {                 // 마검 해방(필살): 화면을 가르는 거대한 보라 검 + 땅 터짐
+      g.rect(0, 20, 24, 4, K.e2); g.rect(0, 20, 24, 1, K.e1);
+      g.poly([[1, 19], [19, 4], [22, 5], [5, 20]], function (x, y) { return x + y < 22 ? K.p0 : K.p1; });
+      g.line(4, 18, 20, 5, K.wht);
+      g.rect(0, 17, 3, 3, K.g1); g.px(1, 18, K.g0);
+      g.outline();
+      g.ellipse(12, 20, 9, 2, function (v) { return v < 0.5 ? K.wht : K.p0; });
+      g.spark(20, 2, false, K.p0); g.px(8, 6, K.p1); g.px(14, 15, K.p0);
+    },
+    darkorb: function (g) {                 // 어둠의 구체: 검은 속 + 검보라 테 + 둘레 어둠 조각 + 뒤로 남는 꼬리
+      g.disc(14, 12, 6.6, function (d, x, y) { return d < 4 ? '#0a0210' : d < 5.4 ? '#6a1a8a' : (x + y < 26 ? '#d070e0' : '#8a2ab0'); });
+      g.outline();
+      g.rect(0, 10, 6, 1, '#8a2ab0'); g.rect(1, 13, 5, 1, '#d070e0'); g.rect(0, 16, 4, 1, '#6a1a8a');
+      g.px(12, 10, '#ff9af0'); g.px(13, 9, K.wht);
+      g.px(21, 4, '#ff9af0'); g.px(22, 19, '#d070e0'); g.px(7, 4, '#d070e0');
+    },
+    leech: function (g) {                   // 생명 흡수(늘 켜짐): 붉은 하트로 빨려 드는 붉은 기운 줄기
+      g.disc(12, 13, 5, function (d) { return d < 2 ? K.r0 : d < 3.6 ? K.r1 : K.r2; });
+      g.disc(9, 10, 3, K.r1); g.disc(15, 10, 3, K.r1);
+      g.poly([[6, 12], [18, 12], [12, 19]], K.r1);
+      g.px(9, 9, K.r0); g.px(10, 9, '#ffd0d0');
+      g.outline();
+      [[2, 2], [21, 3], [2, 21], [21, 21]].forEach(function (q) { g.px(q[0], q[1], '#ff5a6a'); });
+      g.line(3, 3, 6, 6, '#c01a3a'); g.line(20, 4, 17, 7, '#c01a3a'); g.line(3, 20, 6, 17, '#c01a3a'); g.line(20, 20, 17, 17, '#c01a3a');
+    },
+    swamp: function (g) {                   // 저주의 늪: 땅에 펼친 검보라 웅덩이 + 소용돌이 + 오르는 기포
+      g.ellipse(12, 17, 11, 5, function (v) { return v < 0.35 ? '#0a0210' : v < 0.7 ? '#3a0a50' : '#8a2ab0'; });
+      g.outline();
+      g.ring(12, 17, 3, 4.2, 0, 300, function () { return '#d070e0'; });
+      g.disc(7, 9, 1.6, '#d070e0'); g.disc(15, 6, 2, '#8a2ab0'); g.disc(18, 11, 1.3, '#ff9af0');
+      g.px(7, 8, K.wht); g.px(15, 5, '#ffd8f4');
+    },
+    wraith: function (g) {                  // 악령 회오리(2026-11-08 망령 소환을 바꿈): 검보라 소용돌이 고리 둘 + 휘도는 검은 해골 악령 셋(빨간 눈 · 꼬리)
+      g.ring(12, 12, 8.5, 10.5, 200, 110, function (t) { return t > 0.75 ? '#8a2ab0' : t > 0.35 ? '#3a0a50' : '#1a0628'; });
+      g.ring(12, 12, 4.5, 6.2, 20, 290, function (t) { return t > 0.7 ? '#d070e0' : '#6a1a8a'; });
+      g.disc(12, 12, 2.4, '#0a0210');
+      [[5, 6, 1], [18, 9, -1], [10, 18, 1]].forEach(function (q) {
+        var x = q[0], y = q[1];
+        g.rect(x - 2, y - 2, 5, 4, '#0a0210'); g.rect(x - 1, y + 2, 3, 1, '#0a0210');
+        g.rect(x - 2 - 2 * q[2], y + 1, 2, 1, '#2a0838');
+      });
+      g.outline('#8a2ab0');
+      [[5, 6], [18, 9], [10, 18]].forEach(function (q) { g.px(q[0] - 1, q[1] - 1, '#ff2a3a'); g.px(q[0] + 1, q[1] - 1, '#ff2a3a'); });
+      g.px(21, 3, '#d070e0'); g.px(2, 20, '#d070e0'); g.px(20, 20, '#8a2ab0');
+    },
+    abyss: function (g) {                   // 심연의 문(필살): 땅에 선 거대한 검은 문(검보라 테) + 빨려 드는 화살
+      g.ellipse(12, 11, 6.5, 10, function (v) { return v < 0.55 ? '#06000a' : v < 0.8 ? '#6a1a8a' : '#d070e0'; });
+      g.outline();
+      g.ring(12, 11, 2, 3.2, 30, 280, function () { return '#8a2ab0'; });
+      g.rect(2, 22, 20, 1, '#8a2ab0');
+      g.map(0, 8, ['a..', '.a.', 'a..'], { a: '#ffd8f4' }); g.map(21, 8, ['..a', '.a.', '..a'], { a: '#ffd8f4' });
+      g.px(12, 1, K.wht); g.px(5, 3, '#ff9af0'); g.px(19, 18, '#ff9af0');
+    },
     // ===== 법사 =====
     fireball: function (g) {                // 화염구: 오른쪽으로 날아가는 불덩이 + 불꼬리
       g.poly([[12, 5], [1, 2], [6, 9], [0, 12], [6, 15], [1, 21], [13, 19]], K.f3);
@@ -535,6 +624,10 @@
     pillar: ['불기둥', 'mage', 'active', 'fire'], brand: ['원소 낙인', 'mage', 'passive', 'arcane'],
     eshard: ['원소 파편', 'mage', 'passive', 'fire'], gravity: ['중력 구체', 'mage', 'active', 'arcane'], vortex: ['마력 소용돌이', 'mage', 'passive', 'arcane'],   // 1차 법사(2026-11-08)
     echain: ['원소 연쇄', 'mage', 'passive', 'fire'], frost: ['빙결 폭풍', 'mage', 'active', 'ice'], judgment: ['천둥 심판', 'mage', 'active', 'storm'],     // 대마법사(2차, 2026-11-08)
+    arcwave: ['마력 검기', 'knight', 'active', 'arcane'], infuse: ['마력 부여', 'knight', 'passive', 'arcane'], rift: ['차원 베기', 'knight', 'active', 'arcane'],   // 마검사(2차 갈래 B, 2026-11-08)
+    msword: ['마검 소환', 'knight', 'active', 'arcane'], unleash: ['마검 해방', 'knight', 'active', 'arcane'],
+    darkorb: ['어둠의 구체', 'mage', 'active', 'dark'], leech: ['생명 흡수', 'mage', 'passive', 'blood'], swamp: ['저주의 늪', 'mage', 'active', 'dark'],   // 흑마법사(2차 갈래 B, 2026-11-08)
+    wraith: ['악령 회오리', 'mage', 'active', 'dark'], abyss: ['심연의 문', 'mage', 'active', 'dark'],
     nimble: ['날렵한 몸놀림', 'all', 'passive', 'ice'],   // 기사 · 법사 늘 켜진 기술(2026-11-08)
     dodge: ['회피', 'all', 'active', 'ice'], atk: ['평타', 'all', 'active', 'steel'], jump: ['점프', 'all', 'active', 'earth']
   };
