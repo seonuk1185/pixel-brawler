@@ -2543,7 +2543,7 @@
   // 큰 빙산에 맞은 적: 뜬 적 = 얼음 그림만(띄우기가 먼저, 공중에서 안 멈춤) → 떨어져 일어서면 느려짐 / 안 뜬 적(보스 · 큰 적) = 잠깐 진짜 얼음(거의 멈춤) → 느려짐
   function cragFreeze(R, t) {
     if (!t.T || t.isProp || (t.alive && !t.alive())) return;
-    var F = R.C.big.freeze, air = t.state === 'air';
+    var F = R.C.big.freeze, air = t.state === 'air' || t.state === 'down';   // 누운 적도 일어선 뒤 느려짐(2026-11-08)
     t.frozenT = Math.max(t.frozenT || 0, F.ms);
     if (!air) { t.slowT = Math.max(t.slowT || 0, F.ms); t.slowK = t.T.boss ? F.bossMul : F.mul; t.slowDaze = false; if (t.flashT > 6) t.flashT = 6; }
     R.pend.push({ t: t, age: 0, air: air });
@@ -3339,8 +3339,9 @@
     var p = G.player, bk = p ? bookOf(G.classKey) : null, id = bk && bk.at(i);
     if (!p || !id) return null;
     if (id === 'dodge') {
-      var D = CFG.move && CFG.move.dodge, r = Math.max(0, p.dodgeCd || 0), all = (D && D.cdMs) || 1;
-      return { id: 'dodge', key: 'dodge', name: '회피', icon: '회', rem: r, cd: all, frac: Math.round(Math.min(1, r / all) * 100) / 100, cost: 0, nomp: false, dodge: true };
+      // 2026-11-08 연속 2번: 쿨타임 = 두 번 다 쓴 뒤만(p.dodgeInfo), n = 남은 회피 수
+      var DI = p.dodgeInfo();
+      return { id: 'dodge', key: 'dodge', name: '회피', icon: '회', rem: DI.rem, cd: DI.cd, frac: Math.round(DI.frac * 100) / 100, cost: 0, nomp: false, dodge: true, n: DI.n, max: DI.max };
     }
     var q = slotSkill({ classKey: G.classKey, gender: G.charKey }, i), d = q && q.d;
     if (!d) return null;

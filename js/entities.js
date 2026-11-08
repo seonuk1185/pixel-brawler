@@ -47,7 +47,9 @@
     //   look = 그리기 덧칠 { paint(img) → 다시 칠한 그림, outline: { color, alpha, glow }, white = 흰 번쩍 세기 }
     this.superArmor = false; this.noHitT = 0; this.cdRate = 1; this.freeMp = false; this.echoCast = false; this.look = null;
     // 회피(2026-11-07, config move.dodge): dg = 회피 진행 { t, ms, x0, y0, dx, dy, fwd }, dodgeCd = 남은 쿨타임, dodgeInvT = 남은 무적(깜빡임 없음)
-    this.dg = null; this.dodgeCd = 0; this.dodgeInvT = 0;
+    //   2026-11-08 연속 2번: dodgeN = 남은 회피 수(config charges), dodgeCd = 다 쓴 뒤 남은 쿨타임(끝나면 전부 참), dodgeRef = 하나 돌아오기까지 남은 시간
+    //   nimble = 늘 켜진 기술 날렵한 몸놀림 { charges, cd, refill, dist } (main.js 가 매 장면 넣음, 안 배웠으면 null)
+    this.dg = null; this.dodgeCd = 0; this.dodgeInvT = 0; this.dodgeN = null; this.dodgeRef = 0; this.nimble = null;
   }
 
   // ---------- 달리기·점프 도구 ----------
@@ -207,9 +209,35 @@
   // ---------- 회피 (2026-11-07, config move.dodge) ----------
   // 지금 회피로 빠질 수 있나: 쿨타임 끝 + 땅 위 + 서 있기·걷기·달리기, 또는 끝무렵(평타 첫 판정이 지나간 뒤 · 기술 이어 쓰기 구간 ·
   //   달리며 공격 회복 · 착지 웅크림). 움찔·넘어짐·쓰러짐·붙잡힘·공중·이미 회피 중이면 안 됨
+  // 지금 회피 값(2026-11-08): n = 연속 횟수, cd = 다 쓴 뒤 쿨타임, refill = 하나 돌아오는 시간, dist = 거리 (날렵한 몸놀림이면 바뀐 값)
+  Player.prototype.dodgeStats = function () {
+    var D = this.cfg.move.dodge, N = this.nimble;
+    return { n: (N && N.charges) || D.charges || 1, cd: N ? N.cd : D.cdMs, refill: N ? N.refill : (D.refillMs || D.cdMs), dist: D.dist * (N ? 1 + (N.dist || 0) : 1) };
+  };
+  // 버튼 표시용: n = 남은 회피 수, max = 최대, frac = 다 쓴 뒤 쿨타임 남은 비율(0~1), rem = 남은 쿨타임(ms)
+  Player.prototype.dodgeInfo = function () {
+    var S = this.dodgeStats(), n = this.dodgeN == null ? S.n : this.dodgeN, r = n > 0 ? 0 : Math.max(0, this.dodgeCd || 0);
+    return { n: n, max: S.n, rem: r, cd: S.cd, frac: Math.min(1, r / (S.cd || 1)) };
+  };
+  Player.prototype.dodgeReady = function () { return this.dodgeN == null || this.dodgeN > 0; };
+  // 회피 수 채우기(매 장면): 다 썼으면 쿨타임 끝에 전부, 하나만 썼으면 회피 안 하는 동안 refill 뒤 하나
+  Player.prototype.dodgeTick = function (dtMs) {
+    var D = this.cfg.move && this.cfg.move.dodge;
+    if (!D) return;
+    var S = this.dodgeStats();
+    if (this.dodgeN == null || this.dodgeN > S.n) this.dodgeN = S.n;
+    if (this.dodgeN <= 0) {
+      this.dodgeCd -= dtMs;
+      if (this.dodgeCd <= 0) { this.dodgeCd = 0; this.dodgeN = S.n; this.dodgeRef = 0; }
+    } else if (this.dodgeN < S.n && this.state !== 'dodge') {
+      if (this.dodgeRef > S.refill) this.dodgeRef = S.refill;   // 날렵한 몸놀림을 막 배움 → 짧은 쪽으로
+      this.dodgeRef -= dtMs;
+      if (this.dodgeRef <= 0) { this.dodgeN++; this.dodgeRef = this.dodgeN < S.n ? S.refill : 0; }
+    }
+  };
   Player.prototype.canDodge = function () {
     var D = this.cfg.move && this.cfg.move.dodge;
-    if (!D || !this.char || (this.dodgeCd || 0) > 0 || this.airborne()) return false;
+    if (!D || !this.char || !this.dodgeReady() || this.airborne()) return false;
     var s = this.state;
     if (s === 'idle' || s === 'walk' || s === 'run') return true;
     if (s === 'attack' && this.atk) {
@@ -229,8 +257,13 @@
     this.state = 'dodge'; this.animT = 0;
     this.atk = null; this.sk = null; this.jp = null; this.ratk = null; this.z = 0; this.vz = 0; this.vx = 0;
     this.comboStep = 0; this.comboIdleT = 0;
-    this.dg = { t: 0, ms: D.ms, x0: this.x, y0: this.y, dx: nx * D.dist, dy: ny * D.dist * (D.depthMul || 0.55), fwd: nx * this.dir > 0.3, ghostN: 0 };
-    this.dodgeCd = D.cdMs; this.dodgeInvT = D.ms + (D.graceMs || 0);
+    var S = this.dodgeStats();
+    this.dg = { t: 0, ms: D.ms, x0: this.x, y0: this.y, dx: nx * S.dist, dy: ny * S.dist * (D.depthMul || 0.55), fwd: nx * this.dir > 0.3, ghostN: 0 };
+    if (this.dodgeN == null) this.dodgeN = S.n;
+    this.dodgeN = Math.max(0, this.dodgeN - 1);
+    if (this.dodgeN <= 0) { this.dodgeCd = S.cd; this.dodgeRef = 0; }   // 다 씀 → 쿨타임(끝나면 전부 참)
+    else this.dodgeRef = S.refill;                                     // 하나 남음 → 회피 안 하면 refill 뒤 돌아옴
+    this.dodgeInvT = D.ms + (D.graceMs || 0);
     ev.dodge = { start: true, nx: nx, ny: ny };
   };
   // 회피 진행: ease-out 으로 시작 자리 → +dx,dy. 끝나면 서 있기(누르고 있으면 다음 장면에 걷기·달리기)
@@ -466,7 +499,7 @@
     if (this.redT > 0) this.redT -= dtMs;   // 맞은 뒤 빨간 번쩍(2026-11-06 밤)
     if (this.noHitT > 0) this.noHitT -= dtMs;   // 각성: 안 맞는 시간(깜빡임 없음)
     if (this.dodgeInvT > 0) this.dodgeInvT -= dtMs;   // 회피 무적(깜빡임 없음)
-    if (this.dodgeCd > 0) this.dodgeCd -= dtMs;       // 회피 쿨타임
+    this.dodgeTick(dtMs);                             // 회피 수 · 쿨타임(2026-11-08 연속 2번)
     for (var ck in this.skillCd) if (this.skillCd[ck] > 0) this.skillCd[ck] -= dtMs * (this.cdRate || 1);   // 기술 쿨타임(각성 = 2배 빨리)
 
     // 맞고 움찔 / 넘어짐 / 쓰러짐: 조작 안 됨, 밀려나기만
@@ -493,7 +526,14 @@
     // 붙잡힘(미라): 조작 안 됨. 자리는 main.js 가 잡은 적 앞에 붙여 둠
     if (this.state === 'held') { this.vx = 0; this.clamp(world); return ev; }
     // 회피(2026-11-07): 회피 중이면 이동만. 아니면 빠질 수 있는 때(canDodge)에 눌렀는지 → 바로 시작(평타·기술 끝무렵이면 끊고)
-    if (this.state === 'dodge' && this.dg) { this.updateDodge(dtMs, world, ev); return ev; }
+    if (this.state === 'dodge' && this.dg) {
+      this.updateDodge(dtMs, world, ev);
+      // 끝나자마자 두 번째 회피(2026-11-08): 회피 중에 눌러 둔 것도 나감(기억 시간 = 회피 시간 + bufferMs)
+      if (this.state === 'idle' && this.canDodge() && Input.takeDodge(this.cfg.move.dodge.ms + (this.cfg.move.dodge.bufferMs || 150))) {
+        ev.dodge = null; this.startDodge(ev); this.updateDodge(0, world, ev);
+      }
+      return ev;
+    }
     if (this.canDodge() && Input.takeDodge(this.cfg.move.dodge.bufferMs || 150)) { this.startDodge(ev); this.updateDodge(0, world, ev); return ev; }
     // 기술 쓰는 중: 조작 안 됨(이동·판정·효과는 skills.js)
     if (this.state === 'skill') {

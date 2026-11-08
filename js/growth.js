@@ -65,6 +65,7 @@
   //   tier2Lv(직업) = 2차 전직 Lv(없으면 0) / openLv(직업, 기술) = 그 기술이 열리는 Lv = unlock 과 2차 Lv 중 큰 것(2차 기술만)
   function tier2Lv(cls) { var c = CFG.classes && CFG.classes[cls], t = c && c.tier2; return t ? t.lv || 0 : 0; }
   function openLv(cls, e) { var u = e.unlock || 0; return e.tier === 2 ? Math.max(u, tier2Lv(cls)) : u; }
+  function skMax(e) { return (e && e.maxLv) || SK.maxLv || 5; }   // 기술마다 최고 Lv(2026-11-08, config SKILL_TREE 의 maxLv)
   function newSk(clsLv) { var o = { clsLv: clsLv, lv: {}, bar: [] }; if (LEARN) o.v = 2; return o; }
   // 기술 미리보기 책(2026-11-08, index.html window.PV = 기술 창 「▶ 미리보기」 액자 안에서만): 미리 보는 기술(PV.id) 하나만 PV.lv,
   //   도우미 기술(PV.help, 원소 낙인처럼 「기술에 맞으면」 늘 켜진 기술을 보일 때 쓰는 화염구) = Lv1, 나머지는 전부 안 배움(다른 늘 켜진 기술이 안 섞이게).
@@ -83,7 +84,7 @@
     var id = SK.noviceSkill, S = SK.slots || [2, 4], is = function (x) { return x === id; };
     return { cls: 'novice', novice: true, test: false,
       list: function () { return []; }, entry: function () { return null; },
-      isActive: is, unlocked: is, learned: is, learnable: function () { return false; }, lv: function (x) { return is(x) ? 1 : 0; },
+      isActive: is, unlocked: is, learned: is, learnable: function () { return false; }, lv: function (x) { return is(x) ? 1 : 0; }, maxLv: function () { return 1; },
       total: function () { return 0; }, used: function () { return 0; }, pts: function () { return 0; }, add: function () { return false; }, reset: function () {},
       slots: function () { return 1; }, maxSlots: function (pc) { return pc && SK.pcSlots ? SK.pcSlots : S[S.length - 1]; }, slotLv: function () { return 0; },
       canPut: is, at: function (i) { return i === 0 ? id : null; }, bar: function () { return [id]; }, put: function () { return false; },
@@ -97,6 +98,8 @@
       cls: cls, test: !!test,
       list: function () { return L; },
       entry: function (id) { return byId[id] || null; },
+      // 그 기술 최고 Lv(2026-11-08): 기술마다 maxLv(날렵한 몸놀림 = 1), 없으면 config skills.maxLv(5)
+      maxLv: function (id) { return skMax(byId[id]); },
       // 쓰는 기술(칸에 끼우는 것)인가: 준비 중·늘 켜진 기술이 아니고 SKILLS 에 동작이 있음
       isActive: function (id) { var e = byId[id]; return !!(e && !e.soon && !e.passive && SK[cls] && SK[cls][id]); },
       // 열렸나: 시험 책 = 준비 중 빼고 전부, 저장 책 = 그 레벨이 됨(unlock 0 = 전직 즉시)
@@ -108,9 +111,9 @@
       tier2Lv: function () { return tier2Lv(cls); },
       lv: function (id) {
         if (!B.unlocked(id)) return 0;
-        if (id === BASIC) return Math.max(1, Math.min(SK.maxLv || 5, st.lv[id] || 1));   // 기본기 = 늘 Lv1 이상
-        if (LEARN && !test) return Math.min(SK.maxLv || 5, st.lv[id] || 0);   // 배운 Lv(0 = 안 배움)
-        return 1 + (st.lv[id] || 0);
+        if (id === BASIC) return Math.max(1, Math.min(B.maxLv(id), st.lv[id] || 1));   // 기본기 = 늘 Lv1 이상
+        if (LEARN && !test) return Math.min(B.maxLv(id), st.lv[id] || 0);   // 배운 Lv(0 = 안 배움)
+        return Math.min(B.maxLv(id), 1 + (st.lv[id] || 0));
       },
       learned: function (id) { return B.lv(id) > 0; },
       learnable: function (id) { return B.unlocked(id) && !B.learned(id); },
@@ -123,7 +126,7 @@
       // 기술 점수 1점 → 그 기술 Lv +1 (열려 있고 최고 Lv 아님)
       //   배우기(2026-11-07): 안 배운 기술 + 1점 = 배움(Lv1). 처음 배운 쓰는 기술은 빈 칸(PC 기준 열린 칸 앞에서부터)이 있으면 그 칸에 끼움
       add: function (id) {
-        if (!B.pts() || !B.unlocked(id) || B.lv(id) >= (SK.maxLv || 5)) return false;
+        if (!B.pts() || !B.unlocked(id) || B.lv(id) >= B.maxLv(id)) return false;
         var first = LEARN && !test && !B.learned(id);
         st.lv[id] = LEARN && !test ? B.lv(id) + 1 : (st.lv[id] || 0) + 1;
         if (first && B.isActive(id) && B.bar(true).indexOf(id) < 0) {
@@ -534,8 +537,8 @@
         // 2026-11-08: 2차 기술(칼날 폭풍 · 성검 낙뢰를 1차 Lv19 · 23 에서 2차 Lv25 · 31 로 옮김)도 2차 전직 Lv 로 봄(openLv) + 1차 기사 다시 배치(반격 21 → 24 등) →
         //   예전 저장에서 미리 배워 둔 2차 기술 · 지금 Lv 보다 늦게 열리게 바뀐 기술은 여기서 빠짐 = 그 기술 점수는 안 쓴 점수로 돌아옴(기술 칸에 끼운 것도 저절로 빈 칸)
         if (e.soon || G.lv < openLv(G.cls, e)) return;
-        if (newFmt) { if (n > 0) G.sk.lv[e.id] = Math.min(LEARN ? (SK.maxLv || 5) : (SK.maxLv || 5) - 1, n); }
-        else G.sk.lv[e.id] = 1 + Math.max(0, Math.min((SK.maxLv || 5) - 1, n));   // 예전(저절로 배움) = 열린 기술은 Lv1 + 올린 수
+        if (newFmt) { if (n > 0) G.sk.lv[e.id] = Math.min(LEARN ? skMax(e) : skMax(e) - 1, n); }
+        else G.sk.lv[e.id] = 1 + Math.max(0, Math.min(skMax(e) - 1, n));   // 예전(저절로 배움) = 열린 기술은 Lv1 + 올린 수
       });
       else if (!newFmt) L0.forEach(function (e) { if (!e.soon && G.lv >= openLv(G.cls, e)) G.sk.lv[e.id] = 1; });
     } else G.sk.clsLv = Math.min(G.lv, SK.classLv || 7);

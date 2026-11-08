@@ -2015,6 +2015,13 @@
     p.reachMul = 1 + w.bonus('reach'); p.castSpd = 1 + w.bonus('castSpd');
     p.cdMul = 1 - w.bonus('cd'); p.mpMul = 1 - w.bonus('mp');
   }
+  // 날렵한 몸놀림(2026-11-08, 기사 · 법사 늘 켜진 기술): 배웠으면 { charges, cd, refill, dist } (config SKILL_TREE nimble.passive), 아니면 null
+  function nimbleOf() {
+    var bk = Growth.book(G.classKey), e = bk && !bk.novice && bk.entry('nimble'), P = e && e.passive;
+    if (!P || !bk.learned('nimble')) return null;
+    var i = Math.max(1, bk.lv('nimble')) - 1;
+    return { charges: P.charges ? P.charges[i] : 2, cd: P.val[i], refill: P.refillMs ? P.refillMs[i] : P.val[i], dist: P.dist ? P.dist[i] : 0 };
+  }
   // 기술 크기 배율(사냥 손맛 aoe 에 곱함): 기사 +10 공격 범위 · 법사 +10 마법 범위
   function wArea() { return 1 + wb('area') + wb('reach'); }
   // 강화석 · 결정 떨어뜨림(xpStep, 쓰러진 적마다 한 번): 잡몹 = 확률, 중간보스 · 보스 = 꼭. 보스는 판 둘째 속성 결정도
@@ -2649,7 +2656,7 @@
     var ex = tx - p.x, ey = ty - p.y;
     if (Math.abs(ex) > 4) ax.x = Math.sign(ex);
     if (Math.abs(ey) > 3) ax.y = Math.sign(ey);
-    if (RB.dodge && !(p.dodgeCd > 0)) { Input.setOverride({ x: RB.dodge.x, y: RB.dodge.y }); Input.pressDodge(); return; }
+    if (RB.dodge && p.dodgeReady()) { Input.setOverride({ x: RB.dodge.x, y: RB.dodge.y }); Input.pressDodge(); return; }
     Input.setOverride(ax);
     if (RB.jump && p.state !== 'jump') Input.pressJump();
     if ((G.rage || 0) >= 100 && !G.awk && !RB.threat) Input.pressAwaken();
@@ -2785,10 +2792,16 @@
     var p = G.player, D = CFG.move.dodge;
     if (!p || !D) return;
     if (!dodgeEls) dodgeEls = [document.getElementById('btnDodge')].filter(Boolean);   // PC 회피 글자(dodgeChip)는 2026-11-07 아래 막대로 바뀌며 없어짐
-    var f = Math.round(Math.max(0, Math.min(1, (p.dodgeCd || 0) / D.cdMs)) * 50) / 50;
-    if (f === dodgeLast) return;
-    dodgeLast = f;
-    dodgeEls.forEach(function (el) { el.style.setProperty('--cd', f); el.classList.toggle('cool', f > 0); });
+    // 2026-11-08 연속 2번: 점(pips) = 남은 회피 수, 쿨타임(시계 방향) = 두 번 다 쓴 뒤만
+    var DI = p.dodgeInfo(), f = Math.round(DI.frac * 50) / 50, key = f + '|' + DI.n + '|' + DI.max;
+    if (key === dodgeLast) return;
+    dodgeLast = key;
+    dodgeEls.forEach(function (el) {
+      el.style.setProperty('--cd', f); el.classList.toggle('cool', f > 0);
+      var pp = el.querySelector('.pips'); if (pp) pp.hidden = DI.max <= 1;   // 점 = 2번 이상일 때만(날렵한 몸놀림)
+      el.classList.toggle('multi', DI.max > 1);
+      el.querySelectorAll('.pips b').forEach(function (b, i) { b.classList.toggle('on', i < DI.n); b.hidden = i >= DI.max; });
+    });
   }
 
   // ---------- 갱신 ----------
@@ -2814,6 +2827,7 @@
     p.classKey = G.classKey; p.gender = G.charKey;   // 기술 고르기용
     p.atkSpd = Growth.atkSpd(); p.moveMul = Growth.moveMul();   // 민첩(성장 능력치): 휘두르기·이동 빠르기
     if (G.awk && G.awk.A.atkSpd) p.atkSpd = Math.min(G.awk.A.spdCap, p.atkSpd + G.awk.A.atkSpd);   // 각성 광전사: 더 빠르게(상한 있음)
+    p.nimble = nimbleOf();   // 늘 켜진 기술 날렵한 몸놀림(2026-11-08): 회피 쿨타임 · 거리
     wpnApply(p);   // 무기 강화 · 속성(2026-11-06): 그림 · 오라 · 빠르기(+6 · 바람) · 범위 · 쿨타임 · 마나
     if (window.ElMob) ElMob.playerMods(p);   // 속성 몹에게 얼어붙음 = 느려짐 + 상태 몸 색(2026-11-07)
     // 플레이어는 화면 끝까지(2026-11-06 형님 폰 접은 화면: 버튼 앞이 벽처럼 막힘). 버튼 밑 비우기는 적·물약만
@@ -3565,7 +3579,7 @@
   function pctTxt(v) { return Math.round(v * 100) + '%'; }
   // 기술 숫자(칸에 손을 올리면 보이는 글): 쓰는 기술 = 마나·쿨타임·위력(+ 다음 Lv), 늘 켜진 기술 = 지금 값(+ 다음 Lv)
   function skillNums(bk, e, d, lv) {
-    var max = CFG.skills.maxLv || 5, show = Math.max(1, lv);
+    var max = bk.maxLv ? bk.maxLv(e.id) : CFG.skills.maxLv || 5, show = Math.max(1, lv);
     if (d) {
       var L = Skills.lvStat(d, show), N = show < max ? Skills.lvStat(d, show + 1) : null;
       var t = 'MP ' + L.mp + ' · 쿨타임 ' + secTxt(L.cd) + ' · 위력 ' + pctTxt(L.dmg);
@@ -3584,6 +3598,7 @@
     if (P.stat === 'eshard') return '조각 피해 ' + v + ' · ' + P.n[Math.max(1, lv) - 1] + '마리 · 반경 ' + P.r[Math.max(1, lv) - 1];   // 원소 파편(법사, 2026-11-08)
     if (P.stat === 'vortex') return (P.val[Math.max(1, lv) - 1] / 1000) + '초마다 · 피해 ' + pctTxt(P.mul[Math.max(1, lv) - 1]) + ' · 반경 ' + P.r[Math.max(1, lv) - 1];   // 마력 소용돌이(2026-11-08)
     if (P.stat === 'echain') return '터짐 피해 ' + v + ' · 반경 ' + P.r[Math.max(1, lv) - 1];   // 원소 연쇄(대마법사, 2026-11-08)
+    if (P.stat === 'nimble') return '회피 ' + (P.charges ? P.charges[Math.max(1, lv) - 1] : 2) + '번 연달아 · 쿨타임 ' + secTxt(CFG.move.dodge.cdMs) + ' → ' + secTxt(P.val[Math.max(1, lv) - 1]) + ' · 거리 +' + pctTxt(P.dist[Math.max(1, lv) - 1]);   // 날렵한 몸놀림(2026-11-08)
     if (P.stat === 'regen') return '초당 체력 +' + (Math.round(P.val[Math.max(1, lv) - 1] * 1000) / 10) + '%';   // 신성 가호(2026-11-08): 최대 체력의 0.4~0.8%
     var k = { phys: '물리 공격 +', magic: '마법 공격 +', guard: '받는 피해 -', mpRegen: '마나 회복 +',
               grit: '체력 적으면 공격 최대 +', counter: '반격 확률 ', brand: '낙인 찍힌 적 피해 +' }[P.stat] || '';
@@ -3613,7 +3628,7 @@
     bk.list().forEach(function (e) {
       // 2026-11-07 배우기: open = 그 Lv 가 됨, learned = 배움. 열렸는데 안 배움 = 'learn'(회색 그림 + 「배울 수 있음」, + 로 1점 써서 배움)
       var d = S[e.id] && S[e.id].name ? S[e.id] : null, open = bk.unlocked(e.id), lv = bk.lv(e.id), learned = lv > 0, canPick = bk.isActive(e.id) && learned;
-      var name = d ? d.name : e.name, st = e.soon ? 'soon' : !open ? 'lock' : !learned ? 'learn' : '', at = bar.indexOf(e.id);
+      var name = d ? d.name : e.name, st = e.soon ? 'soon' : !open ? 'lock' : !learned ? 'learn' : '', at = bar.indexOf(e.id), max = bk.maxLv(e.id);   // 기술마다 최고 Lv(2026-11-08)
       var c = document.createElement('div');
       c.className = 'cell' + (st ? ' ' + st : '') + (skSel === e.id ? ' sel' : '');
       var info = !st || st === 'learn';
@@ -3670,7 +3685,7 @@
     });
     var sd = skSel && S[skSel], sL = sd && Skills.lvStat(sd, bk.lv(skSel));
     bEl.insertAdjacentHTML('beforeend', '<span class="hint">' + (sd ? '<b>' + sd.name + '</b> MP ' + sL.mp + ' · 쿨타임 ' + secTxt(sL.cd) :
-      skSel === 'dodge' ? '<b>회피</b> 쿨타임 ' + secTxt(CFG.move.dodge.cdMs) : '기술을 누르면 설명 · 미리보기') + '<br><em>' + (skSel ? '칸을 누르면 끼워져요' : '「칸에 끼우기」 → 칸을 누름') + '</em></span>');
+      skSel === 'dodge' ? '<b>회피</b> 연속 ' + G.player.dodgeStats().n + '번 · 쿨타임 ' + secTxt(G.player.dodgeStats().cd) : '기술을 누르면 설명 · 미리보기') + '<br><em>' + (skSel ? '칸을 누르면 끼워져요' : '「칸에 끼우기」 → 칸을 누름') + '</em></span>');
     skEl.querySelectorAll('.spread button[data-sk], .skbar button[data-sk]').forEach(function (b) {
       b.addEventListener('click', function () {
         var a = b.dataset.sk.split(':'), bk2 = Growth.book(G.classKey);
@@ -3737,7 +3752,7 @@
     grit: '체력을 일부러 25%로 낮춰서 보여 줘요(발밑 붉은 기운)', counter: '고블린이 때리면 확률로 되받아 베요',
     regen: '몸 둘레 금빛 기운 · 체력이 천천히 차요', eshard: '마법이 맞으면 불 · 얼음 조각이 둘레 고블린에게 튀어요',
     vortex: '둘레 고블린 가운데에 마력 소용돌이가 저절로 생겨요', shield: '고블린이 때리면 마나가 피해 일부를 대신 받아요(파란 방패)',
-    brand: '화염구로 낙인을 찍은 뒤 평타 — 낙인 찍힌 적은 더 아파요', echain: '마법으로 쓰러뜨리면 그 자리에서 터져 둘레를 때려요'
+    brand: '화염구로 낙인을 찍은 뒤 평타 — 낙인 찍힌 적은 더 아파요', nimble: '회피를 두 번씩 좌우로 되풀이해요 — 더 멀리 · 더 자주 빠져요', echain: '마법으로 쓰러뜨리면 그 자리에서 터져 둘레를 때려요'
   };
   function t2Name(cls) { return ((CFG.classes[cls] || {}).tier2 || {}).name || '2차'; }
   function detRow(k, v, cls) { return '<div class="sdrow' + (cls ? ' ' + cls : '') + '"><b>' + k + '</b><span>' + v + '</span></div>'; }
@@ -3745,7 +3760,7 @@
   function renderDetail() {
     var bk = Growth.book(G.classKey), e = bk && bk.entry(detId);
     if (!e) return;
-    var S = CFG.skills[bk.cls], d = S[e.id] && S[e.id].name ? S[e.id] : null, max = CFG.skills.maxLv || 5;
+    var S = CFG.skills[bk.cls], d = S[e.id] && S[e.id].name ? S[e.id] : null, max = bk.maxLv(e.id);   // 기술마다 최고 Lv(2026-11-08)
     var name = d ? d.name : e.name, lv = bk.lv(e.id), open = bk.unlocked(e.id), show = Math.max(1, lv);
     var st = e.soon ? 'soon' : !open ? 'lock' : lv > 0 ? '' : 'learn', basic = CFG.skills.basic && CFG.skills.basic[bk.cls] === e.id;
     document.getElementById('sdRib').textContent = e.passive ? '늘 켜진 기술' : '쓰는 기술';
@@ -4129,7 +4144,7 @@
       var el = pcSlotsEl[i];
       if (!el) continue;
       var locked = i >= n, st = locked ? null : Skills.slotState(G, i);
-      var key = locked ? 'L' + (bk ? bk.slotLv(i) : 0) : !st ? 'E' : st.id + '|' + st.frac + '|' + Math.ceil(st.rem / 100) + '|' + st.nomp + '|' + st.cost;
+      var key = locked ? 'L' + (bk ? bk.slotLv(i) : 0) : !st ? 'E' : st.id + '|' + st.frac + '|' + Math.ceil(st.rem / 100) + '|' + st.nomp + '|' + st.cost + '|' + (st.n == null ? '' : st.n + '/' + st.max);
       if (pcLast[i] === key) continue;
       pcLast[i] = key;
       var cool = !!st && st.rem > 0, was = pcCool[i];
@@ -4142,7 +4157,7 @@
       var mp = el.querySelector('small');
       mp.className = locked ? 'lk' : 'mp';
       var nov = !bk || bk.novice;   // 견습(2026-11-07): 1번 칸 = 올려치기, 나머지 = 전직하면 열림
-      mp.textContent = locked ? (!nov ? 'Lv' + bk.slotLv(i) : '') : st && !st.dodge ? st.cost : '';
+      mp.textContent = locked ? (!nov ? 'Lv' + bk.slotLv(i) : '') : st && !st.dodge ? st.cost : st && st.dodge && st.max > 1 ? 'x' + st.n : '';   // 회피 = 남은 수(2026-11-08)
       el.title = locked ? (!nov ? (i + 1) + '번 칸 · Lv' + bk.slotLv(i) + ' 에 열려요' : '전직하면 기술 칸이 열려요') :
         st ? st.name + (st.dodge ? ' (' + Keys.lab('dodge') + ' 로도)' : ' · MP ' + st.cost) : (i + 1) + '번 칸 · 비었어요 (기술 창 ' + Keys.lab('skill') + ' 에서 끼워요)';
       if (was && !cool && st && was === st.id) { el.classList.remove('ready'); void el.offsetWidth; el.classList.add('ready'); }
@@ -4749,6 +4764,16 @@
     if ((p.state === 'idle' || p.state === 'walk') && !mx && Math.abs(dx) > 2) p.dir = dx > 0 ? 1 : -1;
     if (!mx && Math.abs(dy) < 9 * AS && pv.t - pv.atkT > 130) { pv.atkT = pv.t; Input.pressAttack(); }
   }
+  // 날렵한 몸놀림 미리보기: 한쪽으로 회피 연달아(남은 수만큼) → 다 차면 반대쪽으로. 오른쪽 끝 · 왼쪽 끝에 가까우면 방향을 바꿈
+  function pvDodge(p) {
+    if (pv.dir == null) pv.dir = 1;
+    var DI = p.dodgeInfo();
+    if (p.state === 'dodge') { Input.setOverride({ x: pv.dir, y: 0 }); return; }
+    if (DI.n <= 0) { pv.wait = true; Input.setOverride({ x: 0, y: 0 }); return; }
+    if (pv.wait && DI.n >= DI.max) { pv.wait = false; pv.dir = -pv.dir; }
+    if (pv.wait || pv.t < 500 || pv.t - pv.press < 120) { Input.setOverride({ x: 0, y: 0 }); return; }
+    pv.press = pv.t; Input.setOverride({ x: pv.dir, y: 0 }); Input.pressDodge();
+  }
   function pvStep(dt) {
     if (!pv) return;
     var p = G.player, I = pv.I;
@@ -4781,6 +4806,7 @@
       else if (pv.t >= 380 && pv.t - pv.press > 500) { pv.press = pv.t; Input.pressSkill('A'); }
       if (!pv.cast) return;
     }
+    if (I.stat === 'nimble') { pvDodge(p); if (pv.t > 6500) pvReset(); return; }   // 날렵한 몸놀림(2026-11-08): 회피 두 번씩 좌우로
     if (PV_FIGHT[I.stat]) Input.setOverride({ x: 0, y: 0 });
     else if (p.state !== 'skill') pvBot(p);
     if (pv.t > 6500) pvReset();

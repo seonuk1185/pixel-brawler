@@ -487,6 +487,18 @@
       g.line(3, 8, 5, 12, K.f1); g.line(5, 12, 3, 16, K.f1); g.line(21, 6, 19, 11, K.f1); g.line(19, 11, 21, 15, K.f1);
       g.spark(4, 3, false); g.spark(20, 2, false, K.i1);
     },
+    // 날렵한 몸놀림(기사 · 법사 늘 켜짐, 2026-11-08): 겹친 하늘색 화살 두 개(회피 2번) + 뒤로 남는 속도 줄
+    nimble: function (g) {
+      [[2, 0.55], [10, 1]].forEach(function (q) {
+        var x = q[0];
+        g.poly([[x, 3], [x + 5, 3], [x + 11, 12], [x + 5, 21], [x, 21], [x + 6, 12]], function (px, py) {
+          var t = (py - 3) / 18; return q[1] < 1 ? (t < 0.5 ? K.i2 : K.i3) : (t < 0.35 ? K.i0 : t < 0.7 ? K.i1 : K.i2);
+        });
+      });
+      g.outline();
+      g.line(0, 7, 2, 7, K.i1); g.line(0, 17, 2, 17, K.i1);
+      g.spark(21, 4, false, K.i0);
+    },
     // ===== 모든 직업 (2026-11-07 PC 아래 막대: 회피 칸 · 평타 · 점프 칸) =====
     dodge: function (g) {                   // 회피: 몸을 굴려 피하는 하늘색 반원 화살표 + 뒤로 남는 속도 줄 + 먼지
       g.ring(11, 15, 6, 9, 185, 345, function (t) { return t < 0.3 ? K.i3 : t < 0.65 ? K.i2 : K.i1; });
@@ -518,11 +530,12 @@
     shards: ['칼날 파편', 'knight', 'passive', 'steel'], thrust: ['연속 찌르기', 'knight', 'active', 'steel'], pressure: ['끌어당기는 검압', 'knight', 'passive', 'ice'],   // 1차 기사(2026-11-08)
     aegis: ['신성 가호', 'knight', 'passive', 'holy'], cross: ['심판의 십자', 'knight', 'active', 'holy'], charge: ['성스러운 돌격', 'knight', 'active', 'holy'],   // 성기사(2차, 2026-11-08)
     fireball: ['화염구', 'mage', 'active', 'fire'], bolt: ['번개', 'mage', 'active', 'storm'], rise: ['땅 융기', 'mage', 'active', 'earth'],
-    amp: ['원소 증폭', 'mage', 'passive', 'arcane'], flow: ['마나 순환', 'mage', 'passive', 'ice'], ice: ['빙산 솟구치기', 'mage', 'active', 'ice'],
+    amp: ['원소 증폭', 'mage', 'passive', 'arcane'], flow: ['마나 순환', 'mage', 'passive', 'ice'], ice: ['빙하 균열', 'mage', 'active', 'ice'],
     meteor: ['메테오', 'mage', 'active', 'fire'], blink: ['순간이동', 'mage', 'active', 'arcane'], shield: ['마나 방패', 'mage', 'passive', 'ice'],
     pillar: ['불기둥', 'mage', 'active', 'fire'], brand: ['원소 낙인', 'mage', 'passive', 'arcane'],
     eshard: ['원소 파편', 'mage', 'passive', 'fire'], gravity: ['중력 구체', 'mage', 'active', 'arcane'], vortex: ['마력 소용돌이', 'mage', 'passive', 'arcane'],   // 1차 법사(2026-11-08)
     echain: ['원소 연쇄', 'mage', 'passive', 'fire'], frost: ['빙결 폭풍', 'mage', 'active', 'ice'], judgment: ['천둥 심판', 'mage', 'active', 'storm'],     // 대마법사(2차, 2026-11-08)
+    nimble: ['날렵한 몸놀림', 'all', 'passive', 'ice'],   // 기사 · 법사 늘 켜진 기술(2026-11-08)
     dodge: ['회피', 'all', 'active', 'ice'], atk: ['평타', 'all', 'active', 'steel'], jump: ['점프', 'all', 'active', 'earth']
   };
   // 견습 기본기 올려치기(2026-11-07): 올려베기 그림을 흙색 액자로(새 그림 없음)

@@ -317,8 +317,8 @@
   // 빙산 솟구치기(2026-11-08, 얼음창을 바꿈): 땅에서 얼음 바위가 줄지어 솟음. 작은 얼음(CRAG_HIT) = 살짝 띄움, 적마다 한 번만
   //   마지막 뾰족한 빙산(CRAG_BIG) = 높이 띄움(땅 융기처럼 진짜 띄우기, 보스 · 큰 적은 휘청) + 얼음 → 내려오면 느려짐
   //   한 적이 둘 다 맞으면 0.9 + 1.5 = 2.4 (예전 얼음창 1.9 보다 조금 셈, 빙결 폭풍 약 5.7 보다 훨씬 약함)
-  var CRAG_HIT = { launch: 0.55, dmg: 0.9, hitstop: 0.45, knock: 0.2, shake: 0.9, spark: 1.0, big: true };
-  var CRAG_BIG = { launch: 1.5, dmg: 1.5, hitstop: 1.6, knock: 0.25, shake: 2.4, spark: 1.4, big: true,
+  var CRAG_HIT = { launch: 0.55, dmg: 0.9, hitstop: 0.45, knock: 0.2, shake: 0.9, spark: 1.0, big: true, hitsDown: true };   // 2026-11-08 형님: 땅에서 솟으니 누운 적도 맞음
+  var CRAG_BIG = { launch: 1.5, dmg: 1.5, hitstop: 1.6, knock: 0.25, shake: 2.4, spark: 1.4, big: true, hitsDown: true,
                    flash: { color: '#e8fbff', alpha: 0.32, ms: 140 }, slowMs: 160 };
   // crag 값(화면 도트, actorScale 로 안 줄임 = 빙결 폭풍처럼): frame = 솟기 시작하는 장, x = 첫 얼음 거리(법사 앞), gap = 얼음 사이 거리, gapMs = 솟는 간격,
   //   lastMs = 마지막 빙산 앞 잠깐 더 쉼(쿵 하는 맛), n = 얼음 수(마지막 = 빙산), w0~w1 · h0~h1 = 작은 얼음 폭 · 높이(가까운 것 → 먼 것),
@@ -748,7 +748,7 @@
       //   3장(여 2장)부터 법사 바로 앞 땅에서 얼음이 하나씩 솟아 앞으로 나아감(가까운 건 작게 → 멀수록 크게) → 마지막에 송곳처럼 뾰족한 큰 빙산.
       //   효과 = 전부 우리 코드(skills.js 빙산). 법사가 다른 걸 해도 얼음 줄은 그대로. 값 = 위 ICE_CRAG
       ice: {
-        name: '빙산 솟구치기', icon: '산', mp: 10, cooldownMs: 6000, damageStyle: 'skill_ice', motion: 'motion_cast_forward', launcher: true, sfx: 'iceSpear',
+        name: '빙하 균열', icon: '산', mp: 10, cooldownMs: 6000, damageStyle: 'skill_ice', motion: 'motion_cast_forward', launcher: true, sfx: 'iceSpear',
         desc: '땅이 갈라지며 앞쪽으로 기운 얼음이 줄줄이 이어져 솟아 나아가요. 앞으로 갈수록 커지며 적을 살짝 띄우고, 마지막 뾰족한 빙산이 적을 높이 띄워요. 맞은 적은 잠깐 얼었다가 느려져요(보스·큰 적은 휘청만)',
         lv5: { n: 7, big: 1.15, say: '얼음 7개로 더 길게 · 마지막 빙산 +15%' },
         darken: { ms: 700, alpha: 0.32 },
@@ -912,6 +912,10 @@
       { id: 'dash', unlock: 0, short: '앞으로 미끄러지며 베요' },
       // 2026-11-08: 올려베기는 기본기라 늘 열려 있음 → unlock 0(예전 Lv10 은 기술 창에 「Lv10」처럼 헷갈리게 보일 수 있어 지움)
       { id: 'upper', unlock: 0, short: '적을 공중에 띄워요' },
+      // 2026-11-08 형님: 날렵한 몸놀림(기사 · 법사 같음) = charges = 회피 연달아 2번(기본 1번), val = 두 번 다 쓴 뒤 쿨타임(ms, 기본 1800 → 1200), refillMs = 하나만 썼을 때 돌아오는 시간(470), dist = 회피 거리 +30%. maxLv 1 = 1점만 찍음(기술마다 최고 Lv, 없으면 skills.maxLv)
+      { id: 'nimble', unlock: 7, maxLv: 1, short: '회피 2번 연달아 · 쿨타임이 줄고 더 멀리 빠져요', name: '날렵한 몸놀림', icon: '날',
+        desc: '회피를 2번 연달아 쓸 수 있고, 쿨타임이 줄고(두 번 다 쓴 뒤 1.8초 → 1.2초) 더 멀리 빠져요 · 1번만 찍을 수 있어요',
+        passive: { stat: 'nimble', charges: [2], val: [1200], refillMs: [470], dist: [0.3] } },
       { id: 'wave', unlock: 8, short: '초승달 검기를 날려요' },                  // 2026-11-08 Lv13 → 8
       { id: 'mastery', unlock: 9, short: '검 공격이 세져요', name: '검 숙련', icon: '숙', desc: '검으로 하는 모든 공격(콤보·기술)이 세져요',
         passive: { stat: 'phys', val: [0.08, 0.12, 0.16, 0.2, 0.25] } },
@@ -954,6 +958,10 @@
       // 전직(1차) 때: 화염구 = 첫 기술 점수(firstPts 1)로 배움, 땅 융기 = 기본기(config skills.basic, 공짜 Lv1 + 1번 칸) → 기사 올려베기처럼 unlock 0
       { id: 'fireball', unlock: 0, short: '큰 불덩이를 던져요' },
       { id: 'rise', unlock: 0, short: '돌기둥으로 적을 띄워요' },     // 2026-11-08 Lv10 → 0(기본기라 늘 열림, 기사 올려베기와 같은 자리)
+      // 2026-11-08 형님: 날렵한 몸놀림(기사 · 법사 같음) = charges = 회피 연달아 2번(기본 1번), val = 두 번 다 쓴 뒤 쿨타임(ms, 기본 1800 → 1200), refillMs = 하나만 썼을 때 돌아오는 시간(470), dist = 회피 거리 +30%. maxLv 1 = 1점만 찍음(기술마다 최고 Lv, 없으면 skills.maxLv)
+      { id: 'nimble', unlock: 7, maxLv: 1, short: '회피 2번 연달아 · 쿨타임이 줄고 더 멀리 빠져요', name: '날렵한 몸놀림', icon: '날',
+        desc: '회피를 2번 연달아 쓸 수 있고, 쿨타임이 줄고(두 번 다 쓴 뒤 1.8초 → 1.2초) 더 멀리 빠져요 · 1번만 찍을 수 있어요',
+        passive: { stat: 'nimble', charges: [2], val: [1200], refillMs: [470], dist: [0.3] } },
       { id: 'bolt', unlock: 8, short: '번개 세 줄기를 내리꽂아요' },
       { id: 'amp', unlock: 9, short: '모든 마법이 세져요', name: '원소 증폭', icon: '증', desc: '모든 마법(지팡이 타·마법탄·기술)이 세져요',
         passive: { stat: 'magic', val: [0.08, 0.12, 0.16, 0.2, 0.25] } },
@@ -1476,7 +1484,12 @@
         ms: 220,            // 걸리는 시간. 처음 빠르고 끝에 느려짐(ease-out)
         ease: 2,            // 느려지는 정도(2 = 보통 ease-out, 클수록 처음에 확 나감)
         graceMs: 60,        // 무적 = 회피 내내 + 끝나고 이만큼 더(깜빡임 없음)
-        cdMs: 1800,         // 쿨타임(폰 버튼이 시계 방향으로 어두워졌다 밝아짐)
+        // 2026-11-08 형님: 기본 = 회피 1번(charges 1) → 쓰면 cdMs 쿨타임(폰 버튼이 시계 방향으로 어두워졌다 밝아짐).
+        //   늘 켜진 기술 「날렵한 몸놀림」(nimble) = 연속 passive.charges(2)번 · 다 쓴 뒤 쿨타임 passive.val(1200) · 하나만 썼을 때 passive.refillMs(470) 뒤 하나 돌아옴 ·
+        //   거리 x (1 + passive.dist). 회피가 끝나자마자 두 번째 회피 바로 됨(첫 회피 중에 눌러 둔 것도 나감). 2번일 때만 버튼에 남은 수 점이 보임
+        charges: 1,         // 연속으로 할 수 있는 회피 수(기본 1, 날렵한 몸놀림 = 2)
+        cdMs: 1800,         // 다 쓴 뒤 쿨타임(끝나면 전부 참). 날렵한 몸놀림 = 1200
+        refillMs: 700,      // 2번 중 하나만 썼을 때 그 하나가 돌아오는 시간(회피 안 하는 동안). 날렵한 몸놀림 = 470
         bufferMs: 150,      // 미리 눌러 둔 회피 기억 시간(공격 끝무렵에 눌러 두면 끊고 나감)
         endPose: 0.62,      // 이 비율부터 착지 웅크림 그림
         ghosts: 5,          // 잔상 개수(길 따라 고르게)
@@ -4096,8 +4109,8 @@
               tree: SKILL_TREE, perLv: 1, maxLv: 5, classLv: 7, slots: [2, 3, 4, 5], moreLv: [10, 13, 15], pcSlots: 10, pcLv: 15, noMpMs: 500,
               curve: { dmg: [1, 1.2, 1.4, 1.6, 1.85], cd: [1, 0.94, 0.88, 0.82, 0.75], mp: [1, 1.05, 1.1, 1.15, 1.2] },
               test: { pts: 24 },
-              botPlan: { knight: ['dash', 'upper', 'wave', 'mastery', 'spin', 'skin', 'slam', 'shards', 'thrust', 'pressure', 'grit', 'counter', 'storm', 'aegis', 'holy', 'cross', 'charge'],
-                         mage: ['fireball', 'rise', 'bolt', 'amp', 'ice', 'flow', 'blink', 'eshard', 'gravity', 'vortex', 'shield', 'brand', 'meteor', 'echain', 'pillar', 'frost', 'judgment'] } },   // 법사 다시 배치(2026-11-08)
+              botPlan: { knight: ['dash', 'upper', 'nimble', 'wave', 'mastery', 'spin', 'skin', 'slam', 'shards', 'thrust', 'pressure', 'grit', 'counter', 'storm', 'aegis', 'holy', 'cross', 'charge'],
+                         mage: ['fireball', 'rise', 'nimble', 'bolt', 'amp', 'ice', 'flow', 'blink', 'eshard', 'gravity', 'vortex', 'shield', 'brand', 'meteor', 'echain', 'pillar', 'frost', 'judgment'] } },   // 법사 다시 배치(2026-11-08)
 
     // ---------- 기술 효과 그림 (art\stage1\skills\fx 에서 복사 → assets/fx/skill/<이름>_01.png …, 크기·기준점은 fx.json) ----------
     // count = 장 수(0 = 그림 없음 → 기존 그림을 물들여 쓰거나 코드로 그림), fps = 1초에 장 수, pivot = 그림 속 기준점(원래 크기), loop = 반복

@@ -772,6 +772,12 @@ button.cpick { cursor: pointer; }
 .touchui .btn.dodge .sweep{ position: absolute; inset: 0; z-index: 0; pointer-events: none; border-radius: 50%;
   background: conic-gradient(#000b calc(var(--cd, 0) * 360deg), transparent 0); }
 .touchui .btn.dodge.cool span{ color: #c8d8e8; }
+/* 회피 남은 수(2026-11-08 연속 2번): 글자 밑 작은 점 2개(노랑 = 남음, 어두움 = 씀). main.js dodgeUi 가 .on 을 붙임. 날렵한 몸놀림(2번)일 때만 보임 */
+.touchui .btn.dodge .pips{ position: absolute; left: 0; right: 0; bottom: 11%; z-index: 1; display: flex; justify-content: center; gap: calc(4px * var(--k)); pointer-events: none; }
+.touchui .btn.dodge .pips b{ width: calc(5px * var(--k)); height: calc(5px * var(--k)); background: #0a1a30; box-shadow: 0 0 0 1px #000a; }
+.touchui .btn.dodge .pips b.on{ background: #ffe08a; box-shadow: 0 0 0 1px #3a1606; }
+.touchui .btn.dodge .pips[hidden]{ display: none; }
+.touchui .btn.dodge.multi span{ top: calc(-5px * var(--k)); }
 .touchui .btn.dodge.down{ transform: scale(.9); background: radial-gradient(circle at 38% 32%, #c0e8ffe0, #3a90e0e0 55%, #1a4a8ae0); }
 /* 기술 칸 4개: 네모 도트 액자 그림(.ic 안 캔버스, skills.js ui). 쿨타임 = 액자 안이 시계 방향으로 어두움(--cd = 남은 비율 1 → 0) + 남은 초,
    마나 모자람 = 회색 그림 + 밑에 「MP n」. 살짝 반투명(밑의 캐릭터가 보이게), 누르면 진하게 */
