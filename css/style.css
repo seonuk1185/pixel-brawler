@@ -417,10 +417,20 @@ body.smooth #screen { image-rendering: auto; }
 .sbtn.dbtn.locked span::before { margin-right: 1px; }
 .slist.dglist { display: grid; grid-template-columns: repeat(4, 168px); gap: 14px 8px; padding-top: 10px; max-width: 720px; min-height: 96px; align-content: center; }
 @media (max-width: 760px) { .slist.dglist { grid-template-columns: repeat(2, 168px); } }
+/* 판 20개(2026-11-09): 10칸 x 2줄 작은 카드(윗줄 1~10판 · 아랫줄 11~20판). 좁은 세로 화면 = 5칸 x 4줄 */
+.slist.many { display: grid; grid-template-columns: repeat(10, 76px); gap: 12px 6px; max-width: none; padding-top: 8px; justify-content: center; }
+.slist.many .sbtn { width: auto; min-height: 62px; padding: 5px 3px; gap: 3px; }
+.slist.many .sbtn b { font-size: 18px; }
+.slist.many .sbtn span { font-size: 10px; line-height: 1.15; word-break: keep-all; }
+.slist.many .sbtn i { top: -8px; right: -5px; padding: 1px 3px; font-size: 9px; }
+@media (max-width: 860px) { .slist.many { grid-template-columns: repeat(10, 70px); gap: 10px 5px; } }
+@media (max-width: 720px) { .slist.many { grid-template-columns: repeat(5, 76px); } }
 .shint { margin: 10px 0 0; font: 400 11px/1 var(--ui); color: #d8c08a; }
 .touchui .shint{ display: none; }
 @media (max-height: 420px) {
   .sbtn { width: 84px; min-height: 62px; }
+  .slist.many .sbtn { min-height: 52px; padding: 4px 2px; }
+  .slist.many .sbtn b { font-size: 16px; }
   .sbtn.dbtn { width: auto; min-height: 56px; gap: 3px; padding: 8px 4px 4px; }
   .sbtn.dbtn b { font-size: 13px; }
   .slist.dglist { grid-template-columns: repeat(4, 156px); gap: 12px 6px; padding-top: 8px; }

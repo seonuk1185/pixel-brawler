@@ -1482,6 +1482,23 @@
     height: 240, floorY: 144, laneTop: 158, laneBottom: 230
   };
 
+  // ---------- 11~20단계 배경 (2026-11-09, art/stages-11-20/bg-<이름> 에서 복사. 크기·바닥·걷는 길은 1~10단계와 같음) ----------
+  // 만드는 법 = art/stages-11-20/_scripts/bg_build.py (stage-10 방식 그대로: far 1장 · mid 2장 + 첫 장 뒤집은 것 · ground 1장 + 뒤집은 것 이어 붙임)
+  function bgOf(name, farW, midW, groundW) {
+    var d = 'assets/bg/' + name + '/';
+    return {
+      far:    { img: d + 'far.png',    w: farW,    tile: true,  parallax: 0.15 },
+      mid:    { img: d + 'mid.png',    w: midW,    tile: false, parallax: 0.5 },
+      ground: { img: d + 'ground.png', w: groundW, tile: true,  parallax: 1.0 },
+      height: 240, floorY: 144, laneTop: 158, laneBottom: 230
+    };
+  }
+  var BG_CURSED  = bgOf('cursed', 518, 949, 526);    // 11·12 저주받은 숲: 보랏빛 달 · 죽은 거목 · 비명 지르는 나무 얼굴 · 저주 토템
+  var BG_CRYSTAL = bgOf('crystal', 518, 1036, 444);  // 13·14 수정 동굴: 빛나는 푸른·보라 수정 · 광산 비계 · 수정 아치
+  var BG_SUNKEN  = bgOf('sunken', 518, 970, 540);    // 15·16 가라앉은 신전: 청록 물빛 · 산호 덮인 대리석 열주 · 바다 여신상 · 청동 종
+  var BG_SKY     = bgOf('sky', 518, 953, 524);       // 17·18 하늘 폐허: 구름 위 금빛 노을 · 떠 있는 섬 · 흰 대리석 신전 · 날개 수호상
+  var BG_ABYSS   = bgOf('abyss', 518, 1033, 612);    // 19·20 심연: 보랏빛 소용돌이 · 흑요석 조각 · 공허의 문
+
   // ---------- 던전 배경: 강화석 광산 (art\dungeon-bg\mine 에서 복사, 2026-11-07) ----------
   // 한 화면 싸움터(arena) 배경: mid = 가운데 큰 무지개 어미 결정 + 광차(싸움터 가운데에 한 장, 카메라와 같이 움직임 = parallax 1),
   //   far = 결정 박힌 바위벽 + 바닥(옆으로 이어 붙임), ground = 흙바닥(이어 붙임), ceil = 화면이 240보다 높을 때 배경 위를 채우는 천장(far 와 같은 흐름).
@@ -1879,7 +1896,7 @@
     // 아래 묶음마다 on: false 로 따로 끌 수 있음. 거리 값(도트)은 원래 그림 크기 기준(쓸 때 actorScale 곱함)
     hunt: {
       on: true,
-      stages: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],   // 눈맛 연출(숫자·KILL·펑·구슬·흔들림)은 전 판. 몹 수는 아래 horde.stageMul 로 판마다 서서히
+      stages: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],   // 눈맛 연출(숫자·KILL·펑·구슬·흔들림)은 전 판. 몹 수는 아래 horde.stageMul 로 판마다 서서히
       // 몹 떼: 잡몹(성장 경험치 종류 'mob' = 고블린·늑대·박쥐 …, 보스·단단한 잡몹은 그대로)을 mul 배로. 대신 한 마리는 약하게(hpMul),
       //   경험치는 xpMul 배(마리 수 x 배율 = 판 전체 경험치는 그대로 → 레벨 오르는 빠르기 그대로)
       //   늘어난 몹은 반대쪽 끝에서 같이 나옴(양옆에서 떼로) + gapMs 씩 조금 늦게, 화면 밖으로 xOff 도트씩 더 떨어져서(한 덩어리로 겹치지 않게)
@@ -1888,7 +1905,7 @@
       //   웨이브에 hordeMul: 3 처럼 적으면 그 웨이브만 배수를 바꿈
       //   (2026-11-06 형님: 1판부터 많을 필요 없고 판이 올라갈수록 서서히 많이) stageMul = 판 번호별 배수(소수 OK = 몇 마리 중 일부만 하나 더).
       //   한 마리 체력 = 원래 x 배수^-hpExp (2배 → 0.4), 경험치 = 원래 / 배수 → 판 전체 경험치 그대로. 배수 1 이면 원래 그대로
-      horde: { on: true, mul: 2, stageMul: { 1: 1, 2: 1.15, 3: 1.3, 4: 1.4, 5: 1.5, 6: 1.6, 7: 1.7, 8: 1.8, 9: 1.9, 10: 2 }, hpExp: 1.32, hpMul: 0.4, dmgMul: 1.0, xpMul: 0.5, bothSides: true, gapMs: 180, xOff: 34, placedDx: 30, placedDy: 0.2,
+      horde: { on: true, mul: 2, stageMul: { 1: 1, 2: 1.15, 3: 1.3, 4: 1.4, 5: 1.5, 6: 1.6, 7: 1.7, 8: 1.8, 9: 1.9, 10: 2, 11: 2.05, 12: 2.1, 13: 2.15, 14: 2.2, 15: 2.25, 16: 2.3, 17: 2.35, 18: 2.4, 19: 2.45, 20: 2.5 }, hpExp: 1.32, hpMul: 0.4, dmgMul: 1.0, xpMul: 0.5, bothSides: true, gapMs: 180, xOff: 34, placedDx: 30, placedDy: 0.2,
                maxAttackers: 99, attackGapMs: 120 },   // 2026-11-06 형님: 동시 공격 제한 없음
       // 넓은 범위: 기술 판정·효과 크기 배율(기술 Lv 크기 area 에 곱함). 회전베기 · 대지 내려찍기 · 메테오 · 불기둥 · 칼날 폭풍
       aoe: { on: true, spin: 1.25, slam: 1.25, meteor: 1.25, pillar: 1.25, storm: 1.25 },   // storm = 칼날 폭풍(2026-11-06)
@@ -2056,7 +2073,7 @@
       stageMul: 0.18,
       xp: { mob: 10, tough: 15, elite: 40, mid: 40, boss: 150, king: 300 },   // mid = 중간보스(2026-11-06, config midBoss)
       toughHp: 75, eliteHp: 200,
-      kind: { mage: 'tough' },
+      kind: { mage: 'tough', voidpriest: 'tough' },
       // ---------- 능력치 점수 (2026-11-06, 기획\성장시스템-설계안.md 「변경 (2026-11-06)」, 계산 = growth.js, 창 = main.js) ----------
       // 레벨업마다 perLv 점. 능력치 창에서 + 로 올림 · 「자동 배분」(남은 점수만) · 「초기화」(공짜, 언제든 → 올린 점수 전부 돌려받음)
       //   str 힘   = 물리 공격(견습 맨손·기사 검 타와 기사 기술) 1점당 +str (0.008 = +0.8%)
@@ -3128,6 +3145,141 @@
                       enraged: { useGapMs: 6000 },
                       when: [0, 999], weight: 1, gapMs: 9000, firstMs: 7000 }
         }
+      },
+      // ===== 11~20단계 새 적 (2026-11-09, art/stages-11-20 에서 복사. AI 그림 2장씩 = 서기·걷기·공격 / 맞기·넘어짐·일어남·죽음) =====
+      // 움직임·공격 규칙은 있던 적을 그대로 씀(새 코드 없음): 가시나무 정령 = 고블린, 수정 갑충 = 늑대, 심해 어인 = 도마뱀 전사, 폭풍 하피 = 거대 박쥐, 공허 사도 = 흑마법사
+      //   그림 장 수가 달라서(걷기 6장 등) anims 만 새로. 그림 자르는 법 = art/stages-11-20/_scripts/cut_mob.py (프레임 크기·기준점 = 그 폴더 mob.json)
+      // 가시나무 정령(11·12 저주받은 숲): 구부정한 나무껍질 몸 + 보랏빛 금. 고블린보다 단단하고 손톱이 길다(단단한 잡몹)
+      thorn: {
+        label: '가시나무 정령', frameW: 135, frameH: 114, pivot: { x: 60, y: 108 },
+        anims: enemyAnims('thorn', {
+          idle: [4, 6, true], walk: [6, 8, true],
+          attack: [5, 10, false, [1, 2, 2, 2, 3, 4, 4, 5]],   // 1 젖힘 · 2 두 팔 치켜듦(예고) · 3 내려 할큄(맞음) · 4 끝까지 · 5 복귀
+          hit: [3, 10, false, [1, 2, 2, 3]],
+          hit2: [3, 10, false, [1, 1, 2, 2, 3]],
+          knockdown: [5, 10, false, [1, 2, 2, 3, 4, 5, 4, 5]],
+          getup: [3, 8, false, [1, 1, 2, 2, 3]],
+          death: [5, 8, false, [1, 2, 3, 4, 5]]                // 쓰러짐 → 껍질 조각 · 잔가지 무더기
+        }),
+        walkAnim: 'walk',
+        down: { slide: 80, lyingFrames: [3, 4, 5] },
+        hp: 85, speedX: 42, speedY: 28, radius: 16, height: 92,
+        hurtbox: { x0: -16, x1: 26, yTop: -90, yBot: 0 },
+        engage: 55, hover: [100, 150], range: [24, 82], alignY: 7, cooldown: [1200, 2100], firstCooldown: [500, 1500],
+        knockResist: 0.95, deathKnock: 210,
+        attacks: {
+          claw: { anim: 'attack', active: [3, 4], reach: { x0: 14, x1: 88, yTop: -84, yBot: -20 }, depth: 13,
+                  dmg: [8, 11], knock: 15, telegraph: [2] }
+        }
+      },
+      // 수정 갑충(13·14 수정 동굴): 등에 수정이 돋은 큰 딱정벌레. 늑대처럼 빠르게 달려와 뛰어들어 물고 빠짐(잡몹)
+      beetle: {
+        label: '수정 갑충', frameW: 137, frameH: 80, pivot: { x: 78, y: 74 },
+        anims: enemyAnims('beetle', {
+          idle: [4, 6, true], run: [6, 14, true],
+          attack: [5, 12, false, [1, 1, 1, 2, 3, 3, 4, 5]],   // 1 웅크림·수정 빛(예고) · 2 도약 · 3 집게 물기 · 4 착지 · 5 복귀
+          hit: [3, 10, false, [1, 2, 2, 3]],
+          hit2: [3, 10, false, [1, 1, 2, 2, 3]],
+          knockdown: [4, 10, false, [1, 2, 2, 3, 4, 4, 4]],   // 뒤집혀 날아감 → 등으로 떨어짐 → 발버둥(4)
+          getup: [3, 8, false, [1, 1, 2, 2, 3]],
+          death: [5, 8, false, [1, 2, 3, 4, 5]]                // 수정 금 → 뒤집힘 → 껍질이 수정 조각으로 부서짐
+        }),
+        walkAnim: 'run',
+        down: { slide: 70, lyingFrames: [3, 4] },
+        hp: 55, speedX: 110, speedY: 60, radius: 26, height: 58,
+        hurtbox: { x0: -44, x1: 46, yTop: -58, yBot: 0 },
+        engage: 84, hover: [150, 200], range: [55, 112], alignY: 8, cooldown: [1300, 2300], firstCooldown: [300, 1200],
+        retreatMs: 900,
+        knockResist: 1.1, deathKnock: 230,
+        attacks: {
+          bite: { anim: 'attack', active: [2, 3], reach: { x0: 30, x1: 86, yTop: -56, yBot: -6 }, depth: 12,
+                  dmg: [6, 8], knock: 12, move: { frames: [2, 3], dist: 36 } }
+        }
+      },
+      // 심해 어인(15·16 가라앉은 신전): 삼지창을 든 물고기 전사. 도마뱀 전사처럼 멀리 찌르기 + 가끔 달려들기(단단한 잡몹)
+      //   달려들기 그림(attack2) = 찌르기 그림 1·3·4·5장을 다시 씀
+      fishman: {
+        label: '심해 어인', frameW: 258, frameH: 112, pivot: { x: 109, y: 106 },
+        anims: enemyAnims('fishman', {
+          idle: [4, 6, true], walk: [6, 9, true],
+          attack: [5, 10, false, [1, 2, 2, 2, 3, 4, 4, 5]],    // 1 당김 · 2 삼지창 뒤로(예고) · 3 쭉 찌름(맞음) · 4 끝까지 · 5 복귀
+          attack2: [4, 12, false, [1, 1, 2, 3, 3, 4]],          // 달려들기
+          hit: [3, 10, false, [1, 2, 2, 3]],
+          hit2: [3, 10, false, [1, 1, 2, 2, 3]],
+          knockdown: [5, 10, false, [1, 2, 2, 3, 4, 5, 4, 5]],
+          getup: [3, 8, false, [1, 1, 2, 2, 3]],
+          death: [5, 8, false, [1, 2, 3, 4, 5]]                // 쓰러짐 → 검은 바닷물 · 거품으로 녹음 → 부러진 삼지창 · 조개만
+        }),
+        walkAnim: 'walk',
+        down: { slide: 80, lyingFrames: [3, 4, 5] },
+        hp: 80, speedX: 48, speedY: 30, radius: 15, height: 96,
+        hurtbox: { x0: -14, x1: 26, yTop: -94, yBot: 0 },
+        engage: 80, hover: [110, 160], range: [30, 140], alignY: 7, cooldown: [1300, 2300], firstCooldown: [600, 1600],
+        knockResist: 1.0, deathKnock: 210,
+        attacks: {
+          thrust: { anim: 'attack', active: [3, 4], reach: { x0: 20, x1: 120, yTop: -78, yBot: -40 }, depth: 12,
+                    dmg: [7, 10], knock: 16, telegraph: [2], showTelegraph: true, when: [30, 114], weight: 3 },
+          lunge:  { anim: 'attack2', active: [2, 3], reach: { x0: 20, x1: 104, yTop: -66, yBot: -30 }, depth: 12, move: { frames: [2, 3], dist: 40 },
+                    dmg: [5, 7], knock: 14, telegraph: [1], when: [70, 140], weight: 1, gapMs: 6000 }
+        }
+      },
+      // 폭풍 하피(17·18 하늘 폐허): 날개 팔 · 금빛 발톱. 거대 박쥐처럼 떠다니다 내리꽂아 할퀴고 빠짐(잡몹)
+      harpy: {
+        label: '폭풍 하피', frameW: 127, frameH: 161, pivot: { x: 51, y: 155 },
+        anims: enemyAnims('harpy', {
+          idle: [4, 9, true], fly: [6, 10, true],
+          attack: [5, 12, false, [1, 1, 1, 2, 3, 3, 4, 5]],   // 1 날개 치켜듦·비명(예고) · 2 내리꽂기 · 3 발톱 할퀴기 · 4 솟구침 · 5 떠 있음
+          hit: [3, 10, false, [1, 2, 2, 3]],
+          hit2: [3, 10, false, [1, 1, 2, 2, 3]],
+          knockdown: [4, 10, false, [1, 2, 2, 3, 4, 4, 4]],
+          getup: [3, 8, false, [1, 1, 2, 2, 3]],
+          death: [5, 8, false, [1, 2, 3, 4, 5]]                // 떨어짐 → 깃털로 흩어짐 → 깃털 무더기
+        }),
+        walkAnim: 'fly',
+        flying: { bob: 2, bobMs: 900, jumpDmgMul: 1.5 },
+        down: { slide: 60, lyingFrames: [3, 4] },
+        hp: 45, speedX: 105, speedY: 66, radius: 22, height: 120,
+        hurtbox: { x0: -18, x1: 30, yTop: -122, yBot: -50 },
+        engage: 70, hover: [140, 190], range: [40, 100], alignY: 9, cooldown: [1400, 2400], firstCooldown: [400, 1300],
+        retreatMs: 1000,
+        knockResist: 1.3, deathKnock: 200,
+        attacks: {
+          swoop: { anim: 'attack', active: [2, 3], reach: { x0: 18, x1: 64, yTop: -76, yBot: -24 }, depth: 12,
+                   dmg: [6, 8], knock: 12, move: { frames: [2, 3], dist: 46 }, telegraph: [1] }
+        }
+      },
+      // 공허 사도(19·20 심연): 두건 속 보랏빛 눈 · 공허 구슬 지팡이. 흑마법사처럼 거리를 두고 구체를 쏨(단단한 잡몹 = growth.kind)
+      //   구체·터짐 그림은 흑마법사 것(초록)을 그대로 씀, 맞을 때 튀는 점 색만 보라
+      voidpriest: {
+        label: '공허 사도', frameW: 161, frameH: 137, pivot: { x: 89, y: 131 },
+        anims: enemyAnims('voidpriest', {
+          idle: [4, 6, true], walk: [6, 8, true],
+          cast: [5, 10, false, [1, 2, 2, 2, 2, 2, 3, 4, 4, 5]],
+          hit: [3, 10, false, [1, 2, 2, 3]],
+          hit2: [3, 10, false, [1, 1, 2, 2, 3]],
+          knockdown: [5, 10, false, [1, 2, 2, 3, 4, 5, 4, 5]],
+          getup: [3, 8, false, [1, 1, 2, 2, 3]],
+          death: [5, 8, false, [1, 2, 3, 4, 5]]                // 눈에서 보랏빛 → 쓰러짐 → 검보라 연기 기둥 → 빈 두루마기 + 금 간 지팡이
+        }),
+        fxArt: {
+          orb:    { frames: seq(EN + 'orb/orb_', 4),       pivot: { x: 20, y: 21 }, fps: 14 },
+          orbhit: { frames: seq(EN + 'orbhit/orbhit_', 4), pivot: { x: 48, y: 48 }, fps: 14 }
+        },
+        walkAnim: 'walk',
+        rim: { color: '#d8b4ff', px: 1, alpha: 0.42 },
+        down: { slide: 70, lyingFrames: [3, 4, 5] },
+        hp: 62, speedX: 40, speedY: 28, radius: 15, height: 112,
+        hurtbox: { x0: -14, x1: 26, yTop: -104, yBot: 0 },
+        engage: 50, hover: [160, 260], range: [0, 360], alignY: 8, cooldown: [2600, 3600], firstCooldown: [1300, 2300],
+        knockResist: 1.0, deathKnock: 210,
+        ranged: { attack: 'orb', keep: [160, 260], tooClose: 80, backOffMul: 0.8, maxShooters: 1, alignMs: 700 },
+        attacks: {
+          orb: { type: 'shot', anim: 'cast', telegraph: [2], spawnFrame: 3, spawn: { x: 74, y: -78 }, aimH: 70, dropPx: 0,
+                 proj: 'orb', impact: 'orbhit', impactAir: true, muzzle: null,
+                 hitCols: ['#140a1e', '#4a2a7a', '#b07aff', '#e8d8ff'], impactCols: ['#140a1e', '#4a2a7a', '#b07aff', '#e8d8ff'],
+                 speed: 240, range: 360, box: { w: 22, h: 18 }, depth: 12, dodgeZ: 22,
+                 dmg: [5, 7], knock: 14, flinchMs: 320, when: [120, 360] }
+        }
       }
     },
 
@@ -3173,14 +3325,17 @@
     //     자동 조종 시험 판 경험치와 셈이 딱 맞음. 죽고 다시 하면 그만큼 더 높아짐)
     //   체력·공격 고른 법(자동 조종 기사, 능력치 자동 배분·기술 계획대로, 판 끝 남은 체력): 이지 9판 Lv19 77% · 이지 10판 Lv21 60%
     //     → 노말 1판 Lv23 64% · 노말 10판 Lv38 48% · 하드 1판 Lv40 61% · 하드 10판 Lv55 65% (2번씩 평균, 안 쓰러짐)
+    // 2026-11-09 판 20개: [1판, 10판, 20판] 세 값 = knots 판 번호에서 그 값, 사이 판은 고르게(1~10판 값은 예전과 같음).
+    //   unlockId = 다음 난이도가 열리는 판(앞 난이도에서 이 판을 깸). 예전처럼 10판(마왕) → 예전 저장에서 열린 하드가 그대로 열려 있음
+    modeKnots: [1, 10, 20], modeUnlockId: 10,
     modes: {
       order: ['easy', 'normal', 'hard'],
       // 2026-11-07 형님: 이지 숨김(hidden = 고르는 탭에 안 나옴, 값은 남겨 둠 → hidden 만 지우면 돌아옴). 새 게임 = 노말, 이지에 있던 저장 = 노말로
       //   노말이 지루함 → 잡몹 1.5 → 2배 · 단단한 잡몹 1.3 → 1.6배, 판 보스 · 중간보스 = 체력 x bossHp · 공격 x bossDmg 더(위 배율 위에)
       //   하드 = 노말보다 확실히 많게 잡몹 2 → 2.5배 · 단단한 잡몹 1.6 → 2배(그 밖은 그대로). 하드의 「앞 난이도」 = 노말
       easy:   { name: '이지', hidden: true, hpMul: 1, dmgMul: 1, count: 1, countTough: 1, xp: 1, drop: 1 },
-      normal: { name: '노말', hpMul: [2.1, 1.6], dmgMul: [2.0, 1.55], count: 2, countTough: 1.6, bossHp: 1.3, bossDmg: 1.2, xp: 1.65, drop: 1.25 },
-      hard:   { name: '하드', hpMul: [3.0, 2.8], dmgMul: [2.8, 2.6], count: 2.5, countTough: 2, xp: 2.15, drop: 1.5 }
+      normal: { name: '노말', hpMul: [2.1, 1.6, 1.5], dmgMul: [2.0, 1.55, 1.45], count: 2, countTough: 1.6, bossHp: 1.3, bossDmg: 1.2, xp: 1.65, drop: 1.25 },
+      hard:   { name: '하드', hpMul: [3.0, 2.8, 2.6], dmgMul: [2.8, 2.6, 2.4], count: 2.5, countTough: 2, xp: 2.15, drop: 1.5 }
     },
     stages: [
       {
@@ -3581,6 +3736,354 @@
           { type: 'cursedchest', x: 2250, y: 0.78, drop: 'meat' },  // 6번 웨이브 화면 = 보스방 바로 앞
           { type: 'goldurn',     x: 2330, y: 0.2, drop: 'bread' }
         ]
+      },
+      // ===================== 2부: 11~20단계 (2026-11-09) =====================
+      // 마왕을 쓰러뜨린 뒤 마왕성 아래로 열린 땅들. 판 체력·공격 배율 1.8 → 2.9(10판 1.7), 몹 떼 2.05 → 2.5배, 중간보스는 midBoss.list
+      //   새 그림 = 배경 5종(판 두 개씩) + 새 잡몹 5종(art/stages-11-20). 보스 = 예전 보스 10마리를 그 땅 색으로 물들여 한 번씩(새 그림 없음)
+      //   소품 = 예전 판 소품을 그 땅에 맞게 다시 씀. bossTitle = 보스 등장 컷인 칭호(없으면 종류별 칭호)
+      // 레벨(노말을 순서대로 안 죽고 깼을 때 셈): 10판 Lv20 → 13판 Lv25(2차 전직) → 15판 Lv28 → 20판 Lv36 → 하드 20판 Lv51(3차 Lv50 즈음)
+      // ===== 11단계: 저주받은 숲 어귀 (새 적 가시나무 정령, 보스 = 저주 오크 족장) =====
+      {
+        id: 11,
+        name: 'STAGE 11  저주받은 숲 어귀',
+        width: 2880,
+        healOnClear: 18,
+        bgTop: '#2a1a40',
+        bg: BG_CURSED,
+        hpMul: 1.8, dmgMul: 1.75,
+        bossName: '저주받은 오크 족장',
+        bossTitle: '저주받은 숲의 폭군',
+        waves: [
+          { at: 120,  spawn: [['thorn', 'R', 0], ['thorn', 'R', 700], ['wolf', 'L', 2000, { variant: 'cursed' }]] },
+          { at: 500,  placed: [['thorn', 288, 0.36, { group: 'camp1', dir: 1 }], ['goblin', 364, 0.58, { group: 'camp1', variant: 'cursed' }]],
+                      spawn: [['bat', 'R', 700, { variant: 'cursed' }], ['thorn', 'L', 2400]] },
+          { at: 880,  spawn: [['wolf', 'R', 0, { variant: 'cursed' }], ['thorn', 'L', 500], ['bat', 'R', 1300, { variant: 'cursed', el: 'poison' }], ['goblin', 'L', 3000, { variant: 'cursed' }], ['thorn', 'R', 3600]] },
+          { at: 1260, placed: [['thorn', 292, 0.34, { group: 'camp2', dir: 1 }], ['skeleton', 372, 0.44, { group: 'camp2', variant: 'cursed' }], ['thorn', 340, 0.8, { group: 'camp2' }]],
+                      spawn: [['wolf', 'R', 1200, { variant: 'cursed' }], ['thorn', 'L', 3400], ['goblin', 'R', 4200, { variant: 'cursed' }]] },
+          { at: 1650, spawn: [['thorn', 'R', 0, { el: 'poison' }], ['bat', 'L', 400, { variant: 'cursed' }], ['skeleton', 'R', 1000, { variant: 'cursed' }], ['wolf', 'L', 2800, { variant: 'cursed' }], ['thorn', 'R', 3400]] },
+          { at: 2040, placed: [['thorn', 296, 0.3, { group: 'shrine', dir: 1 }], ['thorn', 368, 0.66, { group: 'shrine' }]],
+                      spawn: [['bat', 'R', 600, { variant: 'cursed' }], ['goblin', 'L', 1000, { variant: 'cursed' }], ['skeleton', 'R', 2800, { variant: 'cursed' }]] },
+          { at: 'end', boss: true, spawn: [['orc', 'R', 0, { variant: 'cursed' }]] }
+        ],
+        props: [
+          { type: 'stump',     x: 430,  y: 0.72 },
+          { type: 'pot',       x: 700,  y: 0.22 },
+          { type: 'ghostfire', x: 500 + 326, y: 0.47 },
+          { type: 'stump',     x: 1150, y: 0.7, drop: 'bread' },
+          { type: 'ghostfire', x: 1260 + 330, y: 0.56 },
+          { type: 'pot',       x: 1860, y: 0.32 },
+          { type: 'ghostfire', x: 2040 + 332, y: 0.48 },
+          { type: 'stump',     x: 2250, y: 0.78, drop: 'meat' }
+        ]
+      },
+      // ===== 12단계: 시든 영혼의 숲 (가시나무 정령 + 저주 유령 기사 · 미라, 보스 = 저주 거대 두꺼비) =====
+      {
+        id: 12,
+        name: 'STAGE 12  시든 영혼의 숲',
+        width: 2880,
+        healOnClear: 18,
+        bgTop: '#2a1a40',
+        bg: BG_CURSED,
+        hpMul: 1.9, dmgMul: 1.8,
+        bossName: '썩은 거대 두꺼비',
+        bossTitle: '썩은 숲의 탐식가',
+        waves: [
+          { at: 120,  spawn: [['ghost', 'R', 0, { variant: 'cursed' }], ['thorn', 'R', 700], ['thorn', 'L', 2000]] },
+          { at: 500,  placed: [['thorn', 288, 0.36, { group: 'camp1', dir: 1 }], ['mummy', 364, 0.58, { group: 'camp1', variant: 'cursed' }]],
+                      spawn: [['bat', 'R', 700, { variant: 'cursed' }], ['ghost', 'L', 2400, { variant: 'cursed' }]] },
+          { at: 880,  spawn: [['thorn', 'R', 0], ['mummy', 'L', 500, { variant: 'cursed' }], ['bat', 'R', 1300, { variant: 'cursed' }], ['thorn', 'L', 3000, { el: 'darkness' }], ['ghost', 'R', 3600, { variant: 'cursed' }]] },
+          { at: 1260, placed: [['ghost', 292, 0.34, { group: 'camp2', dir: 1, variant: 'cursed' }], ['thorn', 372, 0.44, { group: 'camp2' }], ['thorn', 340, 0.8, { group: 'camp2' }]],
+                      spawn: [['wolf', 'R', 1200, { variant: 'cursed' }], ['mummy', 'L', 3400, { variant: 'cursed' }], ['thorn', 'R', 4200]] },
+          { at: 1650, spawn: [['thorn', 'R', 0], ['ghost', 'L', 500, { variant: 'cursed' }], ['bat', 'R', 1400, { variant: 'cursed', el: 'darkness' }], ['thorn', 'L', 2800], ['mummy', 'R', 3600, { variant: 'cursed' }]] },
+          { at: 2040, placed: [['thorn', 296, 0.3, { group: 'grave', dir: 1 }], ['ghost', 368, 0.66, { group: 'grave', variant: 'cursed' }]],
+                      spawn: [['wolf', 'R', 800, { variant: 'cursed' }], ['thorn', 'L', 2600]] },
+          { at: 'end', boss: true, spawn: [['toad', 'R', 0, { variant: 'cursed' }]] }
+        ],
+        props: [
+          { type: 'coffin',    x: 430,  y: 0.72 },
+          { type: 'stump',     x: 700,  y: 0.22 },
+          { type: 'ghostfire', x: 500 + 326, y: 0.47 },
+          { type: 'coffin',    x: 1150, y: 0.7, drop: 'bread' },
+          { type: 'ghostfire', x: 1260 + 330, y: 0.56 },
+          { type: 'stump',     x: 1860, y: 0.32, drop: 'meat' },
+          { type: 'ghostfire', x: 2040 + 332, y: 0.48 },
+          { type: 'coffin',    x: 2250, y: 0.78, drop: 'meat' }
+        ]
+      },
+      // ===== 13단계: 수정 동굴 (새 적 수정 갑충, 보스 = 수정 돌 골렘) =====
+      {
+        id: 13,
+        name: 'STAGE 13  수정 동굴',
+        width: 2880,
+        healOnClear: 18,
+        bgTop: '#151a3a',
+        bg: BG_CRYSTAL,
+        hpMul: 2.0, dmgMul: 1.85,
+        bossName: '수정 골렘',
+        bossTitle: '수정 동굴의 수호자',
+        waves: [
+          { at: 120,  spawn: [['beetle', 'R', 0], ['beetle', 'R', 600], ['skeleton', 'L', 2000, { variant: 'crystal' }]] },
+          { at: 500,  placed: [['bat', 300, 0.12, { group: 'roost', variant: 'crystal' }], ['bat', 344, 0.3, { group: 'roost', variant: 'crystal' }], ['beetle', 380, 0.7, { group: 'roost' }]],
+                      spawn: [['beetle', 'L', 500], ['skeleton', 'R', 2400, { variant: 'crystal' }]] },
+          { at: 880,  spawn: [['beetle', 'R', 0, { el: 'lightning' }], ['skeleton', 'L', 400, { variant: 'crystal' }], ['bat', 'R', 1300, { variant: 'crystal' }], ['beetle', 'L', 3000], ['beetle', 'R', 3600]] },
+          { at: 1260, placed: [['skeleton', 292, 0.34, { group: 'camp2', dir: 1, variant: 'crystal' }], ['beetle', 372, 0.44, { group: 'camp2' }], ['beetle', 340, 0.8, { group: 'camp2' }]],
+                      spawn: [['bat', 'R', 1200, { variant: 'crystal' }], ['beetle', 'L', 3400], ['skeleton', 'R', 4200, { variant: 'crystal' }]] },
+          { at: 1650, spawn: [['beetle', 'R', 0], ['beetle', 'L', 400, { el: 'lightning' }], ['skeleton', 'R', 1000, { variant: 'crystal' }], ['bat', 'L', 2800, { variant: 'crystal' }], ['beetle', 'R', 3400]] },
+          { at: 2040, placed: [['beetle', 296, 0.3, { group: 'vein', dir: 1 }], ['skeleton', 368, 0.66, { group: 'vein', variant: 'crystal' }]],
+                      spawn: [['beetle', 'R', 600], ['bat', 'L', 1000, { variant: 'crystal' }], ['beetle', 'R', 2800]] },
+          { at: 'end', boss: true, spawn: [['golem', 'R', 0, { variant: 'crystal' }]] }
+        ],
+        props: [
+          { type: 'orecart',  x: 430,  y: 0.74 },
+          { type: 'orecrate', x: 790,  y: 0.26 },
+          { type: 'brazier',  x: 880 + 326, y: 0.47 },
+          { type: 'orecart',  x: 1470, y: 0.28 },
+          { type: 'stack',    x: 1530, y: 0.72, drop: 'bread' },
+          { type: 'brazier',  x: 1650 + 330, y: 0.56 },
+          { type: 'orecrate', x: 1860, y: 0.3 },
+          { type: 'orecart',  x: 2330, y: 0.62, drop: 'meat' }
+        ]
+      },
+      // ===== 14단계: 빛나는 광맥 (수정 갑충 + 수정 설인 · 도마뱀, 보스 = 수정 전갈 왕) =====
+      {
+        id: 14,
+        name: 'STAGE 14  빛나는 광맥',
+        width: 2880,
+        healOnClear: 18,
+        bgTop: '#151a3a',
+        bg: BG_CRYSTAL,
+        hpMul: 2.1, dmgMul: 1.9,
+        bossName: '수정 전갈 왕',
+        bossTitle: '수정 독침의 왕',
+        waves: [
+          { at: 120,  spawn: [['beetle', 'R', 0], ['lizard', 'R', 700, { variant: 'crystal' }], ['beetle', 'L', 2000]] },
+          { at: 500,  placed: [['yeti', 288, 0.36, { group: 'camp1', dir: 1, variant: 'crystal' }], ['beetle', 364, 0.58, { group: 'camp1' }]],
+                      spawn: [['bat', 'R', 700, { variant: 'crystal' }], ['beetle', 'L', 2400]] },
+          { at: 880,  spawn: [['lizard', 'R', 0, { variant: 'crystal' }], ['beetle', 'L', 500, { el: 'ice' }], ['beetle', 'R', 1300], ['yeti', 'L', 3000, { variant: 'crystal' }], ['beetle', 'R', 3600]] },
+          { at: 1260, placed: [['beetle', 292, 0.34, { group: 'camp2', dir: 1 }], ['lizard', 372, 0.44, { group: 'camp2', variant: 'crystal' }], ['beetle', 340, 0.8, { group: 'camp2' }]],
+                      spawn: [['bat', 'R', 1200, { variant: 'crystal' }], ['yeti', 'L', 3400, { variant: 'crystal' }], ['beetle', 'R', 4200]] },
+          { at: 1650, spawn: [['beetle', 'R', 0, { el: 'lightning' }], ['lizard', 'L', 500, { variant: 'crystal' }], ['beetle', 'R', 1400], ['bat', 'L', 2800, { variant: 'crystal' }], ['beetle', 'R', 3400]] },
+          { at: 2040, placed: [['yeti', 296, 0.3, { group: 'gate', dir: 1, variant: 'crystal' }], ['beetle', 368, 0.66, { group: 'gate' }]],
+                      spawn: [['beetle', 'R', 800], ['lizard', 'L', 2600, { variant: 'crystal' }]] },
+          { at: 'end', boss: true, spawn: [['scorpion', 'R', 0, { variant: 'crystal' }]] }
+        ],
+        props: [
+          { type: 'orecrate', x: 430,  y: 0.72 },
+          { type: 'orecart',  x: 700,  y: 0.22 },
+          { type: 'brazier',  x: 500 + 326, y: 0.47 },
+          { type: 'stack',    x: 1150, y: 0.7, drop: 'bread' },
+          { type: 'brazier',  x: 1260 + 330, y: 0.56 },
+          { type: 'orecrate', x: 1860, y: 0.32 },
+          { type: 'brazier',  x: 2040 + 332, y: 0.48 },
+          { type: 'orecart',  x: 2250, y: 0.78, drop: 'meat' }
+        ]
+      },
+      // ===== 15단계: 가라앉은 신전 (새 적 심해 어인, 보스 = 심해 해적 선장) =====
+      {
+        id: 15,
+        name: 'STAGE 15  가라앉은 신전',
+        width: 2880,
+        healOnClear: 18,
+        bgTop: '#0e3a44',
+        bg: BG_SUNKEN,
+        hpMul: 2.2, dmgMul: 1.95,
+        bossName: '익사한 해적 선장',
+        bossTitle: '가라앉은 바다의 약탈자',
+        waves: [
+          { at: 120,  spawn: [['fishman', 'R', 0], ['fishman', 'R', 700], ['skeleton', 'L', 2000, { variant: 'deep' }]] },
+          { at: 500,  placed: [['fishman', 288, 0.36, { group: 'camp1', dir: 1 }], ['gunner', 364, 0.58, { group: 'camp1', variant: 'deep' }]],
+                      spawn: [['lizard', 'R', 700, { variant: 'deep' }], ['fishman', 'L', 2400]] },
+          { at: 880,  spawn: [['fishman', 'R', 0, { el: 'ice' }], ['skeleton', 'L', 500, { variant: 'deep' }], ['gunner', 'R', 1300, { variant: 'deep' }], ['fishman', 'L', 3000], ['lizard', 'R', 3600, { variant: 'deep' }]] },
+          { at: 1260, placed: [['fishman', 292, 0.34, { group: 'camp2', dir: 1 }], ['skeleton', 372, 0.44, { group: 'camp2', variant: 'deep' }], ['fishman', 340, 0.8, { group: 'camp2' }]],
+                      spawn: [['lizard', 'R', 1200, { variant: 'deep' }], ['fishman', 'L', 3400], ['gunner', 'R', 4200, { variant: 'deep' }]] },
+          { at: 1650, spawn: [['fishman', 'R', 0], ['lizard', 'L', 400, { variant: 'deep', el: 'ice' }], ['fishman', 'R', 1000], ['skeleton', 'L', 2800, { variant: 'deep' }], ['fishman', 'R', 3400]] },
+          { at: 2040, placed: [['fishman', 296, 0.3, { group: 'altar', dir: 1 }], ['fishman', 368, 0.66, { group: 'altar' }]],
+                      spawn: [['gunner', 'R', 600, { variant: 'deep' }], ['lizard', 'L', 1000, { variant: 'deep' }], ['fishman', 'R', 2800]] },
+          { at: 'end', boss: true, spawn: [['captain', 'R', 0, { variant: 'deep' }]] }
+        ],
+        props: [
+          { type: 'amphora',  x: 430,  y: 0.72 },
+          { type: 'netcrate', x: 700,  y: 0.22 },
+          { type: 'firebowl', x: 500 + 326, y: 0.47 },
+          { type: 'amphora',  x: 1150, y: 0.7, drop: 'bread' },
+          { type: 'firebowl', x: 1260 + 330, y: 0.56 },
+          { type: 'netcrate', x: 1860, y: 0.32 },
+          { type: 'firebowl', x: 2040 + 332, y: 0.48 },
+          { type: 'amphora',  x: 2250, y: 0.78, drop: 'meat' }
+        ]
+      },
+      // ===== 16단계: 해신의 회랑 (심해 어인 + 심해 미라 · 마족 병사, 보스 = 심해 서리 거인) =====
+      {
+        id: 16,
+        name: 'STAGE 16  해신의 회랑',
+        width: 2880,
+        healOnClear: 18,
+        bgTop: '#0e3a44',
+        bg: BG_SUNKEN,
+        hpMul: 2.3, dmgMul: 2.0,
+        bossName: '심해 거인',
+        bossTitle: '깊은 바다의 거인',
+        waves: [
+          { at: 120,  spawn: [['fishman', 'R', 0], ['mummy', 'R', 800, { variant: 'deep' }], ['fishman', 'L', 2000]] },
+          { at: 500,  placed: [['soldier', 288, 0.36, { group: 'camp1', dir: 1, variant: 'deep' }], ['fishman', 364, 0.58, { group: 'camp1' }]],
+                      spawn: [['lizard', 'R', 700, { variant: 'deep' }], ['fishman', 'L', 2400]] },
+          { at: 880,  spawn: [['fishman', 'R', 0], ['mummy', 'L', 500, { variant: 'deep' }], ['fishman', 'R', 1300, { el: 'wind' }], ['soldier', 'L', 3000, { variant: 'deep' }], ['fishman', 'R', 3600]] },
+          { at: 1260, placed: [['fishman', 292, 0.34, { group: 'camp2', dir: 1 }], ['soldier', 372, 0.44, { group: 'camp2', variant: 'deep' }], ['fishman', 340, 0.8, { group: 'camp2' }]],
+                      spawn: [['gunner', 'R', 1200, { variant: 'deep' }], ['mummy', 'L', 3400, { variant: 'deep' }], ['fishman', 'R', 4200]] },
+          { at: 1650, spawn: [['fishman', 'R', 0, { el: 'ice' }], ['soldier', 'L', 500, { variant: 'deep' }], ['fishman', 'R', 1400], ['lizard', 'L', 2800, { variant: 'deep' }], ['fishman', 'R', 3400]] },
+          { at: 2040, placed: [['fishman', 296, 0.3, { group: 'hall', dir: 1 }], ['mummy', 368, 0.66, { group: 'hall', variant: 'deep' }]],
+                      spawn: [['fishman', 'R', 800], ['gunner', 'L', 2600, { variant: 'deep' }]] },
+          { at: 'end', boss: true, spawn: [['giant', 'R', 0, { variant: 'deep' }]] }
+        ],
+        props: [
+          { type: 'netcrate',  x: 430,  y: 0.72 },
+          { type: 'amphora',   x: 700,  y: 0.22 },
+          { type: 'firebowl',  x: 500 + 326, y: 0.47 },
+          { type: 'rumbarrel', x: 1150, y: 0.7, drop: 'bread' },
+          { type: 'firebowl',  x: 1260 + 330, y: 0.56 },
+          { type: 'amphora',   x: 1860, y: 0.32, drop: 'meat' },
+          { type: 'firebowl',  x: 2040 + 332, y: 0.48 },
+          { type: 'netcrate',  x: 2250, y: 0.78, drop: 'meat' }
+        ]
+      },
+      // ===== 17단계: 구름 위 폐허 (새 적 폭풍 하피, 보스 = 폭풍 와이번) =====
+      {
+        id: 17,
+        name: 'STAGE 17  구름 위 폐허',
+        width: 2880,
+        healOnClear: 18,
+        bgTop: '#6aa8e8',
+        bg: BG_SKY,
+        hpMul: 2.45, dmgMul: 2.1,
+        bossName: '폭풍 와이번',
+        bossTitle: '폭풍을 부르는 날개',
+        waves: [
+          { at: 120,  spawn: [['harpy', 'R', 0], ['harpy', 'R', 600], ['soldier', 'L', 2000, { variant: 'storm' }]] },
+          { at: 500,  placed: [['harpy', 300, 0.12, { group: 'nest' }], ['harpy', 344, 0.3, { group: 'nest' }], ['wolf', 380, 0.7, { group: 'nest', variant: 'storm' }]],
+                      spawn: [['harpy', 'L', 500], ['soldier', 'R', 2400, { variant: 'storm' }]] },
+          { at: 880,  spawn: [['harpy', 'R', 0, { el: 'wind' }], ['wolf', 'L', 400, { variant: 'storm' }], ['imp', 'R', 1300, { variant: 'storm' }], ['harpy', 'L', 3000], ['soldier', 'R', 3600, { variant: 'storm' }]] },
+          { at: 1260, placed: [['soldier', 292, 0.34, { group: 'camp2', dir: 1, variant: 'storm' }], ['harpy', 372, 0.24, { group: 'camp2' }], ['harpy', 340, 0.8, { group: 'camp2' }]],
+                      spawn: [['wolf', 'R', 1200, { variant: 'storm' }], ['harpy', 'L', 3400], ['imp', 'R', 4200, { variant: 'storm' }]] },
+          { at: 1650, spawn: [['harpy', 'R', 0], ['harpy', 'L', 400, { el: 'lightning' }], ['soldier', 'R', 1000, { variant: 'storm' }], ['wolf', 'L', 2800, { variant: 'storm' }], ['harpy', 'R', 3400]] },
+          { at: 2040, placed: [['harpy', 296, 0.2, { group: 'bell', dir: 1 }], ['soldier', 368, 0.66, { group: 'bell', variant: 'storm' }]],
+                      spawn: [['harpy', 'R', 600], ['imp', 'L', 1000, { variant: 'storm' }], ['harpy', 'R', 2800]] },
+          { at: 'end', boss: true, spawn: [['wyvern', 'R', 0, { variant: 'storm' }]] }
+        ],
+        props: [
+          { type: 'bronzeurn', x: 430,  y: 0.72 },
+          { type: 'amphora',   x: 700,  y: 0.22 },
+          { type: 'firebowl',  x: 500 + 326, y: 0.47 },
+          { type: 'bronzeurn', x: 1150, y: 0.7, drop: 'bread' },
+          { type: 'firebowl',  x: 1260 + 330, y: 0.56 },
+          { type: 'amphora',   x: 1860, y: 0.32 },
+          { type: 'firebowl',  x: 2040 + 332, y: 0.48 },
+          { type: 'bronzeurn', x: 2250, y: 0.78, drop: 'meat' }
+        ]
+      },
+      // ===== 18단계: 천공의 첨탑 (폭풍 하피 + 천공 기사 · 유령 기사 · 사제, 보스 = 천공 마왕군 장군) =====
+      {
+        id: 18,
+        name: 'STAGE 18  천공의 첨탑',
+        width: 2880,
+        healOnClear: 18,
+        bgTop: '#6aa8e8',
+        bg: BG_SKY,
+        hpMul: 2.6, dmgMul: 2.2,
+        bossName: '타락한 천공 장군',
+        bossTitle: '타락한 천공의 장군',
+        waves: [
+          { at: 120,  spawn: [['soldier', 'R', 0, { variant: 'holy' }], ['harpy', 'R', 700], ['harpy', 'L', 2000]] },
+          { at: 500,  placed: [['soldier', 288, 0.36, { group: 'camp1', dir: 1, variant: 'holy' }], ['mage', 364, 0.58, { group: 'camp1', variant: 'holy' }]],
+                      spawn: [['harpy', 'R', 700], ['ghost', 'L', 2400, { variant: 'holy' }]] },
+          { at: 880,  spawn: [['harpy', 'R', 0], ['ghost', 'L', 500, { variant: 'holy' }], ['harpy', 'R', 1300, { el: 'light' }], ['soldier', 'L', 3000, { variant: 'holy' }], ['harpy', 'R', 3600]] },
+          { at: 1260, placed: [['ghost', 292, 0.34, { group: 'camp2', dir: 1, variant: 'holy' }], ['mage', 372, 0.44, { group: 'camp2', variant: 'holy' }], ['harpy', 340, 0.8, { group: 'camp2' }]],
+                      spawn: [['harpy', 'R', 1200], ['soldier', 'L', 3400, { variant: 'holy' }], ['harpy', 'R', 4200]] },
+          { at: 1650, spawn: [['soldier', 'R', 0, { variant: 'holy' }], ['harpy', 'L', 500, { el: 'wind' }], ['ghost', 'R', 1400, { variant: 'holy' }], ['harpy', 'L', 2800], ['harpy', 'R', 3400]] },
+          { at: 2040, placed: [['soldier', 296, 0.3, { group: 'spire', dir: 1, variant: 'holy' }], ['harpy', 368, 0.3, { group: 'spire' }], ['mage', 352, 0.86, { group: 'spire', variant: 'holy' }]],
+                      spawn: [['harpy', 'R', 800], ['ghost', 'L', 2600, { variant: 'holy' }]] },
+          { at: 'end', boss: true, spawn: [['general', 'R', 0, { variant: 'holy' }]] }
+        ],
+        props: [
+          { type: 'goldurn',   x: 430,  y: 0.72 },
+          { type: 'bronzeurn', x: 700,  y: 0.22 },
+          { type: 'firebowl',  x: 500 + 326, y: 0.47 },
+          { type: 'goldurn',   x: 1150, y: 0.7, drop: 'bread' },
+          { type: 'firebowl',  x: 1260 + 330, y: 0.56 },
+          { type: 'bronzeurn', x: 1860, y: 0.32, drop: 'meat' },
+          { type: 'firebowl',  x: 2040 + 332, y: 0.48 },
+          { type: 'goldurn',   x: 2250, y: 0.78, drop: 'meat' }
+        ]
+      },
+      // ===== 19단계: 심연의 틈 (새 적 공허 사도, 보스 = 공허 흡혈 백작) =====
+      {
+        id: 19,
+        name: 'STAGE 19  심연의 틈',
+        width: 2880,
+        healOnClear: 18,
+        bgTop: '#140820',
+        bg: BG_ABYSS,
+        hpMul: 2.75, dmgMul: 2.3,
+        bossName: '공허 흡혈 백작',
+        bossTitle: '공허를 마시는 귀족',
+        waves: [
+          { at: 120,  spawn: [['soldier', 'R', 0, { variant: 'void' }], ['voidpriest', 'R', 900], ['imp', 'L', 2000, { variant: 'void' }]] },
+          { at: 500,  placed: [['soldier', 288, 0.36, { group: 'camp1', dir: 1, variant: 'void' }], ['voidpriest', 364, 0.58, { group: 'camp1' }]],
+                      spawn: [['ghost', 'L', 900, { variant: 'void' }], ['imp', 'R', 2600, { variant: 'void' }]] },
+          { at: 880,  spawn: [['yeti', 'R', 0, { variant: 'void' }], ['soldier', 'L', 400, { variant: 'void' }], ['voidpriest', 'R', 1600, { el: 'darkness' }], ['imp', 'L', 3000, { variant: 'void' }], ['soldier', 'R', 3800, { variant: 'void' }]] },
+          { at: 1260, placed: [['ghost', 292, 0.34, { group: 'camp2', dir: 1, variant: 'void' }], ['voidpriest', 372, 0.44, { group: 'camp2' }], ['soldier', 340, 0.8, { group: 'camp2', variant: 'void' }]],
+                      spawn: [['imp', 'R', 1200, { variant: 'void' }], ['yeti', 'L', 3400, { variant: 'void' }], ['soldier', 'R', 4200, { variant: 'void' }]] },
+          { at: 1650, spawn: [['soldier', 'R', 0, { variant: 'void' }], ['ghost', 'L', 500, { variant: 'void' }], ['voidpriest', 'R', 2200], ['imp', 'L', 3600, { variant: 'void', el: 'fire' }], ['soldier', 'R', 4400, { variant: 'void' }]] },
+          { at: 2040, placed: [['soldier', 296, 0.3, { group: 'rift', dir: 1, variant: 'void' }], ['voidpriest', 372, 0.62, { group: 'rift' }], ['ghost', 352, 0.86, { group: 'rift', variant: 'void' }]],
+                      spawn: [['imp', 'R', 800, { variant: 'void' }], ['soldier', 'L', 2800, { variant: 'void' }]] },
+          { at: 'end', boss: true, spawn: [['vampire', 'R', 0, { variant: 'void' }]] }
+        ],
+        props: [
+          { type: 'cursedchest', x: 430,  y: 0.72 },
+          { type: 'goldurn',     x: 700,  y: 0.22 },
+          { type: 'soulflame',   x: 500 + 326, y: 0.47 },
+          { type: 'cursedchest', x: 1150, y: 0.7, drop: 'bread' },
+          { type: 'soulflame',   x: 1260 + 330, y: 0.56 },
+          { type: 'goldurn',     x: 1860, y: 0.32, drop: 'meat' },
+          { type: 'soulflame',   x: 2040 + 332, y: 0.48 },
+          { type: 'cursedchest', x: 2250, y: 0.78, drop: 'meat' }
+        ]
+      },
+      // ===== 20단계: 공허의 왕좌 = 마지막 판 (새 적 5종 공허 색 총출동, 보스 = 공허 마왕) =====
+      {
+        id: 20,
+        name: 'STAGE 20  공허의 왕좌',
+        width: 2880,
+        healOnClear: 20,
+        bgTop: '#140820',
+        bg: BG_ABYSS,
+        hpMul: 2.9, dmgMul: 2.4,
+        bossName: '공허의 마왕',
+        bossTitle: '공허의 왕',
+        endLine: '공허의 마왕을 쓰러뜨렸다!',
+        waves: [
+          { at: 120,  spawn: [['voidpriest', 'R', 0], ['thorn', 'R', 600, { variant: 'void' }], ['fishman', 'L', 2000, { variant: 'void' }]] },
+          { at: 500,  placed: [['soldier', 288, 0.36, { group: 'camp1', dir: 1, variant: 'void' }], ['voidpriest', 364, 0.58, { group: 'camp1' }]],
+                      spawn: [['harpy', 'L', 900, { variant: 'void' }], ['beetle', 'R', 2600, { variant: 'void' }]] },
+          { at: 880,  spawn: [['beetle', 'R', 0, { variant: 'void' }], ['thorn', 'L', 400, { variant: 'void' }], ['voidpriest', 'R', 1600], ['harpy', 'L', 3000, { variant: 'void' }], ['fishman', 'R', 3800, { variant: 'void' }]] },
+          { at: 1260, placed: [['ghost', 292, 0.34, { group: 'camp2', dir: 1, variant: 'void' }], ['voidpriest', 372, 0.44, { group: 'camp2' }], ['fishman', 340, 0.8, { group: 'camp2', variant: 'void' }]],
+                      spawn: [['beetle', 'R', 1200, { variant: 'void' }], ['thorn', 'L', 3400, { variant: 'void', el: 'darkness' }], ['soldier', 'R', 4200, { variant: 'void' }]] },
+          { at: 1650, spawn: [['soldier', 'R', 0, { variant: 'void' }], ['harpy', 'L', 500, { variant: 'void' }], ['voidpriest', 'R', 2200, { el: 'darkness' }], ['beetle', 'L', 3600, { variant: 'void' }], ['fishman', 'R', 4400, { variant: 'void' }]] },
+          { at: 2040, placed: [['soldier', 296, 0.3, { group: 'throne', dir: 1, variant: 'void' }], ['voidpriest', 372, 0.62, { group: 'throne' }], ['ghost', 352, 0.86, { group: 'throne', variant: 'void' }]],
+                      spawn: [['thorn', 'R', 800, { variant: 'void' }], ['harpy', 'L', 2800, { variant: 'void' }]] },
+          { at: 'end', boss: true, spawn: [['demonking', 'R', 0, { variant: 'void' }]] }
+        ],
+        props: [
+          { type: 'goldurn',     x: 430,  y: 0.72 },
+          { type: 'cursedchest', x: 700,  y: 0.22 },
+          { type: 'soulflame',   x: 500 + 326, y: 0.47 },
+          { type: 'goldurn',     x: 1150, y: 0.7, drop: 'bread' },
+          { type: 'cursedchest', x: 1480, y: 0.26 },
+          { type: 'soulflame',   x: 1260 + 330, y: 0.56 },
+          { type: 'goldurn',     x: 1860, y: 0.32, drop: 'meat' },
+          { type: 'soulflame',   x: 2040 + 332, y: 0.48 },
+          { type: 'cursedchest', x: 2250, y: 0.78, drop: 'meat' },
+          { type: 'goldurn',     x: 2330, y: 0.2, drop: 'bread' }
+        ]
       }
     ],
 
@@ -3609,7 +4112,14 @@
       // 9단계(2026-11-04): 회색 늑대·초록 도마뱀·흰 설인 → 검붉은 「마족」 빛(어둡게 + 진홍 덧칠). 정예라 체력 조금 더
       demonic: { label: '마족', hue: 0, sat: 0.9, bright: 0.82, color: '#a01828', colorK: 0.4, hpMul: 1.15 },
       // 10단계(2026-11-04): 마족 병사·흑마법사·유령 기사 → 마왕 근위대 「심연」 빛(어둡게 + 보랏빛 덧칠). 정예라 체력 조금 더
-      abyss: { label: '심연', hue: 0, sat: 0.85, bright: 0.86, color: '#7a2ab0', colorK: 0.38, hpMul: 1.15 }
+      abyss: { label: '심연', hue: 0, sat: 0.85, bright: 0.86, color: '#7a2ab0', colorK: 0.38, hpMul: 1.15 },
+      // 11~20단계(2026-11-09): 예전 적 · 보스를 그 땅 빛으로 물들여 다시 씀(새 그림 없이). 보스 이름 = 「저주 오크 족장」처럼 label 이 앞에 붙음
+      cursed:  { label: '저주', hue: 0, sat: 0.8, bright: 0.85, color: '#6a3a9a', colorK: 0.36, hpMul: 1.1 },        // 11·12 저주받은 숲: 칙칙한 보라
+      crystal: { label: '수정', hue: 0, sat: 0.9, bright: 1.05, color: '#6aa8ff', colorK: 0.36, hpMul: 1.1 },        // 13·14 수정 동굴: 푸른 수정 빛
+      deep:    { label: '심해', hue: 0, sat: 0.85, bright: 0.9, color: '#1f8a8a', colorK: 0.38, hpMul: 1.1 },         // 15·16 가라앉은 신전: 짙은 청록
+      storm:   { label: '폭풍', hue: 0, sat: 0.7, bright: 1.0, color: '#7a9ac8', colorK: 0.34, hpMul: 1.12 },        // 17 하늘 폐허: 잿빛 푸름
+      holy:    { label: '천공', hue: 0, sat: 0.6, bright: 1.12, color: '#f2d27a', colorK: 0.34, hpMul: 1.12 },       // 18 천공의 첨탑: 흰 금빛
+      void:    { label: '공허', hue: 0, sat: 0.9, bright: 0.72, color: '#5a1ab0', colorK: 0.42, hpMul: 1.18, dmgMul: 1.05 }   // 19·20 심연: 검보라(가장 셈)
     },
 
     // ---------- 속성 몹 (2026-11-07, 형님 승인, js/elmobs.js) ----------
@@ -3719,7 +4229,19 @@
         7: ['imp', '불 도깨비 대장', null],
         8: ['ghost', '유령 기사 대장', null],
         9: ['soldier', '마족 병사 대장', null],
-        10: ['soldier', '심연 근위대장', 'abyss']
+        10: ['soldier', '심연 근위대장', 'abyss'],
+        // 11~20단계(2026-11-09): 새 잡몹 대장 3(가시나무 정령 · 어인 · 공허 사도) + 그 땅 색으로 물들인 예전 적 대장 7
+        //   (빠른 잡몹 = 갑충 · 하피는 몹 떼 규칙(main.js hordeMob)으로 대장 체력까지 나뉘어 너무 약해져서 대장에서 뺌)
+        11: ['thorn', '가시나무 정령 대장', null],
+        12: ['ghost', '망령 기사 대장', 'cursed'],
+        13: ['skeleton', '수정 해골 대장', 'crystal'],
+        14: ['yeti', '수정 설인 대장', 'crystal'],
+        15: ['fishman', '심해 어인 대장', null],
+        16: ['lizard', '심해 도마뱀 대장', 'deep'],
+        17: ['soldier', '폭풍 기사 대장', 'storm'],
+        18: ['ghost', '천공 유령 기사 대장', 'holy'],
+        19: ['voidpriest', '공허 사도 대장', null],
+        20: ['ghost', '공허 근위대장', 'void']
       }
     },
 
@@ -4326,7 +4848,9 @@
       //     판 깸 결정 2 → 1개(보스 둘째 속성 1개 그대로). 난이도 배율(drop · crys)은 예전처럼 곱함(소수 = 그 확률로 하나 더)
       drop: { mob: 0.006, tough: 0.02, mid: 0.5, boss: 1, clear: 1, bossCrys: 1, crys: { easy: 1, normal: 1.5, hard: 2 } },
       stageEl: { 1: ['wind', 'light'], 2: ['lightning', 'fire'], 3: ['poison', 'darkness'], 4: ['light', 'poison'], 5: ['ice', 'wind'],
-                 6: ['wind', 'ice'], 7: ['fire', 'darkness'], 8: ['darkness', 'ice'], 9: ['fire', 'lightning'], 10: ['darkness', 'light'] },
+                 6: ['wind', 'ice'], 7: ['fire', 'darkness'], 8: ['darkness', 'ice'], 9: ['fire', 'lightning'], 10: ['darkness', 'light'],
+                 11: ['poison', 'darkness'], 12: ['darkness', 'poison'], 13: ['lightning', 'ice'], 14: ['ice', 'lightning'], 15: ['ice', 'wind'],
+                 16: ['wind', 'ice'], 17: ['wind', 'light'], 18: ['light', 'wind'], 19: ['darkness', 'fire'], 20: ['darkness', 'light'] },
       // 바닥에 떨어진 강화석·결정(코드로 그린 도트): 밟으면 주움(물약과 같음). 사라지지 않음, 판을 깨면 남은 것은 저절로 주움
       pickup: { r: 18, depth: 13 }, pickupDelayMs: 300, hop: 26, shadow: 6
     },

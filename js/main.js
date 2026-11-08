@@ -754,7 +754,7 @@
     if (!BI || !BI.on || !e) return;
     var king = !!e.T.finalBoss;
     intro = { e: e, t: 0, ms: king ? BI.kingMs : BI.ms, king: king, shook: false,
-              title: (BI.titles && BI.titles[e.type]) || '', color: king ? BI.kingColor : (e.T.rageColor || BI.color) };
+              title: (CFG.stage && CFG.stage.bossTitle) || (BI.titles && BI.titles[e.type]) || '', color: king ? BI.kingColor : (e.T.rageColor || BI.color) };
     Input.takeAttack(5000); Input.takeJump(5000);   // 미리 눌러 둔 공격으로 바로 넘어가지 않게
     snd('bossIntro', king ? { k: 0.85 } : null);   // 낮은 북 + 뿔피리(마왕 = 더 낮게)
   }
@@ -900,10 +900,15 @@
   // 판 순서(1부터, 난이도 배율 · 경험치 판 배율용): 던전 = config 의 tier(몇 번째 판만큼 센가)
   function stIdx() { return CFG.stage && CFG.stage.dg ? CFG.stage.tier || 1 : G.stageNo || 1; }
   // 난이도 배율(2026-11-06, config modes): 숫자 하나 = 모든 판 같음, [1판, 10판] = 판 순서대로 고르게
+  //   2026-11-09 판 20개: 값 i 는 config modeKnots[i] 번째 판(1 · 10 · 20). 두 값 [1판, 10판] 이면 10판 뒤는 10판 값 그대로 → 1~10판은 예전과 같음
   function modeVal(v) {
     if (!Array.isArray(v)) return v != null ? v : 1;
-    var n = STAGES.length, u = n > 1 ? clamp(stIdx() - 1, 0, n - 1) / (n - 1) : 0;
-    return v[0] + (v[v.length - 1] - v[0]) * u;
+    var K = CFG.modeKnots || [1, STAGES.length], i = stIdx();
+    if (v.length === 1 || i <= K[0]) return v[0];
+    for (var j = 1; j < v.length && j < K.length; j++) {
+      if (i <= K[j]) return v[j - 1] + (v[j] - v[j - 1]) * (i - K[j - 1]) / (K[j] - K[j - 1]);
+    }
+    return v[Math.min(v.length, K.length) - 1];
   }
   // 적 하나 만들기: 판 배율(hpMul·dmgMul) + 변종(색·배율) + 난이도 배율 적용. opt = { variant, mid(중간보스) }
   function makeEnemy(type, x, y, opt) {
@@ -922,6 +927,7 @@
     if (hm !== 1) e.hp = e.maxHp = Math.round(e.maxHp * hm);
     e.dmgMul = dm;
     if (V && !MQ) { e.variant = vk; if (V.label) e.label = V.label + ' ' + e.label; }
+    if (T.boss && st.bossName && !st.dg) e.label = st.bossName;   // 2026-11-09: 11~20판 물들인 보스 이름(「폭풍 붉은 와이번」 대신 「폭풍 와이번」)
     // 몹 떼(사냥 손맛): 늘어난 만큼 한 마리는 약하게 + 경험치 xpMul 배. 쓰러지면 붕 날아가 펑(hunt.death, enemies.js)
     var HD = hordeOf(null);
     var hmul = HD ? hordeMulOf(null, HD) : 1;
@@ -3202,11 +3208,12 @@
     var loot = clear ? clearLoot() : (ENC ? lootLine() : '');   // 강화석 · 속성 결정(2026-11-06): 깨면 판 속성 결정 + 바닥에 남은 것 주움
     if (clear && G.run) G.run.ms[CFG.stage.id] = S.time;
     var tot = 0, full = !!G.run && G.run.from === STAGES[0].id;
-    if (end && full) STAGES.forEach(function (st) { if (G.run.ms[st.id] != null) tot += G.run.ms[st.id]; else full = false; });
-    document.getElementById('resTitle').textContent = !clear ? 'GAME OVER' : last || end ? 'ALL CLEAR!' : 'STAGE CLEAR!';
-    resultEl.className = 'result ' + kind + (clear && (last || end) ? ' all' : '') + (end ? ' ending' : '');
+    //   2026-11-09 판 20개: 10판 마왕은 이제 1부 끝(「다음 스테이지」로 2부), ALL CLEAR 는 마지막 판만. 총 시간도 마지막 판에서만
+    if (end && full && last) STAGES.forEach(function (st) { if (G.run.ms[st.id] != null) tot += G.run.ms[st.id]; else full = false; });
+    document.getElementById('resTitle').textContent = !clear ? 'GAME OVER' : last ? 'ALL CLEAR!' : 'STAGE CLEAR!';
+    resultEl.className = 'result ' + kind + (clear && last ? ' all' : '') + (end ? ' ending' : '');
     document.getElementById('resStats').innerHTML =
-      (end ? '<span class="endline">마왕을 쓰러뜨렸다!</span>' + (full ? '1단계부터 총 시간 <b>' + fmtTime(tot) + '</b><br>' : '') : clear && last ? '모든 스테이지를 깼다!<br>' : '') +
+      (end ? '<span class="endline">' + (CFG.stage.endLine || '마왕을 쓰러뜨렸다!') + '</span>' + (last ? (full ? '1단계부터 총 시간 <b>' + fmtTime(tot) + '</b><br>' : '') : '마왕성 아래로 새로운 땅이 열렸다…<br>') : clear && last ? '모든 스테이지를 깼다!<br>' : '') +
       '시간 <b>' + fmtTime(S.time) + '</b> · 맞힌 수 <b>' + G.hits + '</b> · 최대 콤보 <b>' + G.maxCombo + '</b>' +
       (clear ? ' · 남은 체력 <b>' + p.hp + '</b>' : '') +
       '<br>얻은 경험치 <b>' + (G.xpGot || 0) + '</b> · <b>Lv ' + Growth.lv + '</b>' +
@@ -3214,9 +3221,9 @@
       (opened ? '<br><span class="endline">' + CFG.modes[opened].name + ' 난이도가 열렸다!</span>' : '');
     encBadges();
     var nx = document.getElementById('btnNext');
-    nx.hidden = !(clear && !last && !end);
+    nx.hidden = !(clear && !last);
     document.getElementById('btnSel').textContent = '스테이지 선택';   // 던전 결과에서 바꿔 둔 이름
-    var focus = clear && !last && !end ? nx : clear ? document.getElementById('btnSel') : document.getElementById('btnRetry');
+    var focus = clear && !last ? nx : clear ? document.getElementById('btnSel') : document.getElementById('btnRetry');
     snd(clear ? 'stageClear' : 'fail');
     // 전직(2026-11-06): 전직 판(2026-11-07 = 1판) 보스를 처음 깸 + 아직 직업 없음 → 전직 화면 먼저, 고르고 나면 결과 화면
     //   2차 갈래(2026-11-08): Lv25 가 됐는데 아직 안 고름 → 갈래 고르기 먼저
@@ -3332,6 +3339,7 @@
     var tabbed = !!focus;
     list.innerHTML = '';
     list.classList.toggle('dglist', selView === 'dungeon');
+    list.classList.toggle('many', selView !== 'dungeon' && STAGES.length > 10);   // 2026-11-09 판 20개: 10칸 x 2줄 작은 카드(css .slist.many)
     var ttl = document.getElementById('selTitle'); if (ttl) ttl.textContent = selView === 'dungeon' ? '던전 선택' : '스테이지 선택';
     if (selView === 'dungeon') ((CFG.dungeons && CFG.dungeons.order) || []).forEach(function (id) {
       var D = CFG.dungeons[id], open = dgOpen(id), best = Growth.dgBest(id), b = document.createElement('button');
@@ -3383,7 +3391,7 @@
   }
   var modeTabFocus = false;
   function modeTabs() {
-    var box = document.getElementById('modeTabs'), O = CFG.modes, cur = Growth.mode(), out = null, last = STAGES[STAGES.length - 1].id;
+    var box = document.getElementById('modeTabs'), O = CFG.modes, cur = Growth.mode(), out = null, last = CFG.modeUnlockId || STAGES[STAGES.length - 1].id;
     if (!box || !O) return null;
     box.innerHTML = '';
     var VL = Growth.modeList ? Growth.modeList() : O.order;   // 2026-11-07: 숨긴 난이도(이지) 빼고

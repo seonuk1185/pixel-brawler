@@ -310,7 +310,8 @@
   // 고를 수 있는 난이도(2026-11-07 형님: 이지 숨김 = config hidden). 열림 순서 · 「앞 난이도」도 이 목록 기준(하드의 앞 = 노말)
   var VIS = ORDER.filter(function (k) { return MO[k] && !MO[k].hidden; });
   if (!VIS.length) VIS = ORDER.slice();
-  function lastId() { return CFG.stages[CFG.stages.length - 1].id; }
+  // 다음 난이도가 열리는 판(2026-11-09 판 20개: config modeUnlockId = 10 → 예전처럼 10판 마왕을 깨면 열림, 예전 저장도 그대로)
+  function lastId() { return CFG.modeUnlockId || CFG.stages[CFG.stages.length - 1].id; }
   // 예전 저장(난이도 전): 깬 판 id 목록 'pixelBrawler.clearedIds' JSON, 더 예전 = 깬 판 「수」 N 'pixelBrawler.cleared'(그때 판 순서 1 2 3 4 6 의 앞 N개)
   function legacyCleared() {
     var out = [];
