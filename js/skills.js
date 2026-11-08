@@ -556,7 +556,11 @@
       debris(x, y, p.y, 6, { cols: ['#ffffff', gc], glow: true, sp: 150, size: 1.3, ms: 300 });
     }
     if (f.type === 'dust') { H.dust(p.x - p.dir * 10 * AS(), p.y, p.dir); return; }
-    if (f.type === 'thrust') { FX.thrust(x, y, dir, f.len || 60, f.color || '#ffffff', f.ms || 200); return; }
+    if (f.type === 'thrust') {   // 연속 찌르기(2026-11-08 AI 그림): 기준 = 칼끝(시작 x + len). 작은 찌르기는 조금씩 다른 크기, 마지막 = 큰 찌르기 그림
+      var big = (f.ms || 200) >= 200, ka2 = (p.sk && p.sk.area) || 1, tip = x + dir * (f.len || 60) * ka2;
+      if (aiSpawn(big ? 'thrust_big' : 'thrust_stab', tip, y, big ? { sx: 0.62 * ka2, dir: dir } : { sx: (0.48 + Math.random() * 0.12) * ka2, sy: 0.55 * ka2, dir: dir, fps: 30 })) return;
+      FX.thrust(x, y, dir, f.len || 60, f.color || '#ffffff', f.ms || 200); return;
+    }
     if (f.type === 'ring') {
       var rr = (f.r || 60) * ((p.sk && p.sk.area) || 1);   // 기술 Lv 크기
       rings.push({ x: p.x, y: y, r: rr, t: 0, life: f.ms || 160, color: f.color || '#ffffff' });
@@ -1225,6 +1229,13 @@
     var g0 = ctx.createRadialGradient(0, 0, 0, 0, 0, W * 2);
     g0.addColorStop(0, 'rgba(255,220,140,' + (0.8 * fade).toFixed(3) + ')'); g0.addColorStop(0.5, 'rgba(255,110,30,' + (0.4 * fade).toFixed(3) + ')'); g0.addColorStop(1, 'rgba(255,40,0,0)');
     ctx.fillStyle = g0; ctx.fillRect(-W * 2, -W * 2, W * 4, W * 4); ctx.restore();
+    if (aiOk('pillar_flame')) {   // 2026-11-08 AI 그림 불기둥: 0 · 1장 솟음 → 2~5장 반복 → 6 · 7장 사그라듦(연기). 키 = 기둥 높이 h, 가로는 0.45배로 줄여 기둥처럼 가늘게
+      ctx.restore();
+      var tl = f.life - f.t, fi = f.t < 70 ? 0 : f.t < 140 ? 1 : tl < 110 ? 7 : tl < 220 ? 6 : 2 + Math.floor((f.t - 140) * 14 / 1000) % 4;
+      var fsy = F.h * f.k * AS() / 180, fsx = fsy * 0.45;
+      aiDraw(ctx, 'pillar_flame', fi, x, z + 3, (f.dir || 1) * fsx, fsy, 0, 1);
+      return;
+    }
     var N = 14;
     for (var pass = 0; pass < 2; pass++) {   // 0 = 바깥 주황 불, 1 = 안쪽 노랑·흰 심
       for (var i = 0; i <= N; i++) {
@@ -1366,8 +1377,24 @@
                vh: 30 + Math.random() * 60, t: 0, life: 420 + Math.random() * 360, s: (4 + Math.random() * 6) * AS(), c: Math.random() < 0.5 ? '#b8a688' : '#d6c9ad' });
     }
   }
+  // 2026-11-08 AI 그림 회오리: 칼날 회오리 4장 반복(바닥 가운데 = 회오리 자리, 키 130 = T.h, 반폭 55 ≈ 판정 r) → 끝 터짐 4장. 흙먼지는 그대로
+  function drawTornadoArt(ctx, camX, o) {
+    var x = o.x - camX, z = o.z, k = o.k;
+    ctx.save();
+    o.dust.forEach(function (q) {
+      var a = 1 - q.t / q.life; ctx.globalAlpha = 0.6 * a * Math.min(1, q.t / 80); ctx.fillStyle = q.c;
+      ctx.beginPath(); ctx.arc(q.x - camX, z + q.zo - q.h, q.s * (1 + q.t / q.life), 0, Math.PI * 2); ctx.fill();
+    });
+    ctx.restore();
+    if (!o.burst) {
+      var grow = Math.min(1, o.t / 180), sc = k * 0.8 * (0.3 + 0.7 * grow), a = Math.min(1, (o.life - o.t) / 200 + 0.6);   // 0.8 = 기사(실제 키 약 43)에 비해 너무 커 보여 줄임
+      var sway = Math.sin(o.t / 1000 * 2.3 + o.seed) * 0.05;   // 몸통이 살짝 휘청
+      aiDraw(ctx, 'storm_tornado', aiIdx('storm_tornado', o.t, 0, true), x, z + 2, o.dir * sc, sc, sway, a);
+    } else aiDraw(ctx, 'storm_burst', aiIdx('storm_burst', o.bt), x, z + 2, o.dir * k * 0.85, k * 0.85, 0, 1);
+  }
   function drawTornado(ctx, camX, o) {
     if (!o.streaks) return;
+    if (aiOk('storm_tornado') && aiOk('storm_burst')) { drawTornadoArt(ctx, camX, o); return; }
     var T = o.T, x = o.x - camX, z = o.z, k = o.k, P2 = Math.PI * 2;
     var grow = o.burst ? 1 + o.bt / 160 : Math.min(1, o.t / 180), fade = o.burst ? Math.max(0, 1 - o.bt / 260) : Math.min(1, (o.life - o.t) / 200 + 0.6);
     var H0 = T.h * k * grow, rb = T.r * k * 0.16 * grow, rt = T.r * k * 1.1 * grow, now = o.t / 1000, spin = now * 9 + o.seed;
@@ -1494,6 +1521,7 @@
   function bladeLand(b) {
     snd('holyBolt');
     var K = b.K, R = K.r * b.k, x = b.x, z = b.z, big = b.last;
+    aiSpawn('holy_impact', x, z + 2, { sx: (big ? 0.9 : 0.6) * b.k, dir: b.dir });   // 2026-11-08 AI 그림: 땅에 꽂히는 금빛 터짐(폭 120)
     H.dust(x - 10 * AS(), z, -1); H.dust(x + 10 * AS(), z, 1);
     FX.shake(CFG.juice.shakePx * (b.h.shake || 1.5), CFG.juice.shakeMs * (big ? 1.8 : 1));
     if (big) H.hitstop(80);
@@ -1535,6 +1563,12 @@
       ctx.globalCompositeOperation = 'source-over';
     }
     ctx.globalAlpha = a;
+    if (aiOk('holy_sword')) {   // 2026-11-08 AI 그림: 금빛 번개 칼(기준 = 칼끝, 키 121 x 0.75 ≈ 예전 칼 + 손잡이). 꽂힌 자리 그늘은 그대로
+      if (b.landed) { ctx.fillStyle = 'rgba(30,20,10,0.45)'; ctx.beginPath(); ctx.ellipse(x, b.z, w * 1.4, w * 0.4, 0, 0, Math.PI * 2); ctx.fill(); }
+      ctx.restore();
+      aiDraw(ctx, 'holy_sword', aiIdx('holy_sword', b.t, 0, true), x, tipY, 0.65 * S * (b.last ? 1.15 : 1), 0.65 * S * (b.last ? 1.15 : 1), 0, a);
+      return;
+    }
     // 칼 둘레 빛
     ctx.globalCompositeOperation = 'lighter';
     var gg = ctx.createRadialGradient(x, tipY - L * 0.55, 0, x, tipY - L * 0.55, L * 0.75);
@@ -1615,6 +1649,9 @@
     var R = (q.P.r && q.P.r[q.lv - 1]) || 80, x = t.x, z = t.y, cy = z - 40 * AS();
     shardQ.push({ t: SHARD_DELAY, x: x, z: z, R: R, depth: depth, mul: q.v, wk: p.weaponKey, P: q.P, lv: q.lv });
     var n = 7 + q.lv;   // 칼날 조각 수(Lv 마다 +1)
+    // 2026-11-08 AI 그림: 사방으로 튀는 칼날(가운데 = 몸 가운데, 폭 84 x 약 1 ~ 1.2배 = 기사 1.5배쯤, 판정 둘레보다 작게 = 여러 마리가 한꺼번에 쓰러져도 덜 덮음)
+    var ssk = 0.95 * clamp(R / 80, 1, 1.3);
+    if (aiSpawn('shards_shards', x, cy, { sx: ssk, sy: ssk * 0.85, fps: 18, rot: Math.random() * 0.6 - 0.3 })) n = 0;
     for (var i = 0; i < n; i++) {
       var a = i / n * Math.PI * 2 + Math.random() * 0.5;
       shardFx.push({ x: x, cy: cy, a: a, R: R * (0.75 + Math.random() * 0.35), h: 10 + Math.random() * 22, t: 0, life: 200 + Math.random() * 60, rot: Math.random() * 6.28, vr: (Math.random() < 0.5 ? -1 : 1) * (14 + Math.random() * 10) });
@@ -1684,6 +1721,9 @@
     });
     // 안으로 모이는 바람 고리(땅 + 몸 높이) + 끌려오는 쪽에서 들어오는 바람 불티
     var cx = p.x + p.dir * P.front * 0.5;
+    // 2026-11-08 AI 그림: 기사 쪽(기준 = 왼쪽 끝)으로 빨려 드는 바람. 앞쪽 = 끄는 둘레 R 만큼, 뒤쪽 = 뒤집어 조금 작고 옅게(뒤 적도 끌려옴)
+    if (aiSpawn('pressure_pressure', cx, p.y - 30 * AS(), { sx: R / 96, sy: 0.9, dir: p.dir, fps: 20 }))
+      aiSpawn('pressure_pressure', p.x - p.dir * 4, p.y - 30 * AS(), { sx: R * 0.8 / 96, sy: 0.75, dir: -p.dir, fps: 20, a: 0.7 });
     wave(cx, p.y, 10, { r0: R, flat: 0.3, w: 3, ms: 220, color: '#e8f4ff', glow: '#7fb8ff', ground: true, noMax: true });
     wave(cx, p.y - 52 * AS(), 8, { r0: R * 0.7, flat: 0.8, w: 2, ms: 200, color: '#ffffff', glow: '#9cc8ff', noMax: true });
     [-1, 1].forEach(function (sd) { debris(p.x + sd * R * 0.8, p.y - 40 * AS(), p.y, 3, { cols: ['#ffffff', '#cfe8ff'], glow: true, sp: 120, size: 1.2, ms: 220, spread: 0.6 }); });
@@ -1820,6 +1860,15 @@
       var a = o.boom ? Math.max(0, 1 - (o.t - o.bt) / 520) : 0.75 + 0.25 * (Math.floor(o.t / 60) % 2) * clamp((o.t - T * 0.5) / (T * 0.5), 0, 1);
       if (a <= 0) return;
       var hot = o.boom ? 1 : clamp(o.t / T, 0, 1);
+      if (aiOk('cross_mark')) {   // 2026-11-08 AI 그림(v4 납작한 십자): 0~1장 새겨짐(160ms) → 2 · 3장 깜빡이며 버팀 → 터진 뒤 3장이 흐려짐. 폭 230 = 긴 줄(len x 2)
+        var mi = o.boom ? 3 : o.t < 160 ? (o.t < 80 ? 0 : 1) : 2 + Math.floor(o.t / 70) % 2;
+        ctx.save(); ctx.translate(o.x - camX, o.z); ctx.scale(1, 0.22);   // 바닥 빛(그대로)
+        var gm = ctx.createRadialGradient(0, 0, 0, 0, 0, o.L);
+        gm.addColorStop(0, 'rgba(255,233,160,' + (0.35 * a * (0.5 + 0.5 * hot)).toFixed(3) + ')'); gm.addColorStop(1, 'rgba(255,180,40,0)');
+        ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = gm; ctx.fillRect(-o.L, -o.L, o.L * 2, o.L * 2); ctx.restore();
+        aiDraw(ctx, 'cross_mark', mi, o.x - camX, o.z + 41 * o.k * 0.7, o.dir * o.k, o.k * 0.7, 0, Math.min(1, a));   // 0.7 = 더 납작하게(땅에 누운 느낌)
+        return;
+      }
       ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
       function seg(p0, p1, u) {   // 가운데에서 p0 · p1 쪽으로 u 만큼 그음
         var m = [(p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2];
@@ -1856,6 +1905,11 @@
         if (B[0] == null) return;
         var bt = o.t - B[0], life = 640;
         if (bt < 0 || bt > life) return;
+        if (aiOk('cross_pillars')) {   // 2026-11-08 AI 그림 빛기둥: 0 솟음 · 1 세 줄기 + 번쩍 · 2 금빛 고리 기둥(버팀) · 3 사라짐(흐려짐). 바닥 십자 = 땅 십자(폭 210 ≈ 230) 자리
+          var pi = bt < 70 ? 0 : bt < 150 ? 1 : bt < 450 ? 2 : 3, pa = (pi === 3 ? Math.max(0, 1 - (bt - 450) / 190) : 1) * 0.9, ps = o.k * B[1];
+          aiDraw(ctx, 'cross_pillars', pi, o.x - camX, o.z + 26 * ps, o.dir * ps * 0.85, ps * 0.62, 0, pa);   // 키 0.62 · 폭 0.85 = 화면을 다 덮지 않게(2026-11-08 시험)
+          return;
+        }
         var rise = ease(clamp(bt / 110, 0, 1)), fade = bt > life * 0.4 ? 1 - (bt - life * 0.4) / (life * 0.6) : 1, P = crossPts(o);
         var Hh = 175 * Math.sqrt(o.k) * B[1] * rise, w0 = 9 * Math.sqrt(o.k) * (1.2 - 0.5 * (1 - fade));
         function rnd(i) { var v = Math.sin(o.seed + i * 12.9898) * 43758.5453; return v - Math.floor(v); }
@@ -1904,6 +1958,7 @@
   function chargeBurst(p, d, s) {
     var B = d.charge.burst, k = s.area, x = p.x + p.dir * B.x * k, z = p.y, R = B.r * k, h = B.hit, st = stOf(h, d), any = false;
     snd('skSlam'); snd('holyBolt');
+    aiSpawn('charge_burst', x, z - 50 * AS(), { sx: R * 0.5 / 55, dir: p.dir });   // 2026-11-08 AI 그림: 금빛 터짐(반폭 55)
     H.hitstop(90);
     FX.shake(CFG.juice.shakePx * 3.2, CFG.juice.shakeMs * 1.8);
     H.dust(x - 14 * AS(), z, -1); H.dust(x + 14 * AS(), z, 1);
@@ -1930,6 +1985,10 @@
     if (!p || !barrierOn(p)) return;
     var s = p.sk, B = s.d.barrier, a = clamp(Math.min((s.t - B.from) / 80, (B.to - s.t) / 100), 0, 1), now = s.t / 1000;
     var x = p.x - camX, y = p.y - (p.z || 0) - 48 * AS(), rx = 40 * AS(), ry = 56 * AS(), P2 = Math.PI * 2;   // 몸 가운데 둘레(몸 크기 = actorScale)
+    if (aiOk('charge_shield')) {   // 2026-11-08 AI 그림: 앞쪽 금빛 초승달 방패 + 뒤로 흐르는 빛줄(기준 = 그림 왼쪽 끝 = 기사 등 뒤, 키 64 ≈ 기사 57)
+      aiDraw(ctx, 'charge_shield', aiIdx('charge_shield', s.t, 0, true), x - p.dir * 34 * AS(), p.y - (p.z || 0) - 30 * AS(), p.dir * 0.95, 0.95, 0, a);
+      return;
+    }
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
     var g = ctx.createRadialGradient(x, y, rx * 0.4, x, y, ry);
     g.addColorStop(0, 'rgba(255,220,120,0)'); g.addColorStop(0.8, 'rgba(255,225,140,' + (0.3 * a).toFixed(3) + ')'); g.addColorStop(1, 'rgba(255,190,60,0)');
@@ -1972,6 +2031,11 @@
     g.addColorStop(1, 'rgba(255,190,50,0)');
     ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, R, 0, AP2); ctx.fill();
     ctx.restore();
+    if (aiOk('aegis_aura')) {   // 2026-11-08 AI 그림: 발밑 금빛 고리 + 양옆 성스러운 불꽃(캐릭터 뒤). 고리 폭 72 ≈ 예전 고리(반폭 34). Lv 마다 진하게
+      ctx.restore();
+      aiDraw(ctx, 'aegis_aura', aiIdx('aegis_aura', now * 1000, 0, true), x, gy + 1, s, s, 0, Math.min(1, 0.55 + 0.4 * k) * (0.9 + 0.1 * br));
+      return;
+    }
     // 발밑 바닥 빛(납작한 원)
     ctx.save(); ctx.translate(x, gy); ctx.scale(1, 0.3);
     var F = 44 * s, f = ctx.createRadialGradient(0, 0, 0, 0, 0, F);
@@ -2001,8 +2065,10 @@
     var now = performance.now() / 1000, s = AS() / 0.55, k = aegisK(q), br = 0.8 + 0.2 * Math.sin(now * 2.6);
     var x = p.x - camX, gy = p.y, z = p.z || 0, rx = 34 * s * (0.97 + 0.03 * br), ry = rx * 0.28;
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
-    aegisRing(ctx, x, gy, rx, ry, 0, Math.PI, k * 0.9, br, s);   // 고리 앞쪽 반(발 앞, 조금 옅게 = 발을 안 가림)
-    aegisTicks(ctx, x, gy, rx, ry, q.lv, now, false, k, s);
+    if (!aiOk('aegis_aura')) {   // AI 그림이 있으면 고리는 그림(캐릭터 뒤)이 맡음
+      aegisRing(ctx, x, gy, rx, ry, 0, Math.PI, k * 0.9, br, s);   // 고리 앞쪽 반(발 앞, 조금 옅게 = 발을 안 가림)
+      aegisTicks(ctx, x, gy, rx, ry, q.lv, now, false, k, s);
+    }
     // 오르는 반짝이: 3+Lv 개, 저마다 다른 때 · 자리에서 발밑 → 머리 위로(좌우로 살짝 흔들림), 처음 · 끝은 흐리게
     var n = 3 + q.lv;
     for (var i = 0; i < n; i++) {
@@ -2070,7 +2136,7 @@
                    arc: 10 + Math.random() * 14, rot: Math.random() * 6.28, done: false });
     });
     glow(x0, y0, 16 * AS() / 0.55, fire ? '#ffb050' : '#bff4ff', 150, 0.55);
-    debris(x0, y0, z0, 4, { cols: fire ? ['#fff4d0', '#ffb040', '#ff5a1e'] : ICEC, glow: true, sp: 150, size: 1.2, ms: 240, spread: 2.4 });
+    if (!aiSpawn(fire ? 'eshard_fire' : 'eshard_ice', x0, y0, { sx: 0.75 })) debris(x0, y0, z0, 4, { cols: fire ? ['#fff4d0', '#ffb040', '#ff5a1e'] : ICEC, glow: true, sp: 150, size: 1.2, ms: 240, spread: 2.4 });
   }
   function eshardStep(dt) {
     if (eshT > 0) eshT -= dt;
@@ -2084,7 +2150,9 @@
           atLv(f.lv, function () {
             H.onHit(stOf(f.P.hit, NOSTYLE), e, { dir: dir, wk: f.wk, x: e.x - dir * 4 * AS(), y: e.y - 40 * AS(), mul: f.mul });
             glow(e.x, e.y - 40 * AS(), 12 * AS() / 0.55, f.fire ? '#ff9a3a' : '#9fe8ff', 130, 0.6);
-            debris(e.x, e.y - 40 * AS(), e.y, 3, { cols: f.fire ? ['#fff4d0', '#ff8a2a'] : ['#ffffff', '#9fe8ff'], glow: true, sp: 130, size: 1.1, ms: 200 });
+            // 2026-11-08 AI 그림: 꽂힌 자리 작은 불 · 얼음 조각 터짐(57 → 0.6배)
+            if (!aiSpawn(f.fire ? 'eshard_fire' : 'eshard_ice', e.x, e.y - 40 * AS(), { sx: 0.6, dir: dir }))
+              debris(e.x, e.y - 40 * AS(), e.y, 3, { cols: f.fire ? ['#fff4d0', '#ff8a2a'] : ['#ffffff', '#9fe8ff'], glow: true, sp: 130, size: 1.1, ms: 200 });
           });
         }
       }
@@ -2191,6 +2259,7 @@
   function gravBoom(o, mulK, first) {
     var C = o.C, R = C.r * o.k, D = C.depth * o.k, h = C.hit, st = stOf(h, o.d), any = false, y = o.z - 30 * AS();
     snd('skSlam'); snd('fireBoom', { v: 0.6, k: 0.7 });
+    aiSpawn('gravity_boom', o.x, y, { sx: R * (first ? 0.62 : 0.5) / 65, dir: o.dir });   // 2026-11-08 AI 그림: 보라 터짐(반폭 65, 터짐 둘레의 0.6 = 기사 키 2배쯤)
     H.hitstop(first ? 80 : 60);
     FX.shake(CFG.juice.shakePx * (first ? 2.8 : 2), CFG.juice.shakeMs * 1.6);
     glow(o.x, y, R * 1.4, '#b46aff', 380, 0.85);
@@ -2221,9 +2290,9 @@
       ctx.globalCompositeOperation = 'lighter';
       ctx.strokeStyle = '#c890ff'; ctx.globalAlpha = 0.5 * a; ctx.lineWidth = 2.5;
       ctx.beginPath(); ctx.arc(0, 0, R * (0.97 + 0.03 * Math.sin(now * 9)), 0, Math.PI * 2); ctx.stroke();
-      // 나선 팔 4개(안으로 감기며 돎)
+      // 나선 팔 4개(안으로 감기며 돎) — AI 그림(소용돌이)이 있으면 바닥 원 · 테만
       ctx.lineWidth = 2;
-      for (var k = 0; k < 4; k++) {
+      for (var k = 0; k < (aiOk('gravity_field') ? 0 : 4); k++) {
         ctx.globalAlpha = 0.55 * a; ctx.strokeStyle = k % 2 ? '#e8d0ff' : '#8a4ae0';
         ctx.beginPath();
         for (var j = 0; j <= 18; j++) {
@@ -2237,8 +2306,30 @@
   }
   // 구체(캐릭터 위): 검은 속 + 보라 테 + 도는 고리 2개 + 빨려드는 빛 점들(끄는 동안) + 끌려오는 적에서 가운데로 보라 줄 / 터진 뒤 = 줄어드는 흰 점
   function gravPosY(o) { var lo = o.z - 30 * AS(); return o.ph === 0 ? o.z + o.y : o.z + o.y + (lo - (o.z + o.y)) * clamp(o.ht / 300, 0, 1); }
+  // 2026-11-08 AI 그림: 날아감 = 구체 4장 반복 / 끌어당김 = 뒤에 빨아들이는 소용돌이(field) + 구체 + 끌려오는 적 줄(코드 그대로) / 터짐 = gravBoom 이 boom 그림
+  function drawGravArt(ctx, camX, o) {
+    var C = o.C, x = o.x - camX, y = gravPosY(o), k = Math.sqrt(o.k);
+    if (o.ph === 2) return;
+    if (o.ph === 1) {
+      var fa = clamp(o.ht / 160, 0, 1) * clamp((C.holdMs - o.ht) / 120 + 0.3, 0, 1), fs = k * 0.55 * (0.5 + 0.5 * clamp(o.ht / 220, 0, 1));   // 0.55 = 적을 다 덮지 않게(폭 약 80)
+      aiDraw(ctx, 'gravity_field', aiIdx('gravity_field', o.t, 0, true), x, y, o.dir * fs, fs * 0.9, 0, fa * 0.8);
+      ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
+      o.caught.forEach(function (t) {
+        if (Math.abs(t.x - o.x) < 10) return;
+        var ty = t.y - 40 * AS();
+        ctx.globalAlpha = 0.35; ctx.strokeStyle = '#8a4ae0'; ctx.lineWidth = 5;
+        ctx.beginPath(); ctx.moveTo(t.x - camX, ty); ctx.lineTo(x, y); ctx.stroke();
+        ctx.globalAlpha = 0.7; ctx.strokeStyle = '#f0d8ff'; ctx.lineWidth = 1.3;
+        ctx.beginPath(); ctx.moveTo(t.x - camX, ty); ctx.lineTo(x, y); ctx.stroke();
+      });
+      ctx.restore();
+    }
+    var os = k * (C.orb / 12) * (o.ph === 1 ? 1 + 0.35 * clamp(o.ht / 300, 0, 1) : 1);
+    aiDraw(ctx, 'gravity_orb', aiIdx('gravity_orb', o.t, 0, true), x, y, o.dir * os, os, 0, 1);
+  }
   function drawGravs(ctx, camX) {
     gravs.forEach(function (o) {
+      if (aiOk('gravity_orb') && aiOk('gravity_field')) { drawGravArt(ctx, camX, o); return; }
       var C = o.C, x = o.x - camX, y = gravPosY(o), now = o.t / 1000;
       ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
       if (o.ph === 2) {   // 터진 뒤: 가운데 흰 점이 줄어듦
@@ -2339,6 +2430,17 @@
     vortexes.forEach(function (o) {
       var P = o.P, a = o.popped ? Math.max(0, 1 - (o.t - P.ms) / 300) : clamp(o.t / 150, 0, 1), x = o.x - camX, now = o.t / 1000, R = o.r;
       if (a <= 0) return;
+      if (aiOk('vortex_rise') && aiOk('vortex_spin') && aiOk('vortex_pop')) {   // 2026-11-08 AI 그림: 나타남 4장 → 도는 중 2장 반복 → 사라짐 2장(바닥 가운데). 바닥 빛은 그대로
+        ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.translate(x, o.z); ctx.scale(1, 0.3);
+        var vg = ctx.createRadialGradient(0, 0, 0, 0, 0, R);
+        vg.addColorStop(0, 'rgba(180,106,255,' + (0.3 * a).toFixed(3) + ')'); vg.addColorStop(1, 'rgba(120,60,255,0)');
+        ctx.fillStyle = vg; ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+        var vs = R * 0.45 / 33, rt = 4000 / 12;
+        if (o.popped) aiDraw(ctx, 'vortex_pop', aiIdx('vortex_pop', o.t - P.ms, 9), x, o.z + 2, vs, vs, 0, Math.min(1, a * 1.6));
+        else if (o.t < rt) aiDraw(ctx, 'vortex_rise', aiIdx('vortex_rise', o.t), x, o.z + 2, vs, vs, 0, 1);
+        else aiDraw(ctx, 'vortex_spin', aiIdx('vortex_spin', o.t - rt, 0, true), x, o.z + 2, vs, vs, 0, 1);
+        return;
+      }
       ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
       ctx.save(); ctx.translate(x, o.z); ctx.scale(1, 0.3);
       var g = ctx.createRadialGradient(0, 0, 0, 0, 0, R);
@@ -2394,13 +2496,14 @@
     if (!h) { h = {}; for (var k in P.hit) if (k !== '_st') h[k] = P.hit[k]; h.chainDepth = o.depth + 1; C[o.depth] = h; }
     var st = stOf(h, FIRE), D = P.depth || 36;
     snd('fireBoom', { v: 0.55, k: 1.15 });
+    var artOk = aiSpawn('echain_boom', o.x, o.cy, { sx: o.R * 0.5 / 50, fps: 20, dir: Math.random() < 0.5 ? -1 : 1 });   // 2026-11-08 AI 그림: 불 · 얼음 · 번개 폭발 8장(반폭 50)
     H.hitstop(30);
     FX.shake(CFG.juice.shakePx * 1.2, CFG.juice.shakeMs);
     glow(o.x, o.cy, o.R * 1.1, '#ff9a3a', 260, 0.75);
     glow(o.x, o.cy, o.R * 0.5, '#ffffff', 150, 0.6);
     wave(o.x, o.cy, o.R * 0.9, { flat: 0.8, w: 3, ms: 260, color: '#fff2c0', glow: '#ff6a10', noMax: true });
     wave(o.x, o.z, o.R * 1.25, { flat: 0.3, w: 3, ms: 320, color: '#e8d0ff', glow: '#8a4ae0', ground: true, noMax: true });
-    debris(o.x, o.cy, o.z, 10, { cols: ['#fff4d0', '#ffb040', '#ff5a1e', '#c890ff'], glow: true, sp: 220, size: 1.5, ms: 420, spread: 2.4 });
+    debris(o.x, o.cy, o.z, artOk ? 5 : 10, { cols: ['#fff4d0', '#ffb040', '#ff5a1e', '#c890ff'], glow: true, sp: 220, size: 1.5, ms: 420, spread: 2.4 });
     H.targets().forEach(function (e) {
       if (!e || !H.canHit(e, h) || !inBox(e, o.x, o.z, o.R, D)) return;
       var dir = Math.abs(e.x - o.x) < 3 ? 1 : (e.x > o.x ? 1 : -1);
@@ -2458,7 +2561,11 @@
       H.onHit(st, t, { dir: shatter ? dir : o.dir, wk: o.wk, x: t.x, y: t.y - 44 * AS(), mul: o.mul * mulK });
       if (!shatter && t.T && (!t.alive || t.alive()) && until > 0) {
         t.slowT = Math.max(t.slowT || 0, until); t.slowK = t.T.boss ? F.freeze.bossMul : F.freeze.mul; t.slowDaze = false; t.frozenT = Math.max(t.frozenT || 0, until);
-        if (o.frozen.indexOf(t) < 0) o.frozen.push(t);
+        if (o.frozen.indexOf(t) < 0) {
+          o.frozen.push(t);
+          var fs = Math.max(0.8, (t.T.radius || 14) * 2.3 / 46);   // 2026-11-08 AI 그림: 발밑 얼음 왕관(폭 46 → 몸 폭)
+          aiSpawn('frost_freeze', t.x, t.y + 1, { sx: fs, follow: t, life: until, fade: 160 });
+        }
         if (t.flashT > 6) t.flashT = 6;   // 얼면 시간이 거의 멈춰 하얀 번쩍이 오래 남음 → 짧게(얼음 덩어리가 보이게)
       }
       if (!shatter) debris(t.x, t.y - 40 * AS(), t.y, 2, { cols: ICEC, glow: true, sp: 120, size: 1.1, ms: 220 });
@@ -2470,6 +2577,10 @@
   function frostShatter(o, mulK, first) {
     var h = o.F.shatter;
     snd('iceHit'); snd('skSlam');
+    if (aiOk('frost_shatter')) {   // 2026-11-08 AI 그림: 산산이 깨짐(폭 72) — 얼었던 적마다 + 폭풍 띠 위 몇 군데
+      o.frozen.forEach(function (t) { if (t && (!t.alive || t.alive()) && t.T) aiSpawn('frost_shatter', t.x, t.y - t.T.height * 0.45, { sx: Math.max(0.9, t.T.height / 50) * (first ? 1 : 0.8) }); });
+      for (var q = -2; q <= 2; q++) aiSpawn('frost_shatter', o.x + q * o.w / 2.6, o.z - 18 * AS() + (q % 2) * 10, { sx: first ? 1.1 : 0.8, dir: q % 2 ? -1 : 1, delay: Math.abs(q) * 30 });
+    }
     H.hitstop(first ? 90 : 60);
     FX.shake(CFG.juice.shakePx * (first ? 3.2 : 2.2), CFG.juice.shakeMs * 1.8);
     glow(o.x, o.z - 40 * AS(), o.w * 0.8, '#bfefff', 420, 0.7);
@@ -2515,7 +2626,8 @@
     var w = last ? B.w * k * bk : (C.w0 + (C.w1 - C.w0) * u) * k, h = last ? B.h * k * bk : (C.h0 + (C.h1 - C.h0) * u) * k;
     var q = { x: x, z: z, w: w, h: h, dir: R.dir, big: last, t: 0, riseMs: last ? 100 : 80, breakMs: last ? 240 : 180, C: C, lv: curLv, seed: Math.random() * 1000,
               link: i > 0 ? C.gap : 10 };   // link = 뒤 얼음까지 거리(얼음 등줄기로 이어 그림)
-    q.art = cragArt(q);
+    q.ai = last ? 'ice_spike' : u < 0.3 ? 'ice_crag_s' : u < 0.75 ? 'ice_crag_m' : 'ice_crag_l';   // 2026-11-08 AI 그림(작은 → 큰 · 마지막 뾰족)
+    q.art = aiOk(q.ai) ? null : cragArt(q);
     crags.push(q);
     // 솟는 순간: 갈라진 땅 흙 조각 · 서리 가루 · 얼음 조각 · 빛(작게)
     var tx = x + R.dir * h * 0.45;   // 기운 얼음 끝 쪽
@@ -2570,7 +2682,11 @@
     var mx = q.x + q.dir * q.h * 0.25;   // 기운 얼음 몸 가운데
     debris(mx, q.z - q.h * 0.45, q.z, q.big ? 12 : 5, { cols: ['#e8fbff', '#a8ecff', '#5ac8f0', '#2a7ad0'], sp: q.big ? 180 : 120, size: q.big ? 2.2 : 1.7, ms: 600, spread: 1.3 });
     debris(mx, q.z - q.h * 0.3, q.z, q.big ? 8 : 3, { cols: ICEC, glow: true, sp: 140, size: 1.1, ms: 340, spread: 1.6 });
-    if (q.big) {
+    if (q.ai && aiOk('ice_shatter')) {   // 2026-11-08 AI 그림: 얼음마다 부서짐 4장(키 58 → 얼음 키에 맞춤, 바닥 가운데)
+      var ss = q.h * 1.05 / 58;
+      aiSpawn('ice_shatter', q.x, q.z + 1, { sx: ss, dir: q.dir, fps: q.big ? 14 : 18 });
+      if (q.big) { glow(mx, q.z - q.h * 0.4, q.w * 1.2, '#bfefff', 240, 0.5); snd('iceHit', { v: 0.55 }); }
+    } else if (q.big) {
       var A = fxArt('ice_shatter');
       if (A) spriteFrom(mx, q.z - q.h * 0.4, A.fr, A.fps, A.pivot, q.dir < 0, 0.9, 0);
       glow(mx, q.z - q.h * 0.4, q.w * 1.2, '#bfefff', 240, 0.5);
@@ -2649,7 +2765,24 @@
     return { c: c, ax: ax, T: T };
   }
   // 얼음 한 개(캐릭터와 깊이 순서로, addEnts): 땅 틈에서 기운 방향(뒤 아래 → 앞 위)으로 찌르듯 솟아오름 → 솟은 채 → 흔들리며 땅으로 꺼짐
+  // 2026-11-08 AI 그림 얼음(형님 승인 모양 그대로: 앞으로 기운 육각 얼음 + 뒤로 이어진 얼음 줄 + 마지막 뾰족 빙산): 땅 틈에서 기운 방향으로 밀려 올라옴(땅 밑은 잘라 안 보임)
+  //   → 솟은 채 → 부서질 때 그림은 바로 사라지고 부서짐 그림(cragBreak)이 이어 받음
+  var CRAG_AH = { ice_crag_s: 29, ice_crag_m: 39, ice_crag_l: 50, ice_spike: 66 };
+  function drawCragArt(ctx, camX, q) {
+    var t = q.t, end = q.riseMs + q.C.lifeMs, u, flashA = 0;
+    if (t >= end) return;
+    if (t < q.riseMs) { var v = t / q.riseMs; u = 1 - Math.pow(1 - v, 3); flashA = 0.7 * (1 - v); }
+    else { u = 1; if (t < q.riseMs + 90) flashA = 0.35 * (1 - (t - q.riseMs) / 90); }
+    var sc = q.h / CRAG_AH[q.ai], T = Math.tan((q.C.tilt || 30) * Math.PI / 180), hh = q.h * 1.05, off = (1 - u) * hh;
+    var x = q.x - camX - q.dir * off * T * 0.8, y = q.z + off;
+    ctx.save();
+    ctx.beginPath(); ctx.rect(q.x - camX - 140, q.z - hh - 40, 280, hh + 41); ctx.clip();   // 땅 밑은 안 보임
+    aiDraw(ctx, q.ai, 0, x, y, q.dir * sc, sc, 0, 1);
+    if (flashA > 0) { ctx.globalCompositeOperation = 'lighter'; aiDraw(ctx, q.ai, 0, x, y, q.dir * sc, sc, 0, flashA); }
+    ctx.restore();
+  }
   function drawCrag(ctx, camX, q) {
+    if (!q.art) { drawCragArt(ctx, camX, q); return; }
     var A = q.art, c = A.c, P = CRAG_PX, t = q.t, end = q.riseMs + q.C.lifeMs, u, flashA = 0, jx = 0;
     if (t < q.riseMs) { var v = t / q.riseMs; u = 1 - Math.pow(1 - v, 3); flashA = 0.7 * (1 - v); }
     else if (t < end) { u = 1; if (t < q.riseMs + 90) flashA = 0.35 * (1 - (t - q.riseMs) / 90); }
@@ -2721,8 +2854,16 @@
         g.addColorStop(0, 'rgba(120,200,255,0)'); g.addColorStop(0.6, 'rgba(160,225,255,' + (0.16 * a).toFixed(3) + ')'); g.addColorStop(1, 'rgba(220,248,255,' + (0.22 * a).toFixed(3) + ')');
         ctx.fillStyle = g; ctx.fillRect(x - o.w, o.z - 220, o.w * 2, 220 + o.D);
         var now = o.t / 1000;   // 휘도는 눈(가로로 흐르며 아래위로 흔들림)
+        var bz = aiOk('frost_blizzard');
+        if (bz) {   // 2026-11-08 AI 그림: 넓은 눈보라 띠(폭 330 = 폭풍 가로 w x 2) 세 줄(뒤 · 몸 높이 · 앞), 장을 엇갈려 반복
+          ctx.globalCompositeOperation = 'source-over';
+          [[-o.D * 0.55, -52, 0.4, 1], [0, -26, 0.6, 0], [o.D * 0.5, -8, 0.45, 2]].forEach(function (L, li) {   // 반투명 · 얇게 = 안의 적이 보이게
+            aiDraw(ctx, 'frost_blizzard', (aiIdx('frost_blizzard', o.t, 0, true) + L[3]) % 4, x + (li - 1) * 8, o.z + L[0] * 0.3 + L[1] * AS() / 0.55 * 0.6, o.dir * o.w / 165, 0.5 + 0.08 * li, 0, a * L[2]);
+          });
+          ctx.globalCompositeOperation = 'lighter';
+        }
         ctx.fillStyle = '#ffffff';
-        for (var s2 = 0; s2 < 26; s2++) {
+        for (var s2 = 0; s2 < (bz ? 0 : 26); s2++) {
           var u = ((s2 * 0.137 + now * (0.35 + (s2 % 5) * 0.06)) % 1), sx = x - o.w + u * o.w * 2, sy = o.z - 20 - (s2 * 37 % 120) + Math.sin(now * 5 + s2) * 6;
           ctx.globalAlpha = 0.7 * a; ctx.fillRect(sx, sy, 1.6, 1.6);
         }
@@ -2850,9 +2991,11 @@
   function judgeBolt(b) {
     var o = b.o, J = o.d.judge, h = J.boltHit, st = stOf(h, o.d), any = false;
     snd('lightning', { v: 0.6 });
-    bolts.push({ x: b.x, z: b.z, t: 0, life: 200, K: JUDGE_LOOK, seed: Math.random() * 1000 });
-    var hitA = fxArt('lightning_impact');
-    if (hitA) spriteFrom(b.x, b.z, hitA.fr, hitA.fps, hitA.pivot, o.dir < 0, 1, 1);
+    if (!aiSpawn('judgment_bolt', b.x, b.z + 2, { sx: 0.95, dir: Math.random() < 0.5 ? -1 : 1, fps: 12, fade: 60 })) {   // 2026-11-08 AI 그림: 둘레 번개(키 121, 바닥)
+      bolts.push({ x: b.x, z: b.z, t: 0, life: 200, K: JUDGE_LOOK, seed: Math.random() * 1000 });
+      var hitA = fxArt('lightning_impact');
+      if (hitA) spriteFrom(b.x, b.z, hitA.fr, hitA.fps, hitA.pivot, o.dir < 0, 1, 1);
+    }
     glow(b.x, b.z - 20 * AS(), 30 * AS() / 0.55, '#9ff4ff', 200, 0.8);
     wave(b.x, b.z, J.boltR * 2.4, { flat: 0.3, w: 3, ms: 300, color: '#f4ffff', glow: '#59e6ff', ground: true, noMax: true });
     debris(b.x, b.z - 4, b.z, 6, { cols: ['#ffffff', '#bff8ff', '#fff6a0'], glow: true, sp: 180, size: 1.4, ms: 360, spread: 1.4 });
@@ -2882,11 +3025,27 @@
     ctx.globalAlpha = 1; ctx.fillStyle = g; ctx.fillRect(x - 2 - 3 * u, 0, 4 + 6 * u, z);
     ctx.restore();
   }
+  // 2026-11-08 AI 그림: 모으는 동안 지팡이 끝에 힘 모으기(4장, 점점 커짐) — 캐릭터 위(drawOver)
+  function drawJudgeCharge(ctx, camX) {
+    var p = H.player && H.player(), s = p && p.state === 'skill' && p.sk, J = s && s.d.judge;
+    if (!J || !s.jg || s.jgDone) return;
+    var u = clamp((s.t - s.jg.t0) / Math.max(1, J.strikeAt - s.jg.t0), 0, 1);
+    aiDraw(ctx, 'judgment_charge', Math.min(3, Math.floor(u * 4)), p.x + p.dir * 16 * AS() - camX, p.y - (p.z || 0) - 72 * AS(), p.dir * (0.7 + 0.5 * u), 0.7 + 0.5 * u, 0, 1);
+  }
   // 거대한 번개 기둥(캐릭터 위): 넓은 하늘빛 기둥(바깥 빛) + 지그재그 굵은 번개 심(흰색, 깜빡이며 모양이 바뀜) + 땅 닿은 곳 큰 빛 → 가늘어지며 사라짐
   function drawJudges(ctx, camX) {
     judges.forEach(function (j) {
       var u = j.t / j.life, x = j.x - camX, gy = j.z - 2, a = u < 0.15 ? 1 : Math.max(0, 1 - (u - 0.15) / 0.85), W = 34 * j.k * (1.25 - 0.75 * u);
       if (a <= 0) return;
+      if (aiOk('judgment_pillar')) {   // 2026-11-08 AI 그림: 거대 번개 기둥 6장(바닥 = 과녁, 위는 화면 끝까지 늘림) + 땅 닿은 곳 빛(그대로)
+        var ji = Math.min(5, Math.floor(j.t * 13 / 1000)), jy = Math.max(1, (gy + 12) / 200);
+        ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.translate(x, gy); ctx.scale(1, 0.3);
+        var jr = 70 * j.k * (0.8 + 0.4 * u), jg = ctx.createRadialGradient(0, 0, 0, 0, 0, jr);
+        jg.addColorStop(0, 'rgba(255,255,255,' + (0.8 * a).toFixed(3) + ')'); jg.addColorStop(0.4, 'rgba(160,240,255,' + (0.45 * a).toFixed(3) + ')'); jg.addColorStop(1, 'rgba(90,230,255,0)');
+        ctx.fillStyle = jg; ctx.beginPath(); ctx.arc(0, 0, jr, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+        aiDraw(ctx, 'judgment_pillar', ji, x, gy + 4, j.k * 1.05, jy, 0, ji < 5 ? 1 : a);
+        return;
+      }
       ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
       var g = ctx.createLinearGradient(x - W * 1.8, 0, x + W * 1.8, 0);
       g.addColorStop(0, 'rgba(90,230,255,0)'); g.addColorStop(0.35, 'rgba(120,235,255,' + (0.35 * a).toFixed(3) + ')');
@@ -3054,7 +3213,7 @@
   var BLOODC = ['#ffd0d0', '#ff5a6a', '#c01a3a', '#5a0a1a'];      // 생명 흡수 붉은 기운
   var DARKST = { damageStyle: 'skill_dark' };
   var awaves = [], riftMarks = [], riftLines = [], mswords = [], cleaves = [], dorbs = [], swamps = [], wraiths = [], abysses = [], leechFx = [], infuseQ = [];
-  var infuseT = 0, leechVisT = 0, leechWin = { t: 0, got: 0 };
+  var infuseT = 0, leechVisT = 0, leechAbsT = 0, leechWin = { t: 0, got: 0 };
   function idOf(t) { return t.id || 'dummy'; }
   function alive(t) { return !!t && (!t.alive || t.alive()); }
 
@@ -3106,6 +3265,13 @@
   function drawAwaves(ctx, camX) {
     awaves.forEach(function (o) {
       var A = o.A, a = o.dead ? Math.max(0, 1 - (o.t - o.deadT) / 200) : Math.min(1, o.t / 50), k = o.k, R = A.h * 0.5 * k;
+      if (aiOk('arcwave_fly') && aiOk('arcwave_cast')) {   // 2026-11-08 AI 그림: 나옴(cast 0 · 1장) → 날기 4장 반복 → 끝에 흩어짐(cast 2 · 3장). 키 62 = 검기 h
+        var ws = A.h * k / 62, wx = o.x - camX, wy = o.z + o.y;
+        if (o.dead) aiDraw(ctx, 'arcwave_cast', Math.min(3, 2 + Math.floor((o.t - o.deadT) / 100)), wx, wy, o.dir * ws, ws, 0, 1);
+        else if (o.t < 110) aiDraw(ctx, 'arcwave_cast', o.t < 55 ? 0 : 1, wx, wy, o.dir * ws, ws, 0, 1);
+        else aiDraw(ctx, 'arcwave_fly', aiIdx('arcwave_fly', o.t, 0, true), wx, wy, o.dir * ws, ws, 0, 1);
+        return;
+      }
       if (a <= 0) return;
       ctx.save(); ctx.translate(o.x - camX, o.z + o.y); ctx.scale(o.dir, 1); ctx.globalCompositeOperation = 'lighter';
       var L = R * 2.4, tg = ctx.createLinearGradient(-L, 0, 0, 0);
@@ -3142,10 +3308,11 @@
   function infuseBoom(o) {
     var P = o.P, R = P.r, D = P.depth, h = P.hit, st = stOf(h, ARC), mul = 1 + 0.12 * (o.lv - 1);
     snd('blink', { v: 0.5 });
+    var artOk = aiSpawn('infuse_burst', o.x, o.y, { sx: R * 0.7 / 22, dir: o.x >= o.px ? 1 : -1 });   // 2026-11-08 AI 그림: 칼끝 보라 폭발(반폭 22)
     glow(o.x, o.y, R * 0.8, '#b46aff', 220, 0.75); glow(o.x, o.y, R * 0.35, '#ffffff', 140, 0.7);
     wave(o.x, o.z, R, { flat: 0.3, w: 3, ms: 260, color: '#f0d8ff', glow: '#8a4ae0', ground: true, noMax: true });
     wave(o.x, o.y, R * 0.7, { flat: 0.85, w: 2, ms: 220, color: '#ffffff', glow: '#b46aff', noMax: true });
-    debris(o.x, o.y, o.z, 10, { cols: ARCC, glow: true, sp: 200, size: 1.4, ms: 340, spread: 2.6 });
+    debris(o.x, o.y, o.z, artOk ? 4 : 10, { cols: ARCC, glow: true, sp: 200, size: 1.4, ms: 340, spread: 2.6 });
     FX.shake(CFG.juice.shakePx * 0.8, CFG.juice.shakeMs);
     H.targets().forEach(function (e) {
       if (!e || !H.canHit(e, h) || !inBox(e, o.x, o.z, R, D)) return;
@@ -3210,7 +3377,22 @@
     if (any && h.slowMs) H.slow(h.slowMs);
   }
   // 돌진한 줄: 몸 높이에 남는 가는 보라 베기 자국(가운데가 밝고 끝으로 갈수록 가늘게) + 균열(터지기 전 = 세로로 찢어진 틈이 벌어짐)
+  // 2026-11-08 AI 그림: 지나간 칼선(slash 4장, 폭 200 → 돌진한 길이만큼 늘림) + 균열(rift: 0 · 1장 벌어짐 → 터진 뒤 2~7장)
+  function drawRiftsArt(ctx, camX) {
+    riftLines.forEach(function (L) {
+      var w = Math.abs(L.x1 - L.x0); if (w < 2) return;
+      var a = L.t > L.life - 200 ? Math.max(0, (L.life - L.t) / 200) : 1;
+      aiDraw(ctx, 'rift_slash', Math.min(3, Math.floor(L.t * 9 / 1000)), (L.x0 + L.x1) / 2 - camX, L.z - 40 * AS(), (L.x1 >= L.x0 ? 1 : -1) * w / 190, 0.75 * Math.sqrt(L.k), 0, a);
+    });
+    riftMarks.forEach(function (o) {
+      var cy = o.z - o.h * 0.5, sc = Math.max(0.6, o.h * 0.95 / 81) * Math.sqrt(o.k), i;
+      if (o.t < 0) { var u = clamp(1 + o.t / o.R.delayMs, 0, 1); i = u < 0.5 ? 0 : 1; sc *= 0.6 + 0.4 * u; }
+      else i = Math.min(7, 2 + Math.floor(o.t * 16 / 1000));
+      aiDraw(ctx, 'rift_rift', i, o.x - camX, cy, o.dir * sc, sc, 0, o.t > 300 ? Math.max(0, 1 - (o.t - 300) / 120) : 1);
+    });
+  }
   function drawRifts(ctx, camX) {
+    if (aiOk('rift_slash') && aiOk('rift_rift')) { drawRiftsArt(ctx, camX); return; }
     ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
     riftLines.forEach(function (L) {
       var a = 1 - L.t / L.life, y = L.z - 40 * AS(), x0 = L.x0 - camX, x1 = L.x1 - camX;
@@ -3291,6 +3473,7 @@
   function mswordLand(o) {
     var W = o.W, h = o.last ? W.last : W.hit, st = stOf(h, o.d), R = W.r * o.k, D = W.depth * o.k, any = false;
     snd(o.last ? 'skSlam' : 'hit', { v: 0.7 });
+    aiSpawn('msword_hit', o.tx, o.tz - 14, { sx: (o.last ? 1.4 : 0.95) * Math.sqrt(o.k), dir: o.dir });   // 2026-11-08 AI 그림: 꽂힘 4장(폭 60)
     if (o.last) H.hitstop(60);
     FX.shake(CFG.juice.shakePx * (o.last ? 2.2 : 1), CFG.juice.shakeMs);
     glow(o.tx, o.tz - 20, R * (o.last ? 1.8 : 1.1), '#c890ff', o.last ? 320 : 200, 0.8);
@@ -3333,6 +3516,12 @@
         ctx.beginPath(); ctx.moveTo(o.x - camX - Math.cos(o.ang) * L * 1.6, o.y - Math.sin(o.ang) * L * 1.6); ctx.lineTo(o.x - camX, o.y); ctx.stroke(); ctx.restore();
       }
       var y = o.ph === 2 ? o.tz - 6 : o.y, x = o.ph === 2 ? o.tx : o.x;
+      if (aiOk('msword_sword') && aiOk('msword_form')) {   // 2026-11-08 AI 그림: 생겨남(form 4장) → 떠 있는 마검 4장 반복(칼끝 = 오른쪽, ang 으로 돌림). (x, y) = 칼끝 → 그림 가운데로 옮겨 그림
+        var ms = 0.78 * Math.sqrt(o.k), ft = 4000 / 14, mx = x - camX - Math.cos(o.ang) * 27 * ms, my = y - Math.sin(o.ang) * 27 * ms;
+        if (o.ph === 0 && o.t < ft) aiDraw(ctx, 'msword_form', aiIdx('msword_form', o.t), mx, my, ms, ms, o.ang, 1);
+        else aiDraw(ctx, 'msword_sword', aiIdx('msword_sword', o.t, 0, true), mx, my, ms, ms, o.ang, a);
+        return;
+      }
       drawMagicSword(ctx, x - camX, y, o.ang, L, a, o.ph === 0 ? 1 + 0.25 * Math.sin(o.t / 80) : 1.2);
     });
   }
@@ -3347,7 +3536,59 @@
     wraith_fly:    { n: 4, pv: [66, 17], desat: 0.4 },    // desat = 색 빼기(2026-11-08 형님: 악령을 더 흐릿하게)
     wraith_lunge:  { n: 1, pv: [62, 16], desat: 0.4 },
     wraith_wisp:   { n: 1, pv: [68, 13], desat: 0.4 },
-    wraith_circle: { n: 1, pv: [62, 17], rx: 59, ry: 14 }
+    wraith_circle: { n: 1, pv: [62, 17], rx: 59, ry: 14 },
+    // ---- 2026-11-08 기술 23개 AI 도트 그림(art/skill-fx/<기술>, 게임에 넣기 = art/skill-fx/_scripts/togame.py) ----
+    //   1배 = 게임 도트(기사 키 57), HD = 2배. pv = 기준점(1배 도트), fps = 그림 넘기는 빠르기. 모두 오른쪽을 봄(왼쪽 = sx 뒤집기)
+    thrust_stab:       { n: 4, pv: [123, 16.5], fps: 24 },   // 123x33 찌르기 한 번(기준 = 칼끝)
+    thrust_big:        { n: 4, pv: [140, 53.5], fps: 18 },   // 140x107 마지막 큰 찌르기(기준 = 칼끝)
+    shards_shards:     { n: 4, pv: [42, 42.5], fps: 16 },    // 84x85 사방으로 튀는 칼날(가운데)
+    pressure_pressure: { n: 4, pv: [0, 28], fps: 16 },       // 96x56 왼쪽(기준)으로 빨려 드는 바람
+    storm_tornado:     { n: 4, pv: [55.5, 130], fps: 14 },   // 111x130 칼날 회오리(바닥 가운데) 반복
+    storm_burst:       { n: 4, pv: [66.5, 128], fps: 16 },   // 133x128 끝에 터짐
+    aegis_aura:        { n: 4, pv: [36, 50], fps: 10 },      // 72x61 발밑 금빛 고리 + 양옆 불꽃(기준 = 고리 가운데) 반복
+    holy_sword:        { n: 4, pv: [19, 120], fps: 16 },     // 38x121 떨어지는 금빛 검(기준 = 칼끝) 반복
+    holy_impact:       { n: 4, pv: [60, 76], fps: 16 },      // 120x76 땅에 꽂힘(바닥 가운데)
+    cross_mark:        { n: 4, pv: [115, 82], fps: 12 },     // 230x82 땅의 금빛 십자(v4 납작, 바닥 가운데)
+    cross_pillars:     { n: 4, pv: [101.1, 286], fps: 14 },  // 210x286 빛기둥(바닥 가운데)
+    charge_shield:     { n: 4, pv: [0, 32], fps: 14 },       // 86x64 앞쪽 금빛 방패(기준 = 왼쪽 끝 가운데) 반복
+    charge_burst:      { n: 4, pv: [55, 46], fps: 16 },      // 110x92 터짐(가운데)
+    eshard_fire:       { n: 4, pv: [28.9, 29], fps: 16 },    // 57x58 불 조각 터짐
+    eshard_ice:        { n: 4, pv: [30.1, 30], fps: 16 },    // 60x60 얼음 조각 터짐
+    gravity_orb:       { n: 4, pv: [17.2, 16], fps: 12 },    // 34x32 구체 반복
+    gravity_field:     { n: 4, pv: [66.2, 58.5], fps: 12 },  // 130x117 빨아들이는 소용돌이 반복
+    gravity_boom:      { n: 4, pv: [65.7, 58], fps: 14 },    // 130x116 터짐
+    vortex_rise:       { n: 4, pv: [33.1, 71], fps: 12 },    // 64x71 나타남(바닥 가운데)
+    vortex_spin:       { n: 2, pv: [35, 65], fps: 12 },      // 69x65 도는 중 반복
+    vortex_pop:        { n: 2, pv: [33.8, 79], fps: 12 },    // 69x79 사라짐
+    ice_crag_s:        { n: 1, pv: [24.5, 29], fps: 16 },    // 49x29 첫 작은 얼음(바닥 가운데, 줄기는 왼쪽 = 뒤)
+    ice_crag_m:        { n: 1, pv: [27.5, 39], fps: 16 },    // 55x39
+    ice_crag_l:        { n: 1, pv: [32, 50], fps: 16 },      // 64x50
+    ice_spike:         { n: 1, pv: [28.5, 66], fps: 16 },    // 57x66 마지막 뾰족 빙산
+    ice_shatter:       { n: 4, pv: [35.5, 58], fps: 16 },    // 71x58 부서짐
+    echain_boom:       { n: 8, pv: [51.1, 49], fps: 16 },    // 101x98 불 · 얼음 · 번개 폭발
+    frost_freeze:      { n: 4, pv: [23.4, 33], fps: 14 },    // 46x33 적 발밑 얼음 왕관
+    frost_shatter:     { n: 4, pv: [35.6, 25], fps: 16 },    // 72x50 산산이 깨짐(가운데)
+    frost_blizzard:    { n: 4, pv: [165, 19.5], fps: 10 },   // 330x39 넓은 눈보라 띠 반복
+    judgment_pillar:   { n: 6, pv: [52.5, 200], fps: 16 },   // 105x200 거대 번개 기둥(바닥)
+    judgment_charge:   { n: 4, pv: [20, 18.5], fps: 12 },    // 40x37 힘 모으기
+    judgment_bolt:     { n: 2, pv: [28.7, 120], fps: 16 },   // 54x120 둘레 번개(바닥)
+    pillar_flame:      { n: 8, pv: [74, 198], fps: 14 },     // 148x198 불기둥(바닥, 3~6장 반복)
+    arcwave_fly:       { n: 4, pv: [31.4, 31], fps: 14 },    // 63x62 보라 검기 반복
+    arcwave_cast:      { n: 4, pv: [32.3, 31], fps: 16 },    // 63x62 나옴(0~1) / 흩어짐(2~3)
+    infuse_burst:      { n: 4, pv: [22.6, 20], fps: 18 },    // 44x40 칼끝 보라 폭발
+    rift_slash:        { n: 4, pv: [100.3, 27], fps: 18 },   // 200x54 지나간 칼선(가운데)
+    rift_rift:         { n: 8, pv: [45.2, 40.5], fps: 16 },  // 90x81 균열 열림(0~1) → 터짐(2~7)
+    msword_sword:      { n: 4, pv: [27.3, 10], fps: 12 },    // 55x20 마검(오른쪽 = 칼끝) 반복
+    msword_form:       { n: 4, pv: [27.5, 10.5], fps: 14 },  // 55x21 생겨남
+    msword_hit:        { n: 4, pv: [26.5, 28.5], fps: 16 },  // 60x57 꽂힘
+    darkorb_orb:       { n: 4, pv: [25, 24], fps: 10 },      // 47x48 검은 구체 반복
+    darkorb_boom:      { n: 4, pv: [67.7, 65.5], fps: 14 },  // 140x131 터짐
+    leech_wisp:        { n: 4, pv: [17.2, 6.5], fps: 12 },   // 34x13 붉은 기운(머리 = 왼쪽) 반복
+    leech_rise:        { n: 4, pv: [5.8, 8], fps: 14 },      // 13x16 적에게서 빠져나옴
+    leech_absorb:      { n: 4, pv: [18.7, 23], fps: 14 },    // 40x46 법사에게 흡수(3장 하트는 togame.py 가 덮음)
+    swamp_spread:      { n: 2, pv: [77.5, 45], fps: 10 },    // 155x45 퍼짐
+    swamp_pool:        { n: 4, pv: [78, 60.1], fps: 8 },     // 156x97 늪 반복(기준 = 웅덩이 가운데)
+    swamp_dry:         { n: 2, pv: [76.5, 53], fps: 8 }      // 153x53 마름
   };
   var aiImg = {}, aiAsked = false;
   function aiLoad() {   // 처음 그릴 때 한 번(그땐 HD manifest 를 이미 읽음)
@@ -3385,6 +3626,35 @@
     ctx.save(); ctx.globalAlpha *= a; ctx.translate(x, y); if (rot) ctx.rotate(rot); ctx.scale(sx, sy);
     Assets.blit(ctx, im, S.pv.x, S.pv.y); ctx.restore();
     return true;
+  }
+
+  // ---- AI 그림 효과 하나(2026-11-08): 정해진 자리에서 한 번(또는 반복) 넘기고 사라짐. 그림을 아직 못 읽었으면 false(→ 부른 쪽이 예전 코드 그림)
+  //   o = { sx, sy(없으면 sx), dir(1 / -1), rot, a, fps, loop, life(ms), fade(끝 ms 동안 흐려짐), delay, layer('over' 캐릭터 위 / 'under' 바닥 / 'back' 캐릭터 뒤),
+  //         follow(따라갈 캐릭터) + ox · oy(그 캐릭터에서, ox 는 바라보는 쪽), add(더하기 빛), from(처음 장) }
+  var aiFxs = [];
+  function aiOk(g) { return !!aiImg[g]; }
+  function aiIdx(g, t, fps, loop) { var A = AIFX[g], f = Math.floor(Math.max(0, t) * (fps || A.fps) / 1000); return loop ? f % A.n : Math.min(A.n - 1, f); }
+  function aiSpawn(g, x, y, o) {
+    if (!aiImg[g]) return false;
+    o = o || {};
+    var A = AIFX[g], fps = o.fps || A.fps, from = o.from || 0;
+    aiFxs.push({ g: g, x: x, y: y, t: -(o.delay || 0), fps: fps, sx: o.sx || 1, sy: o.sy || o.sx || 1, dir: o.dir || 1, rot: o.rot || 0, a: o.a == null ? 1 : o.a,
+                 layer: o.layer || 'over', add: !!o.add, p: o.follow || null, ox: o.ox || 0, oy: o.oy || 0, loop: !!o.loop, from: from,
+                 life: o.life || (A.n - from) * 1000 / fps, fade: o.fade || 0 });
+    return true;
+  }
+  function aiFxStep(dt) { for (var i = aiFxs.length - 1; i >= 0; i--) { var f = aiFxs[i]; f.t += dt; if (f.t >= f.life) aiFxs.splice(i, 1); } }
+  function drawAiFx(ctx, camX, layer) {
+    aiFxs.forEach(function (f) {
+      if (f.layer !== layer || f.t < 0) return;
+      var A = AIFX[f.g], i = f.from + Math.floor(f.t * f.fps / 1000), n = A.n;
+      i = f.loop ? f.from + (i - f.from) % (n - f.from) : Math.min(n - 1, i);
+      var a = f.a * (f.fade && f.t > f.life - f.fade ? Math.max(0, (f.life - f.t) / f.fade) : 1);
+      var d = f.p ? f.p.dir : f.dir, x = f.p ? f.p.x + d * f.ox : f.x, y = f.p ? f.p.y - (f.p.z || 0) + f.oy : f.y;
+      if (f.add) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; }
+      aiDraw(ctx, f.g, i, x - camX, y, f.sx * d, f.sy, f.rot * d, a);
+      if (f.add) ctx.restore();
+    });
   }
 
   // ---- 마검 해방(마검사 Lv39 필살, 2026-11-08 그림 바꿈): 칼을 든 동안 칼끝에 검은 기운이 모임 → strike 에 칼을 내리침 → 칼끝이 닿은 땅에서
@@ -3612,6 +3882,7 @@
   function dorbBoom(o, mulK, first) {
     var O = o.O, h = O.boom, st = stOf(h, o.d), R = O.br * o.k, D = O.bdepth * o.k, y = o.z + o.y, any = false;
     snd('skSlam'); snd('fireBoom', { v: 0.6, k: 0.6 });
+    aiSpawn('darkorb_boom', o.x, y, { sx: R * (first ? 0.6 : 0.5) / 68, dir: o.dir });   // 2026-11-08 AI 그림: 검보라 터짐(반폭 68)
     H.hitstop(first ? 80 : 55);
     FX.shake(CFG.juice.shakePx * (first ? 2.8 : 2), CFG.juice.shakeMs * 1.6);
     glow(o.x, y, R * 1.3, '#8a2ab0', 380, 0.9); glow(o.x, y, R * 0.5, '#ffd8f4', 200, 0.7);
@@ -3633,6 +3904,12 @@
   function drawDorbs(ctx, camX) {
     dorbs.forEach(function (o) {
       var O = o.O, x = o.x - camX, y = o.z + o.y, now = o.t / 1000;
+      if (aiOk('darkorb_orb')) {   // 2026-11-08 AI 그림: 검은 구체 4장 반복(폭 47, 나올 때 커짐) · 터짐은 dorbBoom 이 boom 그림
+        if (o.boom) return;
+        var os = O.orb * 2.9 / 47 * Math.sqrt(o.k) * Math.min(1, 0.4 + o.t / 200);
+        aiDraw(ctx, 'darkorb_orb', aiIdx('darkorb_orb', o.t, 0, true), x, y, o.dir * os, os, 0, 1);
+        return;
+      }
       if (o.boom) {
         var u = o.bt / 500; ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = Math.max(0, 1 - u); ctx.fillStyle = '#ffd8f4';
         ctx.beginPath(); ctx.arc(x, y, O.orb * o.k * (1 - u) * 0.7 + 0.5, 0, Math.PI * 2); ctx.fill(); ctx.restore();
@@ -3709,6 +3986,13 @@
       var S = o.S, rx = S.w * o.k, ry = S.depth * o.k, now = o.t / 1000;
       var a = clamp(o.t / 200, 0, 1) * (o.t > S.ms ? Math.max(0, 1 - (o.t - S.ms) / 400) : 1), sc = o.t > S.ms ? 1 - 0.3 * (o.t - S.ms) / 400 : Math.min(1, 0.5 + o.t / 300);
       if (a <= 0) return;
+      if (aiOk('swamp_pool') && aiOk('swamp_spread') && aiOk('swamp_dry')) {   // 2026-11-08 AI 그림: 퍼짐 2장(200ms) → 늪 4장 반복(손 · 거품) → 마름 2장(끝 400ms). 폭 156 = 늪 가로(w x 2)
+        var X = o.x - camX, k2 = o.k, gb = o.z + 14 * k2, pz = o.z - 8 * k2;   // pz = 늪 그림 기준(웅덩이 가운데가 판정 가운데 = 적 발밑에 오게 조금 위로)   // gb = 퍼짐 · 마름 그림의 바닥(늪 타원 아래 끝)
+        if (o.t < 200) aiDraw(ctx, 'swamp_spread', o.t < 100 ? 0 : 1, X, gb, k2 * (0.8 + o.t / 1000), k2, 0, 1);
+        else if (o.t < S.ms) aiDraw(ctx, 'swamp_pool', aiIdx('swamp_pool', o.t - 200, 0, true), X, pz, k2, k2, 0, Math.min(1, (o.t - 200) / 80 + 0.5));
+        else aiDraw(ctx, 'swamp_dry', o.t - S.ms < 200 ? 0 : 1, X, gb, k2, k2, 0, a);
+        return;
+      }
       ctx.save(); ctx.translate(o.x - camX, o.z); ctx.scale(sc, sc * ry / rx);
       var g = ctx.createRadialGradient(0, 0, 0, 0, 0, rx);
       g.addColorStop(0, 'rgba(20,2,30,' + (0.75 * a).toFixed(3) + ')'); g.addColorStop(0.7, 'rgba(60,10,80,' + (0.6 * a).toFixed(3) + ')'); g.addColorStop(1, 'rgba(110,30,150,0)');
@@ -4049,6 +4333,7 @@
     if (leechVisT <= 0) {
       leechVisT = 110;
       leechFx.push({ x0: t.x, y0: t.y - (t.T ? t.T.height * 0.5 : 40 * AS()), t: 0, life: 380 + Math.random() * 80, arc: 12 + Math.random() * 18, p: p });
+      aiSpawn('leech_rise', t.x, t.y - (t.T ? t.T.height * 0.5 : 40 * AS()), { sx: 1.1 });   // 2026-11-08 AI 그림: 적에게서 붉은 기운이 빠져나옴
     }
     p.leechAcc = (p.leechAcc || 0) + dmg * q.v;
     var n = Math.floor(p.leechAcc);
@@ -4062,15 +4347,27 @@
   }
   function leechTick(dt) {
     if (leechVisT > 0) leechVisT -= dt;
+    if (leechAbsT > 0) leechAbsT -= dt;
     leechWin.t += dt; if (leechWin.t >= 1000) { leechWin.t = 0; leechWin.got = 0; }
     for (var i = leechFx.length - 1; i >= 0; i--) {
       var f = leechFx[i]; f.t += dt;
-      if (f.t >= f.life) { leechFx.splice(i, 1); glow(f.p.x, f.p.y - 40 * AS(), 14, '#ff5a6a', 140, 0.45); }
+      if (f.t >= f.life) {
+        leechFx.splice(i, 1); glow(f.p.x, f.p.y - 40 * AS(), 14, '#ff5a6a', 140, 0.45);
+        if (leechAbsT <= 0 && aiSpawn('leech_absorb', 0, 0, { sx: 0.8, follow: f.p, oy: -40 * AS() })) leechAbsT = 320;   // 2026-11-08 AI 그림: 법사에게 흡수(너무 잦지 않게)
+      }
     }
   }
   function leechPos(f, u) { var p = f.p, x1 = p.x, y1 = p.y - (p.z || 0) - 40 * AS(); return { x: f.x0 + (x1 - f.x0) * u, y: f.y0 + (y1 - f.y0) * u - f.arc * Math.sin(Math.PI * u) }; }
   function drawLeech(ctx, camX) {
     if (!leechFx.length) return;
+    if (aiOk('leech_wisp')) {   // 2026-11-08 AI 그림: 붉은 기운 4장 반복(머리 = 왼쪽 → 가는 쪽으로 돌림)
+      leechFx.forEach(function (f) {
+        var u = clamp(f.t / f.life, 0, 1), e = u * u, q = leechPos(f, e), q0 = leechPos(f, Math.max(0, e - 0.04));
+        var ang = Math.atan2(q.y - q0.y, q.x - q0.x);   // 좌우 뒤집어(머리 = 오른쪽) 가는 쪽으로 돌림
+        aiDraw(ctx, 'leech_wisp', aiIdx('leech_wisp', f.t, 0, true), q.x - camX, q.y, -0.9, 0.9, ang, u > 0.85 ? (1 - u) / 0.15 + 0.3 : 1);
+      });
+      return;
+    }
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
     leechFx.forEach(function (f) {
       var u = clamp(f.t / f.life, 0, 1), e = u * u;
@@ -4120,7 +4417,7 @@
     shardStep(dt); pullStep(dt);                                       // 칼날 파편 · 끌어당기는 검압(2026-11-08)
     mageStep(dt);                                                      // 법사 새 기술 · 대마법사(2026-11-08)
     branchStep(dt);                                                    // 2차 갈래 B: 마검사 · 흑마법사(2026-11-08)
-    meteorStep(dt);
+    meteorStep(dt); aiFxStep(dt);                                     // AI 그림 효과(2026-11-08)
     [bolts, rings, ghosts, arts, waves, parts, glows, pillars].forEach(function (L) {
       for (var i = L.length - 1; i >= 0; i--) { L[i].t += dt; if (L[i].t >= L[i].life) L.splice(i, 1); }
     });
@@ -4169,6 +4466,7 @@
     drawCrossMarks(ctx, camX);    // 심판의 십자 땅에 새긴 십자(2026-11-08)
     drawBranchUnder(ctx, camX);   // 저주의 늪 · 심연의 문 바닥(2026-11-08 갈래 B)
     drawGravUnder(ctx, camX); drawFrostUnder(ctx, camX); drawCragUnder(ctx, camX); drawJudgeMark(ctx, camX, p);   // 중력 구체 바닥 · 빙결 폭풍 땅 · 천둥 심판 과녁(2026-11-08)
+    drawAiFx(ctx, camX, 'under');   // AI 그림 효과 바닥(2026-11-08)
     var s = p && p.state === 'skill' && p.sk, K = s && (s.K || s.d.strikes);
     if (!K) return;
     K.at.forEach(function (at, k) {
@@ -4222,6 +4520,7 @@
   function drawGhosts(ctx, camX) {
     var pl = H.player && H.player();
     if (pl) drawAegis(ctx, camX, pl);   // 신성 가호 금빛 기운 = 캐릭터 바로 뒤(2026-11-08)
+    drawAiFx(ctx, camX, 'back');        // AI 그림 효과 캐릭터 뒤(2026-11-08)
     arts.forEach(function (a) { if (a.split) drawArt(ctx, camX, a, 'top'); else if (a.back) drawArt(ctx, camX, a); });
     ghosts.forEach(function (g) {
       var k = g.t / g.life;
@@ -4274,6 +4573,8 @@
     drawPulls(ctx, camX); drawShards(ctx, camX);         // 끌어당기는 검압 바람 줄 · 칼날 파편(2026-11-08)
     drawBranchOver(ctx, camX);    // 갈래 B 기술(2026-11-08): 검기 · 균열 · 마력 검 · 거대 마력 검 · 구체 · 문 · 악령 회오리 · 생명 흡수
     drawFrozen(ctx, camX); drawFrosts(ctx, camX); drawVortexes(ctx, camX); drawGravs(ctx, camX); drawJudges(ctx, camX); drawEshards(ctx, camX);   // 법사 새 기술(2026-11-08)
+    drawAiFx(ctx, camX, 'over');  // AI 그림 효과(2026-11-08)
+    drawJudgeCharge(ctx, camX);   // 천둥 심판 모으기(2026-11-08 AI 그림)
     waves.forEach(function (w) { if (!w.ground) drawWave(ctx, camX, w); });
     // 번쩍 빛(더하기)
     glows.forEach(function (gl) {
@@ -4496,8 +4797,8 @@
     shardKill: shardKill, comboPull: comboPull,   // 1차 기사 늘 켜진 기술(2026-11-08): 칼날 파편(적이 쓰러질 때) · 끌어당기는 검압(콤보 마무리 타 시작)
     infuseMul: infuseMul, infuseHit: infuseHit, leechHit: leechHit, curseMul: curseMul,   // 갈래 B 늘 켜진 기술 · 저주(2026-11-08, main.js onHit)
     gritBonus: gritBonus, tryCounter: tryCounter, shieldSplit: shieldSplit, shieldHit: shieldHit, brandMul: brandMul, brandMark: brandMark,
-    hidden: hidden, test: TEST, _fx: function () { return { blades: blades.length, flames: flames.length, beams: beams.length, arcs: arcs.length, shield: !!shieldFx, crosses: crosses.length, shards: shardFx.length, pulls: pulls.length, gravs: gravs.length, eshards: eshFx.length, vortexes: vortexes.length, chains: chainQ.length, frosts: frosts.length, crags: crags.length, cragRows: cragRows.length, judges: judges.length, b: branchFx() }; },
-    clear: function () { branchClear(); gravs.length = 0; eshFx.length = 0; eshT = 0; vortexes.length = 0; vortexT = 0; chainQ.length = 0; chainN = 0; frosts.length = 0; cragRows.length = 0; crags.length = 0; judges.length = 0; jbolts.length = 0; crosses.length = 0; aegisT = 0; shardFx.length = 0; shardQ.length = 0; shardN = 0; pulls.length = 0; tornados.length = 0; blades.length = 0; flames.length = 0; beams.length = 0; arcs.length = 0; shieldFx = null; gritOn = false; curLv = 1; meteors.length = 0; pillars.length = 0; echoes.length = 0; bright = 1; noMpT = 0; bolts.length = 0; rings.length = 0; ghosts.length = 0; arts.length = 0; waves.length = 0; parts.length = 0; glows.length = 0; flash = null; },
+    hidden: hidden, test: TEST, _ai: function (g) { if (g) { var im = aiImg[g] && aiImg[g].fr[0]; return im ? { w: im.width, h: im.height, k: im._k, f: im._f, pv: aiImg[g].pv } : null; } return { loaded: Object.keys(aiImg).length, hd: Object.keys(aiImg).filter(function (g) { return aiImg[g].fr[0] && aiImg[g].fr[0]._hd; }).length, live: aiFxs.length }; }, _fx: function () { return { blades: blades.length, flames: flames.length, beams: beams.length, arcs: arcs.length, shield: !!shieldFx, crosses: crosses.length, shards: shardFx.length, pulls: pulls.length, gravs: gravs.length, eshards: eshFx.length, vortexes: vortexes.length, chains: chainQ.length, frosts: frosts.length, crags: crags.length, cragRows: cragRows.length, judges: judges.length, b: branchFx() }; },
+    clear: function () { branchClear(); aiFxs.length = 0; gravs.length = 0; eshFx.length = 0; eshT = 0; vortexes.length = 0; vortexT = 0; chainQ.length = 0; chainN = 0; frosts.length = 0; cragRows.length = 0; crags.length = 0; judges.length = 0; jbolts.length = 0; crosses.length = 0; aegisT = 0; shardFx.length = 0; shardQ.length = 0; shardN = 0; pulls.length = 0; tornados.length = 0; blades.length = 0; flames.length = 0; beams.length = 0; arcs.length = 0; shieldFx = null; gritOn = false; curLv = 1; meteors.length = 0; pillars.length = 0; echoes.length = 0; bright = 1; noMpT = 0; bolts.length = 0; rings.length = 0; ghosts.length = 0; arts.length = 0; waves.length = 0; parts.length = 0; glows.length = 0; flash = null; },
     // 화면 번쩍(콤보 마무리 타도 씀): { color, alpha, ms }
     flash: function (f) { doFlash(f); },
     // 파편·둥근 빛(소품 나뭇조각·음식 반짝임도 씀, props.js)

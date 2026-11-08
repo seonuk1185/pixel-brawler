@@ -1088,6 +1088,9 @@ button.cpick { cursor: pointer; }
 .pcui .skbar { height: auto; padding: 8px 8px 6px; }
 .pcui .skbar .bgrid { flex: 1 1 auto; min-width: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px 8px; }
 .pcui .skbar .bslot { max-width: none; }
+/* 폰(터치 · 낮은 가로 화면, 2026-11-08): 아래 띠 칸 7개 = 오른쪽 도움말을 숨겨 기술 이름 자리를 줌(예전엔 이름이 한 글자만 보였음) */
+.touchui .skbar .hint { display: none; }
+@media (max-height: 500px) { .skbar .hint { display: none; } }
 /* 회피 칸(PC 기술 창 쓰는 기술 맨 끝): + 대신 빈 자리 */
 .cell .plusph { width: 28px; height: 28px; }
 /* 칸 열림 알림: PC 는 10칸을 두 줄로 */
