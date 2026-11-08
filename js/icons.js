@@ -369,12 +369,17 @@
       g.outline();
       g.px(11, 9, K.wht); g.px(10, 12, K.wht);
     },
-    ice: function (g) {                     // 얼음창: 비스듬히 날아가는 얼음 창
-      for (var i = 0; i < 12; i++) { g.px(2 + i, 21 - i, K.i3); g.px(3 + i, 21 - i, K.i4); g.px(2 + i, 20 - i, K.i2); }
-      g.poly([[23.5, 0.5], [14, 4], [12.5, 11.5], [20, 10]], function (x, y) { var s = x + y; return s < 23 ? K.i0 : s > 24 ? K.i2 : K.wht; });
-      g.line(22, 1, 14, 9, K.wht);
+    ice: function (g) {                     // 빙산 솟구치기: 땅에서 앞으로 갈수록 커지는 얼음 줄 + 맨 끝 송곳 빙산
+      function crag(cx, hw, top, lean) {    // 왼쪽 면 밝게 · 오른쪽 면 어둡게
+        g.poly([[cx - hw, 21], [cx + lean, top], [cx + hw, 21]], function (x) { return x < cx + lean * 0.5 ? K.i0 : K.i2; });
+      }
+      crag(3, 1.8, 17.5, 0.4); crag(7.5, 2.4, 14, 0.6); crag(12.5, 3, 10, 0.8);
+      g.poly([[15.5, 21], [17.5, 13], [20.6, 0.5], [20.2, 13], [23.5, 21]], function (x, y) { return x < 19.6 - (21 - y) * 0.05 ? K.i0 : K.i2; });   // 송곳 빙산
       g.outline();
-      g.spark(6, 6, false, K.i1); g.spark(20, 17, false, K.i1); g.px(9, 22, K.i1); g.px(2, 14, K.i0);
+      g.line(20, 4, 18, 14, K.wht); g.line(12, 12, 11, 16, K.wht); g.px(7, 16, K.wht);
+      g.rect(0, 21, 24, 2, K.i3); g.rect(0, 23, 24, 1, K.i4);   // 언 땅
+      g.px(5, 21, K.i1); g.px(10, 22, K.i1); g.px(17, 21, K.i1);
+      g.spark(6, 6, false, K.i1); g.px(2, 12, K.i0);
     },
     meteor: function (g) {                  // 메테오: 불꼬리를 끌고 떨어지는 운석
       g.poly([[5, 11], [22, 0], [24, 3], [12, 19]], K.f3);
@@ -513,7 +518,7 @@
     shards: ['칼날 파편', 'knight', 'passive', 'steel'], thrust: ['연속 찌르기', 'knight', 'active', 'steel'], pressure: ['끌어당기는 검압', 'knight', 'passive', 'ice'],   // 1차 기사(2026-11-08)
     aegis: ['신성 가호', 'knight', 'passive', 'holy'], cross: ['심판의 십자', 'knight', 'active', 'holy'], charge: ['성스러운 돌격', 'knight', 'active', 'holy'],   // 성기사(2차, 2026-11-08)
     fireball: ['화염구', 'mage', 'active', 'fire'], bolt: ['번개', 'mage', 'active', 'storm'], rise: ['땅 융기', 'mage', 'active', 'earth'],
-    amp: ['원소 증폭', 'mage', 'passive', 'arcane'], flow: ['마나 순환', 'mage', 'passive', 'ice'], ice: ['얼음창', 'mage', 'active', 'ice'],
+    amp: ['원소 증폭', 'mage', 'passive', 'arcane'], flow: ['마나 순환', 'mage', 'passive', 'ice'], ice: ['빙산 솟구치기', 'mage', 'active', 'ice'],
     meteor: ['메테오', 'mage', 'active', 'fire'], blink: ['순간이동', 'mage', 'active', 'arcane'], shield: ['마나 방패', 'mage', 'passive', 'ice'],
     pillar: ['불기둥', 'mage', 'active', 'fire'], brand: ['원소 낙인', 'mage', 'passive', 'arcane'],
     eshard: ['원소 파편', 'mage', 'passive', 'fire'], gravity: ['중력 구체', 'mage', 'active', 'arcane'], vortex: ['마력 소용돌이', 'mage', 'passive', 'arcane'],   // 1차 법사(2026-11-08)

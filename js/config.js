@@ -313,7 +313,23 @@
                    flash: { color: '#fff0d0', alpha: 0.35, ms: 140 }, slowMs: 200 };
   // 얼음창: 처음 맞은 적 하나(Lv5 = 꿰뚫음) + 느려짐(slow: ms 동안 그 적의 시간이 mul 배로 흐름 → 걷기·공격·맞는 동작 전부 느려짐, 보스는 bossMul)
   // 2026-11-06 법사 균형: 얼음창 dmg 2.2 → 1.9 (화염구 쿨타임을 줄인 만큼 Lv13 뒤 법사가 기사보다 너무 빨리 깨서)
-  var ICE_HIT = { dmg: 1.9, hitstop: 1.1, knock: 0.9, shake: 1.3, spark: 1.2, big: true };
+  var ICE_HIT = { dmg: 1.9, hitstop: 1.1, knock: 0.9, shake: 1.3, spark: 1.2, big: true };   // (예전 얼음창 값, 지금은 안 씀)
+  // 빙산 솟구치기(2026-11-08, 얼음창을 바꿈): 땅에서 얼음 바위가 줄지어 솟음. 작은 얼음(CRAG_HIT) = 살짝 띄움, 적마다 한 번만
+  //   마지막 뾰족한 빙산(CRAG_BIG) = 높이 띄움(땅 융기처럼 진짜 띄우기, 보스 · 큰 적은 휘청) + 얼음 → 내려오면 느려짐
+  //   한 적이 둘 다 맞으면 0.9 + 1.5 = 2.4 (예전 얼음창 1.9 보다 조금 셈, 빙결 폭풍 약 5.7 보다 훨씬 약함)
+  var CRAG_HIT = { launch: 0.55, dmg: 0.9, hitstop: 0.45, knock: 0.2, shake: 0.9, spark: 1.0, big: true };
+  var CRAG_BIG = { launch: 1.5, dmg: 1.5, hitstop: 1.6, knock: 0.25, shake: 2.4, spark: 1.4, big: true,
+                   flash: { color: '#e8fbff', alpha: 0.32, ms: 140 }, slowMs: 160 };
+  // crag 값(화면 도트, actorScale 로 안 줄임 = 빙결 폭풍처럼): frame = 솟기 시작하는 장, x = 첫 얼음 거리(법사 앞), gap = 얼음 사이 거리, gapMs = 솟는 간격,
+  //   lastMs = 마지막 빙산 앞 잠깐 더 쉼(쿵 하는 맛), n = 얼음 수(마지막 = 빙산), w0~w1 · h0~h1 = 작은 얼음 폭 · 높이(가까운 것 → 먼 것),
+  //   r0~r1 = 작은 얼음 판정 반폭, depth = 위아래 폭, lifeMs = 솟은 채 있는 시간(그 뒤 부서짐),
+  //   big = { w, h = 마지막 빙산 폭 · 높이, r, depth = 판정, freeze = 얼음 { ms, mul, bossMul } (뜨는 적은 그림만 얼음 · 안 뜨는 적은 진짜 멈춤), slow = 그 뒤 느려짐(뜬 적은 일어선 뒤부터) }
+  //   2026-11-08 형님 2차(v2): 훨씬 작게 · 얼음이 서로 이어진 한 줄(땅이 살짝 갈라지며 그 틈에서 솟음) · 1시 방향(약 30도)으로 앞쪽으로 기운 얼음.
+  //   마지막 = 처음 것의 약 2배(높이 60). tilt = 기운 각도(도, 바라보는 쪽으로)
+  var ICE_CRAG = { frame: 3, x: 34, gap: 36, gapMs: 70, lastMs: 45, n: 5, w0: 14, w1: 20, h0: 30, h1: 42, r0: 18, r1: 20, depth: 24, lifeMs: 500, tilt: 30,
+                   hit: CRAG_HIT,
+                   big: { w: 24, h: 60, r: 22, depth: 30, hit: CRAG_BIG,
+                          freeze: { ms: 500, mul: 0.06, bossMul: 0.6 }, slow: { ms: 2600, mul: 0.5, bossMul: 0.72 } } };
   // 메테오: 떨어진 자리에서 크게 터짐, 둘레 적 넘어뜨림, 누운 적도 맞음
   var METEOR_HIT = { dmg: 5.0, hitstop: 2.4, knock: 2.8, shake: 3.6, knockdown: true, spark: 1.6, big: true, hitsDown: true,
                      flash: { color: '#ffc070', alpha: 0.55, ms: 220 }, slowMs: 320 };
@@ -728,22 +744,20 @@
           placeholder: { anim: 'attack3', f: [0, 1, 2, 2, 2, 3, 4], d: [80, 90, 160, 160, 120, 80, 70] }
         }
       },
-      // 얼음창(2026-11-06): 화염구와 같은 「앞으로 던지기」 동작. 빠르고 가는 얼음창 → 처음 맞은 적 하나(Lv5 = 꿰뚫음) + 느려짐.
-      //   cast 는 화염구와 같은 값(burst 없음 = 터지지 않음). pierce = 꿰뚫기, slow = 느려짐 { ms, mul, bossMul }
+      // 빙산 솟구치기(2026-11-08 형님, 얼음창을 바꿈 · id 는 그대로 'ice' = 저장 · 기술 점수 · 칸 그대로): 「앞으로 던지기」 동작.
+      //   3장(여 2장)부터 법사 바로 앞 땅에서 얼음이 하나씩 솟아 앞으로 나아감(가까운 건 작게 → 멀수록 크게) → 마지막에 송곳처럼 뾰족한 큰 빙산.
+      //   효과 = 전부 우리 코드(skills.js 빙산). 법사가 다른 걸 해도 얼음 줄은 그대로. 값 = 위 ICE_CRAG
       ice: {
-        name: '얼음창', icon: '얼', mp: 8, cooldownMs: 5000, damageStyle: 'skill_ice', motion: 'motion_cast_forward',
-        desc: '얼음창을 빠르게 던져요. 맞은 적은 잠깐 느려져요(걷기·공격 모두)',
-        lv5: { pierce: true, say: '꿰뚫고 날아감' },
-        darken: { ms: 360, alpha: 0.3 },
+        name: '빙산 솟구치기', icon: '산', mp: 10, cooldownMs: 6000, damageStyle: 'skill_ice', motion: 'motion_cast_forward', launcher: true, sfx: 'iceSpear',
+        desc: '땅이 갈라지며 앞쪽으로 기운 얼음이 줄줄이 이어져 솟아 나아가요. 앞으로 갈수록 커지며 적을 살짝 띄우고, 마지막 뾰족한 빙산이 적을 높이 띄워요. 맞은 적은 잠깐 얼었다가 느려져요(보스·큰 적은 휘청만)',
+        lv5: { n: 7, big: 1.15, say: '얼음 7개로 더 길게 · 마지막 빙산 +15%' },
+        darken: { ms: 700, alpha: 0.32 },
         iframes: { frames: [0, 3] },
-        cast: { frame: 3, x: 127, y: -65, speed: 460, range: 300, box: { w: 50, h: 30 }, depth: 18, backReach: 110,
-                tint: '#9fe8ff', tintK: 0.85, scale: 1.5, hit: ICE_HIT, slow: { ms: 2600, mul: 0.5, bossMul: 0.72 } },
-        look: { proj: 'ice_lance', hit: 'ice_shatter' },   // 2026-11-06 우리 그림
+        crag: ICE_CRAG,
         fx: [ { frame: 3, type: 'spark', x: 127, y: -65, scale: 1.4, tint: '#bff4ff' } ],
         placeholder: { anim: 'attack3', f: [0, 1, 2, 3, 4, 5], d: [80, 90, 60, 150, 110, 110] },
         female: {
-          cast: { frame: 2, x: 85, y: -75, speed: 520, range: 280, box: { w: 50, h: 30 }, depth: 18, backReach: 75,
-                  tint: '#9fe8ff', tintK: 0.85, scale: 1.5, hit: ICE_HIT, slow: { ms: 2600, mul: 0.5, bossMul: 0.72 } },
+          crag: merge(ICE_CRAG, { frame: 2 }),
           fx: [ { frame: 2, type: 'spark', x: 85, y: -75, scale: 1.4, tint: '#bff4ff' } ],
           placeholder: { anim: 'attack3', f: [0, 1, 2, 3, 4], d: [70, 90, 150, 140, 150] }
         }
@@ -943,7 +957,7 @@
       { id: 'bolt', unlock: 8, short: '번개 세 줄기를 내리꽂아요' },
       { id: 'amp', unlock: 9, short: '모든 마법이 세져요', name: '원소 증폭', icon: '증', desc: '모든 마법(지팡이 타·마법탄·기술)이 세져요',
         passive: { stat: 'magic', val: [0.08, 0.12, 0.16, 0.2, 0.25] } },
-      { id: 'ice', unlock: 11, short: '맞은 적은 느려져요' },          // 2026-11-08 Lv13 → 11(초반 법사가 덜 답답하게)
+      { id: 'ice', unlock: 11, short: '얼음이 줄지어 솟고 끝에 큰 빙산이 적을 띄워요' },          // 2026-11-08 Lv13 → 11(초반 법사가 덜 답답하게)
       { id: 'flow', unlock: 12, short: '마나가 더 빨리 차요', name: '마나 순환', icon: '순', desc: '마나가 더 빨리 차요',
         passive: { stat: 'mpRegen', val: [0.2, 0.35, 0.5, 0.65, 0.85] } },     // 2026-11-08 Lv11 → 12
       { id: 'blink', unlock: 14, short: '사라졌다 나타나며 피해요' },  // 2026-11-08 Lv17 → 14
@@ -1548,7 +1562,7 @@
     //   변신 순간(introMs, 진짜 시간): 화면 어둡게 + 슬로(slowMs) + 몸 흰 번쩍 + 발밑 빛기둥 + 얼굴 컷인 띠 「각성!」 + 흔들림 + 주변 적 밀침(pushR 안, push 도트) · 그동안 무적
     //   끝 = 주변 큰 폭발(end: r 반지름 · depth 위아래 · dmg = 무기 데미지 배율(레벨·능력치 공격력 그대로 곱함) · 넘어뜨림) → 원래 색
     //   knight 「광전사」: 콤보 빠르기 +atkSpd(민첩과 합쳐 spdCap 까지) · 타격마다 준 데미지 x lifesteal 만큼 체력(최소 1). 붉은 불꽃
-    //   mage 「마력 폭주」: 기술 마나 0 · 기술이 한 번 더 터짐(화염구·얼음창 = 한 발 더, 번개 = 같은 자리에 한 번 더, 메테오·땅 융기 = 다른 적에게 하나 더, echoMs 뒤)
+    //   mage 「마력 폭주」: 기술 마나 0 · 기술이 한 번 더 터짐(화염구 = 한 발 더, 빙산 솟구치기 = 마지막 빙산 한 번 더(60%), 번개 = 같은 자리에 한 번 더, 메테오·땅 융기 = 다른 적에게 하나 더, echoMs 뒤)
     //     2026-11-08: 중력 구체 = 같은 자리에서 한 번 더 터짐(70%) · 빙결 폭풍 = 한 번 더 깨짐(60%) · 천둥 심판 = 다음 센 적에게 기둥 하나 더(60%)
     //   novice(전직 전 견습): 공통만(금색)
     //   거리 값(pushR·push·end.r·end.depth)은 원래 그림 크기 기준(쓸 때 actorScale 곱함)
@@ -1557,7 +1571,7 @@
       end: { r: 170, depth: 70, dmg: 4 },
       knight: { name: '광전사', color: '#ff3a1a', glow: '#ff8a3a', atkSpd: 0.25, spdCap: 1.5, lifesteal: 0.05,
                 look: { hue: -18, sat: 1.25, bright: 0.72, color: '#8a0a0a', colorK: 0.38 } },
-      mage:   { name: '마력 폭주', color: '#b46aff', glow: '#5ae6ff', echoMs: { fireball: 160, ice: 130, bolt: 200, meteor: 260, rise: 190, pillar: 200, gravity: 220, frost: 320, judgment: 300 },   // 2026-11-08 + 불기둥 · 중력 구체(한 번 더 터짐) · 빙결 폭풍(한 번 더 깨짐) · 천둥 심판(다음 적에게 한 번 더, 60%)
+      mage:   { name: '마력 폭주', color: '#b46aff', glow: '#5ae6ff', echoMs: { fireball: 160, ice: 240, bolt: 200, meteor: 260, rise: 190, pillar: 200, gravity: 220, frost: 320, judgment: 300 },   // 2026-11-08 + 불기둥 · 중력 구체(한 번 더 터짐) · 빙결 폭풍(한 번 더 깨짐) · 천둥 심판(다음 적에게 한 번 더, 60%)
                 look: { hue: 12, sat: 1.35, bright: 0.72, color: '#3a0a6a', colorK: 0.3 } },
       novice: { name: '각성', color: '#ffd23f', glow: '#fff2a0' }
     },

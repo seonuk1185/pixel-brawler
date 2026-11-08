@@ -121,7 +121,8 @@
     if (o.barrier && o.barrier.frames) { var br = span(o.barrier); o.barrier = cp(o.barrier, { from: br[0], to: br[1] }); }   // 성스러운 돌격 방패(2026-11-08)
     if (o.charge && o.charge.burst && o.charge.burst.at == null) o.charge = cp(o.charge, { burst: cp(o.charge.burst, { at: st(o.charge.burst.frame) }) });
     if (o.grav && o.grav.at == null) o.grav = cp(o.grav, { at: st(o.grav.frame) });                                    // 중력 구체(법사, 2026-11-08)
-    if (o.frost && o.frost.at == null) o.frost = cp(o.frost, { at: st(o.frost.frame) });                               // 빙결 폭풍(대마법사, 2026-11-08)
+    if (o.frost && o.frost.at == null) o.frost = cp(o.frost, { at: st(o.frost.frame) });
+    if (o.crag && o.crag.at == null) o.crag = cp(o.crag, { at: st(o.crag.frame) });                                    // 빙산 솟구치기(2026-11-08)                               // 빙결 폭풍(대마법사, 2026-11-08)
     if (o.judge && o.judge.at == null) o.judge = cp(o.judge, { at: st(o.judge.frame), strikeAt: st(o.judge.strike) });  // 천둥 심판(대마법사, 2026-11-08)
     if (o.tornado && o.tornado.at == null) o.tornado = cp(o.tornado, { at: st(o.tornado.frame) });                     // 칼날 폭풍 회오리(2026-11-07)                         // 성검 낙뢰(2차)
     if (o.strikes && !Array.isArray(o.strikes.at)) {
@@ -139,7 +140,7 @@
       if (o.blades) mx(o.blades.at + (o.blades.n - 1) * o.blades.gapMs + o.blades.fallMs);
       if (o.tornado) mx(o.tornado.at);
       if (o.cross) mx(o.cross.at + o.cross.telegraphMs); if (o.charge) mx(o.charge.burst.at);   // 성기사(2026-11-08)
-      if (o.grav) mx(o.grav.at); if (o.frost) mx(o.frost.at); if (o.judge) mx(o.judge.strikeAt);   // 대마법사 · 법사 새 기술(2026-11-08)
+      if (o.grav) mx(o.grav.at); if (o.frost) mx(o.frost.at); if (o.crag) mx(o.crag.at); if (o.judge) mx(o.judge.strikeAt);   // 대마법사 · 법사 새 기술(2026-11-08)
       if (o.quake) mx(o.quake.at); if (o.leap) mx(o.leap.at[1]); if (o.finale) mx(o.finale.at); if (o.strikes) mx(o.strikes.at[o.strikes.at.length - 1]);
       o.chainAt = o.chainFrom != null ? st(o.chainFrom) : Math.min(o.ms - 1, last + pad);
     }
@@ -334,6 +335,7 @@
     if (d.charge) chargeStep(p, d, s, t0, t1);                                                          // 성스러운 돌격(2026-11-08)
     if (d.grav && !s.gravDone && t1 >= d.grav.at) { s.gravDone = true; castGrav(p, d, s); }           // 중력 구체(법사, 2026-11-08)
     if (d.frost && !s.frostDone && t1 >= d.frost.at) { s.frostDone = true; castFrost(p, d, s); }      // 빙결 폭풍(대마법사, 2026-11-08)
+    if (d.crag && !s.cragDone && t1 >= d.crag.at) { s.cragDone = true; castCrags(p, d, s); }          // 빙산 솟구치기(2026-11-08)
     if (d.judge) judgeStep(p, d, s, t0, t1);                                                                // 천둥 심판(대마법사, 2026-11-08)
     if (d.shot) {
       var nShot = 1 + ((s.L.lv5 && s.L.lv5.extra) || 0);
@@ -915,7 +917,8 @@
     // 2차(2026-11-06): 불기둥(기둥 자리보다 조금 뒤) · 번개 칼(꽂힌 자리 적보다 조금 앞 → 몸에 꽂힌 듯 보임)
     flames.forEach(function (f) { ents.push({ y: f.z + 0.6, d: function () { drawFlame(ctx, camX, f); } }); });   // 앞에(더하기 빛이라 안의 적이 비쳐 보임 = 불에 휩싸인 듯)
     blades.forEach(function (b) { ents.push({ y: b.z + 0.6, d: function () { drawBlade(ctx, camX, b); } }); });
-    tornados.forEach(function (o) { ents.push({ y: o.z + 0.7, d: function () { drawTornado(ctx, camX, o); } }); });   // 회오리 = 안의 적 앞에(빛이라 비쳐 보임)
+    tornados.forEach(function (o) { ents.push({ y: o.z + 0.7, d: function () { drawTornado(ctx, camX, o); } }); });
+    crags.forEach(function (q, i) { ents.push({ y: q.z - 0.4 - i * 0.001, d: function () { drawCrag(ctx, camX, q); } }); });   // 나중 얼음일수록 조금 뒤 → 뒤로 뻗은 등줄기가 앞 얼음 밑으로 들어감   // 빙산(자리보다 조금 뒤 → 같은 줄 적은 얼음 앞에)   // 회오리 = 안의 적 앞에(빛이라 비쳐 보임)
     pillars.forEach(function (q) {
       ents.push({ y: q.z - 0.5, d: function () {
         var A = q.A, x = q.x - camX;
@@ -2022,7 +2025,7 @@
   //   1차: 원소 파편(늘 켜짐) · 중력 구체 · 마력 소용돌이(늘 켜짐) / 대마법사(2차): 원소 연쇄(늘 켜짐) · 빙결 폭풍 · 천둥 심판
   //   gravs = 중력 구체, eshFx = 날아가는 원소 조각, vortexes = 마력 소용돌이, chainQ = 원소 연쇄 터짐 대기, frosts = 빙결 폭풍,
   //   judges = 천둥 심판 큰 번개 기둥(그림), jbolts = 천둥 심판 둘레 번개 대기
-  var gravs = [], eshFx = [], eshT = 0, eshFlip = 0, vortexes = [], vortexT = 0, chainQ = [], chainN = 0, chainWinT = 0, frosts = [], judges = [], jbolts = [];
+  var gravs = [], eshFx = [], eshT = 0, eshFlip = 0, vortexes = [], vortexT = 0, chainQ = [], chainN = 0, chainWinT = 0, frosts = [], judges = [], jbolts = [], cragRows = [], crags = [];
   var NOSTYLE = { damageStyle: undefined }, ARC = { damageStyle: 'skill_arcane' }, FIRE = { damageStyle: 'skill_fire' };
   var PURPLE = ['#ffffff', '#f0d8ff', '#c890ff', '#8a4ae0'], ICEC = ['#ffffff', '#e8fbff', '#a8ecff', '#5ac8f0'];
   // 끌려오는 적인가: 잡몹만(보스 · 중간보스 · 레이드 보스 · 소품 · 허수아비 빼고), 살아 있음
@@ -2472,6 +2475,214 @@
     if (h.flash) doFlash(first ? h.flash : { color: h.flash.color, alpha: h.flash.alpha * 0.6, ms: h.flash.ms });
     if (frostHit(o, h, mulK, true) && first && h.slowMs) H.slow(h.slowMs);
   }
+  // ---- 빙산 솟구치기(법사 1차 Lv11, 2026-11-08 얼음창을 바꿈 · 같은 날 v2 = 작게 · 이어진 얼음 줄 · 1시 방향으로 기움) ----
+  // 법사 바로 앞 땅부터 얼음이 하나씩(gapMs 마다, gap 도트씩 앞으로) 솟음: 가까운 건 작게 → 멀수록 크게 → 마지막 = 송곳처럼 뾰족한 큰 빙산.
+  //   작은 얼음 = 그 자리 적을 살짝 띄움(적마다 한 번), 마지막 빙산 = 높이 띄움(진짜 띄우기) + 얼음 → 내려오면 느려짐. 솟은 채 lifeMs → 부서짐
+  //   그림 = 전부 코드(작은 도트판에 그려 2배로 키움 = 굵은 도트). 법사가 다른 걸 해도 얼음 줄은 그대로
+  var CRAG_PX = 2;   // 얼음 그림 한 도트 = 화면 2도트
+  function castCrags(p, d, s) {
+    var C = d.crag, L5 = s.L.lv5 || null;
+    cragRows.push({ C: C, d: d, x: p.x, z: p.y, dir: p.dir, t: 0, i: 0, n: (L5 && L5.n) || C.n, bigK: (L5 && L5.big) || 1,
+                    k: s.area || 1, mul: s.mul, wk: p.weaponKey, lv: curLv, echo: !!s.echo, hitS: [], pend: [] });
+  }
+  function cragStep(dt) {
+    for (var i = cragRows.length - 1; i >= 0; i--) {
+      var R = cragRows[i], C = R.C;
+      R.t += dt;
+      atLv(R.lv, function () {
+        while (R.i < R.n && R.t >= R.i * C.gapMs + (R.i === R.n - 1 ? C.lastMs : 0)) { cragRise(R, R.i, 1); R.i++; }
+      });
+      cragPend(R, dt);
+      if (R.i >= R.n && !R.pend.length && R.t > R.n * C.gapMs + 800) cragRows.splice(i, 1);
+    }
+    for (var j = crags.length - 1; j >= 0; j--) {
+      var q = crags[j], end = q.riseMs + q.C.lifeMs;
+      q.t += dt;
+      if (!q.broke && q.t >= end) { q.broke = true; atLv(q.lv, function () { cragBreak(q); }); }
+      if (q.t >= end + q.breakMs) crags.splice(j, 1);
+    }
+  }
+  // i 번째 얼음이 솟음(마지막 = 큰 빙산). mulK = 데미지 배율(각성 마력 폭주의 한 번 더 = 0.6)
+  function cragRise(R, i, mulK) {
+    var C = R.C, B = C.big, last = i === R.n - 1, u = R.n > 2 ? Math.min(1, i / (R.n - 2)) : 1, k = R.k, bk = R.bigK;
+    var x = R.x + R.dir * (C.x + C.gap * i), z = R.z;
+    var w = last ? B.w * k * bk : (C.w0 + (C.w1 - C.w0) * u) * k, h = last ? B.h * k * bk : (C.h0 + (C.h1 - C.h0) * u) * k;
+    var q = { x: x, z: z, w: w, h: h, dir: R.dir, big: last, t: 0, riseMs: last ? 100 : 80, breakMs: last ? 240 : 180, C: C, lv: curLv, seed: Math.random() * 1000,
+              link: i > 0 ? C.gap : 10 };   // link = 뒤 얼음까지 거리(얼음 등줄기로 이어 그림)
+    q.art = cragArt(q);
+    crags.push(q);
+    // 솟는 순간: 갈라진 땅 흙 조각 · 서리 가루 · 얼음 조각 · 빛(작게)
+    var tx = x + R.dir * h * 0.45;   // 기운 얼음 끝 쪽
+    if (last) wave(x, z, w * 1.6, { flat: 0.3, w: 3, ms: 320, color: '#e8fbff', glow: '#5ac8f0', ground: true });
+    debris(x, z - 2, z, last ? 6 : 3, { cols: ['#6a4a30', '#8a6440', '#4a3020'], sp: last ? 170 : 120, size: 1.8, ms: 520, spread: 0.9 });   // 흙 조각
+    debris(x, z - 2, z, last ? 8 : 4, { cols: ['#ffffff', '#e8fbff', '#bff4ff'], glow: true, sp: last ? 170 : 110, size: 1.2, ms: 360, spread: 1.4 });
+    debris(tx, z - h * 0.6, z, last ? 6 : 2, { cols: ['#e8fbff', '#a8ecff', '#5ac8f0', '#2a7ad0'], sp: last ? 200 : 140, size: last ? 2 : 1.6, ms: 520, spread: 0.9 });
+    glow(tx, z - h * 0.45, w * (last ? 1.1 : 0.7), '#bfefff', last ? 260 : 180, last ? 0.65 : 0.4);
+    if (last) {
+      glow(x + R.dir * h * 0.55, z - h * 0.9, w * 0.6, '#ffffff', 200, 0.7);   // 뾰족한 끝 번쩍
+      snd('skSlam', { v: 0.55 }); snd('iceHit');
+      H.hitstop(45);
+      FX.shake(CFG.juice.shakePx * 1.4, CFG.juice.shakeMs * 1.3);
+    } else {
+      snd('iceHit', { v: 0.35 + 0.15 * u });
+      FX.shake(CFG.juice.shakePx * (0.4 + 0.3 * u), CFG.juice.shakeMs * 0.7);
+    }
+    // 맞히기: 작은 얼음 = 적마다 한 번(앞 얼음에 맞은 적은 다음 얼음이 안 때림) / 큰 빙산 = 그 자리 적 모두
+    var hit = last ? B.hit : C.hit, st = stOf(hit, R.d), rr = last ? B.r * k * bk : (C.r0 + (C.r1 - C.r0) * u) * k, D = last ? B.depth : C.depth, any = false;
+    H.targets().forEach(function (t) {
+      if (!t || !H.canHit(t, hit) || !inBox(t, x + R.dir * h * 0.2, z, rr, D)) return;   // 판정 가운데 = 얼음이 앞으로 기운 만큼 조금 앞
+      if (!last) { if (R.hitS.indexOf(t) >= 0) return; R.hitS.push(t); }
+      H.onHit(st, t, { dir: R.dir, wk: R.wk, x: t.x, y: t.y - 36 * AS(), mul: R.mul * (mulK || 1) });
+      if (last) cragFreeze(R, t);
+      debris(t.x, t.y - 30 * AS(), t.y, 3, { cols: ICEC, glow: true, sp: 150, size: 1.2, ms: 260 });
+      any = true;
+    });
+    if (any && last) impact(hit);
+    if (last && R.echo && mulK === 1) echo(R.d, function () { cragRise(R, R.n - 1, 0.6); });   // 각성 마력 폭주: 마지막 빙산 한 번 더(60%)
+  }
+  // 큰 빙산에 맞은 적: 뜬 적 = 얼음 그림만(띄우기가 먼저, 공중에서 안 멈춤) → 떨어져 일어서면 느려짐 / 안 뜬 적(보스 · 큰 적) = 잠깐 진짜 얼음(거의 멈춤) → 느려짐
+  function cragFreeze(R, t) {
+    if (!t.T || t.isProp || (t.alive && !t.alive())) return;
+    var F = R.C.big.freeze, air = t.state === 'air';
+    t.frozenT = Math.max(t.frozenT || 0, F.ms);
+    if (!air) { t.slowT = Math.max(t.slowT || 0, F.ms); t.slowK = t.T.boss ? F.bossMul : F.mul; t.slowDaze = false; if (t.flashT > 6) t.flashT = 6; }
+    R.pend.push({ t: t, age: 0, air: air });
+  }
+  function cragPend(R, dt) {
+    var S = R.C.big.slow, F = R.C.big.freeze;
+    for (var i = R.pend.length - 1; i >= 0; i--) {
+      var q = R.pend[i], t = q.t;
+      q.age += dt;
+      if (t.alive && !t.alive()) { R.pend.splice(i, 1); continue; }
+      if (!(q.air ? (t.state !== 'air' && t.state !== 'down' && q.age > 100) || q.age > 4000 : q.age >= F.ms)) continue;   // 뜬 적 = 떨어져 일어선 뒤 느려짐(누워 있는 동안 버리지 않게)
+      R.pend.splice(i, 1);
+      t.slowT = Math.max(t.slowT || 0, S.ms); t.slowK = t.T.boss ? S.bossMul : S.mul; t.slowDaze = false;
+    }
+  }
+  // 부서짐: 얼음 조각이 튀고(큰 빙산 = 얼음창 부서짐 그림 ice_shatter 도) 땅으로 꺼짐
+  function cragBreak(q) {
+    var mx = q.x + q.dir * q.h * 0.25;   // 기운 얼음 몸 가운데
+    debris(mx, q.z - q.h * 0.45, q.z, q.big ? 12 : 5, { cols: ['#e8fbff', '#a8ecff', '#5ac8f0', '#2a7ad0'], sp: q.big ? 180 : 120, size: q.big ? 2.2 : 1.7, ms: 600, spread: 1.3 });
+    debris(mx, q.z - q.h * 0.3, q.z, q.big ? 8 : 3, { cols: ICEC, glow: true, sp: 140, size: 1.1, ms: 340, spread: 1.6 });
+    if (q.big) {
+      var A = fxArt('ice_shatter');
+      if (A) spriteFrom(mx, q.z - q.h * 0.4, A.fr, A.fps, A.pivot, q.dir < 0, 0.9, 0);
+      glow(mx, q.z - q.h * 0.4, q.w * 1.2, '#bfefff', 240, 0.5);
+      snd('iceHit', { v: 0.55 });
+    }
+  }
+  // 얼음 그림 한 개(작은 도트판, 기준 = 이 얼음 자리의 땅): 1시 방향(tilt 도)으로 앞쪽으로 기운 얼음 조각 + 뒤 작은 조각 +
+  //   뒤로 앞 얼음까지 이어지는 낮은 얼음 등줄기(link = 앞 얼음까지 거리 → 줄이 끊기지 않고 이어짐).
+  //   왼쪽 면 밝게 · 오른쪽 면 어둡게 · 흰 빛줄 · 진한 테두리. 앞쪽(+x) 기준으로 그리고 그릴 때 방향(dir)대로 뒤집음
+  function cragArt(q) {
+    var P = CRAG_PX, W = Math.max(4, Math.round(q.w / P)), Hh = Math.max(5, Math.round(q.h / P)), T = Math.tan((q.C.tilt || 30) * Math.PI / 180);
+    var back = Math.round((q.link || 0) / P) + 3, fwd = Math.ceil(W * 0.6 + Hh * T) + 3;
+    var cw = back + W + fwd, ch = Hh + 4, by = ch - 1, ax = back + Math.round(W * 0.5);
+    var c = document.createElement('canvas'); c.width = cw; c.height = ch;
+    var g = c.getContext('2d');
+    function rnd(i) { var v = Math.sin(q.seed + i * 12.9898) * 43758.5453; return v - Math.floor(v); }
+    function poly(pts, col) { g.fillStyle = col; g.beginPath(); pts.forEach(function (a, n) { if (n) g.lineTo(a[0], a[1]); else g.moveTo(a[0], a[1]); }); g.closePath(); g.fill(); }
+    function line(x0, y0, x1, y1, col) { var n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)) | 0; g.fillStyle = col; for (var s = 0; s <= n; s++) { var u = n ? s / n : 0; g.fillRect(Math.round(x0 + (x1 - x0) * u), Math.round(y0 + (y1 - y0) * u), 1, 1); } }
+    // 기운 얼음 조각: 밑 가운데 cx, 밑 반폭 hw, 높이 hh. 끝은 앞쪽으로 hh x tan(tilt) 만큼
+    function shard(cx, hw, hh, k) {
+      var lean = hh * T * (0.92 + rnd(k) * 0.16), tip = [cx + lean, by + 1 - hh];
+      var TL = [cx - hw * 0.55 + lean * 0.72, by - hh * 0.74], TR = [cx + hw * 0.75 + lean * 0.55, by - hh * (0.5 + rnd(k + 1) * 0.12)];
+      var mid = [cx + hw * 0.1, by + 1];
+      poly([[cx - hw, by + 1], TL, tip, TR, [cx + hw, by + 1]], '#7fd0f0');
+      poly([[cx - hw, by + 1], TL, tip, mid], '#bff4ff');
+      poly([mid, tip, TR, [cx + hw, by + 1]], '#4aa8e0');
+      line(cx - hw + 1, by - 1, TL[0], TL[1] + 1, '#ffffff');
+      line(TL[0], TL[1] + 1, tip[0] - 1, tip[1] + 1, '#e8fbff');
+    }
+    // 뭉툭한 얼음(2026-11-08 형님 v3: 마지막 빙산 말고는 전부): 육각기둥을 대충 깎은 듯한 기운 수정. 면 셋(왼쪽 밝게 · 가운데 · 오른쪽 어둡게) +
+    //   윗면(깎인 면, 더 밝게). 조각마다 폭 · 면 나누는 자리 · 윗면 기울기 · 깎인 두께가 달라 들쭉날쭉(평평하게 잘린 것 · 비스듬히 잘린 것)
+    function prism(cx, hw, hh, k) {
+      hw *= 0.85 + rnd(k + 7) * 0.35;
+      var t0 = by + 1, at = function (x, h) { return [x + h * T, t0 - h]; };
+      var hL = hh * (0.6 + rnd(k) * 0.2), hR = hh * (0.55 + rnd(k + 1) * 0.3), s1 = -hw * (0.15 + rnd(k + 2) * 0.3), s2 = hw * (0.25 + rnd(k + 3) * 0.3);
+      var h1 = hh * (0.85 + rnd(k + 4) * 0.15), h2 = hh * (0.78 + rnd(k + 5) * 0.2), cap = Math.max(2, hh * (0.12 + rnd(k + 6) * 0.12));
+      var BL = [cx - hw, t0], BR = [cx + hw, t0], TL = at(cx - hw, hL), TR = at(cx + hw, hR);
+      var S1b = [cx + s1, t0], S2b = [cx + s2, t0], S1t = at(cx + s1, h1), S2t = at(cx + s2, h2);
+      var C1 = [S1t[0] + cap * 0.3, S1t[1] - cap], C2 = [S2t[0] + cap * 0.3, S2t[1] - cap * (0.6 + rnd(k + 8) * 0.6)];
+      poly([BL, TL, S1t, S1b], '#bff4ff');          // 왼쪽 면
+      poly([S1b, S1t, S2t, S2b], '#6cc4ec');        // 가운데 면
+      poly([S2b, S2t, TR, BR], '#3a8ed0');          // 오른쪽 면(그늘)
+      poly([TL, C1, C2, TR, S2t, S1t], '#f4fdff');  // 깎인 윗면(가장 밝게)
+      line(BL[0] + 1, t0 - 1, TL[0] + 1, TL[1] + 1, '#ffffff');   // 왼쪽 모서리 빛
+      line(TL[0], TL[1], S1t[0], S1t[1], '#5ab0e0'); line(S1t[0], S1t[1], S2t[0], S2t[1], '#5ab0e0'); line(S2t[0], S2t[1], TR[0], TR[1], '#2a7ad0');   // 윗면 테(깎인 자리)
+      line(S1b[0], t0 - 1, S1t[0], S1t[1] + 1, '#9fe0f8');        // 면 나눔 줄
+      line(S2b[0], t0 - 1, S2t[0], S2t[1] + 1, '#2a7ad0');
+    }
+    // 뒤로 이어지는 낮은 얼음 등줄기(앞 얼음 밑동까지): 들쭉날쭉한 낮은 띠 + 작게 기운 혹
+    var rh = Math.max(3, Math.round(Hh * 0.22)), x0 = 1, x1 = ax;
+    var pts = [[x0, by + 1]];
+    for (var x = x0, n = 0; x <= x1; x += 2, n++) pts.push([x, by - rh * Math.min(1, (x - x0) / 5) * (0.45 + rnd(60 + n) * 0.7)]);   // 뒤 끝은 낮게 → 앞 얼음 밑으로 스며듦
+    pts.push([x1, by - rh]); pts.push([x1, by + 1]);
+    poly(pts, '#7fd0f0');
+    for (var m = 0; m * 5 < x1 - x0 - 4; m++) {   // 작게 앞으로 기운 얼음 혹(높이 들쭉날쭉)
+      var nx = x0 + 3 + m * 5 + rnd(80 + m) * 2, nh = rh * (1.1 + rnd(90 + m) * 1.3);
+      var nw = 2 + rnd(95 + m) * 1.5;   // 뭉툭한 혹(윗면이 잘린 사다리꼴)
+      poly([[nx - nw, by + 1], [nx - nw + nh * T, by + 1 - nh], [nx + nw * 0.6 + nh * T * 0.9, by + 1 - nh * (0.7 + rnd(97 + m) * 0.25)], [nx + nw, by + 1]], m % 2 ? '#bff4ff' : '#9fe0f8');
+      line(nx - nw + 1, by - 1, nx - nw + nh * T, by + 2 - nh, '#e8fbff');
+    }
+    // 뒤 작은 조각 → 큰 조각
+    prism(ax - W * 0.5, W * 0.3, Hh * 0.55, 10);
+    if (q.big) prism(ax + W * 0.45, W * 0.28, Hh * 0.4, 20);
+    if (q.big) shard(ax, W * 0.38, Hh, 30);   // 마지막 빙산만 뾰족
+    else prism(ax, W * 0.44, Hh, 30);
+    // 땅에 묻힌 밑동은 진하게
+    g.globalCompositeOperation = 'source-atop'; g.fillStyle = 'rgba(42,122,208,0.7)'; g.fillRect(0, by - 1, cw, 2); g.globalCompositeOperation = 'source-over';
+    // 도트 다듬기: 반투명 없애기 + 진한 테두리 한 줄(밑줄은 땅이라 안 둘림)
+    var im = g.getImageData(0, 0, cw, ch), a = im.data, op = new Uint8Array(cw * ch), i, y;
+    for (i = 0; i < cw * ch; i++) { op[i] = a[i * 4 + 3] >= 110 ? 1 : 0; a[i * 4 + 3] = op[i] ? 255 : 0; }
+    for (y = 0; y < ch; y++) for (x = 0; x < cw; x++) {
+      i = y * cw + x; if (op[i]) continue;
+      if ((x > 0 && op[i - 1]) || (x < cw - 1 && op[i + 1]) || (y > 0 && op[i - cw]) || (y < ch - 1 && op[i + cw])) { a[i * 4] = 0x1a; a[i * 4 + 1] = 0x3a; a[i * 4 + 2] = 0x8a; a[i * 4 + 3] = 255; }
+    }
+    g.putImageData(im, 0, 0);
+    return { c: c, ax: ax, T: T };
+  }
+  // 얼음 한 개(캐릭터와 깊이 순서로, addEnts): 땅 틈에서 기운 방향(뒤 아래 → 앞 위)으로 찌르듯 솟아오름 → 솟은 채 → 흔들리며 땅으로 꺼짐
+  function drawCrag(ctx, camX, q) {
+    var A = q.art, c = A.c, P = CRAG_PX, t = q.t, end = q.riseMs + q.C.lifeMs, u, flashA = 0, jx = 0;
+    if (t < q.riseMs) { var v = t / q.riseMs; u = 1 - Math.pow(1 - v, 3); flashA = 0.7 * (1 - v); }
+    else if (t < end) { u = 1; if (t < q.riseMs + 90) flashA = 0.35 * (1 - (t - q.riseMs) / 90); }
+    else { u = Math.max(0, 1 - (t - end) / q.breakMs); jx = (Math.floor(t / 30) % 2 ? 1 : -1) * P * 0.5; }
+    if (u <= 0.02) return;
+    var hh = c.height * P, off = (1 - u) * hh, dx = -A.ax * P - off * A.T * 0.8, dy = -hh + off;
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    ctx.translate(snapPx(q.x - camX + jx), snapPx(q.z));
+    ctx.scale(q.dir, 1);
+    ctx.beginPath(); ctx.rect(-c.width * P - 20, -hh - 20, c.width * P * 2 + 40, hh + 21); ctx.clip();   // 땅 밑은 안 보임(틈에서 솟는 것처럼)
+    if (t >= end) ctx.globalAlpha = Math.min(1, u * 1.6);
+    ctx.drawImage(c, dx, dy, c.width * P, hh);
+    if (flashA > 0) { ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = flashA; ctx.drawImage(c, dx, dy, c.width * P, hh); }
+    ctx.restore();
+  }
+  // 바닥(캐릭터 밑): 살짝 갈라진 땅 틈(얼음 줄을 따라 들쭉날쭉한 검은 틈 + 안쪽 푸른 빛) + 옆으로 뻗는 작은 금 + 옅은 서리
+  function drawCragUnder(ctx, camX) {
+    crags.forEach(function (q) {
+      var end = q.riseMs + q.C.lifeMs, a = q.t < end ? Math.min(1, q.t / 60) : Math.max(0, 1 - (q.t - end) / (q.breakMs + 250));
+      if (a <= 0) return;
+      var x = q.x - camX, d = q.dir, open = Math.min(1, q.t / 120), L0 = (q.link || 8) * 0.55, L1 = q.w * 0.6 + q.h * 0.5 + 6;   // 틈은 얼음 끝보다 조금 앞까지(갈라진 땅이 보이게)
+      function rnd(i) { var v = Math.sin(q.seed + i * 78.233) * 43758.5453; return v - Math.floor(v); }
+      ctx.save();
+      ctx.globalAlpha = 0.28 * a; ctx.fillStyle = '#cfefff';
+      ctx.beginPath(); ctx.ellipse(x + d * (L1 - L0) * 0.5, q.z, (L0 + L1) * 0.6, 4, 0, 0, Math.PI * 2); ctx.fill();
+      for (var s = -L0, n = 0; s <= L1; s += 2, n++) {   // 들쭉날쭉 틈(2도트씩)
+        var px = Math.round(x + d * s), py = Math.round(q.z + (rnd(n) - 0.5) * 2.4), wd = Math.max(1, Math.round((1.2 + rnd(n + 50) * 1.6) * open));
+        ctx.globalAlpha = 0.85 * a; ctx.fillStyle = '#2a1a10'; ctx.fillRect(px, py - Math.floor(wd / 2), 2, wd);
+        ctx.globalAlpha = 0.7 * a; ctx.fillStyle = '#5ac8f0'; ctx.fillRect(px, py, 2, 1);
+      }
+      for (var i = 0; i < (q.big ? 4 : 2); i++) {   // 옆으로 뻗는 작은 금
+        var sx = x + d * (rnd(i + 20) * L1), an = (rnd(i + 30) < 0.5 ? -1 : 1) * (0.5 + rnd(i + 40) * 0.6), L = (6 + rnd(i + 60) * 8) * open;
+        ctx.globalAlpha = 0.7 * a; ctx.fillStyle = '#3a2616';
+        for (var k = 0; k < L; k += 2) ctx.fillRect(Math.round(sx + d * Math.cos(an) * k * 0.6), Math.round(q.z + Math.sin(an) * k * 0.4), 2, 1);
+      }
+      ctx.restore();
+    });
+  }
   // 바닥(캐릭터 밑): 폭풍 땅 = 하얗게 서리 낀 넓은 타원 + 얼음 금(깨질 때 밝게)
   function drawFrostUnder(ctx, camX) {
     frosts.forEach(function (o) {
@@ -2701,7 +2912,7 @@
   }
   // 매 장면(법사 새 기술): 조각 · 구체 · 소용돌이 · 연쇄 · 폭풍 · 심판 + 얼어붙은 시간 줄이기
   function mageStep(dt) {
-    eshardStep(dt); gravStep(dt); vortexStep(dt); vortexTick(dt); chainStep(dt); frostStep(dt); judgeTick(dt);
+    eshardStep(dt); gravStep(dt); vortexStep(dt); vortexTick(dt); chainStep(dt); frostStep(dt); cragStep(dt); judgeTick(dt);
     for (var i = judges.length - 1; i >= 0; i--) { judges[i].t += dt; if (judges[i].t >= judges[i].life) judges.splice(i, 1); }
     H.targets().forEach(function (t) { if (t && t.frozenT > 0) t.frozenT -= dt; });
   }
@@ -2879,7 +3090,7 @@
     drawFlameMark(ctx, camX, p);  // 불기둥 마법진(2차)
     drawGrit(ctx, camX, p);       // 투지 발밑 붉은 기운(2차)
     drawCrossMarks(ctx, camX);    // 심판의 십자 땅에 새긴 십자(2026-11-08)
-    drawGravUnder(ctx, camX); drawFrostUnder(ctx, camX); drawJudgeMark(ctx, camX, p);   // 중력 구체 바닥 · 빙결 폭풍 땅 · 천둥 심판 과녁(2026-11-08)
+    drawGravUnder(ctx, camX); drawFrostUnder(ctx, camX); drawCragUnder(ctx, camX); drawJudgeMark(ctx, camX, p);   // 중력 구체 바닥 · 빙결 폭풍 땅 · 천둥 심판 과녁(2026-11-08)
     var s = p && p.state === 'skill' && p.sk, K = s && (s.K || s.d.strikes);
     if (!K) return;
     K.at.forEach(function (at, k) {
@@ -3204,8 +3415,8 @@
     eshardHit: eshardHit, chainKill: chainKill,   // 법사 늘 켜진 기술(2026-11-08): 원소 파편(마법이 맞을 때) · 원소 연쇄(마법으로 쓰러질 때)
     shardKill: shardKill, comboPull: comboPull,   // 1차 기사 늘 켜진 기술(2026-11-08): 칼날 파편(적이 쓰러질 때) · 끌어당기는 검압(콤보 마무리 타 시작)
     gritBonus: gritBonus, tryCounter: tryCounter, shieldSplit: shieldSplit, shieldHit: shieldHit, brandMul: brandMul, brandMark: brandMark,
-    hidden: hidden, test: TEST, _fx: function () { return { blades: blades.length, flames: flames.length, beams: beams.length, arcs: arcs.length, shield: !!shieldFx, crosses: crosses.length, shards: shardFx.length, pulls: pulls.length, gravs: gravs.length, eshards: eshFx.length, vortexes: vortexes.length, chains: chainQ.length, frosts: frosts.length, judges: judges.length }; },
-    clear: function () { gravs.length = 0; eshFx.length = 0; eshT = 0; vortexes.length = 0; vortexT = 0; chainQ.length = 0; chainN = 0; frosts.length = 0; judges.length = 0; jbolts.length = 0; crosses.length = 0; aegisT = 0; shardFx.length = 0; shardQ.length = 0; shardN = 0; pulls.length = 0; tornados.length = 0; blades.length = 0; flames.length = 0; beams.length = 0; arcs.length = 0; shieldFx = null; gritOn = false; curLv = 1; meteors.length = 0; pillars.length = 0; echoes.length = 0; bright = 1; noMpT = 0; bolts.length = 0; rings.length = 0; ghosts.length = 0; arts.length = 0; waves.length = 0; parts.length = 0; glows.length = 0; flash = null; },
+    hidden: hidden, test: TEST, _fx: function () { return { blades: blades.length, flames: flames.length, beams: beams.length, arcs: arcs.length, shield: !!shieldFx, crosses: crosses.length, shards: shardFx.length, pulls: pulls.length, gravs: gravs.length, eshards: eshFx.length, vortexes: vortexes.length, chains: chainQ.length, frosts: frosts.length, crags: crags.length, cragRows: cragRows.length, judges: judges.length }; },
+    clear: function () { gravs.length = 0; eshFx.length = 0; eshT = 0; vortexes.length = 0; vortexT = 0; chainQ.length = 0; chainN = 0; frosts.length = 0; cragRows.length = 0; crags.length = 0; judges.length = 0; jbolts.length = 0; crosses.length = 0; aegisT = 0; shardFx.length = 0; shardQ.length = 0; shardN = 0; pulls.length = 0; tornados.length = 0; blades.length = 0; flames.length = 0; beams.length = 0; arcs.length = 0; shieldFx = null; gritOn = false; curLv = 1; meteors.length = 0; pillars.length = 0; echoes.length = 0; bright = 1; noMpT = 0; bolts.length = 0; rings.length = 0; ghosts.length = 0; arts.length = 0; waves.length = 0; parts.length = 0; glows.length = 0; flash = null; },
     // 화면 번쩍(콤보 마무리 타도 씀): { color, alpha, ms }
     flash: function (f) { doFlash(f); },
     // 파편·둥근 빛(소품 나뭇조각·음식 반짝임도 씀, props.js)
