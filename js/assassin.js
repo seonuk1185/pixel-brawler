@@ -637,6 +637,7 @@
       if (vq && !st.asEcho && Math.random() < vq.v) n += 1;
       if (st.asPsn) n += st.asPsn;
       if (tw && tw.psn) n += tw.psn;
+      if (window.PV && PV.id === 'pplague' && !st.asPlague) n += 2;   // 기술 창 미리보기: 역병 전염이 보이게 평타에 독
       if (n > 0) { addPsn(t, n, dmg); spawn('ps_dart_bubble', t.x, t.y - (t.T ? t.T.height : 60) * 0.7, { sx: 0.8 }); }
     }
     // 그림자 무사 갈래 덤: echoMs 뒤 그림자 잔상이 한 번 더(그 타 피해 x echo)
