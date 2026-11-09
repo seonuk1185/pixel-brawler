@@ -862,8 +862,8 @@
   //   몹 떼로 늘어난 만큼은 한 마리가 약해지지만(makeEnemy), 난이도로 늘어난 몹은 약해지지 않음
   function countMul(type, w, HD) {
     var T = CFG.enemies[type], M = Growth.M();
-    if (hordeMob(type)) return (HD ? hordeMulOf(w, HD) : 1) * (M.count || 1);
-    if (T && !T.boss && Growth.kindOf(type, T) === 'tough') return M.countTough || 1;
+    if (hordeMob(type)) return (HD ? hordeMulOf(w, HD) : 1) * modeVal(M.count);   // 2026-11-09 판 20개 한 줄: 마리 수도 판 순서대로(modeVal)
+    if (T && !T.boss && Growth.kindOf(type, T) === 'tough') return modeVal(M.countTough);
     return 1;
   }
   // 웨이브 spawn 목록 → 몹 떼(잡몹마다 mul 배). 늘어난 몹은 반대쪽 끝에서(bothSides) gapMs 씩 늦게, 화면 밖으로 조금씩 더 떨어져서(off)
@@ -931,7 +931,7 @@
     // 몹 떼(사냥 손맛): 늘어난 만큼 한 마리는 약하게 + 경험치 xpMul 배. 쓰러지면 붕 날아가 펑(hunt.death, enemies.js)
     var HD = hordeOf(null);
     var hmul = HD ? hordeMulOf(null, HD) : 1;
-    if (HD && hmul > 1 && hordeMob(type)) {
+    if (HD && hmul > 1 && hordeMob(type) && !MQ) {   // 2026-11-09: 중간보스는 몹 떼로 나누지 않음(대장 체력이 몹 떼 배수로 나뉘어 너무 약했음)
       e.hp = e.maxHp = Math.max(1, Math.round(e.maxHp * (HD.hpExp ? Math.pow(hmul, -HD.hpExp) : (HD.hpMul || 1))));
       e.dmgMul *= HD.dmgMul || 1; e.xpMul = HD.hpExp ? 1 / hmul : (HD.xpMul || 1); e.horde = true;
     }
@@ -979,7 +979,7 @@
     var wave = st.waves.length - (MB.wave || 2), boss = null;
     if (wave < 0 || st.waves[wave].boss) return null;
     st.waves.forEach(function (w) { (w.spawn || []).forEach(function (q) { var E = CFG.enemies[q[0]]; if (E && E.boss) boss = E; }); });
-    var MQ = midMake(L, Math.round((boss ? boss.hp : CFG.enemies[L[0]].hp * 7) * (MB.hpBoss || 0.45)), 'mid' + st.id);
+    var MQ = midMake(L, Math.round((boss ? boss.hp : CFG.enemies[L[0]].hp * 7) * (L[3] && L[3].hpBoss || MB.hpBoss || 0.45)), 'mid' + st.id, L[3] || null);   // L[3] = 따로 그린 중간보스 덮어쓰기(2026-11-09: scale 1 · 색 그대로)
     MQ.wave = wave;
     return (midCache[st.id] = MQ);
   }
@@ -1377,12 +1377,12 @@
     document.getElementById('resTitle').textContent = clear ? '버텼다!' : '쓰러졌다';
     resultEl.className = 'result ' + (clear ? 'clear' : 'over') + ' dgres';
     document.getElementById('resStats').innerHTML =
-      '<span class="dgname">' + D.name + ' · ' + Growth.M().name + '</span>' +
+      '<span class="dgname">' + D.name + (modeTag() ? ' · ' + Growth.M().name : '') + '</span>' +
       '버틴 시간 <b>' + Math.min(D.timeSec, Math.floor(R.t / 1000)) + '초</b> / ' + D.timeSec + '초<br>' +
       '처치 <b>' + R.kills + '</b>' + (R.rec.kills ? NEW : '') + ' · 대장 처치 <b>' + R.midKills + '</b><br>' +
       '얻은 강화석 <b>' + got + '</b>' + (R.bonus ? ' + 버틴 덤 <b>' + R.bonus + '</b> = <b>' + stones + '</b>' : '') + (R.rec.stones ? NEW : '') +
       '<br>얻은 경험치 <b>' + (G.xpGot || 0) + '</b> · <b>Lv ' + Growth.lv + '</b>' +
-      '<span class="dgbest">최고 기록(' + Growth.M().name + ') · 처치 <b>' + R.best.kills + '</b> · 강화석 <b>' + R.best.stones + '</b></span>';
+      '<span class="dgbest">최고 기록' + (modeTag() ? '(' + Growth.M().name + ')' : '') + ' · 처치 <b>' + R.best.kills + '</b> · 강화석 <b>' + R.best.stones + '</b></span>';
     encBadges();
     document.getElementById('btnNext').hidden = true;
     document.getElementById('btnSel').textContent = '던전 선택';
@@ -1397,10 +1397,10 @@
     document.getElementById('resTitle').textContent = clear ? (D.boss ? '토벌 성공!' : '시련 돌파!') : '쓰러졌다';
     resultEl.className = 'result ' + (clear ? 'clear' : 'over') + ' dgres';
     document.getElementById('resStats').innerHTML =
-      '<span class="dgname">' + D.name + ' · ' + Growth.M().name + '</span>' + where + '<br>' +
+      '<span class="dgname">' + D.name + (modeTag() ? ' · ' + Growth.M().name : '') + '</span>' + where + '<br>' +
       '처치 <b>' + R.kills + '</b> · 대장 처치 <b>' + R.midKills + '</b>' + (clear ? ' · <b>' + (D.boss ? D.boss.name : FB.L[1]) + '</b> 토벌' : '') + lootLine() +
       '<br>얻은 경험치 <b>' + (G.xpGot || 0) + '</b> · <b>Lv ' + Growth.lv + '</b>' +
-      '<span class="dgbest">최고 기록(' + Growth.M().name + ') · ' + (R.best && R.best.time ? '클리어 <b>' + fmtTime(R.best.time) + '</b> · ' + (D.boss ? '토벌' : '돌파') + ' <b>' + R.best.clears + '</b>번' : D.boss ? '아직 토벌 못 함' : '아직 돌파 못 함') + '</span>';
+      '<span class="dgbest">최고 기록' + (modeTag() ? '(' + Growth.M().name + ')' : '') + ' · ' + (R.best && R.best.time ? '클리어 <b>' + fmtTime(R.best.time) + '</b> · ' + (D.boss ? '토벌' : '돌파') + ' <b>' + R.best.clears + '</b>번' : D.boss ? '아직 토벌 못 함' : '아직 돌파 못 함') + '</span>';
     encBadges();
     document.getElementById('btnNext').hidden = true;
     document.getElementById('btnSel').textContent = '던전 선택';
@@ -1624,6 +1624,8 @@
       if (E && E.summon) E.summon.forEach(function (q) { add(summonOf(q).type); });
     }
     (st.waves || []).forEach(function (w) { (w.spawn || []).concat(w.placed || []).forEach(function (s) { add(s[0]); }); });
+    var MLq = !st.dg && CFG.midBoss && CFG.midBoss.list && CFG.midBoss.list[st.id];   // 2026-11-09: 중간보스가 판 잡몹이 아닌 따로 그린 적(11~20판)
+    if (MLq) add(MLq[0]);
     if (st.dg) { (st.dg.mobs || []).forEach(function (m) { add(m[0]); }); ((st.dg.mids && st.dg.mids.list) || []).forEach(function (L) { add(L[0]); }); (st.dg.waves || []).forEach(function (w) { (w.mobs || []).forEach(function (m) { add(m[0]); }); }); if (st.dg.boss) add(st.dg.boss.summon.type); if (st.dg.champ && st.dg.champ.L) add(st.dg.champ.L[0]); }   // 던전(2026-11-07) · 레이드 웨이브 · 부르는 졸개
     return out;
   }
@@ -1753,6 +1755,8 @@
       if (S.bossDownT >= 0 || S.result) { shots.splice(i, 1); continue; }
       if (b.wait > 0) { b.wait -= dt; continue; }   // 늦게 나가는 무리(화난 흡혈 백작 박쥐 떼)
       b.t += dt;
+      // 2026-11-09 따라오는 구체(s.homing = 초당 줄을 옮기는 도트, 11~20판 공허 사도 · 마녀 해골 · 심연의 눈): 플레이어 줄 쪽으로 천천히 꺾임
+      if (s.homing && p.state !== 'dead' && b.t > (s.homeAfterMs || 0)) { var hz = s.homing * dt / 1000; b.z = clamp(b.z + clamp(p.y - b.z, -hz, hz), world.laneTop, world.laneBottom); }
       for (var k = 0; k < n && !gone; k++) {
         var m = Math.min(move / n, s.range - b.trav);
         b.x += b.dir * m; b.trav += m;
@@ -1819,12 +1823,13 @@
       Enemy.drawRing(ctx, camX, c.tx, c.ty, c.s.radius, c.s.depth, u, false);
       if (SH && SH.frames.length) {
         ctx.save(); ctx.translate(x, y); Assets.blit(ctx, SH.frames[Math.min(SH.frames.length - 1, Math.floor(u * 3.999))], SH.pivot.x, SH.pivot.y); ctx.restore();
-      } else window.drawShadow(ctx, x, y, 14 * AS * (0.4 + 0.6 * u));
+      } else if (!c.s.noProj) window.drawShadow(ctx, x, y, 14 * AS * (0.4 + 0.6 * u));
     });
   }
   function drawCannons(camX) {
     cannons.forEach(function (c) {
       var u = Math.min(1, c.t / c.s.fallMs), A = c.F[c.s.proj || 'cannonball'], x = snap(c.tx - camX), y = snap(c.ty - c.s.dropHeight * (1 - u * u));   // 점점 빨리 떨어짐
+      if (c.s.noProj) return;   // 2026-11-09 낙뢰 · 물기둥 · 저주 문양: 떨어지는 것 없이 그 자리에서 터지는 그림만(blast)
       if (!A || !A.frames.length) { ctx.fillStyle = '#2a2a30'; ctx.fillRect(x - 5, y - 5, 10, 10); return; }
       ctx.save(); ctx.translate(x, y); Assets.blit(ctx, A.frames[Math.floor(c.t * A.fps / 1000) % A.frames.length], A.pivot.x, A.pivot.y); ctx.restore();
     });
@@ -1911,7 +1916,7 @@
       if (q.t < 0) return;
       // 2026-11-06: 우리가 코드로 그린 지옥불 고리(js/fxdraw.js) — 매 장면 지금 반지름으로 새로 그림(늘이지 않음). 밝은 테두리 = 맞는 띠.
       //   먼 쪽 반(가운데 줄 위) = 고리 뒤쪽 끝 깊이, 가까운 쪽 반 = 앞쪽 끝 깊이로 따로 줄 세움 → 고리 안에 선 캐릭터는 뒤쪽 불꽃 앞·앞쪽 불꽃 뒤
-      if (window.FXDraw) {
+      if (window.FXDraw && !q.s.ringArt) {   // ringArt(2026-11-09 11~20판) = AI 그림 고리(아래 그림 길)
         var R0 = q.s.rings, ry0 = Math.max(1, Math.min(ringR(q), R0.ringRx) / R0.ringRx * R0.ryMax);
         ents.push({ y: q.y - ry0, d: function () { FXDraw.nova(ctx, q, R0, q.x - camX, q.y, q.t, q.seed, 'back'); } });
         ents.push({ y: q.y + ry0, d: function () { FXDraw.nova(ctx, q, R0, q.x - camX, q.y, q.t, q.seed, 'front'); } });
@@ -1992,7 +1997,7 @@
   function mobPotion(e) {
     var PO = CFG.potions;
     if (!PO || e.T.boss || e.noDrop || e.mid) return;   // 중간보스는 midDown 이 꼭 하나. 난이도(2026-11-06): 확률 x modes.drop
-    if (Math.random() < (e.T.hp >= PO.toughHp ? PO.tough : PO.mob) * (Growth.M().drop || 1)) Props.dropPotion(e.x, e.y, G.player.x > e.x ? -1 : 1, null);
+    if (Math.random() < (e.T.hp >= PO.toughHp ? PO.tough : PO.mob) * modeVal(Growth.M().drop)) Props.dropPotion(e.x, e.y, G.player.x > e.x ? -1 : 1, null);
   }
   // ---------- 첫 무기 몽둥이 (2026-11-06, 형님 승인, 수치 = config club) ----------
   // 나오는 때: 첫 판 · 견습(전직 전, 견습 옷) · 아직 없음 · 바닥에 없음 → 잡몹이 쓰러질 때 chance, 그 판 sureAt 번째 잡몹이면 꼭(G.clubN = 센 수)
@@ -2042,7 +2047,7 @@
   function lootDrop(e) {
     if (!ENC || MODE !== 'stage' || e.noDrop) return;
     if (DG() && DG().drop) { dgLoot(e); return; }   // 던전(2026-11-07): 던전 값(config dungeons.○○.drop)
-    var D = ENC.drop, m = Growth.M().drop || 1, dir = G.player.x > e.x ? -1 : 1, n = 0, kd = Growth.kindOf(e.type, e.T);
+    var D = ENC.drop, m = modeVal(Growth.M().drop), dir = G.player.x > e.x ? -1 : 1, n = 0, kd = Growth.kindOf(e.type, e.T);
     if (e.T.boss) n = sround(D.boss * m);
     else if (e.mid) n = sround(D.mid * m);
     else if (Math.random() < (kd === 'tough' || kd === 'elite' ? D.tough : D.mob) * m) n = 1;
@@ -2454,7 +2459,7 @@
       lootDrop(e);    // 강화석 · 속성 결정(2026-11-06)
       var n = Growth.enemyXp(e.type, e.T, idx);
       if (e.xpMul && n > 0) n = Math.max(1, Math.round(n * e.xpMul));   // 몹 떼(사냥 손맛): 한 마리 경험치 xpMul 배
-      var MX = Growth.M().xp;
+      var MX = modeVal(Growth.M().xp);   // 2026-11-09: 판 순서대로 오름(config modes.normal.xp = [1판, 10판, 20판])
       if (MX && MX !== 1 && n > 0) n = Math.max(1, Math.round(n * MX));   // 난이도(2026-11-06): 노말·하드는 경험치 더
       if (!(n > 0) || Growth.isMax()) return;
       G.xpGot = (G.xpGot || 0) + n;
@@ -3116,10 +3121,10 @@
       raidHud(S);
       if (S.dg.rule === 'raid') {   // 레이드: 「이지 · 불의 화산굴  ·  WAVE 2/5 · 처치 12 · 강화석 3」 / 보스 = 「레이드 보스」
         var RS0 = S.dg, wtxt = RS0.phase === 'boss' ? '레이드 보스' : RS0.phase === 'champ' ? '수호자' : 'WAVE ' + Math.max(1, RS0.wi + 1) + '/' + CFG.stage.dg.waves.length;
-        setIf('info', 'rd' + Growth.mode() + wtxt + RS0.kills + ':' + (G.loot ? G.loot.stones : 0), function () { hud.stageInfo.textContent = Growth.M().name + ' · ' + CFG.stage.name + '  ·  ' + wtxt + ' · 처치 ' + RS0.kills + ' · 강화석 ' + (G.loot ? G.loot.stones : 0); });
+        setIf('info', 'rd' + Growth.mode() + wtxt + RS0.kills + ':' + (G.loot ? G.loot.stones : 0), function () { hud.stageInfo.textContent = modeTag() + CFG.stage.name + '  ·  ' + wtxt + ' · 처치 ' + RS0.kills + ' · 강화석 ' + (G.loot ? G.loot.stones : 0); });
         return;
       }
-      setIf('info', 'dg' + Growth.mode() + S.dg.kills + ':' + (G.loot ? G.loot.stones : 0), function () { hud.stageInfo.textContent = Growth.M().name + ' · ' + CFG.stage.name + '  ·  처치 ' + S.dg.kills + ' · 강화석 ' + (G.loot ? G.loot.stones : 0); });
+      setIf('info', 'dg' + Growth.mode() + S.dg.kills + ':' + (G.loot ? G.loot.stones : 0), function () { hud.stageInfo.textContent = modeTag() + CFG.stage.name + '  ·  처치 ' + S.dg.kills + ' · 강화석 ' + (G.loot ? G.loot.stones : 0); });
       return;
     }
     var waves = CFG.stage.waves;
@@ -3127,7 +3132,7 @@
     setIf('go', go, function (v) { hud.goPrompt.hidden = !v; });
     var wi = Math.min(waves.length, S.locked ? S.waveIdx + 1 : S.next + (S.next < waves.length ? 0 : 0));
     // 판 이름 앞에 난이도(2026-11-06): 「노말 · STAGE 3  늪지대  ·  2 / 7」
-    setIf('info', Growth.mode() + wi + '/' + waves.length, function () { hud.stageInfo.textContent = Growth.M().name + ' · ' + CFG.stage.name + '  ·  ' + Math.max(1, wi) + ' / ' + waves.length; });
+    setIf('info', Growth.mode() + wi + '/' + waves.length, function () { hud.stageInfo.textContent = modeTag() + CFG.stage.name + '  ·  ' + Math.max(1, wi) + ' / ' + waves.length; });
   }
   // 레이드 체력 막대(2026-11-07, index.html #raidBar): 이름 · RAID · 줄 수 「x34」 · 지금 줄(색) 위에 다음 줄 색 바탕 · 늦게 따라오는 막대 · 파란 그로기 막대 · 격노
   //   자리: 위 가운데. 왼쪽 위 플레이어 판 · 오른쪽 위 버튼과 겹치면 그 사이(좁으면 플레이어 판 밑으로), 0.5초마다만 잼
@@ -3390,11 +3395,14 @@
     return out;
   }
   var modeTabFocus = false;
+  // 2026-11-09 형님 「노말 하드 나누기보단 1~20 한 줄」: 고를 난이도가 하나면 탭 · 글자를 안 보임(modeTag = '' )
+  function modeTag() { var VL = Growth.modeList ? Growth.modeList() : CFG.modes.order; return VL.length > 1 ? Growth.M().name + ' · ' : ''; }
   function modeTabs() {
     var box = document.getElementById('modeTabs'), O = CFG.modes, cur = Growth.mode(), out = null, last = CFG.modeUnlockId || STAGES[STAGES.length - 1].id;
     if (!box || !O) return null;
     box.innerHTML = '';
     var VL = Growth.modeList ? Growth.modeList() : O.order;   // 2026-11-07: 숨긴 난이도(이지) 빼고
+    box.style.display = VL.length > 1 ? '' : 'none';   // 2026-11-09: 판 20개 한 줄(난이도 하나) = 탭 숨김
     VL.forEach(function (k, i) {
       var b = document.createElement('button'), open = Growth.modeOpen(k), M = O[k];
       b.type = 'button'; b.className = 'mtab mt-' + k + (k === cur ? ' on' : '') + (open ? '' : ' locked');

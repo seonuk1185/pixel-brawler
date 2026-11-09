@@ -14,6 +14,7 @@
   function inList(list, n) { return !!list && list.indexOf(n) >= 0; }
   // 캐릭터 크기(config actorScale): 코드에 바로 적힌 거리에 곱한다 (config 수치는 scaleActors 가 이미 줄여 둠)
   function AS() { return (window.CFG && window.CFG.actorScale) || 1; }
+  var YFREE = ['throw', 'burrow', 'barrage', 'dive', 'spikes', 'teleport'];   // 줄(위아래)이 안 맞아도 쓰는 공격
 
   function Enemy(type, cfg, art, x, y) {
     this.id = 'e' + (++uid);
@@ -622,15 +623,20 @@
     var T = this.T;
     if (!T.boss) {
       if (!this.mayAttack(ctx)) return null;
-      if (!(adx >= T.range[0] && adx <= T.range[1] && ady <= T.alignY)) return null;
-      var keys = Object.keys(T.attacks);
-      if (keys.length === 1) return keys[0];
+      // 2026-11-09 11~20단계 새 잡몹: 줄이 안 맞아도 쓰는 기술(가시 줄 · 하늘에서 떨어짐 · 순간이동 · 던지기 · 고리) = 보스와 같은 yFree
+      var keysA = Object.keys(T.attacks), selfA = this;
+      function yOkA(A) { return (A.type && YFREE.indexOf(A.type) >= 0) || (A.type === 'shockwave' ? ady <= A.rings.ryMax * 1.5 : ady <= T.alignY); }
+      if (!(adx >= T.range[0] && adx <= T.range[1])) return null;
+      if (!keysA.some(function (k) { return yOkA(T.attacks[k]); })) return null;
+      var keys = keysA.filter(function (k) { return yOkA(T.attacks[k]); });
+      if (keys.length === 1 && !T.attacks[keys[0]].gapMs && !T.attacks[keys[0]].when) return keys[0];
       // 공격이 여럿(3단계 도마뱀 찌르기·달려들기): 거리가 when 안인 것 중 무게(weight)로
       //   gapMs = 그 공격을 한 번 쓰면 이 시간 동안은 안 씀(달려들기가 다가올 때마다 나오지 않게)
       //   maxShooters = 던지기(type 'shot')는 같은 종류가 이만큼 이미 던지고 있으면 안 씀, firstMs = 나타나서 처음 쓸 수 있을 때까지(7단계 불 도깨비)
       var self = this, ok = keys.filter(function (k) { var A = T.attacks[k], w = A.when;
         if (A.gapMs && self.clock - (self.usedAt[k] != null ? self.usedAt[k] : (A.firstMs != null ? A.firstMs - A.gapMs : -1e9)) < A.gapMs) return false;
         if (A.type === 'shot' && A.maxShooters && shooters(ctx, self.type) >= A.maxShooters) return false;
+        if (A.type === 'teleport') { var pq = ctx.player; if ((pq.z || 0) > 4 || pq.state === 'down' || pq.state === 'held' || pq.state === 'dead') return false; }
         return !w || (adx >= w[0] && adx <= w[1]); }), tot = 0;
       if (!ok.length) return null;
       ok.forEach(function (k) { tot += T.attacks[k].weight || 1; });
@@ -706,7 +712,8 @@
       if (!a.fired && fr.no >= spec.spawnFrame) {
         a.fired = true;
         // 화난 흡혈 백작 박쥐 떼(spec.enraged): count 무리를 lanes 줄마다 gapMs 씩 늦게(양옆은 scale 만큼 작게)
-        var EG = this.enraged && spec.enraged;
+        //   2026-11-09 volley = 늘 여러 발(가시 정령 가시 부채 · 수정 포탑 파편 · 하피 깃털): enraged 와 같은 모양 { count, lanes, gapMs, scale }
+        var EG = (this.enraged && spec.enraged) || spec.volley;
         if (ctx.fireShot) {
           if (EG) for (var q = 0; q < EG.count; q++) ctx.fireShot(this, spec, { dz: EG.lanes[q] || 0, wait: q * (EG.gapMs || 0), scale: (EG.scale && EG.scale[q]) || 1 });
           else ctx.fireShot(this, spec);
@@ -1123,7 +1130,10 @@
   // 화면 밖으로 못 나감(들어온 뒤로)
   Enemy.prototype.keepInView = function (ctx) {
     var w = ctx.world;
-    var x0 = ctx.view.x0 + 12 * AS(), x1 = ctx.view.x1 - 12 * AS();
+    var m = 12 * AS(), H = this.T.hurtbox;
+    // 2026-11-09: 큰 보스 · 중간보스는 몸 반쪽(맞는 상자 폭 + 조금)만큼 더 안쪽 → 화면 끝에 몸이 반쯤 잘려 보이지 않게(11~20판 새 보스는 그림이 큼)
+    if ((this.T.boss || this.mid) && H) m = Math.max(m, Math.max(Math.abs(H.x0), Math.abs(H.x1)) * 1.6, Math.min(110, (this.T.frameW || 0) * AS() * (this.T.drawScale || 1) * 0.4));
+    var x0 = ctx.view.x0 + m, x1 = ctx.view.x1 - m;
     // 들어오기 전이라도 화면에 보여 맞았으면(hitOut, 마법탄·검기 등) 들어온 것으로 → 아래에서 띠 안으로 당김(밀려서 버튼 밑에 남지 않게)
     if (!this.entered && ((this.x > x0 && this.x < x1) || this.hitOut)) this.entered = true;
     if (this.entered) this.x = Math.max(x0, Math.min(x1, this.x));
@@ -1227,7 +1237,7 @@
     var blink = Math.floor(performance.now() / 80) % 2;
     var d = s.depth, y0 = Math.round(this.y - d), h = Math.round(d * 2);
     // 화난 흡혈 백작 박쥐 떼(세 줄): 바닥 줄 표시를 위아래 줄까지 넓게
-    var EG = this.enraged && s.enraged;
+    var EG = (this.enraged && s.enraged) || s.volley;
     if (EG) { var lo = Math.min.apply(null, EG.lanes), hi = Math.max.apply(null, EG.lanes); y0 = Math.round(this.y + lo - d); h = Math.round(hi - lo + d * 2); }
     g.fillStyle = 'rgba(255,40,30,' + (a.t < aimMs ? 0.05 : 0.08 + 0.1 * k) + ')';
     g.fillRect(xa, y0, w, h);

@@ -331,6 +331,13 @@
     var L = cm && cm.cleared && Array.isArray(cm.cleared[k]) ? cm.cleared[k] : (!cm && k === ORDER[0] ? legacyCleared() : []);
     MSsaved.cleared[k] = L.filter(function (id) { return typeof id === 'number'; });
   });
+  // 2026-11-09 형님 「노말 · 하드 대신 1~20판 한 줄」: 고를 난이도가 하나(노말)면 다른 난이도(하드 · 숨긴 이지)에서 깬 판도 그 목록에 합침
+  //   = 판마다 더 많이 깬 쪽(합집합)이 남음 → 예전 하드 저장의 깬 판 · 열린 판이 그대로. 예전 목록 값은 지우지 않음(되돌릴 때를 위해)
+  if (VIS.length === 1) {
+    var MV0 = MSsaved.cleared[VIS[0]];
+    ORDER.forEach(function (k) { if (k !== VIS[0]) (MSsaved.cleared[k] || []).forEach(function (id) { if (MV0.indexOf(id) < 0) { MV0.push(id); modeMoved = true; } }); });
+    MV0.sort(function (a, b) { return a - b; });
+  }
   if (cm && VIS.indexOf(cm.cur) >= 0) MSsaved.cur = cm.cur;
   else if (cm && cm.cur) modeMoved = true;   // 숨긴 난이도(이지)에 있던 저장 → 첫 난이도(노말)로, 아래에서 한 번 저장
   // ?diff=normal (시험): 이번 창에서만 그 난이도, 잠금 무시. 그동안 깬 판은 이번 창에서만 기억(저장된 목록은 그대로)

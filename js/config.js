@@ -1390,6 +1390,10 @@
   // ---------- 적 그림 (art\stage1-enemies 에서 복사, 그림은 전부 「왼쪽을 봄」) ----------
   // playback = 그림 번호(1부터) 재생 순서, fps = 1초에 몇 칸. 순서를 늘리면 그 장면이 길어진다(예: 몽둥이 치켜든 장면 = 예고)
   var EN = 'assets/enemies/';
+  var MIDV2 = { scale: 1, hpBoss: 0.5, tint: { hue: 0, sat: 1, bright: 1, colorK: 0 } };   // 11~20판 중간보스 덮어쓰기(midBoss.list)
+  // 11~20단계 v2 기술 효과 그림(2026-11-09, AI 그림 · art/stages-11-20/v2/fx): 이름 → [장 수, 기준점 x, y]. FX2('thorn', 14) = fxArt 한 칸
+  var FX2T = {aura: [4, 80, 222], beam: [4, 2, 15], bolt: [5, 67, 152], boulder: [4, 24, 26], cdust: [4, 22, 27], crescent: [4, 87, 112], cring: [5, 82, 39], cspike: [5, 42, 78], curseburst: [5, 52, 82], ering: [5, 82, 45], feather: [4, 17, 7], geyser: [5, 50, 92], gust: [4, 37, 21], harpoon: [4, 37, 14], holyhit: [5, 49, 82], ink: [4, 17, 9], javelin: [4, 42, 12], jet: [4, 2, 17], laser: [4, 21, 10], lightfall: [4, 11, 42], meteor: [4, 29, 37], pillar: [5, 36, 142], puddle: [6, 37, 42], rootspike: [5, 35, 72], shard: [4, 17, 5], shatter: [5, 59, 82], skull: [4, 22, 9], spark: [5, 54, 32], splash: [5, 53, 72], spore: [4, 19, 9], stalac: [4, 34, 34], tentacle: [5, 56, 92], thorn: [4, 25, 9], thornfall: [4, 10, 37], thornhit: [5, 53, 82], thunderhit: [5, 60, 82], tide: [4, 74, 82], vblast: [5, 66, 92], vorb: [4, 17, 10], vring: [5, 82, 50]};
+  function FX2(n, fps) { var t = FX2T[n]; return { frames: seq(EN + 'fx2/' + n + '/' + n + '_', t[0]), pivot: { x: t[1], y: t[2] }, fps: fps || 12 }; }
   function enemyAnims(name, list) {
     var out = {};
     Object.keys(list).forEach(function (k) {
@@ -3146,139 +3150,784 @@
                       when: [0, 999], weight: 1, gapMs: 9000, firstMs: 7000 }
         }
       },
-      // ===== 11~20단계 새 적 (2026-11-09, art/stages-11-20 에서 복사. AI 그림 2장씩 = 서기·걷기·공격 / 맞기·넘어짐·일어남·죽음) =====
-      // 움직임·공격 규칙은 있던 적을 그대로 씀(새 코드 없음): 가시나무 정령 = 고블린, 수정 갑충 = 늑대, 심해 어인 = 도마뱀 전사, 폭풍 하피 = 거대 박쥐, 공허 사도 = 흑마법사
-      //   그림 장 수가 달라서(걷기 6장 등) anims 만 새로. 그림 자르는 법 = art/stages-11-20/_scripts/cut_mob.py (프레임 크기·기준점 = 그 폴더 mob.json)
-      // 가시나무 정령(11·12 저주받은 숲): 구부정한 나무껍질 몸 + 보랏빛 금. 고블린보다 단단하고 손톱이 길다(단단한 잡몹)
+      // ===== 11~20단계 새 적 v2 (2026-11-09 형님: 「11~20판은 새 몹 · 새 기술 · 새 보스」) =====
+      //   그림 = art/stages-11-20/v2 (AI 그림 · cut2.py 로 자름, 수치 = v2/summary.json). 기술 효과 그림 = assets/enemies/fx2 (AI 그림, 위 FX2)
+      //   땅마다 잡몹 3종(어제 1 + 새 2) + 중간보스 2(따로 그린 정예) + 보스 2. 예전 적을 물들여 쓰던 것은 전부 뺌
+      // 가시나무 정령(11·12): 할퀴기 + 「가시 부채」(가시 셋이 세 줄로 날아옴, 바닥 빨간 줄 예고)
       thorn: {
         label: '가시나무 정령', frameW: 135, frameH: 114, pivot: { x: 60, y: 108 },
-        anims: enemyAnims('thorn', {
-          idle: [4, 6, true], walk: [6, 8, true],
-          attack: [5, 10, false, [1, 2, 2, 2, 3, 4, 4, 5]],   // 1 젖힘 · 2 두 팔 치켜듦(예고) · 3 내려 할큄(맞음) · 4 끝까지 · 5 복귀
-          hit: [3, 10, false, [1, 2, 2, 3]],
-          hit2: [3, 10, false, [1, 1, 2, 2, 3]],
-          knockdown: [5, 10, false, [1, 2, 2, 3, 4, 5, 4, 5]],
-          getup: [3, 8, false, [1, 1, 2, 2, 3]],
-          death: [5, 8, false, [1, 2, 3, 4, 5]]                // 쓰러짐 → 껍질 조각 · 잔가지 무더기
-        }),
+        anims: enemyAnims('thorn', { idle: [4, 6, true], walk: [6, 8, true], attack: [5, 10, false, [1, 2, 2, 2, 3, 4, 4, 5]], hit: [3, 10, false, [1, 2, 2, 3]], hit2: [3, 10, false, [1, 1, 2, 2, 3]], knockdown: [5, 10, false, [1, 2, 3, 4, 5, 5]], getup: [3, 8, false, [1, 1, 2, 2, 3]], death: [5, 8, false] }),
+        fxArt: { thorn: FX2('thorn', 14), burst: FX2('curseburst', 14) },
         walkAnim: 'walk',
-        down: { slide: 80, lyingFrames: [3, 4, 5] },
+        down: { slide: 70, lyingFrames: [4, 5] },
         hp: 85, speedX: 42, speedY: 28, radius: 16, height: 92,
         hurtbox: { x0: -16, x1: 26, yTop: -90, yBot: 0 },
-        engage: 55, hover: [100, 150], range: [24, 82], alignY: 7, cooldown: [1200, 2100], firstCooldown: [500, 1500],
+        engage: 55, hover: [100, 170], range: [24, 300], alignY: 8, cooldown: [1300, 2200], firstCooldown: [500, 1500],
         knockResist: 0.95, deathKnock: 210,
         attacks: {
-          claw: { anim: 'attack', active: [3, 4], reach: { x0: 14, x1: 88, yTop: -84, yBot: -20 }, depth: 13,
-                  dmg: [8, 11], knock: 15, telegraph: [2] }
+          claw:  { anim: 'attack', active: [3, 4], reach: { x0: 14, x1: 88, yTop: -84, yBot: -20 }, depth: 13, dmg: [8, 11], knock: 15, telegraph: [2], when: [20, 90], weight: 3 },
+          spit:  { type: 'shot', anim: 'attack', telegraph: [1, 2], spawnFrame: 3, spawn: { x: 40, y: -60 }, aimH: 60, dropPx: 0, proj: 'thorn', impact: 'burst', impactAir: true, muzzle: null,
+                   volley: { count: 3, lanes: [0, -18, 18], gapMs: 90 }, hitCols: ["#1a0a24", "#5a2a8a", "#b07aff", "#f0d8ff"], impactCols: ["#1a0a24", "#5a2a8a", "#b07aff", "#f0d8ff"],
+                   speed: 230, range: 300, box: { w: 20, h: 10 }, depth: 9, dodgeZ: 22, dmg: [5, 7], knock: 10, flinchMs: 260, when: [110, 300], weight: 2, gapMs: 4500, maxShooters: 2 }
         }
       },
-      // 수정 갑충(13·14 수정 동굴): 등에 수정이 돋은 큰 딱정벌레. 늑대처럼 빠르게 달려와 뛰어들어 물고 빠짐(잡몹)
+      // 뿌리 괴물(11·12): 물어뜯기 + 「뿌리 덫」(발밑에서 가시 뿌리가 줄지어 솟음 — 금 간 땅 그림이 예고)
+      root: {
+        label: '뿌리 괴물', frameW: 187, frameH: 116, pivot: { x: 68, y: 110 },
+        anims: enemyAnims('root', { idle: [4, 6, true], walk: [6, 8, true], attack: [5, 10, false, [1, 2, 2, 2, 3, 4, 4, 5]], skill: [5, 10, false, [1, 2, 2, 2, 2, 3, 4, 4, 5]], hit: [3, 10, false, [1, 2, 2, 3]], hit2: [3, 10, false, [1, 1, 2, 2, 3]], knockdown: [5, 10, false, [1, 2, 3, 4, 5, 5]], getup: [3, 8, false, [1, 1, 2, 2, 3]], death: [5, 8, false] }),
+        fxArt: { root: FX2('rootspike', 13) },
+        walkAnim: 'walk',
+        down: { slide: 70, lyingFrames: [4, 5] },
+        hp: 60, speedX: 46, speedY: 30, radius: 20, height: 56,
+        hurtbox: { x0: -28, x1: 28, yTop: -56, yBot: 0 },
+        engage: 60, hover: [90, 160], range: [24, 260], alignY: 8, cooldown: [1400, 2400], firstCooldown: [600, 1500],
+        knockResist: 1.0, deathKnock: 220,
+        attacks: {
+          bite:  { anim: 'attack', active: [3, 4], reach: { x0: 10, x1: 70, yTop: -50, yBot: -4 }, depth: 12, dmg: [6, 8], knock: 12, telegraph: [2], move: { frames: [3, 4], dist: 30 }, when: [20, 80], weight: 2 },
+          roots: { type: 'spikes', anim: 'skill', telegraph: [1, 2], spawnFrame: 3, fx: 'root', aimMs: 350, count: 4, first: 50, step: 42, delayMs: 110, maxRange: 230,
+                   spikeActive: [2, 3, 4], reach: { x0: -18, x1: 18, yTop: -64, yBot: 0 }, depth: 12, dodgeZ: 26, dmg: [6, 8], knock: 14, flinchMs: 360, when: [70, 260], weight: 2, gapMs: 6500, firstMs: 2000 }
+        }
+      },
+      // 독버섯 괴물(11·12): 머리 박치기 + 「독 포자」(포물선으로 뱉음 → 떨어진 자리 독 웅덩이, 빨간 원 예고)
+      shroom: {
+        label: '독버섯 괴물', frameW: 118, frameH: 84, pivot: { x: 57, y: 78 },
+        anims: enemyAnims('shroom', { idle: [4, 6, true], walk: [5, 8, true], attack: [5, 10, false, [1, 2, 2, 2, 3, 4, 4, 5]], skill: [5, 10, false, [1, 2, 2, 2, 2, 3, 4, 4, 5]], hit: [3, 10, false, [1, 2, 2, 3]], hit2: [3, 10, false, [1, 1, 2, 2, 3]], knockdown: [5, 10, false, [1, 2, 3, 4, 5, 5]], getup: [3, 8, false, [1, 1, 2, 2, 3]], death: [5, 8, false] }),
+        fxArt: { spore: FX2('spore', 10), puddle: FX2('puddle', 10) },
+        walkAnim: 'walk',
+        down: { slide: 70, lyingFrames: [4, 5] },
+        hp: 55, speedX: 40, speedY: 26, radius: 16, height: 70,
+        hurtbox: { x0: -13, x1: 20, yTop: -70, yBot: 0 },
+        engage: 55, hover: [120, 200], range: [20, 320], alignY: 8, cooldown: [2600, 3800], firstCooldown: [700, 1600],
+        knockResist: 1.1, deathKnock: 220,
+        ranged: { attack: 'spore', keep: [140, 230], tooClose: 70, backOffMul: 0.7, maxShooters: 2, alignMs: 600 },
+        attacks: {
+          bash:  { anim: 'attack', active: [3, 4], reach: { x0: 10, x1: 62, yTop: -66, yBot: -10 }, depth: 12, dmg: [6, 8], knock: 14, telegraph: [2], when: [10, 70], weight: 3 },
+          spore: { type: 'throw', anim: 'skill', telegraph: [1, 2], spawnFrame: 3, spawn: { x: 36, y: -56 }, flightMs: 750, arcPeak: 60, maxRange: 300, radius: 30, depth: 10, dodgeZ: 22,
+                   proj: 'spore', burstArt: null, burstCols: ["#2a3a10", "#6a8a2a", "#c8e83a", "#f0ffb0"],
+                   puddle: { ms: 3800, radius: 30, depth: 10, everyMs: 500, firstMs: 300, stayMs: 600, dmg: 2 },
+                   dmg: [5, 7], knock: 10, flinchMs: 260, when: [90, 320], weight: 3, gapMs: 4000, maxShooters: 3 }
+        }
+      },
+      // 11판 중간보스 가시나무 장로: 두 번 할퀴기 · 뿌리 덫 6줄 · 가시 부채 5발
+      thornelder: {
+        label: '가시나무 장로', frameW: 206, frameH: 168, pivot: { x: 94, y: 162 },
+        anims: enemyAnims('thornelder', { idle: [4, 6, true], walk: [6, 8, true], attack: [5, 9, false, [1, 2, 2, 2, 3, 4, 4, 5]], skill: [5, 9, false, [1, 2, 2, 2, 2, 3, 4, 4, 5]], hit: [3, 10, false, [1, 2, 2, 3]], hit2: [3, 10, false, [1, 1, 2, 2, 3]], knockdown: [2, 8, false, [1, 2, 2, 2]], getup: [2, 8, false, [1, 2, 2]], death: [5, 7, false, [1, 1, 2, 2, 3, 4, 5]] }),
+        fxArt: { thorn: FX2('thorn', 13), root: FX2('rootspike', 13), burst: FX2('curseburst', 13) },
+        walkAnim: 'walk',
+        down: { slide: 60, lyingFrames: [2] },
+        hp: 600, speedX: 34, speedY: 22, radius: 30, height: 150,
+        hurtbox: { x0: -27, x1: 42, yTop: -150, yBot: 0 },
+        engage: 70, hover: [90, 150], range: [24, 340], alignY: 10, cooldown: [1100, 1900], firstCooldown: [900, 1400],
+        knockResist: 0.6, deathKnock: 80,
+        attacks: {
+          claws: { anim: 'attack', active: [3, 4], multiHit: true, reach: { x0: 16, x1: 120, yTop: -140, yBot: -10 }, depth: 15, dmg: [10, 13], knock: 20, telegraph: [2], when: [20, 120], weight: 3 },
+          roots: { type: 'spikes', anim: 'skill', telegraph: [1, 2], spawnFrame: 3, fx: 'root', aimMs: 400, count: 6, first: 50, step: 44, delayMs: 90, maxRange: 320,
+                   spikeActive: [2, 3, 4], reach: { x0: -20, x1: 20, yTop: -70, yBot: 0 }, depth: 14, dodgeZ: 28, dmg: [9, 12], knock: 16, flinchMs: 400, when: [80, 340], weight: 2, gapMs: 4500 },
+          fan:   { type: 'shot', anim: 'attack', telegraph: [1, 2], spawnFrame: 3, spawn: { x: 60, y: -90 }, aimH: 90, dropPx: 0, proj: 'thorn', impact: 'burst', impactAir: true, muzzle: null,
+                   volley: { count: 5, lanes: [0, -16, 16, -32, 32], gapMs: 70 }, hitCols: ["#1a0a24", "#5a2a8a", "#b07aff", "#f0d8ff"], impactCols: ["#1a0a24", "#5a2a8a", "#b07aff", "#f0d8ff"],
+                   speed: 250, range: 340, box: { w: 20, h: 10 }, depth: 9, dodgeZ: 22, dmg: [7, 9], knock: 12, flinchMs: 300, when: [140, 340], weight: 2, gapMs: 5000 }
+        }
+      },
+      // 12판 중간보스 독버섯 왕: 배치기 · 뛰어올라 깔아뭉개기 · 큰 독 포자(웅덩이)
+      shroomking: {
+        label: '독버섯 왕', frameW: 189, frameH: 170, pivot: { x: 89, y: 164 },
+        anims: enemyAnims('shroomking', { idle: [4, 6, true], walk: [6, 8, true], attack: [5, 9, false, [1, 2, 2, 2, 3, 4, 4, 5]], skill: [5, 9, false, [1, 2, 2, 2, 2, 3, 4, 4, 5]], hit: [3, 10, false, [1, 2, 2, 3]], hit2: [3, 10, false, [1, 1, 2, 2, 3]], knockdown: [2, 8, false, [1, 2, 2, 2]], getup: [2, 8, false, [1, 2, 2]], death: [5, 7, false, [1, 1, 2, 2, 3, 4, 5]] }),
+        fxArt: { spore: FX2('spore', 10), puddle: FX2('puddle', 10) },
+        walkAnim: 'walk',
+        down: { slide: 60, lyingFrames: [2] },
+        hp: 600, speedX: 32, speedY: 22, radius: 30, height: 136,
+        hurtbox: { x0: -41, x1: 48, yTop: -136, yBot: 0 },
+        engage: 70, hover: [90, 150], range: [20, 340], alignY: 10, cooldown: [1200, 2000], firstCooldown: [900, 1400],
+        knockResist: 0.6, deathKnock: 80,
+        attacks: {
+          slam:  { anim: 'attack', active: [3, 4], reach: { x0: 10, x1: 104, yTop: -120, yBot: 0 }, depth: 16, dmg: [11, 14], knock: 24, telegraph: [2], when: [10, 110], weight: 3 },
+          jump:  { type: 'leap', anim: 'skill', active: [4], reach: { x0: -70, x1: 110, yTop: -60, yBot: 0 }, depth: 18, telegraph: [1], leap: { frames: [2, 3], max: 220, aimAt: 30 },
+                   dmg: [12, 15], knock: 30, flinchMs: 420, shake: 2.4, when: [60, 280], weight: 2, heavy: true, gapMs: 4000 },
+          spores: { type: 'throw', anim: 'attack', telegraph: [1, 2], spawnFrame: 3, spawn: { x: 50, y: -110 }, flightMs: 800, arcPeak: 80, maxRange: 340, radius: 38, depth: 12, dodgeZ: 22,
+                   proj: 'spore', burstArt: null, burstCols: ["#2a3a10", "#6a8a2a", "#c8e83a", "#f0ffb0"], puddle: { ms: 4500, radius: 38, depth: 12, everyMs: 450, firstMs: 250, stayMs: 700, dmg: 3 },
+                   dmg: [7, 9], knock: 12, flinchMs: 300, when: [120, 340], weight: 2, gapMs: 3500 }
+        }
+      },
+      // 11판 보스 저주받은 고목왕: 가지 두 번 쓸기 · 뿌리 덫 8줄 · 가시 비(하늘에서 가시창, 빨간 원) · 몸통 돌진 / 분노: 졸개(뿌리 괴물 · 독버섯 · 가시 정령) + 가시 비 10발
+      treantking: {
+        label: '저주받은 고목왕', frameW: 336, frameH: 247, pivot: { x: 154, y: 241 },
+        boss: true,
+        anims: Object.assign(enemyAnims('treantking', { idle: [4, 5, true], walk: [6, 7, true], attack1: [5, 9, false, [1, 2, 2, 2, 3, 3, 4, 4, 5]], attack2: [5, 9, false, [1, 2, 2, 2, 3, 3, 4, 4, 5]], special: [6, 8, false, [1, 2, 2, 2, 2, 3, 4, 5, 6]], hit: [3, 8, false, [1, 2, 2, 3]], hit2: [3, 8, false, [1, 1, 2, 2, 3]], death: [5, 6, false, [1, 1, 2, 3, 4, 5, 5]] })),
+        fxArt: { root: FX2('rootspike', 13), fall: FX2('thornfall', 13), blast: FX2('thornhit', 13) },
+        walkAnim: 'walk',
+        staggerCdMs: 2300,   // 움찔한 뒤 2.3초는 안 끊김(예전 보스와 같음 — 계속 맞아도 공격함)
+        hp: 1050, speedX: 30, speedY: 20, radius: 48, height: 230,
+        hurtbox: { x0: -46, x1: 58, yTop: -230, yBot: 0 },
+        engage: 90, hover: [90, 130], range: [30, 520], alignY: 12, cooldown: [1000, 1800], firstCooldown: [1300, 1700],
+        knockResist: 0.15, deathKnock: 30, superArmor: true,
+        enrageAt: 0.5, rageColor: '#b04aff',
+        enrage: { speedMul: 1.2, cooldownMul: 0.72, summon: ['root', 'shroom', 'thorn'] },
+        attacks: {
+          sweep:  { anim: 'attack1', active: [3, 4], multiHit: true, telegraph: [2], depth: 18, reach: { x0: 10, x1: 180, yTop: -150, yBot: 0 },
+                    dmg: [13, 17], knock: 28, flinchMs: 420, shake: 1.6, when: [20, 175], weight: 2 },
+          roots:  { type: 'spikes', anim: 'attack2', telegraph: [1, 2], spawnFrame: 3, fx: 'root', aimMs: 400, count: 8, first: 60, step: 48, delayMs: 80, maxRange: 440,
+                    spikeActive: [2, 3, 4], reach: { x0: -22, x1: 22, yTop: -72, yBot: 0 }, depth: 16, dodgeZ: 30, enraged: {},
+                    dmg: [13, 16], knock: 18, flinchMs: 420, shake: 1.6, when: [0, 460], weight: 2, gapMs: 5000, firstMs: 2500 },
+          rain:   { type: 'barrage', anim: 'special', telegraph: [1, 2], spawnFrame: 3, count: 6, intervalMs: 240, fallMs: 900, dropHeight: 300,
+                    proj: 'fall', blast: 'blast', blastCols: ["#1a0a24", "#5a2a8a", "#b07aff", "#f0d8ff"], spread: { x: 70, y: 16 }, radius: 40, depth: 16, dodgeZ: 24, holdMs: 250, gapMs: 8000, firstMs: 4500,
+                    enraged: { count: 10, intervalMs: 180 }, dmg: [13, 17], knock: 26, flinchMs: 420, heavy: true, shake: 2.0, when: [0, 600], weight: 2 },
+          ram:    { type: 'charge', anim: 'attack1', frames: { wind: [1, 2], run: [3, 4], impact: [4], recover: [5] }, windMs: 750, stepMs: 110, speed: 420, dist: 420, impactMs: 260, recoverMs: 420,
+                    bodyReach: { x0: -10, x1: 110, yTop: -200, yBot: 0 }, reach: { x0: 40, x1: 150, yTop: -180, yBot: 0 }, depth: 18,
+                    dmg: [15, 19], knock: 40, flinchMs: 500, shake: 2.4, dustMs: 100, when: [90, 480], weight: 2, heavy: true, gapMs: 6000, firstMs: 6000 }
+        }
+      },
+      // 12판 보스 가시덩굴 마녀: 지팡이 휘두르기 · 따라오는 해골불 3발 · 저주 문양(바닥이 보라로 터짐, 빨간 원) · 등 뒤 순간이동 / 분노: 졸개 + 해골불 5발 · 순간이동 자주
+      witch: {
+        label: '가시덩굴 마녀', frameW: 276, frameH: 206, pivot: { x: 114, y: 200 },
+        boss: true,
+        anims: Object.assign(enemyAnims('witch', { idle: [4, 5, true], walk: [6, 7, true], attack1: [5, 9, false, [1, 2, 2, 2, 3, 3, 4, 4, 5]], attack2: [5, 9, false, [1, 2, 2, 2, 3, 3, 4, 4, 5]], special: [6, 8, false, [1, 2, 2, 2, 2, 3, 4, 5, 6]], hit: [3, 8, false, [1, 2, 2, 3]], hit2: [3, 8, false, [1, 1, 2, 2, 3]], death: [5, 6, false, [1, 1, 2, 3, 4, 5, 5]] }), { vanish: { frames: [EN + 'witch/special_01.png', EN + 'witch/special_02.png'], fps: 7, loop: false, playback: [1, 1, 2, 2] }, appear: { frames: [EN + 'witch/special_05.png', EN + 'witch/special_01.png'], fps: 7, loop: false, playback: [1, 1, 2, 2] } }),
+        fxArt: { skull: FX2('skull', 13), blast: FX2('curseburst', 13) },
+        walkAnim: 'walk',
+        staggerCdMs: 2300,   // 움찔한 뒤 2.3초는 안 끊김(예전 보스와 같음 — 계속 맞아도 공격함)
+        hp: 1000, speedX: 34, speedY: 22, radius: 36, height: 190,
+        hurtbox: { x0: -34, x1: 42, yTop: -190, yBot: 0 },
+        engage: 80, hover: [140, 220], range: [30, 520], alignY: 12, cooldown: [950, 1700], firstCooldown: [1200, 1600],
+        knockResist: 0.2, deathKnock: 30, superArmor: true,
+        enrageAt: 0.5, rageColor: '#d04aff',
+        enrage: { speedMul: 1.2, cooldownMul: 0.7, summon: ['root', 'shroom', 'root'] },
+        attacks: {
+          swipe:  { anim: 'attack1', active: [3, 4], telegraph: [2], depth: 16, reach: { x0: 10, x1: 140, yTop: -150, yBot: -10 },
+                    dmg: [12, 15], knock: 24, flinchMs: 400, shake: 1.2, when: [20, 140], weight: 2 },
+          skulls: { type: 'shot', anim: 'attack2', telegraph: [1, 2], spawnFrame: 3, spawn: { x: 70, y: -150 }, aimH: 100, dropPx: 60, proj: 'skull', impact: 'blast', impactAir: true, muzzle: null,
+                    volley: { count: 3, lanes: [0, -26, 26], gapMs: 160 }, homing: 50, homeAfterMs: 250, enraged: { count: 5, lanes: [0, -24, 24, -48, 48], gapMs: 120 },
+                    hitCols: ["#1a0a24", "#5a2a8a", "#b07aff", "#f0d8ff"], impactCols: ["#1a0a24", "#5a2a8a", "#b07aff", "#f0d8ff"], speed: 190, range: 520, box: { w: 22, h: 18 }, depth: 12, dodgeZ: 24,
+                    dmg: [11, 14], knock: 18, flinchMs: 360, when: [40, 520], weight: 3 },
+          curse:  { type: 'barrage', anim: 'special', telegraph: [1, 2, 3], spawnFrame: 3, count: 5, intervalMs: 200, fallMs: 1000, dropHeight: 1, noProj: true,
+                    blast: 'blast', blastCols: ["#1a0a24", "#5a2a8a", "#b07aff", "#f0d8ff"], spread: { x: 90, y: 22 }, radius: 42, depth: 16, dodgeZ: 24, holdMs: 400, gapMs: 7000, firstMs: 4000,
+                    enraged: { count: 8, intervalMs: 160 }, dmg: [13, 16], knock: 24, flinchMs: 420, shake: 1.4, when: [0, 600], weight: 2 },
+          blink:  { type: 'teleport', anim: 'vanish', appearAnim: 'appear', telegraph: [1], invuln: [2], hiddenMs: 350, gatherMs: 380, behind: 80, lunge: 0, depth: 16,
+                    reach: { x0: 10, x1: 140, yTop: -150, yBot: -10 }, then: 'swipe', thenFrame: 2, smokeCols: ['#140a1e', '#3a1a4a', '#7a3aaa', '#c87aff'],
+                    when: [0, 999], weight: 1, gapMs: 9000, firstMs: 6000, enraged: { useGapMs: 5500 } }
+        }
+      },
+      // 수정 갑충(13·14): 뛰어들어 물기 + 「수정 구르기」(몸을 말아 굴러 돌진 — 땅 위 빨간 띠 예고)
       beetle: {
         label: '수정 갑충', frameW: 137, frameH: 80, pivot: { x: 78, y: 74 },
-        anims: enemyAnims('beetle', {
-          idle: [4, 6, true], run: [6, 14, true],
-          attack: [5, 12, false, [1, 1, 1, 2, 3, 3, 4, 5]],   // 1 웅크림·수정 빛(예고) · 2 도약 · 3 집게 물기 · 4 착지 · 5 복귀
-          hit: [3, 10, false, [1, 2, 2, 3]],
-          hit2: [3, 10, false, [1, 1, 2, 2, 3]],
-          knockdown: [4, 10, false, [1, 2, 2, 3, 4, 4, 4]],   // 뒤집혀 날아감 → 등으로 떨어짐 → 발버둥(4)
-          getup: [3, 8, false, [1, 1, 2, 2, 3]],
-          death: [5, 8, false, [1, 2, 3, 4, 5]]                // 수정 금 → 뒤집힘 → 껍질이 수정 조각으로 부서짐
-        }),
+        anims: enemyAnims('beetle', { idle: [4, 6, true], run: [6, 14, true], attack: [5, 10, false, [1, 2, 2, 2, 3, 4, 4, 5]], skill: [5, 10, false, [1, 2, 2, 2, 2, 3, 4, 4, 5]], hit: [3, 10, false, [1, 2, 2, 3]], hit2: [3, 10, false, [1, 1, 2, 2, 3]], knockdown: [4, 10, false, [1, 2, 3, 4, 4]], getup: [3, 8, false, [1, 1, 2, 2, 3]], death: [5, 8, false] }),
         walkAnim: 'run',
         down: { slide: 70, lyingFrames: [3, 4] },
         hp: 55, speedX: 110, speedY: 60, radius: 26, height: 58,
         hurtbox: { x0: -44, x1: 46, yTop: -58, yBot: 0 },
-        engage: 84, hover: [150, 200], range: [55, 112], alignY: 8, cooldown: [1300, 2300], firstCooldown: [300, 1200],
-        retreatMs: 900,
-        knockResist: 1.1, deathKnock: 230,
+        engage: 84, hover: [150, 220], range: [55, 360], alignY: 8, cooldown: [1300, 2300], firstCooldown: [300, 1200],
+        retreatMs: 900, knockResist: 1.1, deathKnock: 230,
         attacks: {
-          bite: { anim: 'attack', active: [2, 3], reach: { x0: 30, x1: 86, yTop: -56, yBot: -6 }, depth: 12,
-                  dmg: [6, 8], knock: 12, move: { frames: [2, 3], dist: 36 } }
+          bite: { anim: 'attack', active: [2, 3], reach: { x0: 30, x1: 86, yTop: -56, yBot: -6 }, depth: 12, dmg: [6, 8], knock: 12, move: { frames: [2, 3], dist: 36 }, when: [40, 112], weight: 3 },
+          roll: { type: 'charge', anim: 'skill', frames: { wind: [1, 2], run: [2, 3, 4, 3], impact: [4], recover: [5] }, windMs: 600, stepMs: 70, speed: 380, dist: 360, impactMs: 160, recoverMs: 300,
+                  bodyReach: { x0: -30, x1: 40, yTop: -50, yBot: 0 }, reach: { x0: 0, x1: 50, yTop: -50, yBot: 0 }, depth: 12,
+                  dmg: [7, 9], knock: 22, flinchMs: 320, shake: 0.8, dustMs: 90, when: [140, 360], weight: 2, gapMs: 5000, firstMs: 1500 }
         }
       },
-      // 심해 어인(15·16 가라앉은 신전): 삼지창을 든 물고기 전사. 도마뱀 전사처럼 멀리 찌르기 + 가끔 달려들기(단단한 잡몹)
-      //   달려들기 그림(attack2) = 찌르기 그림 1·3·4·5장을 다시 씀
+      // 13·14 수정 갑충 구르기 그림(skill) = 어제 그림 칸(mob.json)에 맞춰 넣은 v2/old/beetle
+      // 수정 파수꾼(13·14): 떠 있는 수정 덩어리. 가시 찌르기 + 「수정 파편」(파편 3발이 세 줄로)
+      turret: {
+        label: '수정 파수꾼', frameW: 149, frameH: 129, pivot: { x: 56, y: 123 },
+        anims: enemyAnims('turret', { idle: [4, 6, true], walk: [6, 8, true], attack: [5, 10, false, [1, 2, 2, 2, 3, 4, 4, 5]], skill: [5, 10, false, [1, 2, 2, 2, 2, 3, 4, 4, 5]], hit: [3, 10, false, [1, 2, 2, 3]], hit2: [3, 10, false, [1, 1, 2, 2, 3]], knockdown: [5, 10, false, [1, 2, 3, 4, 5, 5]], getup: [3, 8, false, [1, 1, 2, 2, 3]], death: [5, 8, false] }),
+        fxArt: { shard: FX2('shard', 14), burst: FX2('shatter', 14) },
+        walkAnim: 'walk',
+        down: { slide: 70, lyingFrames: [4, 5] },
+        hp: 58, speedX: 30, speedY: 22, radius: 18, height: 84,
+        hurtbox: { x0: -25, x1: 25, yTop: -98, yBot: -14 },
+        engage: 50, hover: [170, 260], range: [0, 380], alignY: 8, cooldown: [2800, 3800], firstCooldown: [900, 1800],
+        knockResist: 1.0, deathKnock: 200,
+        ranged: { attack: 'shards', keep: [170, 260], tooClose: 80, backOffMul: 0.7, maxShooters: 2, alignMs: 600 },
+        attacks: {
+          bash:   { anim: 'attack', active: [3, 4], reach: { x0: 10, x1: 90, yTop: -70, yBot: -20 }, depth: 12, dmg: [6, 8], knock: 12, telegraph: [2], when: [0, 80], weight: 3 },
+          shards: { type: 'shot', anim: 'skill', telegraph: [1, 2], spawnFrame: 3, spawn: { x: 30, y: -60 }, aimH: 60, dropPx: 0, proj: 'shard', impact: 'burst', impactAir: true, muzzle: null,
+                    volley: { count: 3, lanes: [0, -16, 16], gapMs: 120 }, hitCols: ["#0a1a3a", "#3a6ac8", "#8ad8ff", "#e8faff"], impactCols: ["#0a1a3a", "#3a6ac8", "#8ad8ff", "#e8faff"],
+                    speed: 260, range: 380, box: { w: 18, h: 10 }, depth: 9, dodgeZ: 22, dmg: [5, 7], knock: 10, flinchMs: 260, when: [100, 380], weight: 3 }
+        }
+      },
+      // 수정 거미(13·14): 독니 + 「덮치기」(높이 뛰어 플레이어 자리로 떨어짐, 빨간 원 예고)
+      spider: {
+        label: '수정 거미', frameW: 179, frameH: 100, pivot: { x: 95, y: 94 },
+        anims: enemyAnims('spider', { idle: [4, 6, true], run: [6, 13, true], attack: [5, 10, false, [1, 2, 2, 2, 3, 4, 4, 5]], skill: [5, 10, false, [1, 2, 2, 2, 2, 3, 4, 4, 5]], hit: [3, 10, false, [1, 2, 2, 3]], hit2: [3, 10, false, [1, 1, 2, 2, 3]], knockdown: [5, 10, false, [1, 2, 3, 4, 5, 5]], getup: [3, 8, false, [1, 1, 2, 2, 3]], death: [5, 8, false] }),
+        walkAnim: 'run',
+        down: { slide: 70, lyingFrames: [4, 5] },
+        hp: 50, speedX: 100, speedY: 56, radius: 22, height: 54,
+        hurtbox: { x0: -32, x1: 32, yTop: -54, yBot: 0 },
+        engage: 70, hover: [140, 200], range: [40, 260], alignY: 8, cooldown: [1300, 2200], firstCooldown: [400, 1200],
+        retreatMs: 700, knockResist: 1.1, deathKnock: 220,
+        attacks: {
+          bite:   { anim: 'attack', active: [3, 4], reach: { x0: 20, x1: 76, yTop: -60, yBot: -4 }, depth: 12, dmg: [6, 8], knock: 12, telegraph: [2], when: [30, 90], weight: 2 },
+          pounce: { type: 'leap', anim: 'skill', active: [4], reach: { x0: -30, x1: 60, yTop: -50, yBot: 0 }, depth: 14, telegraph: [1, 2], leap: { frames: [3], max: 200, aimAt: 20 },
+                    dmg: [7, 9], knock: 18, flinchMs: 320, shake: 1.0, when: [80, 260], weight: 2, gapMs: 4000, firstMs: 1200 }
+        }
+      },
+      // 13판 중간보스 수정 장수풍뎅이: 뿔 들이받기 · 뿔 돌진 · 수정 가시 줄
+      rhinobeetle: {
+        label: '수정 장수풍뎅이', frameW: 214, frameH: 126, pivot: { x: 85, y: 120 },
+        anims: enemyAnims('rhinobeetle', { idle: [4, 6, true], walk: [6, 8, true], attack: [5, 9, false, [1, 2, 2, 2, 3, 4, 4, 5]], skill: [5, 9, false, [1, 2, 2, 2, 2, 3, 4, 4, 5]], hit: [3, 10, false, [1, 2, 2, 3]], hit2: [3, 10, false, [1, 1, 2, 2, 3]], knockdown: [2, 8, false, [1, 2, 2, 2]], getup: [2, 8, false, [1, 2, 2]], death: [5, 7, false, [1, 1, 2, 2, 3, 4, 5]] }),
+        fxArt: { spike: FX2('cspike', 13) },
+        walkAnim: 'walk',
+        down: { slide: 60, lyingFrames: [2] },
+        hp: 620, speedX: 40, speedY: 24, radius: 40, height: 104,
+        hurtbox: { x0: -62, x1: 73, yTop: -104, yBot: 0 },
+        engage: 80, hover: [110, 170], range: [30, 420], alignY: 10, cooldown: [1100, 1900], firstCooldown: [900, 1400],
+        knockResist: 0.5, deathKnock: 60,
+        attacks: {
+          toss:   { anim: 'attack', active: [3], reach: { x0: 20, x1: 110, yTop: -100, yBot: 0 }, depth: 16, dmg: [11, 14], knock: 30, telegraph: [2], when: [20, 110], weight: 3 },
+          charge: { type: 'charge', anim: 'skill', frames: { wind: [1, 2], run: [3, 4], impact: [5], recover: [5] }, windMs: 700, stepMs: 90, speed: 460, dist: 440, impactMs: 220, recoverMs: 380,
+                    bodyReach: { x0: -20, x1: 90, yTop: -100, yBot: 0 }, reach: { x0: 30, x1: 120, yTop: -100, yBot: 0 }, depth: 16,
+                    dmg: [12, 15], knock: 36, flinchMs: 450, shake: 2.0, dustMs: 90, when: [150, 440], weight: 2, heavy: true, gapMs: 4500 },
+          spikes: { type: 'spikes', anim: 'attack', telegraph: [1, 2], spawnFrame: 3, fx: 'spike', aimMs: 350, count: 6, first: 60, step: 46, delayMs: 80, maxRange: 340,
+                    spikeActive: [2, 3, 4], reach: { x0: -20, x1: 20, yTop: -72, yBot: 0 }, depth: 14, dodgeZ: 28, dmg: [10, 13], knock: 16, flinchMs: 400, when: [90, 340], weight: 2, gapMs: 5000 }
+        }
+      },
+      // 14판 중간보스 수정 거미 여왕: 독니 · 수정 파편 5발 · 덮치기
+      spiderqueen: {
+        label: '수정 거미 여왕', frameW: 224, frameH: 120, pivot: { x: 95, y: 114 },
+        anims: enemyAnims('spiderqueen', { idle: [4, 6, true], walk: [6, 8, true], attack: [5, 9, false, [1, 2, 2, 2, 3, 4, 4, 5]], skill: [5, 9, false, [1, 2, 2, 2, 2, 3, 4, 4, 5]], hit: [3, 10, false, [1, 2, 2, 3]], hit2: [3, 10, false, [1, 1, 2, 2, 3]], knockdown: [2, 8, false, [1, 2, 2, 2]], getup: [2, 8, false, [1, 2, 2]], death: [5, 7, false, [1, 1, 2, 2, 3, 4, 5]] }),
+        fxArt: { shard: FX2('shard', 14), hit: FX2('shatter', 14) },
+        walkAnim: 'walk',
+        down: { slide: 60, lyingFrames: [2] },
+        hp: 620, speedX: 44, speedY: 26, radius: 40, height: 100,
+        hurtbox: { x0: -60, x1: 70, yTop: -100, yBot: 0 },
+        engage: 80, hover: [130, 200], range: [30, 400], alignY: 10, cooldown: [1100, 1900], firstCooldown: [900, 1400],
+        knockResist: 0.5, deathKnock: 60,
+        attacks: {
+          fang:   { anim: 'attack', active: [3, 4], reach: { x0: 20, x1: 110, yTop: -96, yBot: 0 }, depth: 16, dmg: [11, 14], knock: 22, telegraph: [2], when: [20, 110], weight: 3 },
+          burst:  { type: 'shot', anim: 'skill', telegraph: [1, 2], spawnFrame: 3, spawn: { x: 30, y: -60 }, aimH: 60, dropPx: 0, proj: 'shard', impact: 'hit', impactAir: true, muzzle: null,
+                    volley: { count: 5, lanes: [0, -16, 16, -32, 32], gapMs: 60 }, hitCols: ["#0a1a3a", "#3a6ac8", "#8ad8ff", "#e8faff"], impactCols: ["#0a1a3a", "#3a6ac8", "#8ad8ff", "#e8faff"],
+                    speed: 270, range: 400, box: { w: 18, h: 10 }, depth: 9, dodgeZ: 22, dmg: [8, 10], knock: 12, flinchMs: 300, when: [120, 400], weight: 2, gapMs: 3500 },
+          pounce: { type: 'leap', anim: 'attack', active: [4], reach: { x0: -50, x1: 100, yTop: -60, yBot: 0 }, depth: 18, telegraph: [1], leap: { frames: [2, 3], max: 240, aimAt: 30 },
+                    dmg: [12, 15], knock: 28, flinchMs: 420, shake: 2.2, when: [90, 300], weight: 2, heavy: true, gapMs: 5000 }
+        }
+      },
+      // 13판 보스 수정 지네왕: 큰턱 물기 · 수정 파편 5발(분노 7발) · 머리 내려찍기 = 수정 가시 9줄 · 몸통 돌진 / 분노: 졸개(갑충 · 거미 · 파수꾼)
+      centipede: {
+        label: '수정 지네왕', frameW: 332, frameH: 202, pivot: { x: 166, y: 196 },
+        boss: true,
+        anims: Object.assign(enemyAnims('centipede', { idle: [4, 5, true], walk: [6, 7, true], attack1: [5, 9, false, [1, 2, 2, 2, 3, 3, 4, 4, 5]], attack2: [5, 9, false, [1, 2, 2, 2, 3, 3, 4, 4, 5]], special: [5, 8, false, [1, 2, 2, 2, 2, 3, 4, 5]], hit: [3, 8, false, [1, 2, 2, 3]], hit2: [3, 8, false, [1, 1, 2, 2, 3]], death: [5, 6, false, [1, 1, 2, 3, 4, 5, 5]] })),
+        fxArt: { shard: FX2('shard', 13), spike: FX2('cspike', 13), hit: FX2('shatter', 13) },
+        walkAnim: 'walk',
+        staggerCdMs: 2300,   // 움찔한 뒤 2.3초는 안 끊김(예전 보스와 같음 — 계속 맞아도 공격함)
+        hp: 1100, speedX: 40, speedY: 24, radius: 50, height: 190,
+        hurtbox: { x0: -57, x1: 57, yTop: -190, yBot: 0 },
+        engage: 90, hover: [100, 150], range: [30, 520], alignY: 12, cooldown: [950, 1700], firstCooldown: [1200, 1600],
+        knockResist: 0.15, deathKnock: 30, superArmor: true,
+        enrageAt: 0.5, rageColor: '#6ad8ff',
+        enrage: { speedMul: 1.25, cooldownMul: 0.7, summon: ['beetle', 'spider', 'turret'] },
+        attacks: {
+          bite:   { anim: 'attack1', active: [3, 4], telegraph: [2], depth: 18, reach: { x0: 10, x1: 160, yTop: -170, yBot: 0 },
+                    dmg: [13, 17], knock: 28, flinchMs: 420, shake: 1.6, when: [20, 160], weight: 2 },
+          spit:   { type: 'shot', anim: 'attack2', telegraph: [1, 2], spawnFrame: 3, spawn: { x: 90, y: -150 }, aimH: 70, dropPx: 80, proj: 'shard', impact: 'hit', impactAir: true, muzzle: null,
+                    volley: { count: 5, lanes: [0, -20, 20, -40, 40], gapMs: 70 }, enraged: { count: 7, lanes: [0, -18, 18, -36, 36, -54, 54], gapMs: 60 },
+                    hitCols: ["#0a1a3a", "#3a6ac8", "#8ad8ff", "#e8faff"], impactCols: ["#0a1a3a", "#3a6ac8", "#8ad8ff", "#e8faff"], speed: 280, range: 520, box: { w: 18, h: 10 }, depth: 9, dodgeZ: 22,
+                    dmg: [11, 14], knock: 16, flinchMs: 340, when: [40, 520], weight: 2 },
+          slam:   { type: 'spikes', anim: 'special', telegraph: [1, 2], spawnFrame: 3, fx: 'spike', aimMs: 400, count: 9, first: 60, step: 48, delayMs: 70, maxRange: 500,
+                    spikeActive: [2, 3, 4], reach: { x0: -22, x1: 22, yTop: -76, yBot: 0 }, depth: 16, dodgeZ: 30,
+                    dmg: [14, 17], knock: 18, flinchMs: 420, shake: 2.0, when: [0, 520], weight: 2, gapMs: 5000, firstMs: 2500 },
+          lunge:  { type: 'charge', anim: 'attack1', frames: { wind: [1, 2], run: [3, 4], impact: [4], recover: [5] }, windMs: 700, stepMs: 90, speed: 480, dist: 460, impactMs: 240, recoverMs: 400,
+                    bodyReach: { x0: -10, x1: 140, yTop: -170, yBot: 0 }, reach: { x0: 40, x1: 170, yTop: -170, yBot: 0 }, depth: 18,
+                    dmg: [15, 19], knock: 40, flinchMs: 500, shake: 2.4, dustMs: 80, when: [90, 500], weight: 2, heavy: true, gapMs: 6000, firstMs: 5000 }
+        }
+      },
+      // 14판 보스 수정 거신: 두 주먹 내려찍기 · 수정 덩어리 던지기 · 땅울림 수정 고리(뛰어넘기) · 종유석 비 / 분노: 졸개 + 고리 3겹 · 종유석 10개
+      colossus: {
+        label: '수정 거신', frameW: 322, frameH: 255, pivot: { x: 132, y: 249 },
+        boss: true,
+        anims: Object.assign(enemyAnims('colossus', { idle: [4, 5, true], walk: [6, 7, true], attack1: [5, 9, false, [1, 2, 2, 2, 3, 3, 4, 4, 5]], attack2: [5, 9, false, [1, 2, 2, 2, 3, 3, 4, 4, 5]], special: [6, 8, false, [1, 2, 2, 2, 2, 3, 4, 5, 6]], hit: [3, 8, false, [1, 2, 2, 3]], hit2: [3, 8, false, [1, 1, 2, 2, 3]], death: [5, 6, false, [1, 1, 2, 3, 4, 5, 5]] })),
+        fxArt: { rock: FX2('boulder', 12), ring: FX2('cring', 12), fall: FX2('stalac', 12), hit: FX2('shatter', 12) },
+        walkAnim: 'walk',
+        staggerCdMs: 2300,   // 움찔한 뒤 2.3초는 안 끊김(예전 보스와 같음 — 계속 맞아도 공격함)
+        hp: 1200, speedX: 28, speedY: 20, radius: 52, height: 230,
+        hurtbox: { x0: -51, x1: 55, yTop: -230, yBot: 0 },
+        engage: 90, hover: [90, 130], range: [30, 560], alignY: 12, cooldown: [1050, 1850], firstCooldown: [1300, 1700],
+        knockResist: 0.1, deathKnock: 20, superArmor: true,
+        enrageAt: 0.5, rageColor: '#8ad8ff',
+        enrage: { speedMul: 1.2, cooldownMul: 0.7, summon: ['turret', 'beetle', 'turret'] },
+        attacks: {
+          slam:   { anim: 'attack1', active: [3, 4], telegraph: [2], depth: 20, reach: { x0: 20, x1: 170, yTop: -160, yBot: 0 }, burst: { x: 120, scale: 1, fx: 'hit', cols: ["#0a1a3a", "#3a6ac8", "#8ad8ff", "#e8faff"] },
+                    dmg: [15, 19], knock: 32, flinchMs: 480, shake: 2.6, heavy: true, when: [20, 170], weight: 2 },
+          hurl:   { type: 'throw', anim: 'attack2', telegraph: [1, 2], spawnFrame: 3, spawn: { x: 100, y: -190 }, flightMs: 700, arcPeak: 80, maxRange: 420, radius: 46, depth: 18, dodgeZ: 24,
+                    proj: 'rock', burstArt: 'hit', dmg: [15, 19], knock: 30, flinchMs: 460, shake: 2.4, when: [60, 440], weight: 2, heavy: true },
+          quake:  { type: 'shockwave', anim: 'special', telegraph: [1, 2], spawnFrame: 3, holdFrame: 4, fx: 'ring', ringArt: true, spawn: { x: 10, y: 0 },
+                    rings: { count: 2, gapMs: 700, r0: 24, rMax: 300, speed: 270, band: 16, ryMax: 26, ringRx: 80, flameScale: 0.9, dodgeZ: 22 }, enraged: { count: 3 },
+                    dmg: [13, 16], knock: 30, flinchMs: 450, heavy: true, shake: 2.4, when: [0, 320], weight: 2, gapMs: 6000, firstMs: 4000 },
+          stalac: { type: 'barrage', anim: 'special', telegraph: [1, 2], spawnFrame: 3, count: 6, intervalMs: 230, fallMs: 900, dropHeight: 300,
+                    proj: 'fall', blast: 'hit', blastCols: ["#0a1a3a", "#3a6ac8", "#8ad8ff", "#e8faff"], spread: { x: 80, y: 18 }, radius: 40, depth: 16, dodgeZ: 24, holdMs: 250, gapMs: 8000, firstMs: 6000,
+                    enraged: { count: 10, intervalMs: 170 }, dmg: [13, 17], knock: 26, flinchMs: 420, heavy: true, shake: 2.0, when: [0, 600], weight: 2 }
+        }
+      },
+      // 심해 어인(15·16): 찌르기 + 「작살 던지기」(삼지창을 던짐, 바닥 줄 예고)
       fishman: {
         label: '심해 어인', frameW: 258, frameH: 112, pivot: { x: 109, y: 106 },
-        anims: enemyAnims('fishman', {
-          idle: [4, 6, true], walk: [6, 9, true],
-          attack: [5, 10, false, [1, 2, 2, 2, 3, 4, 4, 5]],    // 1 당김 · 2 삼지창 뒤로(예고) · 3 쭉 찌름(맞음) · 4 끝까지 · 5 복귀
-          attack2: [4, 12, false, [1, 1, 2, 3, 3, 4]],          // 달려들기
-          hit: [3, 10, false, [1, 2, 2, 3]],
-          hit2: [3, 10, false, [1, 1, 2, 2, 3]],
-          knockdown: [5, 10, false, [1, 2, 2, 3, 4, 5, 4, 5]],
-          getup: [3, 8, false, [1, 1, 2, 2, 3]],
-          death: [5, 8, false, [1, 2, 3, 4, 5]]                // 쓰러짐 → 검은 바닷물 · 거품으로 녹음 → 부러진 삼지창 · 조개만
-        }),
+        anims: enemyAnims('fishman', { idle: [4, 6, true], walk: [6, 9, true], attack: [5, 10, false, [1, 2, 2, 2, 3, 4, 4, 5]], skill: [5, 10, false, [1, 2, 2, 2, 2, 3, 4, 4, 5]], hit: [3, 10, false, [1, 2, 2, 3]], hit2: [3, 10, false, [1, 1, 2, 2, 3]], knockdown: [5, 10, false, [1, 2, 3, 4, 5, 5]], getup: [3, 8, false, [1, 1, 2, 2, 3]], death: [5, 8, false] }),
+        fxArt: { harpoon: FX2('harpoon', 14), splash: FX2('splash', 14) },
         walkAnim: 'walk',
-        down: { slide: 80, lyingFrames: [3, 4, 5] },
+        down: { slide: 70, lyingFrames: [4, 5] },
         hp: 80, speedX: 48, speedY: 30, radius: 15, height: 96,
         hurtbox: { x0: -14, x1: 26, yTop: -94, yBot: 0 },
-        engage: 80, hover: [110, 160], range: [30, 140], alignY: 7, cooldown: [1300, 2300], firstCooldown: [600, 1600],
+        engage: 80, hover: [110, 180], range: [30, 330], alignY: 8, cooldown: [1300, 2300], firstCooldown: [600, 1600],
         knockResist: 1.0, deathKnock: 210,
         attacks: {
-          thrust: { anim: 'attack', active: [3, 4], reach: { x0: 20, x1: 120, yTop: -78, yBot: -40 }, depth: 12,
-                    dmg: [7, 10], knock: 16, telegraph: [2], showTelegraph: true, when: [30, 114], weight: 3 },
-          lunge:  { anim: 'attack2', active: [2, 3], reach: { x0: 20, x1: 104, yTop: -66, yBot: -30 }, depth: 12, move: { frames: [2, 3], dist: 40 },
-                    dmg: [5, 7], knock: 14, telegraph: [1], when: [70, 140], weight: 1, gapMs: 6000 }
+          thrust:  { anim: 'attack', active: [3, 4], reach: { x0: 20, x1: 120, yTop: -78, yBot: -40 }, depth: 12, dmg: [7, 10], knock: 16, telegraph: [2], showTelegraph: true, when: [30, 114], weight: 3 },
+          harpoon: { type: 'shot', anim: 'skill', telegraph: [1, 2], spawnFrame: 3, spawn: { x: 50, y: -70 }, aimH: 60, dropPx: 0, proj: 'harpoon', impact: 'splash', muzzle: null,
+                     hitCols: ["#06303a", "#1a8a9a", "#6ae8f0", "#e8ffff"], impactCols: ["#06303a", "#1a8a9a", "#6ae8f0", "#e8ffff"], speed: 300, range: 330, box: { w: 30, h: 10 }, depth: 9, dodgeZ: 22,
+                     dmg: [7, 9], knock: 18, flinchMs: 320, when: [120, 330], weight: 2, gapMs: 4500, maxShooters: 2 }
         }
       },
-      // 폭풍 하피(17·18 하늘 폐허): 날개 팔 · 금빛 발톱. 거대 박쥐처럼 떠다니다 내리꽂아 할퀴고 빠짐(잡몹)
+      // 전기 해파리(15·16): 촉수 채찍 + 「전기 파동」(몸에서 번개 고리가 퍼짐 — 뛰어넘으면 피함)
+      jelly: {
+        label: '전기 해파리', frameW: 173, frameH: 148, pivot: { x: 104, y: 142 },
+        anims: enemyAnims('jelly', { idle: [4, 6, true], fly: [6, 8, true], attack: [5, 10, false, [1, 2, 2, 2, 3, 4, 4, 5]], skill: [5, 10, false, [1, 2, 2, 2, 2, 3, 4, 4, 5]], hit: [3, 10, false, [1, 2, 2, 3]], hit2: [3, 10, false, [1, 1, 2, 2, 3]], knockdown: [5, 10, false, [1, 2, 3, 4, 5, 5]], getup: [3, 8, false, [1, 1, 2, 2, 3]], death: [5, 8, false] }),
+        fxArt: { ring: FX2('ering', 12) },
+        walkAnim: 'fly',
+        down: { slide: 70, lyingFrames: [4, 5] },
+        hp: 48, speedX: 50, speedY: 34, radius: 18, height: 80,
+        hurtbox: { x0: -24, x1: 24, yTop: -120, yBot: -40 },
+        engage: 60, hover: [90, 160], range: [0, 200], alignY: 12, cooldown: [1800, 2800], firstCooldown: [800, 1600],
+        knockResist: 1.2, deathKnock: 200,
+        flying: { bob: 3, bobMs: 1100, jumpDmgMul: 1.0 },
+        attacks: {
+          lash:  { anim: 'attack', active: [3, 4], reach: { x0: 0, x1: 70, yTop: -100, yBot: -20 }, depth: 12, dmg: [5, 7], knock: 12, telegraph: [2], when: [0, 70], weight: 2 },
+          pulse: { type: 'shockwave', anim: 'skill', telegraph: [1, 2], spawnFrame: 3, holdFrame: 4, fx: 'ring', ringArt: true, spawn: { x: 0, y: 0 },
+                   rings: { count: 1, gapMs: 400, r0: 10, rMax: 120, speed: 180, band: 14, ryMax: 20, ringRx: 80, flameScale: 0.6, dodgeZ: 20 },
+                   dmg: [6, 8], knock: 20, flinchMs: 360, shake: 0.6, when: [0, 140], weight: 2, gapMs: 6500, firstMs: 2000 }
+        }
+      },
+      // 게 기사(15·16): 집게 내려찍기 + 「물기둥」(땅을 치면 물기둥이 줄지어 솟음)
+      crab: {
+        label: '게 기사', frameW: 171, frameH: 106, pivot: { x: 67, y: 100 },
+        anims: enemyAnims('crab', { idle: [4, 6, true], walk: [6, 8, true], attack: [5, 10, false, [1, 2, 2, 2, 3, 4, 4, 5]], skill: [5, 10, false, [1, 2, 2, 2, 2, 3, 4, 4, 5]], hit: [3, 10, false, [1, 2, 2, 3]], hit2: [3, 10, false, [1, 1, 2, 2, 3]], knockdown: [5, 10, false, [1, 2, 3, 4, 5, 5]], getup: [3, 8, false, [1, 1, 2, 2, 3]], death: [5, 8, false] }),
+        fxArt: { geyser: FX2('geyser', 13) },
+        walkAnim: 'walk',
+        down: { slide: 70, lyingFrames: [4, 5] },
+        hp: 90, speedX: 36, speedY: 22, radius: 22, height: 78,
+        hurtbox: { x0: -31, x1: 35, yTop: -78, yBot: 0 },
+        engage: 66, hover: [100, 160], range: [20, 280], alignY: 8, cooldown: [1500, 2400], firstCooldown: [700, 1500],
+        knockResist: 0.8, deathKnock: 190,
+        attacks: {
+          smash:  { anim: 'attack', active: [3, 4], reach: { x0: 20, x1: 96, yTop: -76, yBot: -10 }, depth: 13, dmg: [8, 11], knock: 18, telegraph: [2], showTelegraph: true, when: [20, 96], weight: 3 },
+          geyser: { type: 'spikes', anim: 'skill', telegraph: [1, 2], spawnFrame: 3, fx: 'geyser', aimMs: 350, count: 3, first: 60, step: 56, delayMs: 140, maxRange: 240,
+                    spikeActive: [2, 3, 4], reach: { x0: -22, x1: 22, yTop: -80, yBot: 0 }, depth: 13, dodgeZ: 26, dmg: [7, 9], knock: 20, flinchMs: 380, when: [80, 280], weight: 2, gapMs: 5000, firstMs: 1500 }
+        }
+      },
+      // 15판 중간보스 어인 장군: 삼지창 쓸기 · 물줄기 뿜기 · 물기둥 줄
+      fishlord: {
+        label: '어인 장군', frameW: 239, frameH: 170, pivot: { x: 107, y: 164 },
+        anims: enemyAnims('fishlord', { idle: [4, 6, true], walk: [6, 8, true], attack: [5, 9, false, [1, 2, 2, 2, 3, 4, 4, 5]], skill: [5, 9, false, [1, 2, 2, 2, 2, 3, 4, 4, 5]], hit: [3, 10, false, [1, 2, 2, 3]], hit2: [3, 10, false, [1, 1, 2, 2, 3]], knockdown: [2, 8, false, [1, 2, 2, 2]], getup: [2, 8, false, [1, 2, 2]], death: [5, 7, false, [1, 1, 2, 2, 3, 4, 5]] }),
+        fxArt: { jet: FX2('jet', 13), geyser: FX2('geyser', 13) },
+        walkAnim: 'walk',
+        down: { slide: 60, lyingFrames: [2] },
+        hp: 640, speedX: 36, speedY: 22, radius: 30, height: 150,
+        hurtbox: { x0: -27, x1: 42, yTop: -150, yBot: 0 },
+        engage: 80, hover: [100, 160], range: [30, 400], alignY: 10, cooldown: [1100, 1900], firstCooldown: [900, 1400],
+        knockResist: 0.55, deathKnock: 70,
+        attacks: {
+          sweep:  { anim: 'attack', active: [3, 4], multiHit: true, reach: { x0: 20, x1: 150, yTop: -120, yBot: -20 }, depth: 16, dmg: [11, 14], knock: 22, telegraph: [2], when: [20, 150], weight: 3 },
+          jet:    { type: 'breath', anim: 'skill', telegraph: [1, 2], active: [3, 4], depth: 14, reach: { x0: 50, x1: 280, yTop: -130, yBot: -90 }, tickMs: 180,
+                    dmg: [5, 7], burn: [1, 2], knock: 14, flinchMs: 240, shake: 0.6, when: [70, 300], weight: 2, gapMs: 4000,
+                    fx: { art: 'jet', attach: { x: 60, y: -112 }, segW: 58, segments: 4, growMs: 200 } },
+          geyser: { type: 'spikes', anim: 'attack', telegraph: [1, 2], spawnFrame: 3, fx: 'geyser', aimMs: 350, count: 5, first: 60, step: 54, delayMs: 110, maxRange: 340,
+                    spikeActive: [2, 3, 4], reach: { x0: -22, x1: 22, yTop: -80, yBot: 0 }, depth: 14, dodgeZ: 26, dmg: [10, 12], knock: 20, flinchMs: 400, when: [90, 340], weight: 2, gapMs: 5000 }
+        }
+      },
+      // 16판 중간보스 해파리 여왕: 촉수 폭풍 · 번개 고리 2겹 · 낙뢰(빨간 원)
+      jellyqueen: {
+        label: '해파리 여왕', frameW: 222, frameH: 258, pivot: { x: 111, y: 252 },
+        anims: enemyAnims('jellyqueen', { idle: [4, 6, true], fly: [7, 8, true], attack: [5, 9, false, [1, 2, 2, 2, 3, 4, 4, 5]], skill: [5, 9, false, [1, 2, 2, 2, 2, 3, 4, 4, 5]], hit: [3, 10, false, [1, 2, 2, 3]], hit2: [3, 10, false, [1, 1, 2, 2, 3]], knockdown: [2, 8, false, [1, 2, 2, 2]], getup: [2, 8, false, [1, 2, 2]], death: [5, 7, false, [1, 1, 2, 2, 3, 4, 5]] }),
+        fxArt: { ring: FX2('ering', 13), bolt: FX2('bolt', 13) },
+        walkAnim: 'fly',
+        down: { slide: 60, lyingFrames: [2] },
+        hp: 600, speedX: 40, speedY: 28, radius: 30, height: 130,
+        hurtbox: { x0: -39, x1: 39, yTop: -170, yBot: -40 },
+        engage: 70, hover: [90, 160], range: [0, 500], alignY: 14, cooldown: [1200, 2000], firstCooldown: [900, 1400],
+        knockResist: 0.6, deathKnock: 60,
+        flying: { bob: 3, bobMs: 1200, jumpDmgMul: 1.0 },
+        attacks: {
+          storm:  { anim: 'attack', active: [3, 4], multiHit: true, reach: { x0: 0, x1: 120, yTop: -150, yBot: -30 }, depth: 16, dmg: [10, 13], knock: 20, telegraph: [2], when: [0, 120], weight: 3 },
+          pulse:  { type: 'shockwave', anim: 'skill', telegraph: [1, 2], spawnFrame: 3, holdFrame: 4, fx: 'ring', ringArt: true, spawn: { x: 0, y: 0 },
+                    rings: { count: 2, gapMs: 600, r0: 16, rMax: 220, speed: 200, band: 14, ryMax: 22, ringRx: 80, flameScale: 0.7, dodgeZ: 20 },
+                    dmg: [10, 12], knock: 26, flinchMs: 400, shake: 1.0, when: [0, 240], weight: 2, gapMs: 4500 },
+          bolts:  { type: 'barrage', anim: 'skill', telegraph: [1, 2], spawnFrame: 3, count: 4, intervalMs: 260, fallMs: 800, dropHeight: 1, noProj: true,
+                    blast: 'bolt', blastCols: ["#2a2a0a", "#c8a82a", "#fff08a", "#ffffff"], spread: { x: 70, y: 18 }, radius: 34, depth: 14, dodgeZ: 24, holdMs: 200, gapMs: 6000, firstMs: 3000,
+                    dmg: [10, 12], knock: 22, flinchMs: 400, shake: 1.4, when: [80, 500], weight: 2 }
+        }
+      },
+      // 15판 보스 심해 마녀: 촉수 쓸기 · 따라오는 먹물 구슬 3발 · 땅속 촉수 7줄 · 물기둥 비(빨간 원) / 분노: 졸개(어인 · 해파리 · 게) + 먹물 5발
+      seawitch: {
+        label: '심해 마녀', frameW: 264, frameH: 205, pivot: { x: 106, y: 199 },
+        boss: true,
+        anims: Object.assign(enemyAnims('seawitch', { idle: [4, 5, true], walk: [6, 7, true], attack1: [5, 9, false, [1, 2, 2, 2, 3, 3, 4, 4, 5]], attack2: [5, 9, false, [1, 2, 2, 2, 3, 3, 4, 4, 5]], special: [6, 8, false, [1, 2, 2, 2, 2, 3, 4, 5, 6]], hit: [3, 8, false, [1, 2, 2, 3]], hit2: [3, 8, false, [1, 1, 2, 2, 3]], death: [5, 6, false, [1, 1, 2, 3, 4, 5, 5]] })),
+        fxArt: { ink: FX2('ink', 13), splash: FX2('splash', 13), tent: FX2('tentacle', 13), geyser: FX2('geyser', 13) },
+        walkAnim: 'walk',
+        staggerCdMs: 2300,   // 움찔한 뒤 2.3초는 안 끊김(예전 보스와 같음 — 계속 맞아도 공격함)
+        hp: 1150, speedX: 32, speedY: 22, radius: 44, height: 190,
+        hurtbox: { x0: -49, x1: 57, yTop: -190, yBot: 0 },
+        engage: 85, hover: [140, 220], range: [30, 520], alignY: 12, cooldown: [950, 1700], firstCooldown: [1200, 1600],
+        knockResist: 0.2, deathKnock: 30, superArmor: true,
+        enrageAt: 0.5, rageColor: '#3ae8d8',
+        enrage: { speedMul: 1.2, cooldownMul: 0.7, summon: ['fishman', 'jelly', 'crab'] },
+        attacks: {
+          sweep:  { anim: 'attack1', active: [3, 4], multiHit: true, telegraph: [2], depth: 18, reach: { x0: 0, x1: 170, yTop: -110, yBot: 0 },
+                    dmg: [13, 17], knock: 26, flinchMs: 420, shake: 1.4, when: [10, 170], weight: 2 },
+          ink:    { type: 'shot', anim: 'attack2', telegraph: [1, 2], spawnFrame: 3, spawn: { x: 80, y: -130 }, aimH: 80, dropPx: 50, proj: 'ink', impact: 'splash', impactAir: true, muzzle: null,
+                    volley: { count: 3, lanes: [0, -26, 26], gapMs: 150 }, homing: 55, homeAfterMs: 200, enraged: { count: 5, lanes: [0, -24, 24, -48, 48], gapMs: 110 },
+                    hitCols: ["#06303a", "#1a8a9a", "#6ae8f0", "#e8ffff"], impactCols: ["#06303a", "#1a8a9a", "#6ae8f0", "#e8ffff"], speed: 200, range: 520, box: { w: 22, h: 18 }, depth: 12, dodgeZ: 24,
+                    dmg: [11, 14], knock: 18, flinchMs: 360, when: [40, 520], weight: 3 },
+          deep:   { type: 'spikes', anim: 'special', telegraph: [1, 2], spawnFrame: 3, fx: 'tent', aimMs: 400, count: 7, first: 60, step: 50, delayMs: 90, maxRange: 420,
+                    spikeActive: [2, 3, 4], reach: { x0: -24, x1: 24, yTop: -84, yBot: 0 }, depth: 16, dodgeZ: 30,
+                    dmg: [13, 16], knock: 20, flinchMs: 420, shake: 1.8, when: [0, 460], weight: 2, gapMs: 5000, firstMs: 2500 },
+          geyser: { type: 'barrage', anim: 'special', telegraph: [1, 2], spawnFrame: 3, count: 5, intervalMs: 240, fallMs: 950, dropHeight: 1, noProj: true,
+                    blast: 'geyser', blastCols: ["#06303a", "#1a8a9a", "#6ae8f0", "#e8ffff"], spread: { x: 80, y: 18 }, radius: 38, depth: 16, dodgeZ: 26, holdMs: 300, gapMs: 8000, firstMs: 5000,
+                    enraged: { count: 8, intervalMs: 180 }, dmg: [13, 16], knock: 26, flinchMs: 420, shake: 1.6, when: [0, 600], weight: 2 }
+        }
+      },
+      // 16판 보스 해신 나가: 삼지창 연타 · 물줄기 뿜기 · 해일(바닥을 따라 오는 큰 파도, 뛰어넘기) · 물속으로 사라져 등 뒤에서 / 분노: 졸개 + 해일 2번
+      naga: {
+        label: '해신 나가', frameW: 305, frameH: 211, pivot: { x: 120, y: 205 },
+        boss: true,
+        anims: Object.assign(enemyAnims('naga', { idle: [4, 5, true], walk: [6, 7, true], attack1: [5, 9, false, [1, 2, 2, 2, 3, 3, 4, 4, 5]], attack2: [5, 9, false, [1, 2, 2, 2, 3, 3, 4, 4, 5]], special: [6, 8, false, [1, 2, 2, 2, 2, 3, 4, 5, 6]], hit: [3, 8, false, [1, 2, 2, 3]], hit2: [3, 8, false, [1, 1, 2, 2, 3]], death: [5, 6, false, [1, 1, 2, 3, 4, 5, 5]] }), { vanish: { frames: [EN + 'naga/special_01.png', EN + 'naga/special_02.png'], fps: 7, loop: false, playback: [1, 1, 2, 2] }, appear: { frames: [EN + 'naga/special_04.png', EN + 'naga/special_03.png'], fps: 7, loop: false, playback: [1, 1, 2, 2] } }),
+        fxArt: { jet: FX2('jet', 12), tide: FX2('tide', 12) },
+        walkAnim: 'walk',
+        staggerCdMs: 2300,   // 움찔한 뒤 2.3초는 안 끊김(예전 보스와 같음 — 계속 맞아도 공격함)
+        hp: 1200, speedX: 38, speedY: 24, radius: 42, height: 200,
+        hurtbox: { x0: -44, x1: 52, yTop: -200, yBot: 0 },
+        engage: 85, hover: [100, 150], range: [30, 540], alignY: 12, cooldown: [950, 1700], firstCooldown: [1200, 1600],
+        knockResist: 0.2, deathKnock: 30, superArmor: true,
+        enrageAt: 0.5, rageColor: '#3af0ff',
+        enrage: { speedMul: 1.25, cooldownMul: 0.7, summon: ['crab', 'fishman', 'jelly'] },
+        attacks: {
+          combo:  { anim: 'attack1', active: [3, 4], multiHit: true, telegraph: [2], depth: 18, reach: { x0: 10, x1: 180, yTop: -150, yBot: -20 },
+                    dmg: [14, 18], knock: 28, flinchMs: 440, shake: 1.6, when: [20, 180], weight: 2 },
+          breath: { type: 'breath', anim: 'attack2', telegraph: [1, 2], active: [3, 4], depth: 16, reach: { x0: 60, x1: 340, yTop: -180, yBot: -120 }, tickMs: 170,
+                    dmg: [6, 8], burn: [1, 2], knock: 14, flinchMs: 240, shake: 0.8, when: [40, 360], weight: 2,
+                    fx: { art: 'jet', attach: { x: 70, y: -150 }, segW: 58, segments: 5, growMs: 220 } },
+          tide:   { type: 'shot', anim: 'special', telegraph: [1, 2], spawnFrame: 3, spawn: { x: 90, y: 0 }, aimH: 0, dropPx: 0, proj: 'tide', impact: null, muzzle: null, pierce: true,
+                    hitCols: ["#06303a", "#1a8a9a", "#6ae8f0", "#e8ffff"], speed: 260, range: 520, box: { w: 50, h: 80 }, depth: 16, dodgeZ: 26, enraged: { count: 2, lanes: [0, 0], gapMs: 500, scale: [1, 1] },
+                    dmg: [14, 17], knock: 30, flinchMs: 420, shake: 1.6, when: [40, 520], weight: 2 },
+          dive:   { type: 'teleport', anim: 'vanish', appearAnim: 'appear', telegraph: [1], invuln: [2], hiddenMs: 400, gatherMs: 380, behind: 90, lunge: 0, depth: 18,
+                    reach: { x0: 10, x1: 180, yTop: -150, yBot: -20 }, then: 'combo', thenFrame: 2, smokeCols: ['#06303a', '#1a8a9a', '#6ae8f0', '#e8ffff'],
+                    when: [0, 999], weight: 1, gapMs: 9000, firstMs: 7000, enraged: { useGapMs: 6000 } }
+        }
+      },
+      // 폭풍 하피(17·18): 내리꽂아 할퀴기 + 「번개 깃털」(깃털 셋을 비스듬히 아래로 날림)
       harpy: {
         label: '폭풍 하피', frameW: 127, frameH: 161, pivot: { x: 51, y: 155 },
-        anims: enemyAnims('harpy', {
-          idle: [4, 9, true], fly: [6, 10, true],
-          attack: [5, 12, false, [1, 1, 1, 2, 3, 3, 4, 5]],   // 1 날개 치켜듦·비명(예고) · 2 내리꽂기 · 3 발톱 할퀴기 · 4 솟구침 · 5 떠 있음
-          hit: [3, 10, false, [1, 2, 2, 3]],
-          hit2: [3, 10, false, [1, 1, 2, 2, 3]],
-          knockdown: [4, 10, false, [1, 2, 2, 3, 4, 4, 4]],
-          getup: [3, 8, false, [1, 1, 2, 2, 3]],
-          death: [5, 8, false, [1, 2, 3, 4, 5]]                // 떨어짐 → 깃털로 흩어짐 → 깃털 무더기
-        }),
+        anims: enemyAnims('harpy', { idle: [4, 6, true], fly: [6, 10, true], attack: [5, 10, false, [1, 2, 2, 2, 3, 4, 4, 5]], skill: [5, 10, false, [1, 2, 2, 2, 2, 3, 4, 4, 5]], hit: [3, 10, false, [1, 2, 2, 3]], hit2: [3, 10, false, [1, 1, 2, 2, 3]], knockdown: [4, 10, false, [1, 2, 3, 4, 4]], getup: [3, 8, false, [1, 1, 2, 2, 3]], death: [5, 8, false] }),
+        fxArt: { feather: FX2('feather', 14) },
         walkAnim: 'fly',
-        flying: { bob: 2, bobMs: 900, jumpDmgMul: 1.5 },
-        down: { slide: 60, lyingFrames: [3, 4] },
+        down: { slide: 70, lyingFrames: [3, 4] },
         hp: 45, speedX: 105, speedY: 66, radius: 22, height: 120,
         hurtbox: { x0: -18, x1: 30, yTop: -122, yBot: -50 },
-        engage: 70, hover: [140, 190], range: [40, 100], alignY: 9, cooldown: [1400, 2400], firstCooldown: [400, 1300],
-        retreatMs: 1000,
-        knockResist: 1.3, deathKnock: 200,
+        engage: 70, hover: [140, 230], range: [40, 320], alignY: 9, cooldown: [1400, 2400], firstCooldown: [400, 1300],
+        retreatMs: 1000, knockResist: 1.3, deathKnock: 200,
+        flying: { bob: 2, bobMs: 900, jumpDmgMul: 1.5 },
         attacks: {
-          swoop: { anim: 'attack', active: [2, 3], reach: { x0: 18, x1: 64, yTop: -76, yBot: -24 }, depth: 12,
-                   dmg: [6, 8], knock: 12, move: { frames: [2, 3], dist: 46 }, telegraph: [1] }
+          swoop:    { anim: 'attack', active: [2, 3], reach: { x0: 18, x1: 64, yTop: -76, yBot: -24 }, depth: 12, dmg: [6, 8], knock: 12, move: { frames: [2, 3], dist: 46 }, telegraph: [1], when: [40, 100], weight: 3 },
+          feathers: { type: 'shot', anim: 'skill', telegraph: [1, 2], spawnFrame: 3, spawn: { x: 30, y: -80 }, aimH: 40, dropPx: 120, proj: 'feather', impact: null, muzzle: null,
+                      volley: { count: 3, lanes: [0, -16, 16], gapMs: 80 }, hitCols: ["#1a2a4a", "#5a8ad8", "#c8e8ff", "#ffffff"], speed: 270, range: 320, box: { w: 18, h: 10 }, depth: 9, dodgeZ: 22,
+                      dmg: [5, 7], knock: 10, flinchMs: 260, when: [120, 320], weight: 2, gapMs: 4500, maxShooters: 2 }
         }
       },
-      // 공허 사도(19·20 심연): 두건 속 보랏빛 눈 · 공허 구슬 지팡이. 흑마법사처럼 거리를 두고 구체를 쏨(단단한 잡몹 = growth.kind)
-      //   구체·터짐 그림은 흑마법사 것(초록)을 그대로 씀, 맞을 때 튀는 점 색만 보라
+      // 먹구름 정령(17·18): 구름 주먹 + 「돌풍」(바닥을 쓸고 오는 바람 — 맞으면 멀리 밀려남, 뛰어넘기)
+      cloud: {
+        label: '먹구름 정령', frameW: 144, frameH: 144, pivot: { x: 57, y: 138 },
+        anims: enemyAnims('cloud', { idle: [4, 6, true], fly: [6, 8, true], attack: [5, 10, false, [1, 2, 2, 2, 3, 4, 4, 5]], skill: [5, 10, false, [1, 2, 2, 2, 2, 3, 4, 4, 5]], hit: [3, 10, false, [1, 2, 2, 3]], hit2: [3, 10, false, [1, 1, 2, 2, 3]], knockdown: [5, 10, false, [1, 2, 3, 4, 5, 5]], getup: [3, 8, false, [1, 1, 2, 2, 3]], death: [5, 8, false] }),
+        fxArt: { gust: FX2('gust', 12) },
+        walkAnim: 'fly',
+        down: { slide: 70, lyingFrames: [4, 5] },
+        hp: 52, speedX: 46, speedY: 32, radius: 20, height: 70,
+        hurtbox: { x0: -28, x1: 28, yTop: -114, yBot: -44 },
+        engage: 60, hover: [140, 220], range: [0, 320], alignY: 10, cooldown: [3200, 4500], firstCooldown: [900, 1700],
+        knockResist: 1.2, deathKnock: 200,
+        flying: { bob: 3, bobMs: 1300, jumpDmgMul: 1.0 },
+        ranged: { attack: 'gust', keep: [140, 220], tooClose: 70, backOffMul: 0.7, maxShooters: 2, alignMs: 600 },
+        attacks: {
+          bash:  { anim: 'attack', active: [3, 4], reach: { x0: 10, x1: 76, yTop: -100, yBot: -40 }, depth: 12, dmg: [6, 8], knock: 14, telegraph: [2], when: [0, 80], weight: 2 },
+          gust:  { type: 'shot', anim: 'skill', telegraph: [1, 2], spawnFrame: 3, spawn: { x: 40, y: 0 }, aimH: 0, dropPx: 0, proj: 'gust', impact: null, muzzle: null, pierce: true,
+                   hitCols: ["#1a2a4a", "#5a8ad8", "#c8e8ff", "#ffffff"], speed: 220, range: 320, box: { w: 40, h: 40 }, depth: 14, dodgeZ: 24, dmg: [4, 6], knock: 40, flinchMs: 380, when: [90, 320], weight: 3, gapMs: 4500, maxShooters: 2 }
+        }
+      },
+      // 석상 가고일(17·18): 할퀴기 + 「낙하 강타」(날아올라 플레이어 자리로 내리꽂힘, 빨간 원)
+      gargoyle: {
+        label: '석상 가고일', frameW: 160, frameH: 104, pivot: { x: 82, y: 98 },
+        anims: enemyAnims('gargoyle', { idle: [4, 6, true], walk: [6, 8, true], attack: [5, 10, false, [1, 2, 2, 2, 3, 4, 4, 5]], skill: [5, 10, false, [1, 2, 2, 2, 2, 3, 4, 4, 5]], hit: [3, 10, false, [1, 2, 2, 3]], hit2: [3, 10, false, [1, 1, 2, 2, 3]], knockdown: [4, 10, false, [1, 2, 3, 4, 4]], getup: [3, 8, false, [1, 1, 2, 2, 3]], death: [5, 8, false] }),
+        walkAnim: 'walk',
+        down: { slide: 70, lyingFrames: [3, 4] },
+        hp: 92, speedX: 44, speedY: 26, radius: 20, height: 86,
+        hurtbox: { x0: -22, x1: 26, yTop: -86, yBot: 0 },
+        engage: 66, hover: [110, 180], range: [20, 300], alignY: 8, cooldown: [1500, 2400], firstCooldown: [700, 1500],
+        knockResist: 0.8, deathKnock: 180,
+        attacks: {
+          claw: { anim: 'attack', active: [3, 4], reach: { x0: 14, x1: 90, yTop: -84, yBot: -10 }, depth: 13, dmg: [8, 11], knock: 16, telegraph: [2], when: [20, 90], weight: 3 },
+          leap: { type: 'leap', anim: 'skill', active: [4], reach: { x0: -50, x1: 70, yTop: -50, yBot: 0 }, depth: 16, telegraph: [1], leap: { frames: [2, 3], max: 240, aimAt: 20 },
+                  dmg: [9, 12], knock: 26, flinchMs: 380, shake: 1.6, when: [80, 300], weight: 2, gapMs: 4500, firstMs: 1500 }
+        }
+      },
+      // 17판 중간보스 하피 여왕: 발톱 할퀴기 · 낙뢰 5번 · 번개 깃털 5발
+      harpyqueen: {
+        label: '하피 여왕', frameW: 282, frameH: 236, pivot: { x: 129, y: 230 },
+        anims: enemyAnims('harpyqueen', { idle: [4, 6, true], fly: [6, 8, true], attack: [5, 9, false, [1, 2, 2, 2, 3, 4, 4, 5]], skill: [5, 9, false, [1, 2, 2, 2, 2, 3, 4, 4, 5]], hit: [3, 10, false, [1, 2, 2, 3]], hit2: [3, 10, false, [1, 1, 2, 2, 3]], knockdown: [2, 8, false, [1, 2, 2, 2]], getup: [2, 8, false, [1, 2, 2]], death: [5, 7, false, [1, 1, 2, 2, 3, 4, 5]] }),
+        fxArt: { bolt: FX2('bolt', 13), feather: FX2('feather', 13) },
+        walkAnim: 'fly',
+        down: { slide: 60, lyingFrames: [2] },
+        hp: 600, speedX: 70, speedY: 44, radius: 30, height: 130,
+        hurtbox: { x0: -39, x1: 46, yTop: -180, yBot: -50 },
+        engage: 80, hover: [120, 200], range: [30, 500], alignY: 12, cooldown: [1100, 1900], firstCooldown: [900, 1400],
+        knockResist: 0.6, deathKnock: 60,
+        flying: { bob: 3, bobMs: 1000, jumpDmgMul: 1.0 },
+        attacks: {
+          rake:     { anim: 'attack', active: [3], reach: { x0: 10, x1: 110, yTop: -130, yBot: -40 }, depth: 16, dmg: [10, 13], knock: 20, telegraph: [2], move: { frames: [2, 3], dist: 60 }, when: [20, 130], weight: 3 },
+          thunder:  { type: 'barrage', anim: 'skill', telegraph: [1, 2], spawnFrame: 3, count: 5, intervalMs: 230, fallMs: 800, dropHeight: 1, noProj: true,
+                      blast: 'bolt', blastCols: ["#2a2a0a", "#c8a82a", "#fff08a", "#ffffff"], spread: { x: 80, y: 18 }, radius: 34, depth: 14, dodgeZ: 24, holdMs: 200, gapMs: 6000, firstMs: 2500,
+                      dmg: [10, 13], knock: 22, flinchMs: 400, shake: 1.4, when: [60, 500], weight: 2 },
+          feathers: { type: 'shot', anim: 'skill', telegraph: [1, 2], spawnFrame: 3, spawn: { x: 40, y: -110 }, aimH: 50, dropPx: 140, proj: 'feather', impact: null, muzzle: null,
+                      volley: { count: 5, lanes: [0, -16, 16, -32, 32], gapMs: 60 }, hitCols: ["#1a2a4a", "#5a8ad8", "#c8e8ff", "#ffffff"], speed: 290, range: 420, box: { w: 18, h: 10 }, depth: 9, dodgeZ: 22,
+                      dmg: [8, 10], knock: 12, flinchMs: 300, when: [120, 420], weight: 2, gapMs: 3500 }
+        }
+      },
+      // 18판 중간보스 가고일 군주: 미늘창 내려찍기 · 낙하 강타 · 미늘창으로 땅 쳐서 번개 고리
+      gargoylelord: {
+        label: '가고일 군주', frameW: 272, frameH: 166, pivot: { x: 133, y: 160 },
+        anims: enemyAnims('gargoylelord', { idle: [4, 6, true], walk: [6, 8, true], attack: [5, 9, false, [1, 2, 2, 2, 3, 4, 4, 5]], skill: [5, 9, false, [1, 2, 2, 2, 2, 3, 4, 4, 5]], hit: [3, 10, false, [1, 2, 2, 3]], hit2: [3, 10, false, [1, 1, 2, 2, 3]], knockdown: [2, 8, false, [1, 2, 2, 2]], getup: [2, 8, false, [1, 2, 2]], death: [5, 7, false, [1, 1, 2, 2, 3, 4, 5]] }),
+        fxArt: { ring: FX2('ering', 12) },
+        walkAnim: 'walk',
+        down: { slide: 60, lyingFrames: [2] },
+        hp: 660, speedX: 36, speedY: 22, radius: 32, height: 150,
+        hurtbox: { x0: -30, x1: 38, yTop: -150, yBot: 0 },
+        engage: 80, hover: [100, 160], range: [30, 420], alignY: 10, cooldown: [1100, 1900], firstCooldown: [900, 1400],
+        knockResist: 0.5, deathKnock: 60,
+        attacks: {
+          chop:  { anim: 'attack', active: [3, 4], reach: { x0: 20, x1: 160, yTop: -150, yBot: 0 }, depth: 16, dmg: [12, 15], knock: 26, telegraph: [2], when: [20, 160], weight: 3 },
+          slam:  { type: 'leap', anim: 'skill', active: [4], reach: { x0: -70, x1: 130, yTop: -70, yBot: 0 }, depth: 18, telegraph: [1], leap: { frames: [2, 3], max: 260, aimAt: 40 },
+                   dmg: [13, 16], knock: 32, flinchMs: 440, shake: 2.6, when: [80, 320], weight: 2, heavy: true, gapMs: 4500 },
+          ring:  { type: 'shockwave', anim: 'attack', telegraph: [1, 2], spawnFrame: 3, holdFrame: 4, fx: 'ring', ringArt: true, spawn: { x: 80, y: 0 },
+                   rings: { count: 2, gapMs: 600, r0: 20, rMax: 260, speed: 240, band: 14, ryMax: 24, ringRx: 80, flameScale: 0.8, dodgeZ: 22 },
+                   dmg: [11, 14], knock: 26, flinchMs: 420, heavy: true, shake: 1.8, when: [0, 300], weight: 2, gapMs: 5500 }
+        }
+      },
+      // 17판 보스 뇌조 폭풍왕: 발톱 연타 · 번개 깃털 5발(분노 7발) · 낙뢰 · 큰 돌풍(밀어냄) · 활공 돌진 / 분노: 졸개(하피 · 먹구름)
+      thunderbird: {
+        label: '뇌조 폭풍왕', frameW: 398, frameH: 269, pivot: { x: 132, y: 263 },
+        boss: true,
+        anims: Object.assign(enemyAnims('thunderbird', { idle: [4, 5, true], walk: [6, 7, true], attack1: [5, 9, false, [1, 2, 2, 2, 3, 3, 4, 4, 5]], attack2: [5, 9, false, [1, 2, 2, 2, 3, 3, 4, 4, 5]], special: [5, 8, false, [1, 2, 2, 2, 2, 3, 4, 5]], hit: [3, 8, false, [1, 2, 2, 3]], hit2: [3, 8, false, [1, 1, 2, 2, 3]], death: [5, 6, false, [1, 1, 2, 3, 4, 5, 5]] })),
+        fxArt: { feather: FX2('feather', 13), spark: FX2('spark', 13), bolt: FX2('bolt', 13), gust: FX2('gust', 13) },
+        walkAnim: 'walk',
+        staggerCdMs: 2300,   // 움찔한 뒤 2.3초는 안 끊김(예전 보스와 같음 — 계속 맞아도 공격함)
+        hp: 1150, speedX: 60, speedY: 36, radius: 44, height: 170,
+        hurtbox: { x0: -51, x1: 51, yTop: -230, yBot: -60 },
+        engage: 90, hover: [110, 170], range: [30, 540], alignY: 14, cooldown: [950, 1700], firstCooldown: [1200, 1600],
+        knockResist: 0.2, deathKnock: 30, superArmor: true,
+        flying: { bob: 4, bobMs: 1100, jumpDmgMul: 1.0 },
+        enrageAt: 0.5, rageColor: '#8ad8ff',
+        enrage: { speedMul: 1.25, cooldownMul: 0.7, summon: ['harpy', 'cloud', 'harpy'] },
+        attacks: {
+          talon:    { anim: 'attack1', active: [2, 3], multiHit: true, telegraph: [1], depth: 18, reach: { x0: 10, x1: 170, yTop: -200, yBot: -40 }, move: { frames: [2, 3], dist: 80 },
+                      dmg: [13, 17], knock: 28, flinchMs: 420, shake: 1.4, when: [20, 190], weight: 2 },
+          feathers: { type: 'shot', anim: 'attack2', telegraph: [1, 2], spawnFrame: 3, spawn: { x: 70, y: -170 }, aimH: 60, dropPx: 160, proj: 'feather', impact: 'spark', impactAir: true, muzzle: null,
+                      volley: { count: 5, lanes: [0, -18, 18, -36, 36], gapMs: 60 }, enraged: { count: 7, lanes: [0, -16, 16, -32, 32, -48, 48], gapMs: 50 },
+                      hitCols: ["#1a2a4a", "#5a8ad8", "#c8e8ff", "#ffffff"], impactCols: ["#2a2a0a", "#c8a82a", "#fff08a", "#ffffff"], speed: 300, range: 520, box: { w: 18, h: 10 }, depth: 9, dodgeZ: 22,
+                      dmg: [11, 14], knock: 16, flinchMs: 340, when: [40, 520], weight: 2 },
+          thunder:  { type: 'barrage', anim: 'special', telegraph: [1, 2], spawnFrame: 3, count: 6, intervalMs: 220, fallMs: 800, dropHeight: 1, noProj: true,
+                      blast: 'bolt', blastCols: ["#2a2a0a", "#c8a82a", "#fff08a", "#ffffff"], spread: { x: 90, y: 20 }, radius: 38, depth: 16, dodgeZ: 24, holdMs: 250, gapMs: 7000, firstMs: 3500,
+                      enraged: { count: 10, intervalMs: 160 }, dmg: [13, 16], knock: 24, flinchMs: 420, shake: 1.8, when: [0, 600], weight: 2 },
+          gust:     { type: 'shot', anim: 'attack2', telegraph: [1, 2], spawnFrame: 3, spawn: { x: 80, y: 0 }, aimH: 0, dropPx: 0, proj: 'gust', impact: null, muzzle: null, pierce: true,
+                      hitCols: ["#1a2a4a", "#5a8ad8", "#c8e8ff", "#ffffff"], speed: 240, range: 520, box: { w: 60, h: 60 }, depth: 18, dodgeZ: 26, dmg: [9, 12], knock: 60, flinchMs: 420, when: [40, 520], weight: 2, gapMs: 6000 },
+          swoop:    { type: 'charge', anim: 'attack1', frames: { wind: [1], run: [2, 3], impact: [4], recover: [5] }, windMs: 700, stepMs: 90, speed: 520, dist: 480, impactMs: 220, recoverMs: 380,
+                      bodyReach: { x0: -20, x1: 140, yTop: -200, yBot: -40 }, reach: { x0: 30, x1: 160, yTop: -200, yBot: -40 }, depth: 18,
+                      dmg: [15, 19], knock: 40, flinchMs: 500, shake: 2.2, dustMs: 120, when: [90, 500], weight: 2, heavy: true, gapMs: 6000, firstMs: 6000 }
+        }
+      },
+      // 18판 보스 타락한 대천사: 대검 연타 · 빛의 투창(꿰뚫음, 분노 3발) · 심판(빛의 창 비) · 빛기둥 줄 · 빛으로 순간이동 / 분노: 졸개(가고일 · 하피)
+      archangel: {
+        label: '타락한 대천사', frameW: 338, frameH: 229, pivot: { x: 157, y: 223 },
+        boss: true,
+        anims: Object.assign(enemyAnims('archangel', { idle: [4, 5, true], walk: [6, 7, true], attack1: [5, 9, false, [1, 2, 2, 2, 3, 3, 4, 4, 5]], attack2: [5, 9, false, [1, 2, 2, 2, 3, 3, 4, 4, 5]], special: [6, 8, false, [1, 2, 2, 2, 2, 3, 4, 5, 6]], hit: [3, 8, false, [1, 2, 2, 3]], hit2: [3, 8, false, [1, 1, 2, 2, 3]], death: [5, 6, false, [1, 1, 2, 3, 4, 5, 5]] }), { vanish: { frames: [EN + 'archangel/special_01.png', EN + 'archangel/special_02.png'], fps: 7, loop: false, playback: [1, 1, 2, 2] }, appear: { frames: [EN + 'archangel/special_03.png', EN + 'archangel/special_05.png'], fps: 7, loop: false, playback: [1, 1, 2, 2] } }),
+        fxArt: { javelin: FX2('javelin', 13), fall: FX2('lightfall', 13), hit: FX2('holyhit', 13), pillar: FX2('pillar', 13) },
+        walkAnim: 'walk',
+        staggerCdMs: 2300,   // 움찔한 뒤 2.3초는 안 끊김(예전 보스와 같음 — 계속 맞아도 공격함)
+        hp: 1250, speedX: 34, speedY: 22, radius: 42, height: 210,
+        hurtbox: { x0: -42, x1: 50, yTop: -210, yBot: 0 },
+        engage: 85, hover: [100, 150], range: [30, 560], alignY: 12, cooldown: [950, 1700], firstCooldown: [1200, 1600],
+        knockResist: 0.15, deathKnock: 30, superArmor: true,
+        enrageAt: 0.5, rageColor: '#ffe08a',
+        enrage: { speedMul: 1.25, cooldownMul: 0.7, summon: ['gargoyle', 'harpy', 'gargoyle'] },
+        attacks: {
+          combo:    { anim: 'attack1', active: [3, 4], multiHit: true, telegraph: [2], depth: 18, reach: { x0: 10, x1: 190, yTop: -190, yBot: 0 },
+                      dmg: [14, 18], knock: 28, flinchMs: 440, shake: 1.8, when: [20, 190], weight: 2 },
+          javelin:  { type: 'shot', anim: 'attack2', telegraph: [1, 2], spawnFrame: 3, spawn: { x: 90, y: -140 }, aimH: 70, dropPx: 60, proj: 'javelin', impact: 'hit', impactAir: true, muzzle: null, pierce: true,
+                      enraged: { count: 3, lanes: [0, -30, 30], gapMs: 140, scale: [1, 1, 1] }, hitCols: ["#3a2a0a", "#c8902a", "#ffe08a", "#ffffff"], impactCols: ["#3a2a0a", "#c8902a", "#ffe08a", "#ffffff"],
+                      speed: 340, range: 560, box: { w: 40, h: 14 }, depth: 12, dodgeZ: 24, dmg: [14, 17], knock: 24, flinchMs: 400, shake: 1.0, when: [40, 560], weight: 2 },
+          judgement:{ type: 'barrage', anim: 'special', telegraph: [1, 2], spawnFrame: 3, count: 6, intervalMs: 220, fallMs: 850, dropHeight: 320,
+                      proj: 'fall', blast: 'hit', blastCols: ["#3a2a0a", "#c8902a", "#ffe08a", "#ffffff"], spread: { x: 80, y: 18 }, radius: 40, depth: 16, dodgeZ: 24, holdMs: 250, gapMs: 7500, firstMs: 4000,
+                      enraged: { count: 10, intervalMs: 160 }, dmg: [14, 17], knock: 26, flinchMs: 420, heavy: true, shake: 2.0, when: [0, 600], weight: 2 },
+          pillars:  { type: 'spikes', anim: 'special', telegraph: [1, 2], spawnFrame: 3, fx: 'pillar', aimMs: 400, count: 6, first: 70, step: 60, delayMs: 110, maxRange: 460,
+                      spikeActive: [2, 3, 4], reach: { x0: -20, x1: 20, yTop: -140, yBot: 0 }, depth: 16, dodgeZ: 40,
+                      dmg: [14, 17], knock: 20, flinchMs: 420, shake: 1.6, when: [0, 500], weight: 2, gapMs: 6000, firstMs: 6000 },
+          blink:    { type: 'teleport', anim: 'vanish', appearAnim: 'appear', telegraph: [1], invuln: [2], hiddenMs: 380, gatherMs: 380, behind: 90, lunge: 0, depth: 18,
+                      reach: { x0: 10, x1: 190, yTop: -190, yBot: 0 }, then: 'combo', thenFrame: 2, smokeCols: ['#fff8e0', '#ffe08a', '#c8902a', '#ffffff'],
+                      when: [0, 999], weight: 1, gapMs: 9000, firstMs: 8000, enraged: { useGapMs: 6000 } }
+        }
+      },
+      // 공허 사도(19·20): 「따라오는 공허 구체」 2발(플레이어 줄로 천천히 꺾임)
       voidpriest: {
         label: '공허 사도', frameW: 161, frameH: 137, pivot: { x: 89, y: 131 },
-        anims: enemyAnims('voidpriest', {
-          idle: [4, 6, true], walk: [6, 8, true],
-          cast: [5, 10, false, [1, 2, 2, 2, 2, 2, 3, 4, 4, 5]],
-          hit: [3, 10, false, [1, 2, 2, 3]],
-          hit2: [3, 10, false, [1, 1, 2, 2, 3]],
-          knockdown: [5, 10, false, [1, 2, 2, 3, 4, 5, 4, 5]],
-          getup: [3, 8, false, [1, 1, 2, 2, 3]],
-          death: [5, 8, false, [1, 2, 3, 4, 5]]                // 눈에서 보랏빛 → 쓰러짐 → 검보라 연기 기둥 → 빈 두루마기 + 금 간 지팡이
-        }),
-        fxArt: {
-          orb:    { frames: seq(EN + 'orb/orb_', 4),       pivot: { x: 20, y: 21 }, fps: 14 },
-          orbhit: { frames: seq(EN + 'orbhit/orbhit_', 4), pivot: { x: 48, y: 48 }, fps: 14 }
-        },
+        anims: enemyAnims('voidpriest', { idle: [4, 6, true], walk: [6, 8, true], skill: [5, 10, false, [1, 2, 2, 2, 2, 3, 4, 4, 5]], hit: [3, 10, false, [1, 2, 2, 3]], hit2: [3, 10, false, [1, 1, 2, 2, 3]], knockdown: [5, 10, false, [1, 2, 3, 4, 5, 5]], getup: [3, 8, false, [1, 1, 2, 2, 3]], death: [5, 8, false] }),
+        fxArt: { orb: FX2('vorb', 14), blast: FX2('vblast', 14) },
         walkAnim: 'walk',
-        rim: { color: '#d8b4ff', px: 1, alpha: 0.42 },
-        down: { slide: 70, lyingFrames: [3, 4, 5] },
+        down: { slide: 70, lyingFrames: [4, 5] },
         hp: 62, speedX: 40, speedY: 28, radius: 15, height: 112,
         hurtbox: { x0: -14, x1: 26, yTop: -104, yBot: 0 },
-        engage: 50, hover: [160, 260], range: [0, 360], alignY: 8, cooldown: [2600, 3600], firstCooldown: [1300, 2300],
+        engage: 50, hover: [160, 260], range: [0, 380], alignY: 8, cooldown: [2600, 3600], firstCooldown: [1300, 2300],
         knockResist: 1.0, deathKnock: 210,
-        ranged: { attack: 'orb', keep: [160, 260], tooClose: 80, backOffMul: 0.8, maxShooters: 1, alignMs: 700 },
+        rim: { color: '#d8b4ff', px: 1, alpha: 0.42 },
+        ranged: { attack: 'orbs', keep: [160, 260], tooClose: 80, backOffMul: 0.8, maxShooters: 1, alignMs: 700 },
         attacks: {
-          orb: { type: 'shot', anim: 'cast', telegraph: [2], spawnFrame: 3, spawn: { x: 74, y: -78 }, aimH: 70, dropPx: 0,
-                 proj: 'orb', impact: 'orbhit', impactAir: true, muzzle: null,
-                 hitCols: ['#140a1e', '#4a2a7a', '#b07aff', '#e8d8ff'], impactCols: ['#140a1e', '#4a2a7a', '#b07aff', '#e8d8ff'],
-                 speed: 240, range: 360, box: { w: 22, h: 18 }, depth: 12, dodgeZ: 22,
-                 dmg: [5, 7], knock: 14, flinchMs: 320, when: [120, 360] }
+          orbs: { type: 'shot', anim: 'skill', telegraph: [1, 2], spawnFrame: 3, spawn: { x: 60, y: -80 }, aimH: 70, dropPx: 0, proj: 'orb', impact: 'blast', impactAir: true, muzzle: null,
+                  volley: { count: 2, lanes: [-14, 14], gapMs: 220 }, homing: 45, homeAfterMs: 250,
+                  hitCols: ["#0a0414", "#3a1460", "#a04ae8", "#ffb0ff"], impactCols: ["#0a0414", "#3a1460", "#a04ae8", "#ffb0ff"], speed: 190, range: 380, box: { w: 20, h: 18 }, depth: 12, dodgeZ: 22, dmg: [5, 7], knock: 14, flinchMs: 320, when: [60, 380] }
+        }
+      },
+      // 공허 사냥개(19·20): 뛰어들어 물기 + 「그림자 도약」(연기로 사라져 등 뒤에서 나타나 물기 — 바닥 빨간 원 예고)
+      hound: {
+        label: '공허 사냥개', frameW: 190, frameH: 95, pivot: { x: 95, y: 89 },
+        anims: Object.assign(enemyAnims('hound', { idle: [4, 6, true], run: [6, 14, true], attack: [5, 10, false, [1, 2, 2, 2, 3, 4, 4, 5]], skill: [5, 10, false, [1, 2, 2, 2, 2, 3, 4, 4, 5]], hit: [3, 10, false, [1, 2, 2, 3]], hit2: [3, 10, false, [1, 1, 2, 2, 3]], knockdown: [5, 10, false, [1, 2, 3, 4, 5, 5]], getup: [3, 8, false, [1, 1, 2, 2, 3]], death: [4, 8, false] }), { vanish: { frames: [EN + 'hound/skill_01.png', EN + 'hound/skill_02.png', EN + 'hound/skill_03.png'], fps: 9, loop: false, playback: [1, 1, 2, 2, 3] }, appear: { frames: [EN + 'hound/skill_04.png', EN + 'hound/skill_05.png'], fps: 9, loop: false, playback: [1, 1, 2, 2] } }),
+        walkAnim: 'run',
+        down: { slide: 70, lyingFrames: [4, 5] },
+        hp: 58, speedX: 112, speedY: 62, radius: 24, height: 60,
+        hurtbox: { x0: -36, x1: 42, yTop: -60, yBot: 0 },
+        engage: 80, hover: [150, 220], range: [40, 400], alignY: 8, cooldown: [1300, 2200], firstCooldown: [400, 1200],
+        retreatMs: 800, knockResist: 1.1, deathKnock: 230,
+        attacks: {
+          bite:  { anim: 'attack', active: [2, 3], reach: { x0: 20, x1: 90, yTop: -58, yBot: -4 }, depth: 12, dmg: [7, 9], knock: 14, move: { frames: [2, 3], dist: 40 }, telegraph: [1], when: [40, 110], weight: 3 },
+          blink: { type: 'teleport', anim: 'vanish', appearAnim: 'appear', telegraph: [1], invuln: [2], hiddenMs: 300, gatherMs: 350, behind: 60, lunge: 0, depth: 14,
+                   reach: { x0: 20, x1: 90, yTop: -58, yBot: -4 }, then: 'bite', thenFrame: 2, smokeCols: ['#0a0414', '#2a0a4a', '#7a2ad8', '#c87aff'],
+                   when: [80, 400], weight: 1, gapMs: 9000, firstMs: 2500 }
+        }
+      },
+      // 심연 촉수괴(19·20): 촉수 채찍 + 「땅속 촉수」(바닥 틈에서 촉수가 줄지어 솟음)
+      horror: {
+        label: '심연 촉수괴', frameW: 214, frameH: 147, pivot: { x: 89, y: 141 },
+        anims: enemyAnims('horror', { idle: [4, 6, true], walk: [6, 8, true], attack: [5, 10, false, [1, 2, 2, 2, 3, 4, 4, 5]], skill: [5, 10, false, [1, 2, 2, 2, 2, 3, 4, 4, 5]], hit: [3, 10, false, [1, 2, 2, 3]], hit2: [3, 10, false, [1, 1, 2, 2, 3]], knockdown: [5, 10, false, [1, 2, 3, 4, 5, 5]], getup: [3, 8, false, [1, 1, 2, 2, 3]], death: [5, 8, false] }),
+        fxArt: { tent: FX2('tentacle', 13) },
+        walkAnim: 'walk',
+        down: { slide: 70, lyingFrames: [4, 5] },
+        hp: 95, speedX: 34, speedY: 22, radius: 24, height: 84,
+        hurtbox: { x0: -29, x1: 34, yTop: -84, yBot: 0 },
+        engage: 66, hover: [110, 180], range: [20, 320], alignY: 8, cooldown: [1600, 2500], firstCooldown: [800, 1600],
+        knockResist: 0.8, deathKnock: 180,
+        attacks: {
+          whip:   { anim: 'attack', active: [3, 4], reach: { x0: 10, x1: 120, yTop: -70, yBot: -20 }, depth: 13, dmg: [8, 11], knock: 16, telegraph: [2], showTelegraph: true, when: [20, 120], weight: 3 },
+          plunge: { type: 'spikes', anim: 'skill', telegraph: [1, 2], spawnFrame: 3, fx: 'tent', aimMs: 350, count: 4, first: 60, step: 50, delayMs: 110, maxRange: 280,
+                    spikeActive: [2, 3, 4], reach: { x0: -22, x1: 22, yTop: -80, yBot: 0 }, depth: 13, dodgeZ: 26, dmg: [8, 10], knock: 18, flinchMs: 380, when: [80, 320], weight: 2, gapMs: 5000, firstMs: 1500 }
+        }
+      },
+      // 19판 중간보스 쌍두 사냥개: 두 머리 물기 · 그림자 도약(등 뒤) · 돌진
+      houndalpha: {
+        label: '쌍두 사냥개', frameW: 240, frameH: 150, pivot: { x: 105, y: 144 },
+        anims: Object.assign(enemyAnims('houndalpha', { idle: [4, 6, true], walk: [6, 8, true], attack: [5, 9, false, [1, 2, 2, 2, 3, 4, 4, 5]], skill: [5, 9, false, [1, 2, 2, 2, 2, 3, 4, 4, 5]], hit: [3, 10, false, [1, 2, 2, 3]], hit2: [3, 10, false, [1, 1, 2, 2, 3]], knockdown: [2, 8, false, [1, 2, 2, 2]], getup: [2, 8, false, [1, 2, 2]], death: [5, 7, false, [1, 1, 2, 2, 3, 4, 5]] }), { vanish: { frames: [EN + 'houndalpha/skill_01.png', EN + 'houndalpha/skill_02.png', EN + 'houndalpha/skill_03.png'], fps: 9, loop: false, playback: [1, 1, 2, 2, 3] }, appear: { frames: [EN + 'houndalpha/skill_04.png', EN + 'houndalpha/skill_05.png'], fps: 9, loop: false, playback: [1, 1, 2, 2] } }),
+        walkAnim: 'walk',
+        down: { slide: 60, lyingFrames: [2] },
+        hp: 640, speedX: 70, speedY: 40, radius: 36, height: 104,
+        hurtbox: { x0: -62, x1: 73, yTop: -104, yBot: 0 },
+        engage: 80, hover: [120, 190], range: [30, 440], alignY: 10, cooldown: [1100, 1900], firstCooldown: [900, 1400],
+        knockResist: 0.5, deathKnock: 60,
+        attacks: {
+          bite:   { anim: 'attack', active: [2, 3], multiHit: true, reach: { x0: 20, x1: 130, yTop: -100, yBot: 0 }, depth: 16, dmg: [11, 14], knock: 22, telegraph: [1], move: { frames: [2, 3], dist: 50 }, when: [20, 140], weight: 3 },
+          blink:  { type: 'teleport', anim: 'vanish', appearAnim: 'appear', telegraph: [1], invuln: [2], hiddenMs: 300, gatherMs: 380, behind: 80, lunge: 0, depth: 16,
+                    reach: { x0: 20, x1: 130, yTop: -100, yBot: 0 }, then: 'bite', thenFrame: 2, smokeCols: ['#0a0414', '#2a0a4a', '#7a2ad8', '#c87aff'],
+                    when: [0, 999], weight: 2, gapMs: 5000 },
+          charge: { type: 'charge', anim: 'attack', frames: { wind: [1], run: [2, 3], impact: [4], recover: [5] }, windMs: 650, stepMs: 90, speed: 500, dist: 460, impactMs: 220, recoverMs: 360,
+                    bodyReach: { x0: -20, x1: 110, yTop: -100, yBot: 0 }, reach: { x0: 30, x1: 130, yTop: -100, yBot: 0 }, depth: 16,
+                    dmg: [12, 15], knock: 34, flinchMs: 440, shake: 2.0, dustMs: 90, when: [150, 440], weight: 2, heavy: true, gapMs: 4500 }
+        }
+      },
+      // 20판 중간보스 공허 대사제: 지팡이 내려치기 · 따라오는 구체 4발 · 땅속 촉수 6줄
+      archpriest: {
+        label: '공허 대사제', frameW: 221, frameH: 179, pivot: { x: 91, y: 173 },
+        anims: enemyAnims('archpriest', { idle: [4, 6, true], walk: [4, 8, true], attack: [5, 9, false, [1, 2, 2, 2, 3, 4, 4, 5]], skill: [5, 9, false, [1, 2, 2, 2, 2, 3, 4, 4, 5]], hit: [3, 10, false, [1, 2, 2, 3]], hit2: [3, 10, false, [1, 1, 2, 2, 3]], knockdown: [2, 8, false, [1, 2, 2, 2]], getup: [2, 8, false, [1, 2, 2]], death: [5, 7, false, [1, 1, 2, 2, 3, 4, 5]] }),
+        fxArt: { orb: FX2('vorb', 13), blast: FX2('vblast', 13), tent: FX2('tentacle', 13) },
+        walkAnim: 'walk',
+        down: { slide: 60, lyingFrames: [2] },
+        hp: 620, speedX: 30, speedY: 20, radius: 28, height: 160,
+        hurtbox: { x0: -24, x1: 32, yTop: -160, yBot: 0 },
+        engage: 70, hover: [160, 240], range: [20, 480], alignY: 12, cooldown: [1100, 1900], firstCooldown: [900, 1400],
+        knockResist: 0.6, deathKnock: 60,
+        rim: { color: '#d8b4ff', px: 1, alpha: 0.5 },
+        attacks: {
+          smite: { anim: 'attack', active: [3, 4], reach: { x0: 10, x1: 130, yTop: -160, yBot: 0 }, depth: 16, dmg: [11, 14], knock: 22, telegraph: [2], when: [10, 130], weight: 2 },
+          orbs:  { type: 'shot', anim: 'skill', telegraph: [1, 2], spawnFrame: 3, spawn: { x: 70, y: -120 }, aimH: 80, dropPx: 40, proj: 'orb', impact: 'blast', impactAir: true, muzzle: null,
+                   volley: { count: 4, lanes: [-30, -10, 10, 30], gapMs: 160 }, homing: 50, homeAfterMs: 250, hitCols: ["#0a0414", "#3a1460", "#a04ae8", "#ffb0ff"], impactCols: ["#0a0414", "#3a1460", "#a04ae8", "#ffb0ff"],
+                   speed: 190, range: 480, box: { w: 20, h: 18 }, depth: 12, dodgeZ: 22, dmg: [8, 10], knock: 16, flinchMs: 340, when: [100, 480], weight: 3, gapMs: 3000 },
+          rift:  { type: 'spikes', anim: 'skill', telegraph: [1, 2], spawnFrame: 3, fx: 'tent', aimMs: 400, count: 6, first: 60, step: 50, delayMs: 90, maxRange: 360,
+                   spikeActive: [2, 3, 4], reach: { x0: -22, x1: 22, yTop: -84, yBot: 0 }, depth: 14, dodgeZ: 28, dmg: [10, 13], knock: 18, flinchMs: 400, when: [80, 380], weight: 2, gapMs: 5000 }
+        }
+      },
+      // 19판 보스 심연의 눈: 촉수 연타 · 눈빛 광선 · 따라오는 구체 4발(분노 6발) · 땅속 촉수 8줄 · 공허 운석 비 / 분노: 졸개(사냥개 · 촉수괴 · 사도)
+      abysseye: {
+        label: '심연의 눈', frameW: 266, frameH: 256, pivot: { x: 94, y: 250 },
+        boss: true,
+        anims: Object.assign(enemyAnims('abysseye', { idle: [4, 5, true], walk: [6, 7, true], attack1: [5, 9, false, [1, 2, 2, 2, 3, 3, 4, 4, 5]], attack2: [6, 9, false, [1, 2, 2, 2, 3, 3, 4, 4, 5, 6]], special: [6, 8, false, [1, 2, 2, 2, 2, 3, 4, 5, 6]], hit: [3, 8, false, [1, 2, 2, 3]], hit2: [3, 8, false, [1, 1, 2, 2, 3]], death: [6, 6, false, [1, 1, 2, 3, 4, 5, 6, 6]] })),
+        fxArt: { beam: FX2('beam', 13), orb: FX2('vorb', 13), blast: FX2('vblast', 13), tent: FX2('tentacle', 13), meteor: FX2('meteor', 13) },
+        walkAnim: 'walk',
+        staggerCdMs: 2300,   // 움찔한 뒤 2.3초는 안 끊김(예전 보스와 같음 — 계속 맞아도 공격함)
+        hp: 1300, speedX: 36, speedY: 26, radius: 44, height: 180,
+        hurtbox: { x0: -58, x1: 65, yTop: -230, yBot: -50 },
+        engage: 85, hover: [130, 200], range: [30, 560], alignY: 14, cooldown: [950, 1700], firstCooldown: [1200, 1600],
+        knockResist: 0.2, deathKnock: 20, superArmor: true,
+        flying: { bob: 4, bobMs: 1300, jumpDmgMul: 1.0 },
+        enrageAt: 0.5, rageColor: '#ff3a8c',
+        enrage: { speedMul: 1.2, cooldownMul: 0.7, summon: ['hound', 'horror', 'voidpriest'] },
+        attacks: {
+          lash:    { anim: 'attack1', active: [3, 4], multiHit: true, telegraph: [2], depth: 18, reach: { x0: 0, x1: 170, yTop: -160, yBot: 0 },
+                     dmg: [14, 18], knock: 28, flinchMs: 440, shake: 1.4, when: [10, 170], weight: 2 },
+          beam:    { type: 'breath', anim: 'attack2', telegraph: [1, 2], active: [3, 4], depth: 16, reach: { x0: 40, x1: 420, yTop: -200, yBot: -150 }, tickMs: 160,
+                     dmg: [7, 9], burn: [1, 2], knock: 14, flinchMs: 240, shake: 1.0, when: [40, 420], weight: 2,
+                     fx: { art: 'beam', attach: { x: 40, y: -176 }, segW: 62, segments: 6, growMs: 240 } },
+          orbs:    { type: 'shot', anim: 'attack2', telegraph: [1, 2], spawnFrame: 3, spawn: { x: 50, y: -176 }, aimH: 80, dropPx: 60, proj: 'orb', impact: 'blast', impactAir: true, muzzle: null,
+                     volley: { count: 4, lanes: [-30, -10, 10, 30], gapMs: 150 }, homing: 55, homeAfterMs: 200, enraged: { count: 6, lanes: [-40, -24, -8, 8, 24, 40], gapMs: 110 },
+                     hitCols: ["#0a0414", "#3a1460", "#a04ae8", "#ffb0ff"], impactCols: ["#0a0414", "#3a1460", "#a04ae8", "#ffb0ff"], speed: 200, range: 540, box: { w: 20, h: 18 }, depth: 12, dodgeZ: 24, dmg: [12, 15], knock: 18, flinchMs: 360, when: [40, 540], weight: 2 },
+          rite:    { type: 'spikes', anim: 'special', telegraph: [1, 2], spawnFrame: 3, fx: 'tent', aimMs: 400, count: 8, first: 60, step: 50, delayMs: 80, maxRange: 460,
+                     spikeActive: [2, 3, 4], reach: { x0: -24, x1: 24, yTop: -90, yBot: 0 }, depth: 16, dodgeZ: 30,
+                     dmg: [14, 17], knock: 20, flinchMs: 420, shake: 1.8, when: [0, 500], weight: 2, gapMs: 5000, firstMs: 2500 },
+          meteors: { type: 'barrage', anim: 'special', telegraph: [1, 2], spawnFrame: 3, count: 6, intervalMs: 220, fallMs: 850, dropHeight: 320,
+                     proj: 'meteor', blast: 'blast', blastCols: ["#0a0414", "#3a1460", "#a04ae8", "#ffb0ff"], spread: { x: 80, y: 18 }, radius: 40, depth: 16, dodgeZ: 24, holdMs: 250, gapMs: 8000, firstMs: 6000,
+                     enraged: { count: 10, intervalMs: 160 }, dmg: [14, 17], knock: 26, flinchMs: 420, heavy: true, shake: 2.0, when: [0, 600], weight: 2 }
+        }
+      },
+      // 20판 보스 공허의 마왕(마지막): 낫창 연타 · 공허 초승달(분노 3줄) · 공허 운석 비 · 땅속 촉수 10줄 · 공허 고리 · 등 뒤 순간이동 / 절반에서 각성(오라 + 밀어냄) + 졸개 4
+      voidlord: {
+        label: '공허의 마왕', frameW: 548, frameH: 270, pivot: { x: 274, y: 264 },
+        boss: true,
+        anims: Object.assign(enemyAnims('voidlord', { idle: [4, 5, true], walk: [6, 7, true], attack1: [5, 9, false, [1, 2, 2, 2, 3, 3, 4, 4, 5]], attack2: [5, 9, false, [1, 2, 2, 2, 3, 3, 4, 4, 5]], special: [6, 8, false, [1, 2, 2, 2, 2, 3, 4, 5, 6]], hit: [3, 8, false, [1, 2, 2, 3]], hit2: [3, 8, false, [1, 1, 2, 2, 3]], death: [5, 6, false, [1, 1, 2, 3, 4, 5, 5]], awaken: [4, 6, false, [1, 1, 2, 2, 3, 3, 3, 4, 4]], rift: [5, 8, false, [1, 2, 2, 2, 3, 4, 4, 4, 5]] }), { vanish: { frames: [EN + 'voidlord/vanish_01.png', EN + 'voidlord/vanish_02.png'], fps: 7, loop: false, playback: [1, 1, 1, 2, 2, 2] }, appear: { frames: [EN + 'voidlord/vanish_03.png', EN + 'voidlord/vanish_04.png'], fps: 7, loop: false, playback: [1, 1, 1, 2, 2, 2] } }),
+        fxArt: { wave: FX2('crescent', 12), meteor: FX2('meteor', 12), blast: FX2('vblast', 12), tent: FX2('tentacle', 12), ring: FX2('vring', 12), aura: FX2('aura', 12) },
+        walkAnim: 'walk',
+        staggerCdMs: 2300,   // 움찔한 뒤 2.3초는 안 끊김(예전 보스와 같음 — 계속 맞아도 공격함)
+        finalBoss: true,
+        hp: 1500, speedX: 40, speedY: 24, radius: 50, height: 250,
+        hurtbox: { x0: -40, x1: 45, yTop: -250, yBot: 0 },
+        engage: 90, hover: [90, 130], range: [30, 600], alignY: 12, cooldown: [900, 1600], firstCooldown: [1300, 1600],
+        knockResist: 0.1, deathKnock: 0, superArmor: true,
+        enrageAt: 0.5,
+        enrage: { speedMul: 1.25, cooldownMul: 0.68, summon: ['hound', 'horror', 'voidpriest', 'hound'] },
+        awaken: { anim: 'awaken', pushFrame: 2, push: 70, shake: 4, flash: '#a04ae8',
+                  aura: { art: 'aura', scale: 1.5, alpha: 0.8, fadeInMs: 300 }, rim: { color: '#c06aff', px: 1, alpha: 0.6 } },
+        attacks: {
+          combo:    { anim: 'attack1', active: [3, 4], multiHit: true, telegraph: [2], depth: 20, reach: { x0: 10, x1: 220, yTop: -220, yBot: 0 },
+                      reachF: { 3: { x0: 10, x1: 200, yTop: -220, yBot: 0 }, 4: { x0: 20, x1: 240, yTop: -140, yBot: -40 } }, heavyOn: [4], heavyShake: 2.6,
+                      dmg: [16, 20], knock: 30, flinchMs: 460, shake: 2.0, when: [20, 230], weight: 2 },
+          crescent: { type: 'shot', anim: 'attack2', telegraph: [1, 2], spawnFrame: 3, spawn: { x: 110, y: 0 }, aimH: 0, dropPx: 0, proj: 'wave', impact: null, muzzle: null, pierce: true,
+                      hitCols: ["#0a0414", "#3a1460", "#a04ae8", "#ffb0ff"], speed: 320, range: 560, box: { w: 40, h: 110 }, depth: 18, dodgeZ: 26, enraged: { count: 3, lanes: [0, -40, 40], gapMs: 160, scale: [1, 0.85, 0.85] },
+                      dmg: [15, 19], knock: 28, flinchMs: 440, shake: 1.6, when: [40, 560], weight: 2 },
+          rain:     { type: 'barrage', anim: 'special', telegraph: [1, 2], spawnFrame: 3, count: 7, intervalMs: 200, fallMs: 850, dropHeight: 320,
+                      proj: 'meteor', blast: 'blast', blastCols: ["#0a0414", "#3a1460", "#a04ae8", "#ffb0ff"], spread: { x: 80, y: 18 }, radius: 44, depth: 16, dodgeZ: 24, holdMs: 250, gapMs: 8000, firstMs: 4500,
+                      enraged: { count: 12, intervalMs: 150 }, dmg: [16, 20], knock: 30, flinchMs: 450, heavy: true, shake: 2.2, when: [0, 600], weight: 2 },
+          rift:     { type: 'spikes', anim: 'rift', telegraph: [1, 2], spawnFrame: 3, fx: 'tent', aimMs: 400, count: 10, first: 60, step: 50, delayMs: 70, maxRange: 540,
+                      spikeActive: [2, 3, 4], reach: { x0: -24, x1: 24, yTop: -92, yBot: 0 }, depth: 18, dodgeZ: 30,
+                      dmg: [15, 19], knock: 22, flinchMs: 440, shake: 2.0, when: [0, 560], weight: 2, gapMs: 6000, firstMs: 3000 },
+          nova:     { type: 'shockwave', anim: 'rift', telegraph: [1, 2], spawnFrame: 3, holdFrame: 4, fx: 'ring', ringArt: true, spawn: { x: 60, y: 0 },
+                      rings: { count: 2, gapMs: 700, r0: 24, rMax: 320, speed: 280, band: 16, ryMax: 28, ringRx: 80, flameScale: 0.9, dodgeZ: 22 }, enraged: { count: 3 },
+                      dmg: [14, 18], knock: 30, flinchMs: 450, heavy: true, shake: 2.4, when: [0, 340], weight: 2, gapMs: 7000, firstMs: 7000 },
+          teleport: { type: 'teleport', anim: 'vanish', appearAnim: 'appear', telegraph: [1], invuln: [2], hiddenMs: 400, gatherMs: 360, behind: 100, lunge: 0, depth: 20,
+                      reach: { x0: 10, x1: 200, yTop: -220, yBot: 0 }, then: 'combo', thenFrame: 2, smokeCols: ['#0a0414', '#2a0a4a', '#7a2ad8', '#ff6aff'],
+                      enraged: { useGapMs: 5500 }, when: [0, 999], weight: 1, gapMs: 9000, firstMs: 8000 }
         }
       }
     },
@@ -3334,8 +3983,12 @@
       //   노말이 지루함 → 잡몹 1.5 → 2배 · 단단한 잡몹 1.3 → 1.6배, 판 보스 · 중간보스 = 체력 x bossHp · 공격 x bossDmg 더(위 배율 위에)
       //   하드 = 노말보다 확실히 많게 잡몹 2 → 2.5배 · 단단한 잡몹 1.6 → 2배(그 밖은 그대로). 하드의 「앞 난이도」 = 노말
       easy:   { name: '이지', hidden: true, hpMul: 1, dmgMul: 1, count: 1, countTough: 1, xp: 1, drop: 1 },
-      normal: { name: '노말', hpMul: [2.1, 1.6, 1.5], dmgMul: [2.0, 1.55, 1.45], count: 2, countTough: 1.6, bossHp: 1.3, bossDmg: 1.2, xp: 1.65, drop: 1.25 },
-      hard:   { name: '하드', hpMul: [3.0, 2.8, 2.6], dmgMul: [2.8, 2.6, 2.4], count: 2.5, countTough: 2, xp: 2.15, drop: 1.5 }
+      // 2026-11-09 형님 「노말 하드 나누기보단 1~20판 한 줄에서 난이도 조절」: 하드도 숨김(hidden) → 고르는 탭 없음, 노말 하나로 1~20판.
+      //   [1판, 10판, 20판] = 1~10판은 예전 노말 그대로, 11~20판은 예전 「하드 10판」 손맛까지 서서히(적 체력 판 배율 x 난이도 = 20판 2.9 x 1.65 ≈ 4.8 = 하드 10판 1.7 x 2.8)
+      //   마리 수도 20판에 잡몹 2.5배 · 단단한 잡몹 2배(예전 하드), 경험치 x1.65 → x2.3 → x5(레벨 곡선이 Lv30 뒤 가파름):
+      //   안 죽고 순서대로 깨면 10판 ≈ Lv22 · 12판 ≈ Lv26(2차 전직 Lv25) · 15판 ≈ Lv34 · 20판 ≈ Lv49(3차 Lv50). 자동 조종으로 11~20판 실제 경험치를 재서 맞춤
+      normal: { name: '노말', hpMul: [2.1, 1.6, 1.65], dmgMul: [2.0, 1.55, 1.75], count: [2, 2, 2.5], countTough: [1.6, 1.6, 2], bossHp: 1.3, bossDmg: 1.2, xp: [1.65, 2.3, 5], drop: [1.25, 1.25, 1.5] },
+      hard:   { name: '하드', hidden: true, hpMul: [3.0, 2.8, 2.6], dmgMul: [2.8, 2.6, 2.4], count: 2.5, countTough: 2, xp: 2.15, drop: 1.5 }
     },
     stages: [
       {
@@ -3739,7 +4392,8 @@
       },
       // ===================== 2부: 11~20단계 (2026-11-09) =====================
       // 마왕을 쓰러뜨린 뒤 마왕성 아래로 열린 땅들. 판 체력·공격 배율 1.8 → 2.9(10판 1.7), 몹 떼 2.05 → 2.5배, 중간보스는 midBoss.list
-      //   새 그림 = 배경 5종(판 두 개씩) + 새 잡몹 5종(art/stages-11-20). 보스 = 예전 보스 10마리를 그 땅 색으로 물들여 한 번씩(새 그림 없음)
+      //   새 그림 = 배경 5종(판 두 개씩, art/stages-11-20) + v2(2026-11-09 오후, 형님 「새 몹 · 새 기술 · 새 보스」): 땅마다 잡몹 3종 · 중간보스 2 · 보스 2 전부 새 AI 그림
+      //   (예전 적을 물들여 쓰던 것은 다 뺌. 몹 · 보스 기술 효과도 AI 그림 = assets/enemies/fx2)
       //   소품 = 예전 판 소품을 그 땅에 맞게 다시 씀. bossTitle = 보스 등장 컷인 칭호(없으면 종류별 칭호)
       // 레벨(노말을 순서대로 안 죽고 깼을 때 셈): 10판 Lv20 → 13판 Lv25(2차 전직) → 15판 Lv28 → 20판 Lv36 → 하드 20판 Lv51(3차 Lv50 즈음)
       // ===== 11단계: 저주받은 숲 어귀 (새 적 가시나무 정령, 보스 = 저주 오크 족장) =====
@@ -3751,19 +4405,19 @@
         bgTop: '#2a1a40',
         bg: BG_CURSED,
         hpMul: 1.8, dmgMul: 1.75,
-        bossName: '저주받은 오크 족장',
-        bossTitle: '저주받은 숲의 폭군',
+        bossName: '저주받은 고목왕',
+        bossTitle: '저주받은 숲의 심장',
         waves: [
-          { at: 120,  spawn: [['thorn', 'R', 0], ['thorn', 'R', 700], ['wolf', 'L', 2000, { variant: 'cursed' }]] },
-          { at: 500,  placed: [['thorn', 288, 0.36, { group: 'camp1', dir: 1 }], ['goblin', 364, 0.58, { group: 'camp1', variant: 'cursed' }]],
-                      spawn: [['bat', 'R', 700, { variant: 'cursed' }], ['thorn', 'L', 2400]] },
-          { at: 880,  spawn: [['wolf', 'R', 0, { variant: 'cursed' }], ['thorn', 'L', 500], ['bat', 'R', 1300, { variant: 'cursed', el: 'poison' }], ['goblin', 'L', 3000, { variant: 'cursed' }], ['thorn', 'R', 3600]] },
-          { at: 1260, placed: [['thorn', 292, 0.34, { group: 'camp2', dir: 1 }], ['skeleton', 372, 0.44, { group: 'camp2', variant: 'cursed' }], ['thorn', 340, 0.8, { group: 'camp2' }]],
-                      spawn: [['wolf', 'R', 1200, { variant: 'cursed' }], ['thorn', 'L', 3400], ['goblin', 'R', 4200, { variant: 'cursed' }]] },
-          { at: 1650, spawn: [['thorn', 'R', 0, { el: 'poison' }], ['bat', 'L', 400, { variant: 'cursed' }], ['skeleton', 'R', 1000, { variant: 'cursed' }], ['wolf', 'L', 2800, { variant: 'cursed' }], ['thorn', 'R', 3400]] },
-          { at: 2040, placed: [['thorn', 296, 0.3, { group: 'shrine', dir: 1 }], ['thorn', 368, 0.66, { group: 'shrine' }]],
-                      spawn: [['bat', 'R', 600, { variant: 'cursed' }], ['goblin', 'L', 1000, { variant: 'cursed' }], ['skeleton', 'R', 2800, { variant: 'cursed' }]] },
-          { at: 'end', boss: true, spawn: [['orc', 'R', 0, { variant: 'cursed' }]] }
+          { at: 120,  spawn: [['root', 'R', 0], ['shroom', 'R', 700], ['root', 'L', 2000]] },
+          { at: 500,  placed: [['thorn', 288, 0.36, { group: 'camp1', dir: 1 }], ['root', 364, 0.58, { group: 'camp1' }]],
+                      spawn: [['shroom', 'R', 700], ['root', 'L', 2400]] },
+          { at: 880,  spawn: [['root', 'R', 0], ['shroom', 'L', 500], ['root', 'R', 1300, { el: 'poison' }], ['thorn', 'L', 3000], ['shroom', 'R', 3600]] },
+          { at: 1260, placed: [['shroom', 292, 0.34, { group: 'camp2', dir: 1 }], ['thorn', 372, 0.44, { group: 'camp2' }], ['root', 340, 0.8, { group: 'camp2' }]],
+                      spawn: [['root', 'R', 1200], ['shroom', 'L', 3400], ['root', 'R', 4200]] },
+          { at: 1650, spawn: [['shroom', 'R', 0, { el: 'darkness' }], ['root', 'L', 400], ['thorn', 'R', 1000], ['root', 'L', 2800], ['shroom', 'R', 3400]] },
+          { at: 2040, placed: [['thorn', 296, 0.3, { group: 'shrine', dir: 1 }], ['shroom', 368, 0.66, { group: 'shrine' }]],
+                      spawn: [['root', 'R', 600], ['shroom', 'L', 1000], ['root', 'R', 2800]] },
+          { at: 'end', boss: true, spawn: [['treantking', 'R', 0]] }
         ],
         props: [
           { type: 'stump',     x: 430,  y: 0.72 },
@@ -3785,19 +4439,19 @@
         bgTop: '#2a1a40',
         bg: BG_CURSED,
         hpMul: 1.9, dmgMul: 1.8,
-        bossName: '썩은 거대 두꺼비',
-        bossTitle: '썩은 숲의 탐식가',
+        bossName: '가시덩굴 마녀',
+        bossTitle: '시든 숲의 저주술사',
         waves: [
-          { at: 120,  spawn: [['ghost', 'R', 0, { variant: 'cursed' }], ['thorn', 'R', 700], ['thorn', 'L', 2000]] },
-          { at: 500,  placed: [['thorn', 288, 0.36, { group: 'camp1', dir: 1 }], ['mummy', 364, 0.58, { group: 'camp1', variant: 'cursed' }]],
-                      spawn: [['bat', 'R', 700, { variant: 'cursed' }], ['ghost', 'L', 2400, { variant: 'cursed' }]] },
-          { at: 880,  spawn: [['thorn', 'R', 0], ['mummy', 'L', 500, { variant: 'cursed' }], ['bat', 'R', 1300, { variant: 'cursed' }], ['thorn', 'L', 3000, { el: 'darkness' }], ['ghost', 'R', 3600, { variant: 'cursed' }]] },
-          { at: 1260, placed: [['ghost', 292, 0.34, { group: 'camp2', dir: 1, variant: 'cursed' }], ['thorn', 372, 0.44, { group: 'camp2' }], ['thorn', 340, 0.8, { group: 'camp2' }]],
-                      spawn: [['wolf', 'R', 1200, { variant: 'cursed' }], ['mummy', 'L', 3400, { variant: 'cursed' }], ['thorn', 'R', 4200]] },
-          { at: 1650, spawn: [['thorn', 'R', 0], ['ghost', 'L', 500, { variant: 'cursed' }], ['bat', 'R', 1400, { variant: 'cursed', el: 'darkness' }], ['thorn', 'L', 2800], ['mummy', 'R', 3600, { variant: 'cursed' }]] },
-          { at: 2040, placed: [['thorn', 296, 0.3, { group: 'grave', dir: 1 }], ['ghost', 368, 0.66, { group: 'grave', variant: 'cursed' }]],
-                      spawn: [['wolf', 'R', 800, { variant: 'cursed' }], ['thorn', 'L', 2600]] },
-          { at: 'end', boss: true, spawn: [['toad', 'R', 0, { variant: 'cursed' }]] }
+          { at: 120,  spawn: [['shroom', 'R', 0], ['root', 'R', 700], ['shroom', 'L', 2000], ['thorn', 'R', 2600]] },
+          { at: 500,  placed: [['thorn', 288, 0.36, { group: 'camp1', dir: 1 }], ['shroom', 364, 0.58, { group: 'camp1' }]],
+                      spawn: [['root', 'R', 700], ['shroom', 'L', 2400]] },
+          { at: 880,  spawn: [['shroom', 'R', 0], ['root', 'L', 500], ['shroom', 'R', 1300, { el: 'darkness' }], ['thorn', 'L', 3000], ['root', 'R', 3600]] },
+          { at: 1260, placed: [['root', 292, 0.34, { group: 'camp2', dir: 1 }], ['thorn', 372, 0.44, { group: 'camp2' }], ['shroom', 340, 0.8, { group: 'camp2' }]],
+                      spawn: [['shroom', 'R', 1200], ['root', 'L', 3400], ['thorn', 'R', 4200]] },
+          { at: 1650, spawn: [['root', 'R', 0, { el: 'poison' }], ['shroom', 'L', 400], ['thorn', 'R', 1000], ['shroom', 'L', 2800], ['root', 'R', 3400], ['thorn', 'L', 4200]] },
+          { at: 2040, placed: [['thorn', 296, 0.3, { group: 'grave', dir: 1 }], ['root', 368, 0.66, { group: 'grave' }], ['shroom', 352, 0.86, { group: 'grave' }]],
+                      spawn: [['shroom', 'R', 600], ['root', 'L', 1000], ['shroom', 'R', 2800]] },
+          { at: 'end', boss: true, spawn: [['witch', 'R', 0]] }
         ],
         props: [
           { type: 'coffin',    x: 430,  y: 0.72 },
@@ -3819,19 +4473,19 @@
         bgTop: '#151a3a',
         bg: BG_CRYSTAL,
         hpMul: 2.0, dmgMul: 1.85,
-        bossName: '수정 골렘',
-        bossTitle: '수정 동굴의 수호자',
+        bossName: '수정 지네왕',
+        bossTitle: '수정 동굴의 포식자',
         waves: [
-          { at: 120,  spawn: [['beetle', 'R', 0], ['beetle', 'R', 600], ['skeleton', 'L', 2000, { variant: 'crystal' }]] },
-          { at: 500,  placed: [['bat', 300, 0.12, { group: 'roost', variant: 'crystal' }], ['bat', 344, 0.3, { group: 'roost', variant: 'crystal' }], ['beetle', 380, 0.7, { group: 'roost' }]],
-                      spawn: [['beetle', 'L', 500], ['skeleton', 'R', 2400, { variant: 'crystal' }]] },
-          { at: 880,  spawn: [['beetle', 'R', 0, { el: 'lightning' }], ['skeleton', 'L', 400, { variant: 'crystal' }], ['bat', 'R', 1300, { variant: 'crystal' }], ['beetle', 'L', 3000], ['beetle', 'R', 3600]] },
-          { at: 1260, placed: [['skeleton', 292, 0.34, { group: 'camp2', dir: 1, variant: 'crystal' }], ['beetle', 372, 0.44, { group: 'camp2' }], ['beetle', 340, 0.8, { group: 'camp2' }]],
-                      spawn: [['bat', 'R', 1200, { variant: 'crystal' }], ['beetle', 'L', 3400], ['skeleton', 'R', 4200, { variant: 'crystal' }]] },
-          { at: 1650, spawn: [['beetle', 'R', 0], ['beetle', 'L', 400, { el: 'lightning' }], ['skeleton', 'R', 1000, { variant: 'crystal' }], ['bat', 'L', 2800, { variant: 'crystal' }], ['beetle', 'R', 3400]] },
-          { at: 2040, placed: [['beetle', 296, 0.3, { group: 'vein', dir: 1 }], ['skeleton', 368, 0.66, { group: 'vein', variant: 'crystal' }]],
-                      spawn: [['beetle', 'R', 600], ['bat', 'L', 1000, { variant: 'crystal' }], ['beetle', 'R', 2800]] },
-          { at: 'end', boss: true, spawn: [['golem', 'R', 0, { variant: 'crystal' }]] }
+          { at: 120,  spawn: [['beetle', 'R', 0], ['spider', 'R', 700], ['beetle', 'L', 2000]] },
+          { at: 500,  placed: [['turret', 288, 0.36, { group: 'roost', dir: 1 }], ['beetle', 364, 0.58, { group: 'roost' }]],
+                      spawn: [['spider', 'R', 700], ['beetle', 'L', 2400]] },
+          { at: 880,  spawn: [['beetle', 'R', 0], ['spider', 'L', 500], ['beetle', 'R', 1300, { el: 'lightning' }], ['turret', 'L', 3000], ['spider', 'R', 3600]] },
+          { at: 1260, placed: [['spider', 292, 0.34, { group: 'camp2', dir: 1 }], ['turret', 372, 0.44, { group: 'camp2' }], ['beetle', 340, 0.8, { group: 'camp2' }]],
+                      spawn: [['beetle', 'R', 1200], ['spider', 'L', 3400], ['beetle', 'R', 4200]] },
+          { at: 1650, spawn: [['spider', 'R', 0, { el: 'ice' }], ['beetle', 'L', 400], ['turret', 'R', 1000], ['beetle', 'L', 2800], ['spider', 'R', 3400]] },
+          { at: 2040, placed: [['turret', 296, 0.3, { group: 'vein', dir: 1 }], ['spider', 368, 0.66, { group: 'vein' }]],
+                      spawn: [['beetle', 'R', 600], ['spider', 'L', 1000], ['beetle', 'R', 2800]] },
+          { at: 'end', boss: true, spawn: [['centipede', 'R', 0]] }
         ],
         props: [
           { type: 'orecart',  x: 430,  y: 0.74 },
@@ -3853,19 +4507,19 @@
         bgTop: '#151a3a',
         bg: BG_CRYSTAL,
         hpMul: 2.1, dmgMul: 1.9,
-        bossName: '수정 전갈 왕',
-        bossTitle: '수정 독침의 왕',
+        bossName: '수정 거신',
+        bossTitle: '광맥을 지키는 거인',
         waves: [
-          { at: 120,  spawn: [['beetle', 'R', 0], ['lizard', 'R', 700, { variant: 'crystal' }], ['beetle', 'L', 2000]] },
-          { at: 500,  placed: [['yeti', 288, 0.36, { group: 'camp1', dir: 1, variant: 'crystal' }], ['beetle', 364, 0.58, { group: 'camp1' }]],
-                      spawn: [['bat', 'R', 700, { variant: 'crystal' }], ['beetle', 'L', 2400]] },
-          { at: 880,  spawn: [['lizard', 'R', 0, { variant: 'crystal' }], ['beetle', 'L', 500, { el: 'ice' }], ['beetle', 'R', 1300], ['yeti', 'L', 3000, { variant: 'crystal' }], ['beetle', 'R', 3600]] },
-          { at: 1260, placed: [['beetle', 292, 0.34, { group: 'camp2', dir: 1 }], ['lizard', 372, 0.44, { group: 'camp2', variant: 'crystal' }], ['beetle', 340, 0.8, { group: 'camp2' }]],
-                      spawn: [['bat', 'R', 1200, { variant: 'crystal' }], ['yeti', 'L', 3400, { variant: 'crystal' }], ['beetle', 'R', 4200]] },
-          { at: 1650, spawn: [['beetle', 'R', 0, { el: 'lightning' }], ['lizard', 'L', 500, { variant: 'crystal' }], ['beetle', 'R', 1400], ['bat', 'L', 2800, { variant: 'crystal' }], ['beetle', 'R', 3400]] },
-          { at: 2040, placed: [['yeti', 296, 0.3, { group: 'gate', dir: 1, variant: 'crystal' }], ['beetle', 368, 0.66, { group: 'gate' }]],
-                      spawn: [['beetle', 'R', 800], ['lizard', 'L', 2600, { variant: 'crystal' }]] },
-          { at: 'end', boss: true, spawn: [['scorpion', 'R', 0, { variant: 'crystal' }]] }
+          { at: 120,  spawn: [['spider', 'R', 0], ['beetle', 'R', 700], ['spider', 'L', 2000], ['turret', 'R', 2600]] },
+          { at: 500,  placed: [['turret', 288, 0.36, { group: 'camp1', dir: 1 }], ['spider', 364, 0.58, { group: 'camp1' }]],
+                      spawn: [['beetle', 'R', 700], ['spider', 'L', 2400]] },
+          { at: 880,  spawn: [['spider', 'R', 0], ['beetle', 'L', 500], ['spider', 'R', 1300, { el: 'ice' }], ['turret', 'L', 3000], ['beetle', 'R', 3600]] },
+          { at: 1260, placed: [['beetle', 292, 0.34, { group: 'camp2', dir: 1 }], ['turret', 372, 0.44, { group: 'camp2' }], ['spider', 340, 0.8, { group: 'camp2' }]],
+                      spawn: [['spider', 'R', 1200], ['beetle', 'L', 3400], ['turret', 'R', 4200]] },
+          { at: 1650, spawn: [['beetle', 'R', 0, { el: 'lightning' }], ['spider', 'L', 400], ['turret', 'R', 1000], ['spider', 'L', 2800], ['beetle', 'R', 3400], ['turret', 'L', 4200]] },
+          { at: 2040, placed: [['turret', 296, 0.3, { group: 'gate', dir: 1 }], ['beetle', 368, 0.66, { group: 'gate' }], ['spider', 352, 0.86, { group: 'gate' }]],
+                      spawn: [['spider', 'R', 600], ['beetle', 'L', 1000], ['spider', 'R', 2800]] },
+          { at: 'end', boss: true, spawn: [['colossus', 'R', 0]] }
         ],
         props: [
           { type: 'orecrate', x: 430,  y: 0.72 },
@@ -3887,19 +4541,19 @@
         bgTop: '#0e3a44',
         bg: BG_SUNKEN,
         hpMul: 2.2, dmgMul: 1.95,
-        bossName: '익사한 해적 선장',
-        bossTitle: '가라앉은 바다의 약탈자',
+        bossName: '심해 마녀',
+        bossTitle: '가라앉은 신전의 마녀',
         waves: [
-          { at: 120,  spawn: [['fishman', 'R', 0], ['fishman', 'R', 700], ['skeleton', 'L', 2000, { variant: 'deep' }]] },
-          { at: 500,  placed: [['fishman', 288, 0.36, { group: 'camp1', dir: 1 }], ['gunner', 364, 0.58, { group: 'camp1', variant: 'deep' }]],
-                      spawn: [['lizard', 'R', 700, { variant: 'deep' }], ['fishman', 'L', 2400]] },
-          { at: 880,  spawn: [['fishman', 'R', 0, { el: 'ice' }], ['skeleton', 'L', 500, { variant: 'deep' }], ['gunner', 'R', 1300, { variant: 'deep' }], ['fishman', 'L', 3000], ['lizard', 'R', 3600, { variant: 'deep' }]] },
-          { at: 1260, placed: [['fishman', 292, 0.34, { group: 'camp2', dir: 1 }], ['skeleton', 372, 0.44, { group: 'camp2', variant: 'deep' }], ['fishman', 340, 0.8, { group: 'camp2' }]],
-                      spawn: [['lizard', 'R', 1200, { variant: 'deep' }], ['fishman', 'L', 3400], ['gunner', 'R', 4200, { variant: 'deep' }]] },
-          { at: 1650, spawn: [['fishman', 'R', 0], ['lizard', 'L', 400, { variant: 'deep', el: 'ice' }], ['fishman', 'R', 1000], ['skeleton', 'L', 2800, { variant: 'deep' }], ['fishman', 'R', 3400]] },
-          { at: 2040, placed: [['fishman', 296, 0.3, { group: 'altar', dir: 1 }], ['fishman', 368, 0.66, { group: 'altar' }]],
-                      spawn: [['gunner', 'R', 600, { variant: 'deep' }], ['lizard', 'L', 1000, { variant: 'deep' }], ['fishman', 'R', 2800]] },
-          { at: 'end', boss: true, spawn: [['captain', 'R', 0, { variant: 'deep' }]] }
+          { at: 120,  spawn: [['jelly', 'R', 0], ['fishman', 'R', 700], ['jelly', 'L', 2000]] },
+          { at: 500,  placed: [['crab', 288, 0.36, { group: 'camp1', dir: 1 }], ['jelly', 364, 0.58, { group: 'camp1' }]],
+                      spawn: [['fishman', 'R', 700], ['jelly', 'L', 2400]] },
+          { at: 880,  spawn: [['jelly', 'R', 0], ['fishman', 'L', 500], ['jelly', 'R', 1300, { el: 'ice' }], ['crab', 'L', 3000], ['fishman', 'R', 3600]] },
+          { at: 1260, placed: [['fishman', 292, 0.34, { group: 'camp2', dir: 1 }], ['crab', 372, 0.44, { group: 'camp2' }], ['jelly', 340, 0.8, { group: 'camp2' }]],
+                      spawn: [['jelly', 'R', 1200], ['fishman', 'L', 3400], ['jelly', 'R', 4200]] },
+          { at: 1650, spawn: [['fishman', 'R', 0, { el: 'wind' }], ['jelly', 'L', 400], ['crab', 'R', 1000], ['jelly', 'L', 2800], ['fishman', 'R', 3400]] },
+          { at: 2040, placed: [['crab', 296, 0.3, { group: 'altar', dir: 1 }], ['fishman', 368, 0.66, { group: 'altar' }]],
+                      spawn: [['jelly', 'R', 600], ['fishman', 'L', 1000], ['jelly', 'R', 2800]] },
+          { at: 'end', boss: true, spawn: [['seawitch', 'R', 0]] }
         ],
         props: [
           { type: 'amphora',  x: 430,  y: 0.72 },
@@ -3921,19 +4575,19 @@
         bgTop: '#0e3a44',
         bg: BG_SUNKEN,
         hpMul: 2.3, dmgMul: 2.0,
-        bossName: '심해 거인',
-        bossTitle: '깊은 바다의 거인',
+        bossName: '해신 나가',
+        bossTitle: '깊은 바다의 여왕',
         waves: [
-          { at: 120,  spawn: [['fishman', 'R', 0], ['mummy', 'R', 800, { variant: 'deep' }], ['fishman', 'L', 2000]] },
-          { at: 500,  placed: [['soldier', 288, 0.36, { group: 'camp1', dir: 1, variant: 'deep' }], ['fishman', 364, 0.58, { group: 'camp1' }]],
-                      spawn: [['lizard', 'R', 700, { variant: 'deep' }], ['fishman', 'L', 2400]] },
-          { at: 880,  spawn: [['fishman', 'R', 0], ['mummy', 'L', 500, { variant: 'deep' }], ['fishman', 'R', 1300, { el: 'wind' }], ['soldier', 'L', 3000, { variant: 'deep' }], ['fishman', 'R', 3600]] },
-          { at: 1260, placed: [['fishman', 292, 0.34, { group: 'camp2', dir: 1 }], ['soldier', 372, 0.44, { group: 'camp2', variant: 'deep' }], ['fishman', 340, 0.8, { group: 'camp2' }]],
-                      spawn: [['gunner', 'R', 1200, { variant: 'deep' }], ['mummy', 'L', 3400, { variant: 'deep' }], ['fishman', 'R', 4200]] },
-          { at: 1650, spawn: [['fishman', 'R', 0, { el: 'ice' }], ['soldier', 'L', 500, { variant: 'deep' }], ['fishman', 'R', 1400], ['lizard', 'L', 2800, { variant: 'deep' }], ['fishman', 'R', 3400]] },
-          { at: 2040, placed: [['fishman', 296, 0.3, { group: 'hall', dir: 1 }], ['mummy', 368, 0.66, { group: 'hall', variant: 'deep' }]],
-                      spawn: [['fishman', 'R', 800], ['gunner', 'L', 2600, { variant: 'deep' }]] },
-          { at: 'end', boss: true, spawn: [['giant', 'R', 0, { variant: 'deep' }]] }
+          { at: 120,  spawn: [['fishman', 'R', 0], ['jelly', 'R', 700], ['fishman', 'L', 2000], ['crab', 'R', 2600]] },
+          { at: 500,  placed: [['crab', 288, 0.36, { group: 'camp1', dir: 1 }], ['fishman', 364, 0.58, { group: 'camp1' }]],
+                      spawn: [['jelly', 'R', 700], ['fishman', 'L', 2400]] },
+          { at: 880,  spawn: [['fishman', 'R', 0], ['jelly', 'L', 500], ['fishman', 'R', 1300, { el: 'wind' }], ['crab', 'L', 3000], ['jelly', 'R', 3600]] },
+          { at: 1260, placed: [['jelly', 292, 0.34, { group: 'camp2', dir: 1 }], ['crab', 372, 0.44, { group: 'camp2' }], ['fishman', 340, 0.8, { group: 'camp2' }]],
+                      spawn: [['fishman', 'R', 1200], ['jelly', 'L', 3400], ['crab', 'R', 4200]] },
+          { at: 1650, spawn: [['jelly', 'R', 0, { el: 'ice' }], ['fishman', 'L', 400], ['crab', 'R', 1000], ['fishman', 'L', 2800], ['jelly', 'R', 3400], ['crab', 'L', 4200]] },
+          { at: 2040, placed: [['crab', 296, 0.3, { group: 'gate', dir: 1 }], ['jelly', 368, 0.66, { group: 'gate' }], ['fishman', 352, 0.86, { group: 'gate' }]],
+                      spawn: [['fishman', 'R', 600], ['jelly', 'L', 1000], ['fishman', 'R', 2800]] },
+          { at: 'end', boss: true, spawn: [['naga', 'R', 0]] }
         ],
         props: [
           { type: 'netcrate',  x: 430,  y: 0.72 },
@@ -3955,19 +4609,19 @@
         bgTop: '#6aa8e8',
         bg: BG_SKY,
         hpMul: 2.45, dmgMul: 2.1,
-        bossName: '폭풍 와이번',
+        bossName: '뇌조 폭풍왕',
         bossTitle: '폭풍을 부르는 날개',
         waves: [
-          { at: 120,  spawn: [['harpy', 'R', 0], ['harpy', 'R', 600], ['soldier', 'L', 2000, { variant: 'storm' }]] },
-          { at: 500,  placed: [['harpy', 300, 0.12, { group: 'nest' }], ['harpy', 344, 0.3, { group: 'nest' }], ['wolf', 380, 0.7, { group: 'nest', variant: 'storm' }]],
-                      spawn: [['harpy', 'L', 500], ['soldier', 'R', 2400, { variant: 'storm' }]] },
-          { at: 880,  spawn: [['harpy', 'R', 0, { el: 'wind' }], ['wolf', 'L', 400, { variant: 'storm' }], ['imp', 'R', 1300, { variant: 'storm' }], ['harpy', 'L', 3000], ['soldier', 'R', 3600, { variant: 'storm' }]] },
-          { at: 1260, placed: [['soldier', 292, 0.34, { group: 'camp2', dir: 1, variant: 'storm' }], ['harpy', 372, 0.24, { group: 'camp2' }], ['harpy', 340, 0.8, { group: 'camp2' }]],
-                      spawn: [['wolf', 'R', 1200, { variant: 'storm' }], ['harpy', 'L', 3400], ['imp', 'R', 4200, { variant: 'storm' }]] },
-          { at: 1650, spawn: [['harpy', 'R', 0], ['harpy', 'L', 400, { el: 'lightning' }], ['soldier', 'R', 1000, { variant: 'storm' }], ['wolf', 'L', 2800, { variant: 'storm' }], ['harpy', 'R', 3400]] },
-          { at: 2040, placed: [['harpy', 296, 0.2, { group: 'bell', dir: 1 }], ['soldier', 368, 0.66, { group: 'bell', variant: 'storm' }]],
-                      spawn: [['harpy', 'R', 600], ['imp', 'L', 1000, { variant: 'storm' }], ['harpy', 'R', 2800]] },
-          { at: 'end', boss: true, spawn: [['wyvern', 'R', 0, { variant: 'storm' }]] }
+          { at: 120,  spawn: [['harpy', 'R', 0], ['cloud', 'R', 700], ['harpy', 'L', 2000]] },
+          { at: 500,  placed: [['gargoyle', 288, 0.36, { group: 'nest', dir: 1 }], ['harpy', 364, 0.58, { group: 'nest' }]],
+                      spawn: [['cloud', 'R', 700], ['harpy', 'L', 2400]] },
+          { at: 880,  spawn: [['harpy', 'R', 0], ['cloud', 'L', 500], ['harpy', 'R', 1300, { el: 'wind' }], ['gargoyle', 'L', 3000], ['cloud', 'R', 3600]] },
+          { at: 1260, placed: [['cloud', 292, 0.34, { group: 'camp2', dir: 1 }], ['gargoyle', 372, 0.44, { group: 'camp2' }], ['harpy', 340, 0.8, { group: 'camp2' }]],
+                      spawn: [['harpy', 'R', 1200], ['cloud', 'L', 3400], ['harpy', 'R', 4200]] },
+          { at: 1650, spawn: [['cloud', 'R', 0, { el: 'light' }], ['harpy', 'L', 400], ['gargoyle', 'R', 1000], ['harpy', 'L', 2800], ['cloud', 'R', 3400]] },
+          { at: 2040, placed: [['gargoyle', 296, 0.3, { group: 'bell', dir: 1 }], ['cloud', 368, 0.66, { group: 'bell' }]],
+                      spawn: [['harpy', 'R', 600], ['cloud', 'L', 1000], ['harpy', 'R', 2800]] },
+          { at: 'end', boss: true, spawn: [['thunderbird', 'R', 0]] }
         ],
         props: [
           { type: 'bronzeurn', x: 430,  y: 0.72 },
@@ -3989,19 +4643,19 @@
         bgTop: '#6aa8e8',
         bg: BG_SKY,
         hpMul: 2.6, dmgMul: 2.2,
-        bossName: '타락한 천공 장군',
-        bossTitle: '타락한 천공의 장군',
+        bossName: '타락한 대천사',
+        bossTitle: '무너진 천공의 심판자',
         waves: [
-          { at: 120,  spawn: [['soldier', 'R', 0, { variant: 'holy' }], ['harpy', 'R', 700], ['harpy', 'L', 2000]] },
-          { at: 500,  placed: [['soldier', 288, 0.36, { group: 'camp1', dir: 1, variant: 'holy' }], ['mage', 364, 0.58, { group: 'camp1', variant: 'holy' }]],
-                      spawn: [['harpy', 'R', 700], ['ghost', 'L', 2400, { variant: 'holy' }]] },
-          { at: 880,  spawn: [['harpy', 'R', 0], ['ghost', 'L', 500, { variant: 'holy' }], ['harpy', 'R', 1300, { el: 'light' }], ['soldier', 'L', 3000, { variant: 'holy' }], ['harpy', 'R', 3600]] },
-          { at: 1260, placed: [['ghost', 292, 0.34, { group: 'camp2', dir: 1, variant: 'holy' }], ['mage', 372, 0.44, { group: 'camp2', variant: 'holy' }], ['harpy', 340, 0.8, { group: 'camp2' }]],
-                      spawn: [['harpy', 'R', 1200], ['soldier', 'L', 3400, { variant: 'holy' }], ['harpy', 'R', 4200]] },
-          { at: 1650, spawn: [['soldier', 'R', 0, { variant: 'holy' }], ['harpy', 'L', 500, { el: 'wind' }], ['ghost', 'R', 1400, { variant: 'holy' }], ['harpy', 'L', 2800], ['harpy', 'R', 3400]] },
-          { at: 2040, placed: [['soldier', 296, 0.3, { group: 'spire', dir: 1, variant: 'holy' }], ['harpy', 368, 0.3, { group: 'spire' }], ['mage', 352, 0.86, { group: 'spire', variant: 'holy' }]],
-                      spawn: [['harpy', 'R', 800], ['ghost', 'L', 2600, { variant: 'holy' }]] },
-          { at: 'end', boss: true, spawn: [['general', 'R', 0, { variant: 'holy' }]] }
+          { at: 120,  spawn: [['cloud', 'R', 0], ['harpy', 'R', 700], ['cloud', 'L', 2000], ['gargoyle', 'R', 2600]] },
+          { at: 500,  placed: [['gargoyle', 288, 0.36, { group: 'camp1', dir: 1 }], ['cloud', 364, 0.58, { group: 'camp1' }]],
+                      spawn: [['harpy', 'R', 700], ['cloud', 'L', 2400]] },
+          { at: 880,  spawn: [['cloud', 'R', 0], ['harpy', 'L', 500], ['cloud', 'R', 1300, { el: 'light' }], ['gargoyle', 'L', 3000], ['harpy', 'R', 3600]] },
+          { at: 1260, placed: [['harpy', 292, 0.34, { group: 'camp2', dir: 1 }], ['gargoyle', 372, 0.44, { group: 'camp2' }], ['cloud', 340, 0.8, { group: 'camp2' }]],
+                      spawn: [['cloud', 'R', 1200], ['harpy', 'L', 3400], ['gargoyle', 'R', 4200]] },
+          { at: 1650, spawn: [['harpy', 'R', 0, { el: 'wind' }], ['cloud', 'L', 400], ['gargoyle', 'R', 1000], ['cloud', 'L', 2800], ['harpy', 'R', 3400], ['gargoyle', 'L', 4200]] },
+          { at: 2040, placed: [['gargoyle', 296, 0.3, { group: 'spire', dir: 1 }], ['harpy', 368, 0.66, { group: 'spire' }], ['cloud', 352, 0.86, { group: 'spire' }]],
+                      spawn: [['cloud', 'R', 600], ['harpy', 'L', 1000], ['cloud', 'R', 2800]] },
+          { at: 'end', boss: true, spawn: [['archangel', 'R', 0]] }
         ],
         props: [
           { type: 'goldurn',   x: 430,  y: 0.72 },
@@ -4023,19 +4677,19 @@
         bgTop: '#140820',
         bg: BG_ABYSS,
         hpMul: 2.75, dmgMul: 2.3,
-        bossName: '공허 흡혈 백작',
-        bossTitle: '공허를 마시는 귀족',
+        bossName: '심연의 눈',
+        bossTitle: '공허를 들여다보는 눈',
         waves: [
-          { at: 120,  spawn: [['soldier', 'R', 0, { variant: 'void' }], ['voidpriest', 'R', 900], ['imp', 'L', 2000, { variant: 'void' }]] },
-          { at: 500,  placed: [['soldier', 288, 0.36, { group: 'camp1', dir: 1, variant: 'void' }], ['voidpriest', 364, 0.58, { group: 'camp1' }]],
-                      spawn: [['ghost', 'L', 900, { variant: 'void' }], ['imp', 'R', 2600, { variant: 'void' }]] },
-          { at: 880,  spawn: [['yeti', 'R', 0, { variant: 'void' }], ['soldier', 'L', 400, { variant: 'void' }], ['voidpriest', 'R', 1600, { el: 'darkness' }], ['imp', 'L', 3000, { variant: 'void' }], ['soldier', 'R', 3800, { variant: 'void' }]] },
-          { at: 1260, placed: [['ghost', 292, 0.34, { group: 'camp2', dir: 1, variant: 'void' }], ['voidpriest', 372, 0.44, { group: 'camp2' }], ['soldier', 340, 0.8, { group: 'camp2', variant: 'void' }]],
-                      spawn: [['imp', 'R', 1200, { variant: 'void' }], ['yeti', 'L', 3400, { variant: 'void' }], ['soldier', 'R', 4200, { variant: 'void' }]] },
-          { at: 1650, spawn: [['soldier', 'R', 0, { variant: 'void' }], ['ghost', 'L', 500, { variant: 'void' }], ['voidpriest', 'R', 2200], ['imp', 'L', 3600, { variant: 'void', el: 'fire' }], ['soldier', 'R', 4400, { variant: 'void' }]] },
-          { at: 2040, placed: [['soldier', 296, 0.3, { group: 'rift', dir: 1, variant: 'void' }], ['voidpriest', 372, 0.62, { group: 'rift' }], ['ghost', 352, 0.86, { group: 'rift', variant: 'void' }]],
-                      spawn: [['imp', 'R', 800, { variant: 'void' }], ['soldier', 'L', 2800, { variant: 'void' }]] },
-          { at: 'end', boss: true, spawn: [['vampire', 'R', 0, { variant: 'void' }]] }
+          { at: 120,  spawn: [['hound', 'R', 0], ['voidpriest', 'R', 700], ['hound', 'L', 2000]] },
+          { at: 500,  placed: [['horror', 288, 0.36, { group: 'camp1', dir: 1 }], ['hound', 364, 0.58, { group: 'camp1' }]],
+                      spawn: [['voidpriest', 'R', 700], ['hound', 'L', 2400]] },
+          { at: 880,  spawn: [['hound', 'R', 0], ['voidpriest', 'L', 500], ['hound', 'R', 1300, { el: 'darkness' }], ['horror', 'L', 3000], ['voidpriest', 'R', 3600]] },
+          { at: 1260, placed: [['voidpriest', 292, 0.34, { group: 'camp2', dir: 1 }], ['horror', 372, 0.44, { group: 'camp2' }], ['hound', 340, 0.8, { group: 'camp2' }]],
+                      spawn: [['hound', 'R', 1200], ['voidpriest', 'L', 3400], ['hound', 'R', 4200]] },
+          { at: 1650, spawn: [['voidpriest', 'R', 0, { el: 'fire' }], ['hound', 'L', 400], ['horror', 'R', 1000], ['hound', 'L', 2800], ['voidpriest', 'R', 3400]] },
+          { at: 2040, placed: [['horror', 296, 0.3, { group: 'rift', dir: 1 }], ['voidpriest', 368, 0.66, { group: 'rift' }]],
+                      spawn: [['hound', 'R', 600], ['voidpriest', 'L', 1000], ['hound', 'R', 2800]] },
+          { at: 'end', boss: true, spawn: [['abysseye', 'R', 0]] }
         ],
         props: [
           { type: 'cursedchest', x: 430,  y: 0.72 },
@@ -4061,16 +4715,16 @@
         bossTitle: '공허의 왕',
         endLine: '공허의 마왕을 쓰러뜨렸다!',
         waves: [
-          { at: 120,  spawn: [['voidpriest', 'R', 0], ['thorn', 'R', 600, { variant: 'void' }], ['fishman', 'L', 2000, { variant: 'void' }]] },
-          { at: 500,  placed: [['soldier', 288, 0.36, { group: 'camp1', dir: 1, variant: 'void' }], ['voidpriest', 364, 0.58, { group: 'camp1' }]],
-                      spawn: [['harpy', 'L', 900, { variant: 'void' }], ['beetle', 'R', 2600, { variant: 'void' }]] },
-          { at: 880,  spawn: [['beetle', 'R', 0, { variant: 'void' }], ['thorn', 'L', 400, { variant: 'void' }], ['voidpriest', 'R', 1600], ['harpy', 'L', 3000, { variant: 'void' }], ['fishman', 'R', 3800, { variant: 'void' }]] },
-          { at: 1260, placed: [['ghost', 292, 0.34, { group: 'camp2', dir: 1, variant: 'void' }], ['voidpriest', 372, 0.44, { group: 'camp2' }], ['fishman', 340, 0.8, { group: 'camp2', variant: 'void' }]],
-                      spawn: [['beetle', 'R', 1200, { variant: 'void' }], ['thorn', 'L', 3400, { variant: 'void', el: 'darkness' }], ['soldier', 'R', 4200, { variant: 'void' }]] },
-          { at: 1650, spawn: [['soldier', 'R', 0, { variant: 'void' }], ['harpy', 'L', 500, { variant: 'void' }], ['voidpriest', 'R', 2200, { el: 'darkness' }], ['beetle', 'L', 3600, { variant: 'void' }], ['fishman', 'R', 4400, { variant: 'void' }]] },
-          { at: 2040, placed: [['soldier', 296, 0.3, { group: 'throne', dir: 1, variant: 'void' }], ['voidpriest', 372, 0.62, { group: 'throne' }], ['ghost', 352, 0.86, { group: 'throne', variant: 'void' }]],
-                      spawn: [['thorn', 'R', 800, { variant: 'void' }], ['harpy', 'L', 2800, { variant: 'void' }]] },
-          { at: 'end', boss: true, spawn: [['demonking', 'R', 0, { variant: 'void' }]] }
+          { at: 120,  spawn: [['hound', 'R', 0], ['voidpriest', 'R', 700], ['hound', 'L', 2000], ['horror', 'R', 2600]] },
+          { at: 500,  placed: [['horror', 288, 0.36, { group: 'camp1', dir: 1 }], ['hound', 364, 0.58, { group: 'camp1' }]],
+                      spawn: [['voidpriest', 'R', 700], ['hound', 'L', 2400]] },
+          { at: 880,  spawn: [['hound', 'R', 0], ['voidpriest', 'L', 500], ['hound', 'R', 1300, { el: 'darkness' }], ['horror', 'L', 3000], ['voidpriest', 'R', 3600]] },
+          { at: 1260, placed: [['voidpriest', 292, 0.34, { group: 'camp2', dir: 1 }], ['horror', 372, 0.44, { group: 'camp2' }], ['hound', 340, 0.8, { group: 'camp2' }]],
+                      spawn: [['hound', 'R', 1200], ['voidpriest', 'L', 3400], ['horror', 'R', 4200]] },
+          { at: 1650, spawn: [['voidpriest', 'R', 0, { el: 'light' }], ['hound', 'L', 400], ['horror', 'R', 1000], ['hound', 'L', 2800], ['voidpriest', 'R', 3400], ['horror', 'L', 4200]] },
+          { at: 2040, placed: [['horror', 296, 0.3, { group: 'throne', dir: 1 }], ['voidpriest', 368, 0.66, { group: 'throne' }], ['hound', 352, 0.86, { group: 'throne' }]],
+                      spawn: [['hound', 'R', 600], ['voidpriest', 'L', 1000], ['hound', 'R', 2800]] },
+          { at: 'end', boss: true, spawn: [['voidlord', 'R', 0]] }
         ],
         props: [
           { type: 'goldurn',     x: 430,  y: 0.72 },
@@ -4230,18 +4884,17 @@
         8: ['ghost', '유령 기사 대장', null],
         9: ['soldier', '마족 병사 대장', null],
         10: ['soldier', '심연 근위대장', 'abyss'],
-        // 11~20단계(2026-11-09): 새 잡몹 대장 3(가시나무 정령 · 어인 · 공허 사도) + 그 땅 색으로 물들인 예전 적 대장 7
-        //   (빠른 잡몹 = 갑충 · 하피는 몹 떼 규칙(main.js hordeMob)으로 대장 체력까지 나뉘어 너무 약해져서 대장에서 뺌)
-        11: ['thorn', '가시나무 정령 대장', null],
-        12: ['ghost', '망령 기사 대장', 'cursed'],
-        13: ['skeleton', '수정 해골 대장', 'crystal'],
-        14: ['yeti', '수정 설인 대장', 'crystal'],
-        15: ['fishman', '심해 어인 대장', null],
-        16: ['lizard', '심해 도마뱀 대장', 'deep'],
-        17: ['soldier', '폭풍 기사 대장', 'storm'],
-        18: ['ghost', '천공 유령 기사 대장', 'holy'],
-        19: ['voidpriest', '공허 사도 대장', null],
-        20: ['ghost', '공허 근위대장', 'void']
+        // 11~20단계 v2(2026-11-09): 따로 그린 정예(art/stages-11-20/v2). 네 번째 칸 = 덮어쓰기: scale 1(그림이 이미 큼) · 색 그대로(tint 끔) · 체력 = 그 판 보스 x hpBoss
+        11: ['thornelder', '가시나무 장로', null, MIDV2],
+        12: ['shroomking', '독버섯 왕', null, MIDV2],
+        13: ['rhinobeetle', '수정 장수풍뎅이', null, MIDV2],
+        14: ['spiderqueen', '수정 거미 여왕', null, MIDV2],
+        15: ['fishlord', '어인 장군', null, MIDV2],
+        16: ['jellyqueen', '해파리 여왕', null, MIDV2],
+        17: ['harpyqueen', '하피 여왕', null, MIDV2],
+        18: ['gargoylelord', '가고일 군주', null, MIDV2],
+        19: ['houndalpha', '쌍두 사냥개', null, MIDV2],
+        20: ['archpriest', '공허 대사제', null, MIDV2]
       }
     },
 
@@ -5187,6 +5840,7 @@
         mul(a, ['first', 'step'], S);
         // 8단계: 흡혈 백작 순간이동(등 뒤 거리·덤비는 거리), 화난 뒤 박쥐 떼 줄 차이
         mul(a, ['behind', 'lunge'], S); if (a.enraged && a.enraged.lanes) arr(a.enraged.lanes);
+        if (a.volley && a.volley.lanes) arr(a.volley.lanes); mul(a, ['homing'], S);   // 2026-11-09 여러 발(줄 차이) · 따라오는 구체(초당 줄 이동)
         // 9단계: 마왕군 장군 화염 충격파 고리(처음·끝 반지름, 퍼지는 속도, 맞는 띠 두께, 위아래 반지름, 그림 속 고리 반지름, 피하는 점프 높이)
         mul(a.rings, ['r0', 'rMax', 'speed', 'band', 'ryMax', 'ringRx', 'dodgeZ'], S);
       });
