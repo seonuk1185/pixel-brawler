@@ -1,0 +1,132 @@
+{
+"note": "archer (bow baked into the art): hand = bow centre (1x art px), reference for arrow / aura spot. made by aranchors.py",
+"angleUnit": "deg",
+"frames": {
+"motion_leap_01": {
+"hand": [
+69,
+83
+],
+"angle": 0
+},
+"motion_leap_02": {
+"hand": [
+66,
+50
+],
+"angle": 0
+},
+"motion_leap_03": {
+"hand": [
+72,
+82
+],
+"angle": 0
+},
+"motion_leap_04": {
+"hand": [
+71,
+59
+],
+"angle": 0
+},
+"motion_leap_05": {
+"hand": [
+67,
+94
+],
+"angle": 0
+},
+"motion_leap_06": {
+"hand": [
+71,
+79
+],
+"angle": 0
+},
+"motion_shoot_01": {
+"hand": [
+70,
+80
+],
+"angle": 0
+},
+"motion_shoot_02": {
+"hand": [
+79,
+90
+],
+"angle": 0
+},
+"motion_shoot_03": {
+"hand": [
+80,
+74
+],
+"angle": 0
+},
+"motion_shoot_04": {
+"hand": [
+81,
+73
+],
+"angle": 0
+},
+"motion_shoot_05": {
+"hand": [
+80,
+75
+],
+"angle": 0
+},
+"motion_shoot_06": {
+"hand": [
+70,
+78
+],
+"angle": 0
+},
+"motion_sky_01": {
+"hand": [
+73,
+77
+],
+"angle": 0
+},
+"motion_sky_02": {
+"hand": [
+70,
+66
+],
+"angle": 0
+},
+"motion_sky_03": {
+"hand": [
+71,
+77
+],
+"angle": 0
+},
+"motion_sky_04": {
+"hand": [
+71,
+74
+],
+"angle": 0
+},
+"motion_sky_05": {
+"hand": [
+71,
+77
+],
+"angle": 0
+},
+"motion_sky_06": {
+"hand": [
+74,
+77
+],
+"angle": 0
+}
+}
+}
