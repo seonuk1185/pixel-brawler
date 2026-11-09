@@ -27,6 +27,10 @@
   var SAVE_KEY = CFG.demo ? 'pixelBrawler.demo.save' : 'pixelBrawler.save';   // 친구 시험 모드(?demo=1, config.js) = 따로 저장
   var KEYS = ['str', 'agi', 'vit', 'int', 'wis'];
   var params = new URLSearchParams(location.search);
+  // 테스트 모드(2026-11-10, config testPanel · js/testpanel.js): 시험 설정 = localStorage 'pixelBrawler.test' = { t3: 3차 켬, pts: 기술 점수 더, god, oneHit, chr }.
+  //   config testPanel = false · 친구 시험 모드(?demo=1) · 미리보기 액자에서는 아예 안 읽음(일반 플레이 그대로)
+  var TP_KEY = 'pixelBrawler.test', TP = {};
+  if (CFG.testPanel && !CFG.demo && !window.PV) { try { TP = JSON.parse(localStorage.getItem(TP_KEY) || '{}') || {}; } catch (e) { TP = {}; } if (typeof TP !== 'object') TP = {}; }
 
   function clampLv(n) { return Math.max(1, Math.min(GR.maxLv, n | 0)); }
   // lv 에서 다음 레벨까지 필요한 경험치 (최고 레벨이면 0)
@@ -93,7 +97,7 @@
   //     ?t3=2 = 켜되 전직 화면은 아직 안 본 것으로(전직 화면 시험 · 영상용)
   var urlT3 = !CFG.demo && /^[012]$/.test(params.get('t3') || '') ? params.get('t3') : null;
   //   공개 스위치(2026-11-10): config tier3Enabled = false 면 3차 전체가 없는 것으로 봄(전직 화면 · 3차 기술 · 3차 옷 · 3차 맛 전부 안 나옴). 시험 = 주소 ?t3=1 만 켬
-  var T3_ON = !!CFG.tier3Enabled || urlT3 === '1' || urlT3 === '2';
+  var T3_ON = !!CFG.tier3Enabled || urlT3 === '1' || urlT3 === '2' || !!TP.t3;   // 테스트 모드 「3차」(이 브라우저 시험 설정만)
   function tier3Of(cls, b) { if (!T3_ON) return null; var d = branchDef(cls, b || branchOf(cls)), t = d && d.tier3; return t && !t.soon ? t : null; }
   function tier3LvOf(cls, b) { var t = tier3Of(cls, b); return t ? t.lv || 50 : 999; }
   function t3On(cls) { if (urlT3 === '0') return false; var b = brOn(cls), t = b && tier3Of(cls, b); return !!t && G.lv >= (t.lv || 50); }
@@ -193,7 +197,7 @@
       learnable: function (id) { return B.unlocked(id) && !B.learned(id); },
       total: function () {
         if (test) return (SK.test && SK.test.pts) || 0;
-        return (LEARN ? (SK.firstPts || 0) : 0) + Math.max(0, G.lv - st.clsLv) * (SK.perLv || 1);
+        return (LEARN ? (SK.firstPts || 0) : 0) + Math.max(0, G.lv - st.clsLv) * (SK.perLv || 1) + Math.max(0, TP.pts | 0);   // + 테스트 모드 기술 점수
       },
       used: function () { var n = 0; Object.keys(st.lv).forEach(function (k) { if (byId[k] && !brOk(cls, byId[k], test)) return; n += k === BASIC ? Math.max(0, B.lv(k) - 1) : st.lv[k]; }); return n; },   // 기본기 Lv1 = 공짜 · 다른 갈래에 써 둔 점수는 안 셈(2026-11-08)
       pts: function () { return Math.max(0, B.total() - B.used()); },
@@ -607,6 +611,9 @@
       return nx && !was && G.modeOpen(nx) ? nx : null;
     },
     // 시험용: 지금 저장 내용 그대로
+    // 테스트 모드(2026-11-10, js/testpanel.js): 시험 설정 · 저장 이름
+    tp: TP, saveKey: SAVE_KEY,
+    tpSave: function () { try { if (Object.keys(TP).length) localStorage.setItem(TP_KEY, JSON.stringify(TP)); else localStorage.removeItem(TP_KEY); } catch (e) {} },
     saved: function () { try { return JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); } catch (e) { return null; } }
   };
   G.xp = Math.max(0, Math.min(need(G.lv) - 1, (cur.xp | 0)));

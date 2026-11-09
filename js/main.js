@@ -373,6 +373,7 @@
       var otg = target.state === 'down' && !!st.hitsDown;
       var wasAir = target.state === 'air';   // 띄워진 잡몹을 침(콤보 글자 「AIR」)
       if (otg) dmg = Math.max(1, Math.round(dmg * (CFG.ai.otg.dmgMul != null ? CFG.ai.otg.dmgMul : 1)));
+      if (G.oneHit && !target.tpHome && target.hp > dmg) dmg = target.hp;   // 테스트 모드 「한 방에 쓰러뜨리기」(js/testpanel.js)
       var res = target.takeHit(dmg, dir, knock, !!st.finisher && !st.noKnockdown && !comboFin, { heavy: heavy, stunMs: comboFin ? Math.max(st.stunMs || 0, FS.stunMs) : Math.max(st.stunMs || 0, Skills.brStun ? Skills.brStun(st, target) : 0), noJuggle: !!st.noJuggle || comboFin, flashK: st.flashK != null ? st.flashK : (heavyHit ? IM.flashHeavy || 1 : 1), otg: otg, launch: st.launch || 0, part: rpt && rpt.part });   // part = 레이드 보스 맞은 부위,  stunMs = 번개 기술, launch = 띄우기(ai.air)
       // 콤보 기록·글자(2026-11-06 밤): 띄움 / 공중 타 / 누운 적 타
       var CS = G.cstats;
@@ -2954,7 +2955,7 @@
       fullStep(dt);          // 포만감: 체력 천천히 + 줄어듦(2026-11-06 밤)
       rageStep(dt);          // 분노: 싸움이 없으면 천천히 줆(2026-11-06 밤)
       awkPushStep(dt);       // 각성 변신 순간 밀려나는 적
-      if (PV) pvStep(dt); else stageStep(dt);   // 미리보기 액자 = 웨이브 · 결과 없이 그 기술만 되풀이
+      if (PV) pvStep(dt); else { stageStep(dt); if (G.train) trainStep(dt); }   // 테스트 맵(2026-11-10) = 판 규칙 위에 허수아비 몹 붙잡기 · = 웨이브 · 결과 없이 그 기술만 되풀이
       Props.update(dt, p);   // 부서지는 그림·음식 줍기
       Enchant.updateItems(dt, p);   // 강화석 · 결정 줍기(2026-11-06)
     } else {
@@ -3150,6 +3151,7 @@
     setIf('go', go, function (v) { hud.goPrompt.hidden = !v; });
     var wi = Math.min(waves.length, S.locked ? S.waveIdx + 1 : S.next + (S.next < waves.length ? 0 : 0));
     // 판 이름 앞에 난이도(2026-11-06): 「노말 · STAGE 3  늪지대  ·  2 / 7」
+    if (CFG.stage.train) { setIf('info', 'train', function () { hud.stageInfo.textContent = CFG.stage.name; }); return; }   // 테스트 맵: 웨이브 수 없음
     setIf('info', Growth.mode() + wi + '/' + waves.length, function () { hud.stageInfo.textContent = modeTag() + CFG.stage.name + '  ·  ' + Math.max(1, wi) + ' / ' + waves.length; });
   }
   // 레이드 체력 막대(2026-11-07, index.html #raidBar): 이름 · RAID · 줄 수 「x34」 · 지금 줄(색) 위에 다음 줄 색 바탕 · 늦게 따라오는 막대 · 파란 그로기 막대 · 격노
@@ -3284,6 +3286,7 @@
     G.keepRun = false;
     G.enemies = [];
     G.stage = newStage();
+    if (!CFG.stage.train) G.train = null; else if (G.train) G.train.spawned = false;   // 테스트 맵(2026-11-10): 다른 판으로 가면 끝, 다시 하기 = 몹 다시 세움
     if (!(CFG.stage.dg && CFG.stage.dg.boss)) Raid.free();   // 레이드 보스 그림(2026-11-07): 레이드가 아니면 놓아줌(메모리)
     else Raid.reset();
     if (window.ElMob) ElMob.reset();   // 속성 몹 바닥 위험 · 상태(2026-11-07)
@@ -5071,6 +5074,102 @@
     (pvWear || Promise.resolve()).then(ready, ready);
   }
 
+  // ---------- 테스트 맵(2026-11-10, 형님: 기술 · 움직임 시험장) ----------
+  //   1판 숲길 첫 구간 배경 + 몹 5마리가 흩어져 제자리에 서 있음: 안 걷고 · 안 때리고(asleep + 공격 쿨 + 피해 0) · 절대 안 쓰러짐(체력 999999, 절반 밑이면 다시 참).
+  //   맞는 동작 · 밀림 · 띄우기 · 넘어짐 · 상태 이상 · 데미지 숫자는 그대로. 밀려나면 0.7초 뒤 제자리로 미끄러져 돌아옴. 판 클리어 · 시간 제한 없음(나가기 = 판 가기 · 스테이지 고르기)
+  var TRAIN_SPOTS = [{ dx: 110, k: 0.5 }, { dx: 180, k: 0.12 }, { dx: 195, k: 0.88 }, { dx: 265, k: 0.35 }, { dx: 310, k: 0.75 }];
+  function trainSpawnOne(i) {
+    var T = G.train, sp = TRAIN_SPOTS[i], x = Math.round(90 + sp.dx), y = Math.round(world.laneTop + sp.k * (world.laneBottom - world.laneTop));
+    var e = makeEnemy(T.type, x, y, null);
+    e.hp = e.maxHp = 999999; e.dmgMul = 0; e.noDrop = true; e.entered = true; e.dir = -1;
+    e.tpHome = { x: x, y: y }; e.tpSlot = i; e.label = '테스트 ' + (e.label || '');
+    e.sleep('idle');
+    return e;
+  }
+  function trainReset() {
+    G.enemies.forEach(function (e) { e.remove = true; });
+    G.enemies = G.enemies.filter(function (e) { return !e.remove; });
+    for (var i = 0; i < TRAIN_SPOTS.length; i++) trainSpawnOne(i);
+    G.train.spawned = true;
+  }
+  function trainStep(dt) {
+    var T = G.train, p = G.player; T.t += dt;
+    G.stage.camMin = 0; G.stage.boss = null; G.stage.mid = null;
+    if (!T.spawned) trainReset();
+    G.enemies.forEach(function (e) {
+      if (!e.tpHome) return;
+      if (!e.alive()) { if (!e.tpRe) e.tpRe = T.t + 900; else if (T.t > e.tpRe && !e.tpDone) { e.tpDone = true; e.remove = true; trainSpawnOne(e.tpSlot); } return; }
+      e.cool = Math.max(e.cool || 0, 3000); e.dmgMul = 0;
+      if (e.hp < e.maxHp * 0.5) e.hp = e.maxHp;
+      var free = (e.state === 'idle' || e.state === 'walk') && !(e.az > 0);
+      if (!free) { e.tpIdle = 0; return; }
+      if (!e.asleep) { e.sleep('idle'); e.alertT = 0; }
+      e.tpIdle = (e.tpIdle || 0) + dt;
+      var dx = e.tpHome.x - e.x, dy = e.tpHome.y - e.y;
+      if (e.tpIdle > 700 && (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5)) { var k = Math.min(1, dt / 220); e.x += dx * k; e.y += dy * k; }
+      if (p && Math.abs(p.x - e.x) > 4) e.dir = p.x > e.x ? 1 : -1;
+    });
+  }
+  function goTrain(type) {
+    if (MODE !== 'stage') return Promise.resolve();
+    type = type && CFG.enemies[type] && !CFG.enemies[type].boss ? type : 'goblin';
+    tpCloseAll(); G.paused = false;
+    var st0 = STAGES[0];
+    loading(true);
+    return Promise.all([Assets.ensureBg(st0.bg), Assets.ensureEnemies([type])]).then(function (r) {
+      loading(false);
+      G.assets.bg = r[0];
+      useStage(1);
+      CFG.stage = Object.assign({}, st0, { waves: [], props: [], train: true, name: '테스트 맵' }); CFG.bg = CFG.stage.bg;
+      applyStageWorld();
+      G.train = { type: type, t: 0, spawned: false };
+      resetStage(true);
+      G.train = { type: type, t: 0, spawned: false };
+      banner('테스트 맵', 'title');
+    });
+  }
+
+  // ---------- 테스트 모드 도구(2026-11-10, config testPanel · js/testpanel.js 가 씀) ----------
+  //   go(n) = 목록 n 번째 판으로 바로 · spawn(n, 무엇) = 그 판에서 다른 적을 치우고 그 적 하나(무엇 = 적 종류 · 'mid' 중간보스 · 'boss' 보스)
+  function tpCloseAll() {
+    [selEl, resultEl].forEach(function (el) { if (el && !el.hidden) closeMenu(el); });
+    if (setEl && !setEl.hidden) { keyWait = null; closeMenu(setEl); setBack = null; }
+  }
+  function tpBoss(st) { var b = null; (st.waves || []).forEach(function (w) { (w.spawn || []).concat(w.placed || []).forEach(function (q) { var E = CFG.enemies[q[0]]; if (E && E.boss) b = q[0]; }); }); return b; }
+  if (CFG.testPanel && !CFG.demo && !PV) G.testApi = {
+    stages: STAGES, mode: function () { return MODE; },
+    stageNo: function () { return G.stageNo; },
+    go: function (n) { if (MODE !== 'stage') return Promise.resolve(); tpCloseAll(); G.paused = false; return goStage(n); },
+    enemiesOf: function (n) { return stageEnemies(STAGES[n - 1]).filter(function (t) { var E = CFG.enemies[t]; return E && !E.boss; }); },
+    hasMid: function (n) { return !!midOf(STAGES[n - 1]); },
+    midName: function (n) { var M = midOf(STAGES[n - 1]); return M ? M.T.label : ''; },
+    bossOf: function (n) { return tpBoss(STAGES[n - 1]); },
+    spawn: function (n, what) {
+      if (MODE !== 'stage') return Promise.resolve(null);
+      tpCloseAll(); G.paused = false;
+      var pr = G.stageNo === n && !CFG.stage.dg && G.stage ? Promise.resolve() : goStage(n);
+      return pr.then(function () {
+        var st = CFG.stage, type = what, opt = null;
+        if (what === 'mid') { var MQ = midOf(st); if (!MQ) return null; type = MQ.type; opt = { mid: true }; }
+        else if (what === 'boss') type = tpBoss(st);
+        if (!type || !CFG.enemies[type]) return null;
+        return Assets.ensureEnemies([type]).then(function () {
+          G.enemies.forEach(function (e) { e.noDrop = true; e.remove = true; });
+          G.stage.boss = null; G.stage.mid = null;
+          if (what === 'boss' || what === 'mid') bakeStageVariants();
+          var e = spawnEnemy(type, 'R', opt, 0);
+          e.tpView = true;
+          return e;
+        });
+      });
+    },
+    train: function (type) { return goTrain(type); }, inTrain: function () { return !!G.train; }, trainType: function () { return G.train ? G.train.type : null; },
+    trainReset: function () { if (G.train) { tpCloseAll(); G.paused = false; trainReset(); } },
+    select: function () { if (MODE !== 'stage') return; tpCloseAll(); openStageSelect(); },
+    setChar: function (k) { return setChar(k); }, charKey: function () { return G.charKey; },
+    setGod: function (on) { if (G.player) G.player.god = !!on; }, setOneHit: function (on) { G.oneHit = !!on; }
+  };
+
   // ---------- 시작 ----------
   var last = 0, acc = 0, STEP = 1000 / 60;
   function frame(now) {
@@ -5146,7 +5245,7 @@
     if (G.dummy) G.dummy.y = G.player.y;
     G.camX = Math.max(0, G.player.x - LW * 0.42);
     if (PV) { setChar(PV.chr); pvWear = setClass(PV.cls); }
-    else { setChar('male'); setClass(Growth.cls || CFG.defaultClass || 'novice'); }
+    else { setChar((Growth.tp && Growth.tp.chr) || 'male'); setClass(Growth.cls || CFG.defaultClass || 'novice'); }   // 테스트 모드 성별(Growth.tp.chr)
     if (PV) pvBoot();
     else if (MODE === 'stage') {
       hudEl.hidden = false;
@@ -5157,6 +5256,8 @@
       document.getElementById('btnNext').addEventListener('click', function () { closeMenu(resultEl); G.keepRun = true; goStage(G.stageNo + 1); this.blur(); });
       document.getElementById('btnSel').addEventListener('click', function () { openStageSelect(CFG.stage.dg ? 'dungeon' : 'stage'); this.blur(); });
       if (params.get('god') === '1' && !CFG.demo) G.player.god = true;
+      if (Growth.tp && Growth.tp.god) G.player.god = true;   // 테스트 모드 무적 · 한 방(js/testpanel.js)
+      G.oneHit = !!(Growth.tp && Growth.tp.oneHit);
       var urlDg = params.get('dg');
       if (urlDg && CFG.dungeons && CFG.dungeons[urlDg] && (!CFG.demo || dgOpen(urlDg))) goDungeon(urlDg);   // 던전 바로 시작(2026-11-07, ?dg=mine)
       else if (pick) openStageSelect();
