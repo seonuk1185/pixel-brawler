@@ -1689,7 +1689,7 @@
   // 궁수 2차 옷(2026-11-09, 저격수 = archer_t2a · 레인저 = archer_t2b): 1차 궁수 그림 위에 Flow 로 옷만 다시 그려 같은 실루엣 · 장 수 · 발 위치.
   //   그래서 1차 궁수 묶음을 그대로 쓰고 그림 폴더 · 손 위치 json 만 바꾼다(콤보 · 보폭 · 달리기 수치 · 기술 동작 시간 = 1차 궁수 그대로).
   //   ARCHER_T2_DONE 에 있는 것만 진짜 그림, 없는 것은 classes.archer.tier2.branches 의 look(1차 옷 물들임) 그대로
-  var ARCHER_T2_DONE = ['t2a_male'];
+  var ARCHER_T2_DONE = ['t2a_male', 't2a_female'];
   var archerT2Sets = {};
   ARCHER_T2_DONE.forEach(function (k) {
     if (artSet === 'novice') return;
