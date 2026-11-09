@@ -185,7 +185,7 @@
     var t3b = [];
     CLS.forEach(function (q) { branches(q[0]).forEach(function (b) { var T = t3Of(q[0], b.key); if (T) t3b.push(btn(T.name + ' <small>(' + q[1] + ' ' + b.key.toUpperCase() + ' ' + b.name + ')</small>', function () { job3(q[0], b.key); }, c === q[0] && GR.branch === b.key && GR.t3On(c) ? 'on' : '')); }); });
     var r3 = row(s2, '3차', t3b);
-    r3.insertAdjacentHTML('beforeend', '<span class="tpnote">3차 (검성·현자만, 만드는 중) · 이 테스트에서만 켜져요</span>');
+    r3.insertAdjacentHTML('beforeend', '<span class="tpnote">3차 전직 (시험용) · 8개 모두 · 한 번 누르면 직업 · 갈래 · Lv 50 · 3차까지 · 이 테스트에서만 켜져요</span>');
     if (TP.t3) r3.appendChild(btn('3차 끄기', function () { tpSet('t3', null); reload('3차를 껐어요(2차로 보임)'); }, 'warn'));
     row(s2, '성별', [['male', '남'], ['female', '여']].map(function (g) {
       return btn(g[1], function () { tpSet('chr', g[0] === 'male' ? null : g[0]); API.setChar(g[0]); build(); say(g[1] + '자 옷으로 바꿨어요'); }, API.charKey() === g[0] ? 'on' : '');
@@ -193,7 +193,7 @@
     // 3. 기술
     var s3 = sec('기술 점수', c ? '' : '1차 전직 뒤에 써요');
     row(s3, '', [btn('기술 점수 +50', function () { addPts(50); }), btn('모든 기술 최대로 배우기', learnAll)]);
-    s3.insertAdjacentHTML('beforeend', '<p class="tpnote">「모든 기술 최대로」 = 지금 레벨에서 열린 기술 전부. 높은 기술까지 보려면 먼저 Lv 60 으로</p>');
+    s3.insertAdjacentHTML('beforeend', '<p class="tpnote">「모든 기술 최대로」 = 지금 레벨에서 열린 기술 전부(3차가 켜져 있으면 3차 기술도). 3차 기술까지 전부 보려면 먼저 Lv 60 으로</p>');
     // 4. 무기
     var s4 = sec('무기 강화', '강화석 없이 바로');
     var w = c && GR.weapon(c), wl = w ? w.lv() : -1;
