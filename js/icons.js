@@ -28,7 +28,8 @@
   var THEME = {
     steel: ['#3e5478', '#1c2640'], fire: ['#7a2412', '#2e0c08'], ice: ['#2a5a8e', '#0e1e3a'],
     storm: ['#4a2e86', '#1a1036'], earth: ['#5e3e22', '#24160a'], arcane: ['#4e2a74', '#1c0e2e'],
-    holy: ['#8a6418', '#2e2008'], blood: ['#6e1a26', '#26080c'], dark: ['#3e1048', '#120416']   // dark = 흑마법사(2026-11-08)
+    holy: ['#8a6418', '#2e2008'], blood: ['#6e1a26', '#26080c'], dark: ['#3e1048', '#120416'],   // dark = 흑마법사(2026-11-08)
+    wind: ['#1e5a3e', '#0a2216'], snipe: ['#2a4a6a', '#0c1828'], wild: ['#4a5a14', '#1a2006']        // 궁수(2026-11-09): 바람 = 1차 · 저격 = 저격수 · 숲 = 레인저
   };
   // 액자(테두리) 색: [밝은, 가운데, 어두운] — 작게 봐도 갈래가 보이게 원소 색으로
   var FRAME = {
@@ -40,7 +41,10 @@
     earth: ['#e8c490', '#a8743c', '#4e2c12'],   // 흙 = 갈색
     arcane:['#f0d8ff', '#a868f0', '#4e2290'],   // 마법 = 보라
     blood: ['#ffa0a0', '#d0303a', '#6a0c14'],   // 투지·반격 = 진홍
-    dark:  ['#f0b8ff', '#9a2ac0', '#3a0848']    // 어둠 = 검보라(흑마법사, 2026-11-08)
+    dark:  ['#f0b8ff', '#9a2ac0', '#3a0848'],   // 어둠 = 검보라(흑마법사, 2026-11-08)
+    wind:  ['#d8fff0', '#4ad89a', '#14603a'],   // 궁수 바람 = 민트(2026-11-09)
+    snipe: ['#eef8ff', '#8fc8f0', '#2a5a8a'],   // 저격수 = 은빛 하늘
+    wild:  ['#f0ffc0', '#a8d840', '#4a6a10']    // 레인저 = 숲 연두
   };
 
   // ---------- 24 x 24 그림판 ----------
@@ -129,6 +133,23 @@
     for (var j = 1; j <= 3; j++) { g.px(bx - j * dir, by + j, j % 2 ? K.b1 : K.b0); g.px(bx - j * dir + dir, by + j, K.b2); }
     g.rect(dir > 0 ? bx - 5 : bx + 4, by + 4, 2, 2, K.g1); g.px(dir > 0 ? bx - 5 : bx + 5, by + 4, K.g0);
   }
+  // 궁수(2026-11-09): 화살 한 대 — 깃(뒤 x0,y0) → 촉(앞 x1,y1). head = 촉 색, sh = 대 색
+  function arrow(g, x0, y0, x1, y1, head, sh) {
+    g.line(x0, y0, x1, y1, sh || K.b0);
+    var dx = Math.sign(x1 - x0), dy = Math.sign(y1 - y0);
+    g.px(x1, y1, K.wht); g.px(x1 - dx, y1, head || K.s1); g.px(x1, y1 - dy, head || K.s1); g.px(x1 - dx, y1 - dy, head || K.s2);
+    if (!dx) { g.px(x1 - 1, y1 - dy, head || K.s1); g.px(x1 + 1, y1 - dy, head || K.s1); }
+    if (!dy) { g.px(x1 - dx, y1 - 1, head || K.s1); g.px(x1 - dx, y1 + 1, head || K.s1); }
+    g.px(x0 - dy, y0 + dx, K.r0); g.px(x0 + dy, y0 - dx, K.r0); g.px(x0, y0, K.wht);
+  }
+  // 활(왼쪽이 손잡이, 오른쪽으로 휜 나무 활 + 시위)
+  function bow(g, cx, top, bot) {
+    var h = bot - top;
+    for (var i = 0; i <= h; i++) { var t = i / h, x = cx + Math.round(Math.sin(t * Math.PI) * 5); g.px(x, top + i, K.b0); g.px(x + 1, top + i, K.b1); }
+    g.line(cx, top, cx, bot, K.c0);
+    g.rect(cx + 4, top + Math.floor(h / 2) - 1, 2, 3, K.b2);
+  }
+  var MINT = '#7affc0', MINTD = '#2aa86a', ICE = '#bfe6ff', LEAF = '#b8ff6a';
   // 아래를 향한 곧은 검(x = 칼날 왼쪽, 칼날 폭 3): 손잡이 위 → 칼끝 tipY
   function downSword(g, x, topY, tipY, gold) {
     var L = gold ? K.g0 : K.s0, M = gold ? K.g1 : K.s1, D = gold ? K.g2 : K.s2;
@@ -157,6 +178,29 @@
 
   // ---------- 아이콘 22개 (growth/config SKILL_TREE 순서, 2026-11-06 칼날 폭풍 +1) ----------
   var ART = {
+    // ===== 궁수(2026-11-09) =====
+    pshot: function (g) { g.rect(3, 11, 16, 2, MINTD); arrow(g, 2, 12, 21, 12, K.wht, K.b0); g.outline(); g.ring(8, 12, 3, 4, 0, 359, MINT); g.ring(13, 12, 3, 4, 0, 359, MINT); g.spark(20, 8, false, MINT); },
+    upshot: function (g) { arrow(g, 7, 4, 12, 15, K.s1); g.outline(); g.ellipse(12, 18, 8, 2.5, MINTD); g.ellipse(12, 18, 5, 1.5, MINT); g.line(6, 14, 4, 6, MINT); g.line(18, 14, 20, 6, MINT); g.spark(12, 3, false, MINT); },
+    multi: function (g) { arrow(g, 3, 12, 20, 5); arrow(g, 3, 12, 21, 12); arrow(g, 3, 12, 20, 19); g.outline(); g.spark(21, 8, false, MINT); },
+    rain: function (g) { [[5, 3], [10, 1], [15, 4], [19, 2]].forEach(function (q) { arrow(g, q[0], q[1], q[0], q[1] + 13, K.s1); }); g.outline(); g.rect(2, 20, 20, 1, K.e1); g.spark(12, 19, false, K.g0); },
+    leap: function (g) { g.ring(12, 12, 8, 9.5, 160, 380, MINT); arrow(g, 9, 9, 20, 18, K.s1); g.outline(); g.spark(5, 5, false, MINT); },
+    burst: function (g) { arrow(g, 2, 14, 14, 10, K.f2); g.disc(16, 9, 5, function (d) { return d < 2 ? K.f0 : d < 3.5 ? K.f1 : K.f2; }); g.outline(); g.spark(20, 4, true, K.f1); },
+    aim: function (g) { bow(g, 6, 2, 21); arrow(g, 4, 12, 21, 12); g.outline(); g.spark(19, 6, false); },
+    focus: function (g) { g.ring(12, 12, 7, 8.5, 0, 359, K.r1); g.ring(12, 12, 3, 4, 0, 359, K.r0); g.line(12, 1, 12, 6, K.r1); g.line(12, 18, 12, 23, K.r1); g.line(1, 12, 6, 12, K.r1); g.line(18, 12, 23, 12, K.r1); g.px(12, 12, K.wht); g.outline(); },
+    split: function (g) { arrow(g, 2, 12, 11, 12); arrow(g, 11, 12, 20, 6, MINT, MINTD); arrow(g, 11, 12, 20, 18, MINT, MINTD); g.outline(); g.spark(11, 12, false, MINT); },
+    volley: function (g) { arrow(g, 6, 20, 6, 6, K.g0, K.g2); arrow(g, 12, 21, 12, 3, K.g0, K.g2); arrow(g, 18, 20, 18, 6, K.g0, K.g2); g.outline(); g.spark(12, 2, true); },
+    gale: function (g) { g.ring(12, 12, 6, 8, 0, 300, MINT); g.ring(12, 12, 3, 4.5, 90, 400, '#d8fff0'); g.outline(); g.line(2, 18, 8, 16, MINT); g.line(16, 6, 22, 4, MINT); },
+    mark: function (g) { g.ring(12, 12, 6, 8, 0, 359, K.f2); g.line(12, 2, 12, 7, K.f3); g.line(12, 17, 12, 22, K.f3); g.line(2, 12, 7, 12, K.f3); g.line(17, 12, 22, 12, K.f3); g.map(10, 9, ['..a..', '.aaa.', 'a.a.a', '..a..'], { a: K.f1 }); g.outline(); },
+    snipe: function (g) { g.rect(2, 11, 20, 2, ICE); arrow(g, 1, 12, 22, 12, K.wht, K.s0); g.outline(); g.ring(17, 12, 4, 5, 0, 359, K.r1); g.spark(4, 6, false, ICE); },
+    deadeye: function (g) { g.ring(12, 12, 7, 8.5, 0, 359, ICE); g.ring(12, 12, 3, 4, 0, 359, K.r1); g.px(12, 12, K.wht); g.outline(); g.spark(19, 5, true, K.g0); },
+    ballista: function (g) { g.poly([[2, 10], [16, 10], [16, 7], [22, 12], [16, 17], [16, 14], [2, 14]], function (x) { return x > 15 ? K.s0 : x > 8 ? K.s1 : K.s2; }); g.outline(); g.line(1, 7, 6, 7, ICE); g.line(1, 17, 6, 17, ICE); },
+    rapid: function (g) { arrow(g, 2, 6, 19, 6, ICE); arrow(g, 4, 12, 22, 12, K.wht); arrow(g, 2, 18, 19, 18, ICE); g.outline(); },
+    skyfall: function (g) { g.rect(10, 1, 4, 14, ICE); g.poly([[6, 13], [18, 13], [12, 21]], function (y) { return K.s0; }); g.outline(); g.ellipse(12, 21, 9, 2, '#ffffff'); g.spark(4, 4, true, ICE); g.spark(20, 6, false, ICE); },
+    tempest: function (g) { [[5, 2], [11, 0], [17, 3]].forEach(function (q) { arrow(g, q[0], q[1], q[0] + 2, q[1] + 11, K.s1); }); g.outline(); g.ring(12, 18, 5, 7, 180, 520, LEAF); },
+    hawk: function (g) { g.poly([[2, 8], [9, 10], [12, 7], [15, 10], [22, 7], [16, 14], [13, 18], [10, 14]], function (x, y) { return y < 10 ? K.b0 : y < 14 ? K.b1 : K.e0; }); g.px(12, 8, K.wht); g.px(13, 9, K.f1); g.outline(); },
+    trap: function (g) { g.ring(12, 15, 7, 8.5, 180, 360, K.s2); for (var i = 0; i < 6; i++) g.px(5 + i * 3, 9 + (i % 2), K.s0); g.rect(10, 15, 4, 3, K.s2); g.px(12, 16, K.f1); g.outline(); g.line(4, 21, 20, 21, LEAF); },
+    twister: function (g) { for (var y = 3; y < 21; y += 3) { var w = Math.round(9 - y * 0.35); g.line(12 - w, y, 12 + w, y, y % 6 ? LEAF : '#e8ffe0'); } arrow(g, 4, 9, 13, 12); g.outline(); },
+    barrage: function (g) { for (var i = 0; i < 6; i++) arrow(g, 3 + i * 3, 1 + (i % 2) * 3, 3 + i * 3, 11 + (i % 2) * 3, i % 2 ? K.g0 : K.s1); g.outline(); g.rect(2, 20, 20, 1, LEAF); g.spark(12, 18, true); },
     // ===== 기사 =====
     dash: function (g) {                    // 돌진베기: 오른쪽으로 내지르는 칼 + 뒤로 남는 바람 줄
       g.rect(9, 11, 11, 1, K.s0); g.rect(9, 12, 13, 1, K.wht); g.rect(9, 13, 11, 1, K.s2); g.px(20, 12, K.s0);
@@ -629,6 +673,15 @@
     darkorb: ['어둠의 구체', 'mage', 'active', 'dark'], leech: ['생명 흡수', 'mage', 'passive', 'blood'], swamp: ['저주의 늪', 'mage', 'active', 'dark'],   // 흑마법사(2차 갈래 B, 2026-11-08)
     wraith: ['악령 회오리', 'mage', 'active', 'dark'], abyss: ['심연의 문', 'mage', 'active', 'dark'],
     nimble: ['날렵한 몸놀림', 'all', 'passive', 'ice'],   // 기사 · 법사 늘 켜진 기술(2026-11-08)
+    // 궁수(2026-11-09): 1차 = 바람(wind) · 저격수 = snipe · 레인저 = wild
+    pshot: ['관통 화살', 'archer', 'active', 'wind'], upshot: ['솟구치는 화살', 'archer', 'active', 'wind'], multi: ['부채꼴 화살', 'archer', 'active', 'wind'],
+    rain: ['화살비', 'archer', 'active', 'wind'], leap: ['공중제비 사격', 'archer', 'active', 'wind'], burst: ['폭발 화살', 'archer', 'active', 'fire'],
+    aim: ['활 숙련', 'archer', 'passive', 'wind'], focus: ['집중', 'archer', 'passive', 'blood'], split: ['갈래 화살', 'archer', 'passive', 'wind'],
+    volley: ['자동 연사', 'archer', 'passive', 'holy'], gale: ['바람의 가호', 'archer', 'passive', 'wind'], mark: ['사냥꾼의 표식', 'archer', 'passive', 'fire'],
+    snipe: ['저격', 'archer', 'active', 'snipe'], deadeye: ['필중', 'archer', 'passive', 'snipe'], ballista: ['대포 화살', 'archer', 'active', 'snipe'],
+    rapid: ['속사', 'archer', 'active', 'snipe'], skyfall: ['천공의 일격', 'archer', 'active', 'snipe'],
+    tempest: ['화살 폭풍', 'archer', 'active', 'wild'], hawk: ['매 동료', 'archer', 'passive', 'wild'], trap: ['덫 설치', 'archer', 'active', 'wild'],
+    twister: ['회오리 화살', 'archer', 'active', 'wild'], barrage: ['천 개의 화살', 'archer', 'active', 'wild'],
     dodge: ['회피', 'all', 'active', 'ice'], atk: ['평타', 'all', 'active', 'steel'], jump: ['점프', 'all', 'active', 'earth']
   };
   // 견습 기본기 올려치기(2026-11-07): 올려베기 그림을 흙색 액자로(새 그림 없음)

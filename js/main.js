@@ -316,8 +316,10 @@
     // 치명타(민첩, 2026-11-06): 적·허수아비를 때릴 때 확률 Growth.critChance() → 데미지 x critMul + 큰 주황 숫자(agicrit). GAME.test.crit 로 시험 고정
     //   무기(2026-11-06): 기사 +3 치명타 확률 + · 어둠 속성 = 확률 + · 배율 +
     var dark = WP && WP.has('darkness'), DK = ENC && ENC.fx.darkness;
-    var crit = !target.isProp && (G.forceCrit != null ? G.forceCrit : Math.random() < Growth.critChance() + (WP ? WP.bonus('crit') : 0) + (dark ? DK.crit : 0));
-    if (crit) { dmg = Math.round(dmg * (CFG.growth.stats.critMul + (dark ? DK.critDmg : 0))); if (dark) Enchant.logAdd('darkCrit'); }
+    var AR = window.Archer && G.classKey === 'archer' ? Archer : null;   // 궁수 늘 켜진 기술 · 갈래 덤(2026-11-09): 치명타 확률 · 배율 · 표식 데미지
+    var crit = !target.isProp && (G.forceCrit != null ? G.forceCrit : Math.random() < Growth.critChance() + (WP ? WP.bonus('crit') : 0) + (dark ? DK.crit : 0) + (AR ? AR.critAdd(p, st) : 0));
+    if (crit) { dmg = Math.round(dmg * (CFG.growth.stats.critMul + (dark ? DK.critDmg : 0) + (AR ? AR.critDmg(p, st) : 0))); if (dark) Enchant.logAdd('darkCrit'); }
+    if (AR && !target.isProp) dmg = Math.round(dmg * AR.dmgMul(p, target, st));
     if (G.awk && !target.isProp) dmg = Math.round(dmg * CFG.awaken.atkMul);   // 각성: 공격 +30%(2026-11-06 밤)
     if (!target.isProp) dmg = Math.round(dmg * Skills.brandMul(p, target) * Skills.curseMul(target));   // 늘 켜진 기술 「원소 낙인」(2차): 낙인 찍힌 적은 더 아프게 · 흑마법사 저주의 늪 저주(2026-11-08)
     // 소품(상자·통): 단계만 넘김(데미지 숫자·콤보 수 없음). 기술(damageStyle) = 한 번에 부서짐, 맞은 곳 = 마법이면 그 자리, 아니면 몸 앞
@@ -421,6 +423,7 @@
       if (!W.magic) Skills.infuseHit(p, target, st, hx, hy);
       else Skills.leechHit(p, target, dmg);
       if (Skills.brHit) Skills.brHit(p, target, st, dmg);   // 갈래 맛 덤(2026-11-08): 성기사 기절 별 · 마검사 늦은 마력 터짐 + 마나 · 흑마법사 저주 + 흡수
+      if (AR) AR.onHit(p, target, st, dmg, res);   // 궁수(2026-11-09): 갈래 화살 · 사냥꾼의 표식 · 갈래 덤
     }
     // 무기 속성 효과(2026-11-06, js/enchant.js): 화상 · 독 · 느려짐 · 튀는 번개 · 흡혈 + 속성 색 불티. 법사 평타는 약하게(mageBasic)
     if (WP && target !== G.dummy && res) {
@@ -562,6 +565,7 @@
   // 마법 내보내기: bolt = 날아가는 탄(Projectiles), burst = 그 자리에서 바로 터짐
   function castMagic(st) {
     var p = G.player, c = st.cast, x = p.x + p.dir * c.x, y = p.y + c.y;
+    if (c.kind === 'arrow') { if (window.Archer) Archer.basicShot(p, st); return; }   // 궁수 평타 화살(2026-11-09, js/archer.js)
     if (c.kind === 'bolt') {
       var B = CFG.magic.bolt;
       Projectiles.spawn({ x: x, y: y, z: p.y, dir: p.dir, speed: c.speed, range: c.range, box: c.box, depth: c.depth,
@@ -2121,6 +2125,7 @@
     // 공통: 슈퍼아머 · 쿨타임 2배 빨리 / 법사: 마나 0 · 한 번 더 · 효과 더 크고 밝게 / 갑옷·로브 다시 칠하기 + 빛 테두리(entities.js look)
     p.superArmor = true; p.cdRate = AW.cdRate;
     p.freeMp = p.echoCast = cls === 'mage';
+    p.awkArrow = cls === 'archer';   // 궁수 각성 「매의 눈」(2026-11-09): 화살 하나 더 + 더 꿰뚫음(js/archer.js)
     Skills.setBright(cls === 'mage' ? 1.35 : 1);
     p.look = { paint: awkPaint(cls), outline: { color: A.color, alpha: 0.9, glow: true }, white: 1 };
     // 변신 순간: 안 맞음 + 슬로 + 흔들림 + 직업 색 번쩍 + 발밑 충격파·빛 + 주변 적 밀침(그리기 = drawAwk…)
@@ -2162,6 +2167,8 @@
       if (a.cls === 'knight') {   // 머리 위로 솟는 불꽃 + 몸 둘레 불티
         Skills.debris(p.x + (Math.random() * 2 - 1) * 7 * AS, hy - 92 * AS, p.y, 2, { cols: ['#fff2a0', '#ffb040', '#ff5a1a', '#ff2a10'], glow: true, sp: 70, size: 2.2, ms: 520, g: -260, spread: 0.45 });
         Skills.debris(p.x + (Math.random() * 2 - 1) * 16 * AS, hy - (20 + Math.random() * 60) * AS, p.y, 1, { cols: ['#ffd27a', '#ff5a1a', '#ff2a10'], glow: true, sp: 50, size: 1.6, ms: 420, g: -220, spread: 0.6 });
+      } else if (a.cls === 'archer') {   // 궁수 매의 눈(2026-11-09): 눈 높이에서 흩날리는 금빛 · 연두 깃털빛
+        Skills.debris(p.x + (Math.random() * 2 - 1) * 18 * AS, hy - (40 + Math.random() * 50) * AS, p.y, 1, { cols: ['#ffffff', '#fff2a0', '#9dff8a'], glow: true, sp: 60, size: 1.5, ms: 520, g: -120, spread: 0.9 });
       } else if (a.cls === 'mage') {   // 발밑 마법진에서 오르는 보라·하늘 빛 알갱이
         Skills.debris(p.x + (Math.random() * 2 - 1) * 26 * AS, p.y - 2, p.y, 1, { cols: ['#ffffff', '#d8b0ff', '#5ae6ff', '#b46aff'], glow: true, sp: 40, size: 1.5, ms: 700, g: -140, spread: 0.4 });
       } else {
@@ -2202,7 +2209,7 @@
       });
     }
     G.awk = null;
-    p.superArmor = false; p.cdRate = 1; p.freeMp = p.echoCast = false; p.look = null;
+    p.superArmor = false; p.cdRate = 1; p.freeMp = p.echoCast = false; p.awkArrow = false; p.look = null;
     Skills.setBright(1);
   }
   // 갑옷·로브 다시 칠하기(그림마다 한 번, 처음 그릴 때): 기사 = 회색 쇠·파란 겉옷 → 검붉게, 법사 = 보라 로브 → 진보라(더 짙고 진하게).
@@ -2237,6 +2244,8 @@
         else if (h >= 190 && h <= 265 && s > 0.2) { nh = 352; ns = Math.min(1, s * 1.1); nl = l * 0.7; }   // 파란 겉옷 → 진홍
       } else if (cls === 'mage') {
         if (h >= 245 && h <= 325 && s > 0.15) { nh = 276; ns = Math.min(1, s * 1.25 + 0.1); nl = l * 0.66; }   // 보라 로브 → 진보라
+      } else if (cls === 'archer') {
+        if (h >= 75 && h <= 165 && s > 0.15) { nh = 48; ns = Math.min(1, s * 1.2 + 0.15); nl = Math.min(0.85, l * 1.05); }   // 초록 두건 · 망토 → 금빛(매의 눈, 2026-11-09)
       }
       if (nh === null) continue;
       var q = nl < 0.5 ? nl * (1 + ns) : nl + ns - nl * ns, pp = 2 * nl - q, hk = nh / 360;
@@ -2709,7 +2718,7 @@
     var side = best.x > p.x ? 1 : -1;
     // 각성(2026-11-06 밤): 분노가 차면 적이 가까이 있을 때 바로 씀
     if ((G.rage || 0) >= 100 && !G.awk && Math.abs(best.x - p.x) < 170 * AS && Math.abs(best.y - p.y) < 50 * AS) Input.pressAwaken();
-    if (G.classKey === 'mage' && !G.botPlain) { botMage(dt, p, best, side, ax); return; }   // botPlain = 예전처럼 붙어서(비교 시험용)
+    if ((G.classKey === 'mage' || G.classKey === 'archer') && !G.botPlain) { botMage(dt, p, best, side, ax); return; }   // 궁수도 멀리서(2026-11-09)   // botPlain = 예전처럼 붙어서(비교 시험용)
     var want = ({ goblin: 42, wolf: 58, orc: 72, bat: 46, skeleton: 44, golem: 76, mummy: 46, scorpion: 80, lizard: 46, toad: 74, gunner: 40, captain: 70, imp: 44, lavagolem: 76, wyvern: 80, yeti: 50, giant: 82, ghost: 46, vampire: 66, soldier: 52, mage: 40, general: 84, demonking: 86 }[best.type] || 50) * AS;
     var sv = Props.steer(p, R, best.x - side * want, best.y, world, best.x);   // 막는 소품: 목표가 그 안이면 옆으로, 앞에 있으면 돌아감
     var tx = sv.x, ty = best.y;
@@ -2867,7 +2876,7 @@
     if (ev.slash) {
       // fx 는 하나 또는 여러 개(법사 2타 = 바람 + 지팡이 끝 반짝임)
       var st0 = ev.slash.step;
-      if (st0.cast) snd('magicShot'); else if (window.SFX) SFX.swing(p.weaponKey, !!st0.finisher);   // 휘두르는 소리(무기마다)
+      if (st0.cast) snd(st0.cast.kind === 'arrow' ? 'bowShot' : 'magicShot'); else if (window.SFX) SFX.swing(p.weaponKey, !!st0.finisher);   // 휘두르는 소리(무기마다)
       (Array.isArray(st0.fx) ? st0.fx : [st0.fx]).forEach(function (sfx) { swingFx(p, st0, sfx); });
     }
     if (ev.cast) castMagic(ev.cast.step);
@@ -2901,7 +2910,8 @@
         if ((e.x - p.x) * p.dir < gap) e.x = p.x + p.dir * gap;   // 늘 주인공 앞에 붙어서 밀려감
       });
     }
-    if (ev.moveSwing) { moveSwingFx(p, ev.moveSwing.kind); if (window.SFX) SFX.swing(p.weaponKey, ev.moveSwing.kind !== 'jump'); }
+    if (ev.moveSwing && G.classKey === 'archer' && window.Archer) { Archer.moveShot(p, ev.moveSwing.kind); snd('bowShot'); }   // 궁수(2026-11-09): 달리며 · 점프 공격 = 화살
+    else if (ev.moveSwing) { moveSwingFx(p, ev.moveSwing.kind); if (window.SFX) SFX.swing(p.weaponKey, ev.moveSwing.kind !== 'jump'); }
     if (ev.land) { landFx(p); snd('land'); }
     if (ev.dodge && ev.dodge.start) snd('dodge');
     if (ev.dodge || ev.dodgeGhost) dodgeFx(p, ev);
@@ -3074,7 +3084,7 @@
       hud.pRage.parentNode.parentNode.className = 'prg ' + v;
       var ready = v === 'full';
       [hud.btnAwk, hud.pcAwk].forEach(function (el) { if (el) { el.classList.toggle('ready', ready); el.classList.toggle('on', !!A); } });
-      if (hud.pcAwk) ['knight', 'mage', 'novice'].forEach(function (c) { hud.pcAwk.classList.toggle('awk-' + c, !!A && A.cls === c); });
+      if (hud.pcAwk) ['knight', 'mage', 'archer', 'novice'].forEach(function (c) { hud.pcAwk.classList.toggle('awk-' + c, !!A && A.cls === c); });
     });
     // PC 각성 칸(2026-11-07): 물 높이 = 분노(각성 중 = 남은 시간), 글자 = 분노 % / 각성 중 남은 초 / 가득 = 「준비!」
     setIf('pcawk', Math.round(rg * 100) / 100, function (v) { if (hud.pcAwk) { hud.pcAwk.style.setProperty('--rg', v); hud.pcAwk.classList.toggle('has', v > 0 && v < 1); } });
@@ -4998,6 +5008,9 @@
 
   // 처음 불러올 것: 지금 고른 옷 하나(나머지 옷은 시작한 뒤 뒤에서 하나씩). 예전 견습 그림(?art=novice)은 둘 다
   // 처음 직업 = 저장칸에 전직한 직업(없으면 견습)
+  // 시험(2026-11-09): ?cls=archer&lv=10 = 이번 창에서만 그 직업으로 전직한 저장처럼(기술 점수는 botPlan 순서로, ?branch=a|b 갈래). ?lv 가 있어야 됨(저장 안 함)
+  var urlCls = !PV && !CFG.demo ? params.get('cls') : null;
+  if (urlCls && CFG.classes[urlCls] && urlCls !== 'novice' && params.get('lv')) Growth.testSetup(urlCls, 7);
   G.classKey = Growth.cls || CFG.defaultClass || 'novice';
   if (PV) { G.classKey = PV.cls; G.charKey = PV.chr; }   // 미리보기 액자: 기술 창이 넘긴 직업 · 성별(그 옷부터 불러옴)
   var firstChars = CFG.artSet === 'novice' ? Object.keys(CFG.art.characters) : [outfitKey()];

@@ -104,6 +104,16 @@
     tone(x, o, t, k, { w: 'square', f: 700, f2: 1500, d: 0.08, v: 0.045, lp: 3000 });
     noise(x, o, t, k, { ft: 'highpass', f: 3000, d: 0.06, v: 0.06 });
   });
+  // 궁수 화살 쏨(2026-11-09): 시위 「팅」 + 바람 가르는 「슉」 / 힘 모아 쏨: 더 낮고 길게
+  def('bowShot', { cap: 3, gap: 45, vary: 0.1 }, function (x, o, t, k) {
+    tone(x, o, t, k, { w: 'triangle', f: 330, f2: 180, d: 0.07, v: 0.16 });
+    noise(x, o, t, k, { ft: 'bandpass', f: 2600, f2: 900, q: 1.2, d: 0.12, v: 0.2, a: 0.01 });
+  });
+  def('bowHeavy', { cap: 2, gap: 80, vary: 0.06 }, function (x, o, t, k) {
+    tone(x, o, t, k, { w: 'triangle', f: 220, f2: 90, d: 0.16, v: 0.24 });
+    noise(x, o, t, k, { ft: 'bandpass', f: 1800, f2: 500, q: 1, d: 0.26, v: 0.3, a: 0.01 });
+    tone(x, o, t, k, { w: 'sine', f: 110, f2: 45, d: 0.2, v: 0.35 });
+  });
   // 맞힘: 둔탁한 「퍽」(낮은 몸통 + 짧은 딱)
   def('hit', { cap: 4, gap: 30, vary: 0.14 }, function (x, o, t, k) {
     tone(x, o, t, k, { w: 'sine', f: 170, f2: 55, d: 0.12, v: 0.55 });

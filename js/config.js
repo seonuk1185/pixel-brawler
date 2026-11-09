@@ -204,6 +204,36 @@
     }
   };
 
+  // ---------- 궁수(활) 3타 콤보 (2026-11-09, art\archer-t1 · js/archer.js) ----------
+  // 활은 그림에 박혀 있음(bakedWeapon). 세 타 모두 화살을 쏨: cast.kind 'arrow' = js/archer.js 의 Archer.basicShot
+  //   x,y = 화살이 나오는 곳(발 기준, 원래 그림 도트), speed · range = 1초에 도트 · 최대 거리, box = 화살 판정 크기, depth = 위아래 폭,
+  //   pierce = 꿰뚫는 적 수(0 = 첫 적에서 멈춤, 99 = 끝까지), n = 한 번에 쏘는 화살 수(lanes = 화살마다 위아래로 비킴), art = 'fly'(보통) / 'pfly'(바람 화살)
+  //   몹 떼: 1·2타 화살이 1~2마리 꿰뚫고, 3타 바람 화살은 줄 위 적을 모두 꿰뚫으며 크게 밀어냄
+  var ARCHER = {
+    male: {
+      stride: 112, attack1Count: 4, attack2Count: 5, attack3Count: 6,
+      combo: [
+        { anim: 'attack1', f: [0, 1, 2, 3], d: [50, 70, 80, 90], active: [2, 2], cancel: 3, lunge: 0,
+          dmg: 0.8, hitstop: 0.7, knock: 0.7, shake: 0.6, spark: 0.8, impactFx: 'impact',
+          fx: { type: 'none' },
+          cast: { kind: 'arrow', x: 54, y: -66, speed: 640, range: 270, box: { w: 26, h: 12 }, depth: 16, pierce: 1, art: 'fly' } },
+        { anim: 'attack2', f: [0, 1, 2, 3, 4], d: [50, 60, 70, 80, 100], active: [3, 3], cancel: 4, lunge: 0,
+          dmg: 0.7, hitstop: 0.7, knock: 0.8, shake: 0.6, spark: 0.8,
+          fx: { type: 'none' },
+          cast: { kind: 'arrow', x: 54, y: -66, speed: 660, range: 280, box: { w: 26, h: 12 }, depth: 16, pierce: 2, n: 2, lanes: [-6, 6], art: 'fly' } },
+        { anim: 'attack3', f: [0, 1, 2, 3, 4, 5], d: [70, 80, 110, 80, 120, 130], active: [3, 3], cancel: 99, lunge: 0,
+          dmg: 1.7, hitstop: 1.5, knock: 2.6, shake: 1.8, finisher: true, spark: 1.1, hitsDown: true,
+          fx: { type: 'none' },
+          cast: { kind: 'arrow', x: 56, y: -64, speed: 760, range: 320, box: { w: 40, h: 22 }, depth: 22, pierce: 99, art: 'pfly', big: true } }
+      ]
+    },
+    female: {
+      stride: 96, attack1Count: 4, attack2Count: 5, attack3Count: 6,
+      combo: null   // 아래에서 남자 콤보를 그대로 씀(그림 장 수가 같음)
+    }
+  };
+  ARCHER.female.combo = ARCHER.male.combo;
+
   // ---------- 직업 기술 (2026-11-03): 기사 2개 · 법사 2개, 견습은 없음 ----------
   //   2026-11-06 성장 4단계: 기사·법사 각 4개(+ 늘 켜진 기술 2개, 아래 SKILL_TREE). 기술 = 마나(mp) + 쿨타임, 기술 Lv1~5
   // 키보드 U(또는 C) · I(V) · O(B) · P(N) = 기술 칸 1~4 (Lv13 전엔 2칸) / 폰 = 공격 버튼 둘레 작은 동그라미. 칸에 무엇을 끼울지는 기술 창
@@ -233,6 +263,18 @@
     mage_female: {
       motion_cast_forward: { count: 5, ms: [70, 90, 70, 90, 120], active: [2] },                         // 2 투수처럼 던짐
       motion_cast_sky:     { count: 6, ms: [70, 110, 140, 60, 160, 120], active: [3] }                   // 3 앞 아래로 탁 가리킴
+    },
+    // 궁수(2026-11-09, Flow 그림 art\archer-t1): shoot = 무릎 꿇고 힘 모아 쏘기(4장 = 놓는 장은 활이 안 보여서 기술마다 motionSeq 로 건너뜀),
+    //   sky = 하늘로 쏘기(2 하늘 조준 · 3 놓음), leap = 뒤로 공중제비 쏘기(1 뜀 · 2 거꾸로 · 3 공중 조준 · 4 착지)
+    archer_male: {
+      motion_shoot: { count: 6, ms: [80, 110, 120, 160, 90, 130], active: [3] },
+      motion_sky:   { count: 6, ms: [80, 110, 150, 120, 110, 120], active: [3] },
+      motion_leap:  { count: 6, ms: [70, 90, 90, 140, 120, 120], active: [3] }
+    },
+    archer_female: {
+      motion_shoot: { count: 6, ms: [80, 110, 120, 160, 90, 130], active: [3] },
+      motion_sky:   { count: 6, ms: [80, 110, 150, 120, 110, 120], active: [3] },
+      motion_leap:  { count: 6, ms: [70, 90, 90, 140, 120, 120], active: [3] }
     }
   };
 
@@ -448,7 +490,183 @@
   var ABYSS_TICK = { dmg: 0.3, hitstop: 0.2, knock: 0.05, shake: 0.4, spark: 0.7, hitsDown: true, noRage: true, noJuggle: true };
   var ABYSS_BOOM = { dmg: 5.0, hitstop: 2.6, knock: 3.0, shake: 4.4, knockdown: true, stunMs: 300, spark: 2.0, big: true, hitsDown: true,
                      flash: { color: '#e0b0ff', alpha: 0.7, ms: 260 }, slowMs: 420 };
+  // ---------- 궁수 기술 (2026-11-09, 효과 = AI 그림 art\skill-fx\ar_* · sn_* · rg_*, 움직임 = js/archer.js) ----------
+  //   거리 값(arc 안)은 대마법사 · 성기사 새 기술처럼 화면 도트(scaleActors 가 안 건드림). move.dist · leap.h 는 원래 그림 도트(줄어듦)
+  //   데미지 = 같은 칸(Lv)의 기사 · 법사 기술과 비슷하게(한 적이 다 맞을 때 「합」)
+  // 관통 화살(1차 첫 기술 ↔ 돌진베기 1.9): 바람 화살 한 발이 줄 위 적을 모두 꿰뚫음 2.2
+  var AR_PIERCE = { dmg: 2.2, hitstop: 0.8, knock: 1.6, shake: 1.4, spark: 1.3, big: true, hitsDown: true, flash: { color: '#e8fff4', alpha: 0.25, ms: 100 }, slowMs: 120 };
+  // 솟구치는 화살(기본기 띄우기 ↔ 올려베기 1.5): 땅에 꽂힌 화살에서 바람 기둥 → 띄움
+  var AR_UP = { launch: 1.1, dmg: 1.6, hitstop: 1.4, knock: 0.3, shake: 1.8, spark: 1.3, big: true, flash: { color: '#e0fff0', alpha: 0.25, ms: 110 }, slowMs: 140 };
+  // 부채꼴 화살(Lv8 ↔ 검기 2.0): 화살 5발(위아래로 퍼짐) x 1.0, 한 적은 보통 2발쯤 = 2.0 / 몹 떼는 다 맞음
+  var AR_FAN = { dmg: 1.0, hitstop: 0.5, knock: 1.0, shake: 0.8, spark: 1.0, big: true, hitsDown: true };
+  // 화살비(Lv11 ↔ 회전베기 3.2): 0.14초마다 0.35 x 9 = 3.15 + 마지막 1.0 (넓은 범위, 누운 적도)
+  var AR_RAIN = { dmg: 0.35, hitstop: 0.25, knock: 0.1, shake: 0.5, spark: 0.8, hitsDown: true, noRage: true, noJuggle: true };
+  var AR_RAIN_LAST = { dmg: 1.0, hitstop: 1.2, knock: 1.2, shake: 1.8, knockdown: true, spark: 1.2, big: true, hitsDown: true, flash: { color: '#fff6c8', alpha: 0.25, ms: 120 } };
+  // 공중제비 사격(Lv14 ↔ 내려찍기 2.5): 뛰기 전 발밑 바람(밀어냄 0.8) + 공중에서 아래로 화살 3발 x 0.9
+  var AR_LEAPKICK = { reach: { x0: -50, x1: 70, yTop: -110, yBot: -2, depth: 26 }, away: true, dmg: 0.8, hitstop: 0.8, knock: 2.2, shake: 1.2, spark: 1.1, hitY: -50 };
+  var AR_LEAP = { dmg: 0.9, hitstop: 0.6, knock: 1.4, shake: 1.0, spark: 1.1, big: true, hitsDown: true };
+  // 폭발 화살(Lv17 ↔ 연속 찌르기 3.85): 처음 맞은 적(또는 끝)에서 크게 터짐 3.4 (둘레 넘어뜨림, 누운 적도)
+  var AR_BOOM = { dmg: 3.4, hitstop: 2.0, knock: 2.6, shake: 3.0, knockdown: true, spark: 1.5, big: true, hitsDown: true, flash: { color: '#ffb060', alpha: 0.42, ms: 160 }, slowMs: 220 };
+  // 갈래 화살(늘 켜짐): 평타 화살이 맞으면 작은 화살이 둘레 다른 적에게(이 값 x passive.val)
+  var AR_SPLIT = { dmg: 1.0, hitstop: 0.2, knock: 0.3, shake: 0.3, spark: 0.7, noRage: true, noMp: true, noJuggle: true, numStyle: 'push', arSplit: true };
+  // 자동 연사(늘 켜짐): 몇 초마다 가까운 적에게 저절로 날아가는 빛 화살(이 값 x passive.mul)
+  var AR_AUTO = { dmg: 0.8, hitstop: 0.3, knock: 0.5, shake: 0.4, spark: 0.9, noRage: true, noMp: true, noJuggle: true, hitsDown: true, numStyle: 'push', arAuto: true };
+  // ---- 저격수(2차 갈래 a) ----
+  // 저격(25 ↔ 칼날 폭풍 5.7): 조준선 0.45초 → 한 줄 끝까지 빛줄기. 처음 맞은 적 6.0(늘 치명타) + 같은 줄 다른 적 2.0
+  var SN_SNIPE = { dmg: 6.0, hitstop: 2.4, knock: 2.4, shake: 3.4, knockdown: true, spark: 1.8, big: true, hitsDown: true, crit: true, flash: { color: '#e8f6ff', alpha: 0.55, ms: 200 }, slowMs: 320 };
+  var SN_SNIPE_LINE = { dmg: 2.0, hitstop: 0.8, knock: 1.4, shake: 1.2, spark: 1.2, big: true, hitsDown: true };
+  // 대포 화살(31 ↔ 성검 낙뢰 6.2): 거대한 화살이 화면 끝까지 꿰뚫으며 밀고 감 4.6 + 지나간 자리 충격 0.8
+  var SN_BALLISTA = { dmg: 4.6, hitstop: 1.8, knock: 3.4, shake: 3.0, knockdown: true, spark: 1.6, big: true, hitsDown: true, flash: { color: '#d8f0ff', alpha: 0.4, ms: 160 }, slowMs: 220 };
+  // 속사(35 ↔ 심판의 십자 5.6): 바람 화살 8발 x 0.75 = 6.0 (한 줄, 1발씩 꿰뚫음 1)
+  var SN_RAPID = { dmg: 0.75, hitstop: 0.4, knock: 0.6, shake: 0.6, spark: 1.0, big: true, hitsDown: true, noRage: true };
+  // 천공의 일격(39 필살 ↔ 성스러운 돌격 7.7): 가장 센 적 위로 거대한 빛 화살 8.5 + 둘레 충격 2.0
+  var SN_SKY = { dmg: 8.5, hitstop: 2.8, knock: 2.6, shake: 4.6, knockdown: true, stunMs: 500, spark: 2.0, big: true, hitsDown: true, flash: { color: '#ffffff', alpha: 0.7, ms: 260 }, slowMs: 420 };
+  var SN_SKY_RING = { dmg: 2.0, hitstop: 1.0, knock: 2.0, shake: 1.6, knockdown: true, spark: 1.2, big: true, hitsDown: true };
+  // ---- 레인저(2차 갈래 b) ----
+  // 화살 폭풍(25 ↔ 칼날 폭풍 5.7): 앞으로 천천히 나아가는 넓은 화살비 0.16초마다 0.42 x 12 = 5.0 + 끝 1.2
+  var RG_STORM = { dmg: 0.42, hitstop: 0.2, knock: 0.1, shake: 0.5, spark: 0.8, hitsDown: true, noRage: true, noJuggle: true };
+  var RG_STORM_LAST = { dmg: 1.2, hitstop: 1.2, knock: 1.4, shake: 2.0, knockdown: true, spark: 1.3, big: true, hitsDown: true };
+  // 매 동료(늘 켜짐): 몇 초마다 매가 적에게 내리꽂힘(이 값 x passive.mul)
+  var RG_HAWK = { dmg: 1.6, hitstop: 0.8, knock: 1.2, shake: 1.0, spark: 1.1, big: true, hitsDown: true, noRage: true, noMp: true, numStyle: 'push', rgHawk: true };
+  // 덫(31 ↔ 성검 낙뢰 6.2): 덫 3개 — 밟으면 묶임(stunMs) + 가시 덩굴 터짐 3.0 (덫마다 둘레 다 맞음)
+  var RG_TRAP = { dmg: 3.0, hitstop: 1.6, knock: 0.4, shake: 2.2, stunMs: 1300, spark: 1.4, big: true, hitsDown: true, noJuggle: true, flash: { color: '#ffe0a0', alpha: 0.3, ms: 120 } };
+  // 회오리 화살(35 ↔ 빙결 폭풍 5.7): 끌어당기며 0.25초마다 0.5 x 8 = 4.0 + 터짐 1.8
+  var RG_TWIST = { dmg: 0.5, hitstop: 0.2, knock: 0.05, shake: 0.4, spark: 0.8, hitsDown: true, noRage: true, noJuggle: true };
+  var RG_TWIST_LAST = { dmg: 1.8, hitstop: 1.6, knock: 2.4, shake: 2.6, knockdown: true, spark: 1.4, big: true, hitsDown: true, flash: { color: '#d8ffe0', alpha: 0.35, ms: 150 } };
+  // 천 개의 화살(39 필살 ↔ 심연의 문 6.2): 화면 안 적마다 화살 묶음 0.2초마다 0.55 x 8 = 4.4 + 끝 2.4
+  var RG_BARRAGE = { dmg: 0.55, hitstop: 0.25, knock: 0.15, shake: 0.6, spark: 0.9, hitsDown: true, noRage: true, noJuggle: true };
+  var RG_BARRAGE_LAST = { dmg: 2.4, hitstop: 2.0, knock: 2.0, shake: 3.6, knockdown: true, spark: 1.6, big: true, hitsDown: true, flash: { color: '#fff6c8', alpha: 0.55, ms: 220 }, slowMs: 300 };
+  var ARCHER_SKILLS = {
+    // ---- 1차 ----
+    // 관통 화살: 무릎 꿇고(motion_shoot) 힘 모아 바람 화살 한 발(줄 위 적 모두). Lv5 = 한 발 더
+    pshot: {
+      name: '관통 화살', icon: '관', mp: 6, cooldownMs: 4200, damageStyle: 'skill_arrow', motion: 'motion_shoot', sfx: 'bowHeavy',
+      desc: '무릎 꿇고 힘을 모아 바람 화살을 쏴요. 줄 위의 적을 모두 꿰뚫고 밀어내요(누운 적도 맞아요)',
+      lv5: { extra: 1, say: '화살 2발' },
+      darken: { ms: 420, alpha: 0.35 }, iframes: [0, 420],
+      motionSeq: [0, 1, 2, 3, 3, 5], motionMs: [60, 80, 80, 150, 90, 120],
+      arc: { kind: 'pierce', frame: 4, x: 30, y: -34, speed: 560, range: 320, w: 60, h: 26, depth: 24, gapMs: 140, hit: AR_PIERCE },
+      trail: { frames: [3, 4], everyMs: 35, lifeMs: 170, alpha: 0.35, color: '#a8ffd8' },
+      fx: [ { frame: 0, type: 'dust' } ]
+    },
+    // 솟구치는 화살(기본기): 앞 땅에 화살을 꽂으면 바람 기둥이 솟아 적을 띄움
+    upshot: {
+      name: '솟구치는 화살', icon: '솟', mp: 9, cooldownMs: 6000, damageStyle: 'skill_arrow', launcher: true,
+      desc: '앞쪽 땅에 화살을 꽂아 바람 기둥을 일으켜 적을 공중에 띄워요. 뜬 적은 평타·기술이 다 맞아요(보스·큰 적은 휘청만)',
+      lv5: { area: 1.25, say: '바람 기둥 크기 +25%' },
+      darken: { ms: 340, alpha: 0.3 }, iframes: [0, 300],
+      arc: { kind: 'geyser', frame: 2, x: 62, r: 30, depth: 30, delayMs: 110, hit: AR_UP },
+      placeholder: { anim: 'attack1', f: [0, 1, 2, 3], d: [60, 70, 170, 120] }
+    },
+    // 부채꼴 화살: 화살 다섯 발을 위아래로 퍼지게(2발씩 꿰뚫음). Lv5 = 일곱 발
+    multi: {
+      name: '부채꼴 화살', icon: '부', mp: 10, cooldownMs: 6000, damageStyle: 'skill_arrow', sfx: 'bowHeavy',
+      desc: '화살 다섯 발을 부채꼴로 한꺼번에 쏴요. 위아래로 퍼진 몹 떼를 한 번에 쓸어요(화살마다 두 마리 꿰뚫음)',
+      lv5: { n: 7, say: '화살 5발 → 7발' },
+      darken: { ms: 360, alpha: 0.3 }, iframes: [0, 300],
+      arc: { kind: 'fan', frame: 3, n: 5, lanes: [-30, -15, 0, 15, 30, -45, 45], x: 30, y: -36, speed: 600, range: 260, pierce: 2, hit: AR_FAN },
+      placeholder: { anim: 'attack2', f: [0, 1, 2, 3, 4], d: [50, 60, 80, 120, 110] }
+    },
+    // 화살비: 하늘로 쏘아(motion_sky) 앞쪽 적들 위로 화살비가 내림(0.14초마다), 끝에 크게 박힘
+    rain: {
+      name: '화살비', icon: '비', mp: 14, cooldownMs: 8500, damageStyle: 'skill_arrow', motion: 'motion_sky', sfx: 'bowHeavy',
+      desc: '하늘로 화살을 쏘아 앞쪽 넓은 땅에 화살비를 내려요. 여러 번 맞히고 끝에 크게 박혀 넘어뜨려요(누운 적도 맞아요)',
+      lv5: { area: 1.3, say: '화살비 넓이 +30%' },
+      darken: { ms: 700, alpha: 0.4 }, iframes: [0, 600], zoom: { k: 1.04, ms: 700, lv5: true },
+      arc: { kind: 'rain', frame: 3, x: 110, aim: { range: 240, depth: 70 }, w: 70, depth: 44, delayMs: 300, ms: 1300, tickMs: 140, hit: AR_RAIN, last: AR_RAIN_LAST }
+    },
+    // 공중제비 사격: 발밑 바람으로 둘레를 밀쳐 내고 뒤로 공중제비(move 뒤로 · leap 위로) → 공중에서 아래 앞쪽으로 화살 3발
+    leap: {
+      name: '공중제비 사격', icon: '제', mp: 10, cooldownMs: 7000, damageStyle: 'skill_arrow', motion: 'motion_leap', sfx: 'bowShot',
+      desc: '발밑 바람으로 둘레 적을 밀쳐 내고 뒤로 공중제비를 돌며 아래로 화살 세 발을 쏴요. 몸을 빼면서 쏘는 기술(쓰는 동안 안 밀려요)',
+      lv5: { dist: 1.3, say: '뒤로 빠지는 거리 +30%' },
+      iframes: [0, 560],
+      move: { frames: [1, 3], dist: -150 },
+      leap: { at: [70, 390], h: 70, fwd: 0 },
+      hits: [ merge(AR_LEAPKICK, { frame: 0 }) ],
+      arc: { kind: 'volley', frame: 3, n: 3, x: 26, y: -40, angs: [24, 34, 44], speed: 560, range: 200, hit: AR_LEAP },
+      trail: { frames: [1, 3], everyMs: 30, lifeMs: 180, alpha: 0.35, color: '#a8ffd8' },
+      fx: [ { frame: 0, type: 'dust' } ]
+    },
+    // 폭발 화살: 불 화살이 처음 맞은 적(또는 끝)에서 크게 터짐
+    burst: {
+      name: '폭발 화살', icon: '폭', mp: 14, cooldownMs: 8000, damageStyle: 'skill_fire', motion: 'motion_shoot', sfx: 'bowHeavy',
+      desc: '터지는 화살을 쏴요. 처음 맞은 적(또는 날아간 끝)에서 크게 터져 둘레 적을 모두 넘어뜨려요(누운 적도 맞아요)',
+      lv5: { area: 1.3, say: '폭발 크기 +30%' },
+      darken: { ms: 520, alpha: 0.4 }, iframes: [0, 420],
+      motionSeq: [0, 1, 2, 3, 3, 5], motionMs: [60, 80, 90, 180, 90, 120],
+      arc: { kind: 'bomb', frame: 4, x: 30, y: -34, speed: 430, range: 280, r: 60, depth: 40, hit: AR_BOOM },
+      fx: [ { frame: 0, type: 'dust' } ]
+    },
+    // ---- 저격수(2차 갈래 a) ----
+    snipe: {
+      name: '저격', icon: '저', mp: 22, cooldownMs: 11000, damageStyle: 'skill_snipe', motion: 'motion_shoot', sfx: 'charge',
+      desc: '(2차) 무릎 꿇고 가장 센 앞쪽 적을 조준해요. 잠깐 뒤 은빛 빛줄기가 화면 끝까지 꿰뚫어요. 조준한 적은 늘 치명타, 같은 줄 적도 맞아요',
+      lv5: { area: 1.25, say: '빛줄기 굵기 +25%' },
+      darken: { ms: 1000, alpha: 0.55 }, iframes: [0, 900], zoom: { k: 1.05, ms: 900 },
+      motionSeq: [0, 1, 2, 3, 3, 3, 5], motionMs: [60, 80, 90, 260, 260, 120, 140],
+      arc: { kind: 'snipe', frame: 2, aim: { range: 460, depth: 80 }, lockMs: 470, x: 30, y: -34, len: 480, w: 18, depth: 24, hit: SN_SNIPE, line: SN_SNIPE_LINE, chainPad: 500 }
+    },
+    ballista: {
+      name: '대포 화살', icon: '대', mp: 28, cooldownMs: 15000, damageStyle: 'skill_snipe', motion: 'motion_shoot', sfx: 'charge',
+      desc: '(2차) 거대한 강철 화살을 쏴요. 화살은 천천히 날아가며 줄 위 적을 모두 꿰뚫고 앞으로 밀고 가요(누운 적도 맞아요)',
+      lv5: { area: 1.3, say: '화살 크기 +30%' },
+      darken: { ms: 900, alpha: 0.5 }, iframes: [0, 700], zoom: { k: 1.05, ms: 700 },
+      motionSeq: [0, 1, 2, 3, 3, 5], motionMs: [60, 80, 100, 320, 100, 140],
+      arc: { kind: 'ballista', frame: 4, x: 30, y: -34, speed: 300, range: 460, w: 90, h: 44, depth: 34, push: 1, hit: SN_BALLISTA }
+    },
+    rapid: {
+      name: '속사', icon: '속', mp: 30, cooldownMs: 15000, damageStyle: 'skill_snipe', sfx: 'bowShot',
+      desc: '(2차) 바람 화살 여덟 발을 눈 깜짝할 새 연달아 쏴요. 화살마다 한 마리씩 꿰뚫어요',
+      lv5: { n: 11, say: '화살 8발 → 11발' },
+      darken: { ms: 900, alpha: 0.42 }, iframes: [0, 900],
+      motionMs: [60, 900, 120],
+      arc: { kind: 'rapid', frame: 1, n: 8, gapMs: 95, x: 52, y: -36, speed: 720, range: 320, pierce: 1, hit: SN_RAPID },
+      placeholder: { anims: ['attack1', 'attack1', 'attack1'], f: [0, 2, 3], d: [60, 900, 120] }
+    },
+    skyfall: {
+      name: '천공의 일격', icon: '천', mp: 36, cooldownMs: 20000, damageStyle: 'skill_snipe', motion: 'motion_sky', sfx: 'charge',
+      desc: '(2차 필살) 하늘로 쏜 화살이 가장 센 적 위에서 거대한 빛의 화살이 되어 내리꽂혀요. 둘레 적까지 크게 날려 버려요',
+      lv5: { area: 1.25, say: '충격 범위 +25%' },
+      darken: { ms: 1500, alpha: 0.6 }, iframes: [0, 1100], zoom: { k: 1.07, ms: 1300 },
+      motionMs: [80, 110, 300, 140, 160, 160],
+      arc: { kind: 'skyfall', frame: 3, aim: { range: 360, depth: 90 }, x: 140, markMs: 420, fallMs: 220, r: 92, depth: 50, hit: SN_SKY, ring: SN_SKY_RING, chainPad: 600 }
+    },
+    // ---- 레인저(2차 갈래 b) ----
+    tempest: {
+      name: '화살 폭풍', icon: '폭', mp: 22, cooldownMs: 12000, damageStyle: 'skill_wild', motion: 'motion_sky', sfx: 'bowHeavy',
+      desc: '(2차) 하늘로 화살을 흩뿌려 넓은 화살 폭풍을 내려요. 폭풍은 천천히 앞으로 나아가며 여러 번 때리고 끝에 크게 박혀요(누운 적도 맞아요)',
+      lv5: { area: 1.3, say: '폭풍 넓이 +30%' },
+      darken: { ms: 800, alpha: 0.45 }, iframes: [0, 600], zoom: { k: 1.04, ms: 800 },
+      arc: { kind: 'rain', frame: 3, x: 70, w: 100, depth: 50, delayMs: 260, ms: 1900, tickMs: 160, move: 70, density: 1.6, hit: RG_STORM, last: RG_STORM_LAST }
+    },
+    trap: {
+      name: '덫 설치', icon: '덫', mp: 24, cooldownMs: 14000, damageStyle: 'skill_wild', sfx: 'bowShot',
+      desc: '(2차) 앞쪽 땅에 덫 세 개를 던져요. 적이 밟으면 덫이 물어 묶고 가시 덩굴이 터져 둘레 적까지 크게 때려요(8초 뒤 저절로 터짐)',
+      lv5: { n: 4, say: '덫 3개 → 4개' },
+      darken: { ms: 500, alpha: 0.35 }, iframes: [0, 400],
+      arc: { kind: 'trap', frame: 2, n: 3, xs: [70, 120, 170, 220], lifeMs: 8000, trig: 26, r: 52, depth: 36, hit: RG_TRAP },
+      placeholder: { anim: 'attack2', f: [0, 1, 3, 4], d: [70, 80, 150, 140] }
+    },
+    twister: {
+      name: '회오리 화살', icon: '회', mp: 34, cooldownMs: 16000, damageStyle: 'skill_wild', motion: 'motion_shoot', sfx: 'charge',
+      desc: '(2차) 바람을 감은 화살이 큰 회오리가 되어 천천히 앞으로 나아가요. 둘레 적을 빨아들여 여러 번 때리고 끝에 터뜨려요',
+      lv5: { area: 1.3, say: '회오리 크기 +30%' },
+      darken: { ms: 900, alpha: 0.45 }, iframes: [0, 700],
+      motionSeq: [0, 1, 2, 3, 3, 5], motionMs: [60, 80, 90, 220, 90, 120],
+      arc: { kind: 'twister', frame: 4, x: 50, speed: 80, ms: 2000, r: 46, depth: 40, tickMs: 250, pullR: 140, pull: 110, hit: RG_TWIST, last: RG_TWIST_LAST }
+    },
+    barrage: {
+      name: '천 개의 화살', icon: '천', mp: 40, cooldownMs: 22000, damageStyle: 'skill_wild', motion: 'motion_sky', sfx: 'charge',
+      desc: '(2차 필살) 하늘 가득 화살을 쏘아 올려요. 화면 안 모든 적 위로 화살 묶음이 쏟아지고 끝에 한꺼번에 크게 박혀요',
+      lv5: { n: 10, say: '화살 묶음 8번 → 10번' },
+      darken: { ms: 2000, alpha: 0.6 }, iframes: [0, 1200], zoom: { k: 1.06, ms: 1400 },
+      motionMs: [80, 110, 300, 160, 160, 160],
+      arc: { kind: 'barrage', frame: 3, n: 8, gapMs: 200, depth: 40, r: 30, hit: RG_BARRAGE, last: RG_BARRAGE_LAST, chainPad: 800 }
+    }
+  };
   var SKILLS = {
+    archer: ARCHER_SKILLS,
     knight: {
       // 돌진베기: 1~2장 동안 앞으로 약 120도트 미끄러지며 길 위의 적을 한 번씩 벤다(무적), 베는 장 다음 장에 「쾅」 멈춤
       dash: {
@@ -1109,6 +1327,21 @@
                     blink: ['그림자 이동', '맞은 적에 저주 3초(0.5초마다 작은 피해 · 그 적의 공격 -10%) · 준 피해의 2% 체력 흡수'],
                     gravity: ['심연 중력', '맞은 적에 저주 3초(0.5초마다 작은 피해 · 그 적의 공격 -10%) · 준 피해의 2% 체력 흡수'] } }
     },
+    // 궁수(2026-11-09): 저격수 a = 은빛 · 얼음(치명타 확률 +acrit, 맞은 적 slowMs 동안 느려짐) / 레인저 b = 숲 · 바람(맞으면 작은 가시 화살 thorns 마리에게 튐 · 맞은 적 vineMs 동안 가시 지속 피해)
+    //   덤 처리 = js/archer.js(onHit). 그림 = AI 그림을 갈래 색으로 다시 칠한 것(art/skill-fx/ar_*_a|b, archer_brfx.py)
+    archer: {
+      a: { tag: '저격', color: '#bfe6ff', tw: { acrit: 0.15, slowMs: 1200, slowK: 0.65 },
+           names: { pshot: ['은빛 관통 화살', '치명타 확률 +15% · 맞은 적 1.2초 느려짐'], upshot: ['은빛 솟구침', '치명타 확률 +15% · 맞은 적 1.2초 느려짐'],
+                    multi: ['저격 부채꼴', '치명타 확률 +15% · 맞은 적 1.2초 느려짐'], rain: ['은빛 화살비', '치명타 확률 +15% · 맞은 적 1.2초 느려짐'],
+                    leap: ['저격 공중제비', '치명타 확률 +15% · 맞은 적 1.2초 느려짐'], burst: ['빙결 폭발 화살', '치명타 확률 +15% · 맞은 적 1.2초 느려짐'] } },
+      b: { tag: '숲', color: '#b8ff7a', tw: { thorns: 1, thornDmg: 0.3, vineMs: 2000, vineTick: 500, vineDmg: 0.06 },
+           names: { pshot: ['덩굴 관통 화살', '맞으면 가시 화살이 둘레 적 하나에게 튐 · 맞은 적에 가시 2초(0.5초마다 작은 피해)'],
+                    upshot: ['돌개바람 솟구침', '맞으면 가시 화살이 둘레 적 하나에게 튐 · 맞은 적에 가시 2초(0.5초마다 작은 피해)'],
+                    multi: ['숲의 부채꼴', '맞으면 가시 화살이 둘레 적 하나에게 튐 · 맞은 적에 가시 2초(0.5초마다 작은 피해)'],
+                    rain: ['바람 화살비', '맞으면 가시 화살이 둘레 적 하나에게 튐 · 맞은 적에 가시 2초(0.5초마다 작은 피해)'],
+                    leap: ['바람 공중제비', '맞으면 가시 화살이 둘레 적 하나에게 튐 · 맞은 적에 가시 2초(0.5초마다 작은 피해)'],
+                    burst: ['가시 폭발 화살', '맞으면 가시 화살이 둘레 적 하나에게 튐 · 맞은 적에 가시 2초(0.5초마다 작은 피해)'] } }
+    },
     // 늘 켜진 기술 추천 갈래(SKILL_TREE 의 rec): 그 갈래면 효과 x recK(+25%). 마력 소용돌이는 「몇 초마다」라 시간이 1/recK 로 짧아짐(recInv)
     recK: 1.25
   };
@@ -1169,6 +1402,54 @@
       { id: 'rift', unlock: 31, tier: 2, branch: 'b', short: '순간 돌진해 베고 균열이 터져요' },
       { id: 'msword', unlock: 35, tier: 2, branch: 'b', short: '마력 검 여섯 자루가 차례로 꽂혀요' },
       { id: 'unleash', unlock: 39, tier: 2, branch: 'b', short: '검은 기운이 땅을 타고 밀려가요' }
+    ],
+    // 2026-11-09 궁수(새 직업, 기사 · 법사와 같은 짜임): 쓰는 기술 1차 6 + 2차 갈래마다 4 / 늘 켜진 기술 1차 7 + 2차 갈래마다 1. 3렙마다 늘 켜진 기술, 그 사이 쓰는 기술
+    //   rec: 저격수 a = 한 방 · 치명타(활 숙련 · 집중 · 사냥꾼의 표식), 레인저 b = 몹 떼 · 저절로 공격(갈래 화살 · 자동 연사 · 바람의 가호)
+    archer: [
+      { id: 'pshot', unlock: 0, short: '바람 화살이 줄 위 적을 꿰뚫어요' },
+      { id: 'upshot', unlock: 0, short: '바람 기둥으로 적을 띄워요' },
+      { id: 'nimble', unlock: 7, maxLv: 1, short: '회피 2번 연달아 · 쿨타임이 줄고 더 멀리 빠져요', name: '날렵한 몸놀림', icon: '날',
+        desc: '회피를 2번 연달아 쓸 수 있고, 쿨타임이 줄고(두 번 다 쓴 뒤 1.8초 → 1.2초) 더 멀리 빠져요 · 1번만 찍을 수 있어요',
+        passive: { stat: 'nimble', charges: [2], val: [1200], refillMs: [470], dist: [0.3] } },
+      { id: 'multi', unlock: 8, short: '화살 다섯 발을 부채꼴로' },
+      { id: 'aim', unlock: 9, rec: 'a', short: '활 공격이 세져요', name: '활 숙련', icon: '숙', desc: '활로 하는 모든 공격(평타 화살 · 기술)이 세져요',
+        passive: { stat: 'phys', val: [0.08, 0.12, 0.16, 0.2, 0.25] } },
+      { id: 'rain', unlock: 11, short: '앞쪽 땅에 화살비를 내려요' },
+      // passive.stat 'acrit' = 치명타 확률 +val, 치명타 배율 +critDmg (js/archer.js critAdd · critDmg)
+      { id: 'focus', unlock: 12, rec: 'a', short: '치명타가 더 자주, 더 세게', name: '집중', icon: '집', desc: '숨을 고르고 조준해 치명타가 더 자주 나고 더 세게 터져요',
+        passive: { stat: 'acrit', val: [0.04, 0.06, 0.08, 0.1, 0.12], critDmg: [0.1, 0.15, 0.2, 0.25, 0.3] } },
+      { id: 'leap', unlock: 14, short: '뒤로 공중제비 돌며 쏴요' },
+      // passive.stat 'split'(저절로 공격) = 평타 화살이 맞으면 작은 화살 n 개가 둘레(r) 다른 적에게 튐(icdMs 에 한 번). val = 데미지 배율(AR_SPLIT 에 곱함)
+      { id: 'split', unlock: 15, rec: 'b', short: '평타 화살이 맞으면 작은 화살이 튀어요', name: '갈래 화살', icon: '갈',
+        desc: '평타 화살이 적에게 맞으면 작은 화살이 갈라져 둘레의 다른 적에게 날아가 꽂혀요(둘레에 적이 없으면 안 갈라짐)',
+        passive: { stat: 'split', val: [0.35, 0.4, 0.45, 0.5, 0.56], n: [1, 2, 2, 3, 3], r: [110, 120, 130, 140, 150], depth: 50, icdMs: 160, hit: AR_SPLIT } },
+      { id: 'burst', unlock: 17, short: '터지는 화살로 둘레를 넘어뜨려요' },
+      // passive.stat 'volley'(저절로 공격) = val(ms) 마다 둘레(find) 가까운 적들에게 빛 화살 n 발이 저절로 날아감. mul = 데미지 배율(AR_AUTO)
+      { id: 'volley', unlock: 18, rec: 'b', recInv: true, short: '몇 초마다 빛 화살이 저절로 날아가요', name: '자동 연사', icon: '연',
+        desc: '몇 초마다 등 뒤 화살통에서 빛 화살이 저절로 날아올라 가까운 적들에게 꽂혀요',
+        passive: { stat: 'volley', val: [4600, 4300, 4000, 3600, 3200], n: [3, 3, 4, 4, 5], mul: [1, 1.1, 1.2, 1.35, 1.5], find: 260, findDepth: 80, hit: AR_AUTO } },
+      { id: 'gale', unlock: 21, rec: 'b', short: '받는 피해가 줄어요', name: '바람의 가호', icon: '호', desc: '몸을 감싼 바람이 적의 공격을 흘려 받는 피해가 줄어요',
+        passive: { stat: 'guard', val: [0.05, 0.08, 0.11, 0.14, 0.18] } },
+      // passive.stat 'amark' = 기술에 맞은 적에게 ms 동안 사냥꾼의 표식(머리 위 과녁) → 그 적이 받는 모든 공격 +val
+      { id: 'mark', unlock: 24, rec: 'a', short: '기술에 맞은 적이 더 아파요', name: '사냥꾼의 표식', icon: '표', desc: '기술에 맞은 적에게 5초 동안 사냥꾼의 표식(머리 위 과녁)이 찍혀, 그동안 모든 공격에 더 아프게 맞아요',
+        passive: { stat: 'amark', val: [0.08, 0.11, 0.14, 0.17, 0.2], ms: 5000 } },
+      // ---- 저격수(2차 갈래 a) ----
+      { id: 'snipe', unlock: 25, tier: 2, branch: 'a', short: '가장 센 적을 한 줄로 꿰뚫어요' },
+      // passive.stat 'deadeye' = 치명타 확률 +chance, 치명타 배율 +val, 꿰뚫는 화살 데미지 +pierce
+      { id: 'deadeye', unlock: 28, tier: 2, branch: 'a', short: '치명타 배율이 크게 올라요', name: '필중', icon: '필', desc: '급소를 꿰뚫는 눈. 치명타 배율이 크게 오르고 치명타 확률도 조금 올라요',
+        passive: { stat: 'deadeye', val: [0.25, 0.32, 0.4, 0.48, 0.56], chance: [0.05, 0.05, 0.06, 0.06, 0.07] } },
+      { id: 'ballista', unlock: 31, tier: 2, branch: 'a', short: '거대한 화살이 밀고 꿰뚫어요' },
+      { id: 'rapid', unlock: 35, tier: 2, branch: 'a', short: '바람 화살 여덟 발 연사' },
+      { id: 'skyfall', unlock: 39, tier: 2, branch: 'a', short: '하늘에서 거대한 빛 화살' },
+      // ---- 레인저(2차 갈래 b) ----
+      { id: 'tempest', unlock: 25, tier: 2, branch: 'b', short: '앞으로 나아가는 화살 폭풍' },
+      // passive.stat 'hawk'(저절로 공격) = 매 동료가 따라다니며 val(ms) 마다 가까운 적에게 내리꽂힘. mul = 데미지 배율(RG_HAWK)
+      { id: 'hawk', unlock: 28, tier: 2, branch: 'b', recInv: true, short: '매가 따라다니며 적을 공격해요', name: '매 동료', icon: '매',
+        desc: '매 한 마리가 어깨 위를 날며 따라다니다가 몇 초마다 가까운 적에게 내리꽂혀요',
+        passive: { stat: 'hawk', val: [2600, 2400, 2200, 2000, 1800], mul: [1, 1.12, 1.25, 1.4, 1.55], find: 300, findDepth: 90, hit: RG_HAWK } },
+      { id: 'trap', unlock: 31, tier: 2, branch: 'b', short: '덫 세 개 — 밟으면 묶고 터져요' },
+      { id: 'twister', unlock: 35, tier: 2, branch: 'b', short: '적을 빨아들이는 회오리 화살' },
+      { id: 'barrage', unlock: 39, tier: 2, branch: 'b', short: '화면 가득 천 개의 화살' }
     ],
     // 2026-11-08 형님 승인: 법사도 기사처럼 다시 배치(아래 mage 순서 = 기술 창 순서) + 2차 전직 Lv25 대마법사(tier: 2)
     //   새 기술 원소 파편 · 중력 구체 · 마력 소용돌이(1차) / 원소 연쇄 · 빙결 폭풍 · 천둥 심판(2차) → 법사 17개(쓰는 기술 10 + 늘 켜진 기술 7). 1차 법사 = 원소 낙인(Lv24)까지
@@ -1242,6 +1523,8 @@
     var M = MOVES[who];
     if (outfit === 'mage') M = { stride: MAGE[who].stride, attack1Prefix: 'attack1_', attack1Count: MAGE[who].attack1Count,
                                  attack2Count: MAGE[who].attack2Count, attack3Count: MAGE[who].attack3Count, combo: MAGE[who].combo };
+    if (outfit === 'archer') M = { stride: ARCHER[who].stride, attack1Prefix: 'attack1_', attack1Count: ARCHER[who].attack1Count,   // 궁수(2026-11-09)
+                                   attack2Count: ARCHER[who].attack2Count, attack3Count: ARCHER[who].attack3Count, combo: ARCHER[who].combo };
     // 검 콤보: 기사 옷이면 knightCombo 에 있는 타만 바꿔 끼운다(나머지 타는 견습과 같은 수치)
     var swordCombo = M.combo;
     if (outfit === 'knight' && M.knightCombo) {
@@ -1251,7 +1534,7 @@
       label: who === 'male' ? '남' : '여',
       frameW: 176, frameH: 136,
       pivot: { x: 68, y: 130 },
-      bakedWeapon: false,
+      bakedWeapon: outfit === 'archer',   // 궁수 = 활이 그림에 박혀 있음(2026-11-09). 손 위치 json 은 활 가운데(화살 · 오라 자리 참고용)
       anchors: anchors,
       anims: {
         idle:    { frames: seq(p + 'idle_', 4),   fps: 6,  loop: true },
@@ -1273,7 +1556,7 @@
         getup:     { frames: seq(p + 'getup_', 4),     d: [220, 180, 160, 140], loop: false }
       },
       combo: swordCombo,
-      combos: outfit === 'mage' ? { magic: M.combo } : { sword: swordCombo }
+      combos: outfit === 'mage' ? { magic: M.combo } : outfit === 'archer' ? { bow: M.combo } : { sword: swordCombo }
     };
     // 달리기·점프 (2026-11-03, art\stage1\motions_move → 같은 옷 폴더). run 8 · jump 5 · run_attack 5 · jump_attack 4 장.
     //   장마다 시간·보폭·판정은 motions_move.json(CFG.move.data)의 moveWho 항목, 손 위치 = anchors_move_<옷_성별>.json
@@ -1320,6 +1603,9 @@
     // 법사 옷 (직업 「법사(지팡이)」): 걷기 보폭 남녀 모두 84 (MAGE.<성별>.stride)
     var mageMale = stage1('male', 'assets/chars/stage1/anchors_mage_male.json', 'mage');
     var mageFemale = stage1('female', 'assets/chars/stage1/anchors_mage_female.json', 'mage');
+    // 궁수 옷 (2026-11-09, 직업 「궁수(활)」): Flow 그림 artrcher-t1 → assets/chars/stage1/archer_<성별>. 견습 그림을 포즈 참고로 다시 그려 장 수 · 발 위치가 견습과 같음
+    var archerMale = stage1('male', 'assets/chars/stage1/anchors_archer_male.json', 'archer');
+    var archerFemale = stage1('female', 'assets/chars/stage1/anchors_archer_female.json', 'archer');
   }
   // 성기사 옷 (2026-11-07, 기사 2차 · classes.knight.tier2): 남자(여자는 아래 knightT2Female). 그림 = assets/chars/stage1/knight_t2_male (art\knight-t2\male 에서 복사).
   //   파일 이름·장 수·발 위치가 기사(1차) 그림과 똑같아서 기사 남 묶음을 그대로 쓰고 그림 폴더·손 위치 json 만 바꾼다
@@ -1405,6 +1691,7 @@
   if (knightT2Male) characters.knight_t2_male = knightT2Male;
   if (knightT2Female) characters.knight_t2_female = knightT2Female;
   if (mageMale) { characters.mage_male = mageMale; characters.mage_female = mageFemale; }
+  if (archerMale) { characters.archer_male = archerMale; characters.archer_female = archerFemale; }   // 궁수(2026-11-09)
   if (mageT2Male) characters.mage_t2_male = mageT2Male;
   if (mageT2Female) characters.mage_t2_female = mageT2Female;
   Object.keys(t2bSets).forEach(function (k) { characters[k] = t2bSets[k]; });
@@ -1767,7 +2054,7 @@
         ghosts: 5,          // 잔상 개수(길 따라 고르게)
         ghostMs: 300,       // 잔상 하나가 사라지는 시간
         ghostAlpha: 0.6,    // 잔상 처음 진하기
-        colors: { novice: '#fff0c0', knight: '#6ab8ff', mage: '#c890ff' },   // 잔상 색(직업별). 없는 직업 = novice
+        colors: { novice: '#fff0c0', knight: '#6ab8ff', mage: '#c890ff', archer: '#8affb8' },   // 잔상 색(직업별). 없는 직업 = novice
         dust: 0.45          // 시작·끝 먼지 크기
       }
     },
@@ -1799,6 +2086,14 @@
                   { key: 'a', name: '대마법사', outfit: 'mage_t2', desc: '불 · 얼음 · 번개를 다루는 대마법사. 운석 · 불기둥 · 얼음 폭풍 · 천둥으로 화면을 덮어요' },
                   { key: 'b', name: '흑마법사', outfit: 'mage_t2b', desc: '어둠과 저주의 마법사. 구체 · 늪 · 악령 회오리 · 검은 문으로 적을 깎고, 준 피해로 체력을 빨아들여요',
                     look: { base: 'mage', tint: '#1a0626', k: 0.38, outline: { color: '#8a2ad0', alpha: 0.6, glow: true } } }
+                ] } },
+      // 궁수(2026-11-09): 활(그림에 박힘) · 평타 = 화살 3타(ARCHER) · 2차 Lv25 = 저격수 / 레인저. 2차 옷 그림은 아직 없음 → 1차 옷을 물들이고 빛 테두리(look, T2B_DONE 과 같은 방식)
+      archer: { label: '궁수(활)', weapon: 'bow', moves: 'bow', outfit: 'archer', tier2: { lv: 25, outfit: 'archer_t2a', name: '저격수',
+                branches: [
+                  { key: 'a', name: '저격수', outfit: 'archer_t2a', desc: '은빛 저격수. 멀리서 가장 센 적을 노려 한 줄로 꿰뚫고, 거대한 화살 · 하늘의 일격으로 큰 적을 쓰러뜨려요',
+                    look: { base: 'archer', tint: '#0c2a3a', k: 0.32, outline: { color: '#bfe6ff', alpha: 0.55, glow: true } } },
+                  { key: 'b', name: '레인저', outfit: 'archer_t2b', desc: '숲의 레인저. 화살 폭풍 · 덫 · 회오리로 몹 떼를 쓸고, 매 동료가 저절로 적을 공격해요',
+                    look: { base: 'archer', tint: '#5a3a08', k: 0.24, outline: { color: '#c8ff7a', alpha: 0.55, glow: true } } }
                 ] } }
       // , axe: { label: '도끼', weapon: 'axe', moves: 'sword' }
     },
@@ -1807,6 +2102,7 @@
     classChange: [
       { key: 'knight', name: '기사', weapon: '검', desc: '튼튼한 갑옷과 검. 앞으로 파고들어 베는 근접 싸움꾼' },
       { key: 'mage',   name: '법사', weapon: '지팡이', desc: '마법탄과 폭발로 여러 적을 한꺼번에. 몸은 약하지만 멀리서 강함' },
+      { key: 'archer', name: '궁수', weapon: '활', desc: '빠른 화살로 멀리서 꿰뚫는 사냥꾼. 화살비 · 폭발 화살로 몹 떼를 쓸어요' },
       { name: '맨손파이터', soon: true, desc: '주먹과 발차기의 달인' },
       { name: '도적', soon: true, desc: '빠른 단검과 함정' },
       { name: '소환사', soon: true, desc: '동료를 불러 함께 싸움' }
@@ -1822,7 +2118,9 @@
       axe:   { damage: [19, 26], hitstopMul: 1.6, shakeMul: 1.8, knockMul: 1.6, speed: 0.78, arcColor: '#ffc27a', sparkColor: '#ffb347' },
       // 법사: 근접 한 타는 검과 비슷(검 11~15, 2026-11-06 올림: 몸이 약하고 일찍은 기술이 화염구 하나뿐). 마무리 마법(배율 1.8~1.9, 여러 마리 동시)으로 메운다
       staff: { damage: [11, 15],  magic: true, hitstopMul: 1.0, shakeMul: 0.95, knockMul: 0.95, speed: 1.0, arcColor: '#d9c2ff', sparkColor: '#c99bff' },
-      wand:  { damage: [10, 14],  magic: true, hitstopMul: 0.95, shakeMul: 0.9, knockMul: 0.9, speed: 1.0, arcColor: '#e6d2ff', sparkColor: '#e0a8ff' }
+      wand:  { damage: [10, 14],  magic: true, hitstopMul: 0.95, shakeMul: 0.9, knockMul: 0.9, speed: 1.0, arcColor: '#e6d2ff', sparkColor: '#e0a8ff' },
+      // 궁수 활(2026-11-09): 물리(힘). 한 발은 검보다 조금 약하고(10~14) 화살이 꿰뚫어 여러 마리를 맞힘
+      bow:   { damage: [10, 14], hitstopMul: 0.85, shakeMul: 0.8, knockMul: 0.9, speed: 1.0, arcColor: '#d8ffe8', sparkColor: '#d8ffc0' }
     },
 
     // ---------- 법사 마법 그림 재생 ----------
@@ -1875,6 +2173,8 @@
       mage:   { name: '마력 폭주', color: '#b46aff', glow: '#5ae6ff', echoMs: { fireball: 160, ice: 240, bolt: 200, meteor: 260, rise: 190, pillar: 200, gravity: 220, frost: 320, judgment: 300, darkorb: 240, abyss: 320, wraith: 260 },   // 2026-11-08 흑마법사: 어둠의 구체 · 심연의 문 = 한 번 더 터짐(60%), 악령 회오리 = 끝에 한 번 더 휩쓺
                   // 2026-11-08 + 불기둥 · 중력 구체(한 번 더 터짐) · 빙결 폭풍(한 번 더 깨짐) · 천둥 심판(다음 적에게 한 번 더, 60%)
                 look: { hue: 12, sat: 1.35, bright: 0.72, color: '#3a0a6a', colorK: 0.3 } },
+      // archer 「매의 눈」(2026-11-09): 화살마다 한 발 더 · 더 꿰뚫음(+2) · 금빛 두건
+      archer: { name: '매의 눈', color: '#9dff8a', glow: '#fff2a0', look: { hue: 40, sat: 1.2, bright: 0.85, color: '#6a5a0a', colorK: 0.3 } },
       novice: { name: '각성', color: '#ffd23f', glow: '#fff2a0' }
     },
     // ---------- 효과음 (2026-11-07, js/sfx.js: 소리 파일 없이 코드로 만든 칩튠 소리) ----------
@@ -1914,7 +2214,8 @@
                 cols: { skill_knight: ['#ffffff', '#cfe8ff', '#8fc4ff'], skill_fire: ['#fff4d0', '#ffb040', '#ff5a1e'], skill_bolt: ['#ffffff', '#fff6a0', '#5ae6ff'],
                         skill_ice: ['#ffffff', '#d8f8ff', '#7fe0ff'], skill_earth: ['#ffffff', '#ead8ff', '#b892ff'],
                         skill_holy: ['#ffffff', '#fff6c8', '#ffd23f'], skill_arcane: ['#ffffff', '#e8d0ff', '#8ff0ff'],
-                        skill_dark: ['#ffd8f4', '#c060d0', '#6a1a8a'] } }   // skill_dark = 흑마법사(2026-11-08)
+                        skill_dark: ['#ffd8f4', '#c060d0', '#6a1a8a'],
+                        skill_arrow: ['#ffffff', '#d8fff0', '#7affc0'], skill_snipe: ['#ffffff', '#e0f4ff', '#9fd8ff'], skill_wild: ['#ffffff', '#f0ffc0', '#b8ff6a'] } }   // 궁수(2026-11-09)   // skill_dark = 흑마법사(2026-11-08)
     },
 
     // ---------- 사냥 손맛 (2026-11-07, 형님 「우리 게임 = 사냥 중심, 몹 떼를 화려하게 쓸어버리는 맛, 던파처럼 화려한 연출」) ----------
@@ -1992,6 +2293,15 @@
       // 흑마법사(2026-11-08): 연분홍 → 검붉은 보라
       skill_dark:   { font: 'giant', scale: 1, bold: true, zoom: 1.2, top: '#ffe0f4', bottom: '#b03ad0', outline: '#1a0420', shadow: 'rgba(16,4,20,0.5)',
                       pop: { top: '#ffffff', bottom: '#f0b0ff' } },
+      // 궁수(2026-11-09): 화살 = 흰색 → 민트 / 저격수 = 흰색 → 은빛 하늘 / 레인저 = 연두 → 숲 초록 · 매의 눈 각성 = 금빛 연두
+      skill_arrow:  { font: 'giant', scale: 1, bold: true, zoom: 1.2, top: '#ffffff', bottom: '#6affb8', outline: '#0a3a24', shadow: 'rgba(4,24,14,0.45)',
+                      pop: { top: '#ffffff', bottom: '#d8fff0' } },
+      skill_snipe:  { font: 'giant', scale: 1, bold: true, zoom: 1.25, top: '#ffffff', bottom: '#8fd0ff', outline: '#0a2238', shadow: 'rgba(4,12,24,0.45)',
+                      pop: { top: '#ffffff', bottom: '#e0f4ff' } },
+      skill_wild:   { font: 'giant', scale: 1, bold: true, zoom: 1.2, top: '#f6ffd0', bottom: '#8ae040', outline: '#1e3408', shadow: 'rgba(10,20,4,0.45)',
+                      pop: { top: '#ffffff', bottom: '#e0ffa0' } },
+      awk_archer:   { font: 'giant', scale: 1, bold: true, zoom: 1.45, top: '#fffbe0', bottom: '#9dff8a', outline: '#1a3a08', shadow: 'rgba(10,24,4,0.5)',
+                      pop: { top: '#ffffff', bottom: '#fff2a0' } },
       // 늘 켜진 기술 알림 글자(2026-11-06): 「투지!」(붉은 주황) · 「반격!」(금색) · 마나 방패가 막은 마나 「MP -12」(파랑)
       grit:    { font: 'large', scale: 1, bold: true, top: '#ffe0c8', bottom: '#ff5a2a', outline: '#4a0e04', shadow: 'rgba(30,6,4,0.4)',
                  pop: { top: '#ffffff', bottom: '#ffb080' } },
@@ -2123,12 +2433,13 @@
         auto: {
           novice: { str: 4, vit: 3, agi: 3 },
           knight: { str: 5, vit: 3, agi: 2 },
-          mage:   { int: 5, wis: 3, vit: 2 }
+          mage:   { int: 5, wis: 3, vit: 2 },
+          archer: { str: 4, agi: 4, vit: 2 }   // 궁수(2026-11-09): 힘 · 민첩(치명타 · 빠르기)
         }
       },
       // 직업마다 기본 몫: hp = 최대 체력에 더함(기사가 더 튼튼), mp = 기본 마나(법사가 더 많음)
       //   2026-11-06 법사 균형: 법사 hp 0 → 35 (멀리 서도 보스 공격 폭이 넓어 자주 맞음. 3판 보스 두꺼비 앞에서 너무 쉽게 쓰러짐. 기사는 체력 능력치를 더 찍어서 Lv 가 오르면 기사가 더 튼튼)
-      classBase: { novice: { hp: 0, mp: 40 }, knight: { hp: 15, mp: 40 }, mage: { hp: 35, mp: 80 } },
+      classBase: { novice: { hp: 0, mp: 40 }, knight: { hp: 15, mp: 40 }, mage: { hp: 35, mp: 80 }, archer: { hp: 25, mp: 60 } },   // 궁수(2026-11-09): 기사와 법사 사이
       // 마나(MP, 2026-11-06): 체력 막대 밑 파란 막대. 지금은 쓰는 곳 없음(기술이 마나 + 쿨타임을 쓰는 건 다음 단계)
       //   최대 = classBase.mp + perLv × (Lv-1) + 지혜 × stats.wis.mp. 초당 regen + 지혜 × stats.wis.regen 씩 참,
       //   적·허수아비를 맞힐 때마다 onHit 만큼 더(소품은 안 셈). 새 판·다시 하기 = 가득, 레벨업 = 늘어난 만큼 참
@@ -5470,12 +5781,14 @@
       perLv: 0.06,
       bonus: {
         knight: { 3: { crit: 0.05 }, 6: { atkSpd: 0.08 }, 9: { cd: 0.1, mp: 0.1 }, 10: { reach: 0.1 } },
-        mage:   { 3: { mpRegen: 0.15 }, 6: { castSpd: 0.1 }, 9: { cd: 0.1, mp: 0.1 }, 10: { area: 0.1 } }
+        mage:   { 3: { mpRegen: 0.15 }, 6: { castSpd: 0.1 }, 9: { cd: 0.1, mp: 0.1 }, 10: { area: 0.1 } },
+        archer: { 3: { crit: 0.05 }, 6: { atkSpd: 0.08 }, 9: { cd: 0.1, mp: 0.1 }, 10: { reach: 0.1 } }   // 궁수(2026-11-09): reach = 화살 사거리 +
       },
       slotLv: [3, 6, 9],
       art: {
         knight: [[0, 'sword_common'], [3, 'sword_rare'], [6, 'sword_epic'], [9, 'sword_legendary'], [10, 'sword_mythic']],
-        mage:   [[0, 'staff_common'], [3, 'staff_rare'], [6, 'staff_epic'], [9, 'staff_legendary'], [10, 'staff_mythic']]
+        mage:   [[0, 'staff_common'], [3, 'staff_rare'], [6, 'staff_epic'], [9, 'staff_legendary'], [10, 'staff_mythic']],
+        archer: []   // 궁수 활은 그림에 박혀 있어 강화 단계 그림 없음(속성은 화살 빛으로, js/archer.js)
       },
       tierName: [[0, '일반'], [3, '희귀'], [6, '영웅'], [9, '전설'], [10, '신화']],
       // ---- 속성 7가지: 칸마다 하나(같은 속성 두 번 안 됨), 끼운 속성은 전부 함께 켜짐. 부여 · 바꾸기 = 그 속성 결정 setCost[칸] 개(언제든) ----
@@ -5583,7 +5896,7 @@
     //   test = 시험 버튼(견습/기사/법사)으로 저장된 직업과 다른 직업을 입었을 때: 이번 창에서만 이번에 만든 기술 전부 Lv1 + 칸 4개 +
     //     기술 점수 pts 점(Lv5 까지 올려 보기). 저장 안 함(저장된 직업의 기술 책은 그대로)
     //   botPlan = 시험용(GAME.test.skillSetup): 기술 점수를 이 순서로 돌아가며 1점씩
-    skills: { bufferMs: 300, cancelAfterHit: true, knight: SKILLS.knight, mage: SKILLS.mage,
+    skills: { bufferMs: 300, cancelAfterHit: true, knight: SKILLS.knight, mage: SKILLS.mage, archer: SKILLS.archer,
               cancel: { fromActive: true, padMs: 60 },
               // 2026-11-07 형님: 저절로 배우기 · 저절로 끼우기 없앰. 기술 점수 = 전직 때 firstPts(1) + 그 뒤 레벨마다 perLv(1).
               //   그 기술 Lv(unlock)가 되면 「배울 수 있음」 → 1점으로 배움(기술 Lv1) → 점수로 Lv5 까지. 늘 켜진 기술도 같음.
@@ -5597,12 +5910,13 @@
               branchFx: BRANCH_FX, brBurst: BR_BURST,   // 갈래 맛(2026-11-08, 위 BRANCH_FX)
               // 2026-11-07 형님: 견습 기본기 noviceSkill(올려치기, 위 SKILLS.novice) → 전직하면 basic[직업](기사 올려베기 · 법사 땅 융기)으로 바뀜:
               //   전직 때 공짜 Lv1(기술 점수 안 씀, unlock Lv 무시) + 1번 칸. Lv2~5 는 보통처럼 점수. 초기화해도 Lv1 은 남음
-              noviceSkill: 'nupper', basic: { knight: 'upper', mage: 'rise' },
+              noviceSkill: 'nupper', basic: { knight: 'upper', mage: 'rise', archer: 'upshot' },
               novice: SKILLS.novice,
               tree: SKILL_TREE, perLv: 1, maxLv: 5, classLv: 7, slots: [2, 3, 4, 5, 7], moreLv: [10, 13, 15, 15], pcSlots: 10, pcLv: 15, noMpMs: 500,
               curve: { dmg: [1, 1.2, 1.4, 1.6, 1.85], cd: [1, 0.94, 0.88, 0.82, 0.75], mp: [1, 1.05, 1.1, 1.15, 1.2] },
               test: { pts: 24 },
               botPlan: { knight: ['dash', 'upper', 'nimble', 'wave', 'mastery', 'spin', 'skin', 'slam', 'shards', 'thrust', 'pressure', 'grit', 'counter', 'storm', 'aegis', 'holy', 'cross', 'charge', 'arcwave', 'infuse', 'rift', 'msword', 'unleash'],
+                         archer: ['pshot', 'upshot', 'nimble', 'multi', 'aim', 'rain', 'focus', 'leap', 'split', 'burst', 'volley', 'gale', 'mark', 'snipe', 'deadeye', 'ballista', 'rapid', 'skyfall', 'tempest', 'hawk', 'trap', 'twister', 'barrage'],   // 궁수(2026-11-09)
                          mage: ['fireball', 'rise', 'nimble', 'bolt', 'amp', 'ice', 'flow', 'blink', 'eshard', 'gravity', 'vortex', 'shield', 'brand', 'meteor', 'echain', 'pillar', 'frost', 'judgment', 'darkorb', 'leech', 'swamp', 'wraith', 'abyss'] } },   // 2026-11-08 갈래 B 기술도(고른 갈래 것만 배워짐)   // 법사 다시 배치(2026-11-08)
 
     // ---------- 기술 효과 그림 (art\stage1\skills\fx 에서 복사 → assets/fx/skill/<이름>_01.png …, 크기·기준점은 fx.json) ----------
@@ -5819,7 +6133,7 @@
       if (d.male) skill2(d.male);
       if (d.female) skill2(d.female);
     }
-    ['knight', 'mage'].forEach(function (c) {
+    ['knight', 'mage', 'archer'].forEach(function (c) {
       var L = C.skills[c];
       if (L) Object.keys(L).forEach(function (id) { skill(L[id]); skill2(L[id]); });
     });
