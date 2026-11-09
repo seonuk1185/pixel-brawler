@@ -1,0 +1,160 @@
+{
+"note": "assassin (twin daggers baked into the art): hand = front dagger blade centre (1x art px), spot for the enhancement-grade glow. made by asanchors.py",
+"angleUnit": "deg",
+"frames": {
+"jump_01": {
+"hand": [
+79,
+54
+],
+"angle": 0
+},
+"jump_02": {
+"hand": [
+75,
+16
+],
+"angle": 0
+},
+"jump_03": {
+"hand": [
+75,
+52
+],
+"angle": 0
+},
+"jump_04": {
+"hand": [
+75,
+25
+],
+"angle": 0
+},
+"jump_05": {
+"hand": [
+79,
+54
+],
+"angle": 0
+},
+"jump_attack_01": {
+"hand": [
+80,
+33
+],
+"angle": 0
+},
+"jump_attack_02": {
+"hand": [
+66,
+51
+],
+"angle": 0
+},
+"jump_attack_03": {
+"hand": [
+67,
+51
+],
+"angle": 0
+},
+"jump_attack_04": {
+"hand": [
+78,
+39
+],
+"angle": 0
+},
+"run_01": {
+"hand": [
+86,
+44
+],
+"angle": 0
+},
+"run_02": {
+"hand": [
+86,
+45
+],
+"angle": 0
+},
+"run_03": {
+"hand": [
+88,
+44
+],
+"angle": 0
+},
+"run_04": {
+"hand": [
+81,
+41
+],
+"angle": 0
+},
+"run_05": {
+"hand": [
+86,
+48
+],
+"angle": 0
+},
+"run_06": {
+"hand": [
+87,
+47
+],
+"angle": 0
+},
+"run_07": {
+"hand": [
+86,
+46
+],
+"angle": 0
+},
+"run_08": {
+"hand": [
+81,
+41
+],
+"angle": 0
+},
+"run_attack_01": {
+"hand": [
+84,
+50
+],
+"angle": 0
+},
+"run_attack_02": {
+"hand": [
+84,
+69
+],
+"angle": 0
+},
+"run_attack_03": {
+"hand": [
+90,
+67
+],
+"angle": 0
+},
+"run_attack_04": {
+"hand": [
+82,
+73
+],
+"angle": 0
+},
+"run_attack_05": {
+"hand": [
+89,
+41
+],
+"angle": 0
+}
+}
+}

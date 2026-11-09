@@ -1,0 +1,307 @@
+{
+"note": "assassin (twin daggers baked into the art): hand = front dagger blade centre (1x art px), spot for the enhancement-grade glow. made by asanchors.py",
+"angleUnit": "deg",
+"frames": {
+"attack1_01": {
+"hand": [
+107,
+79
+],
+"angle": 0
+},
+"attack1_02": {
+"hand": [
+157,
+79
+],
+"angle": 0
+},
+"attack1_03": {
+"hand": [
+126,
+79
+],
+"angle": 0
+},
+"attack1_04": {
+"hand": [
+105,
+79
+],
+"angle": 0
+},
+"attack2_01": {
+"hand": [
+108,
+82
+],
+"angle": 0
+},
+"attack2_02": {
+"hand": [
+100,
+80
+],
+"angle": 0
+},
+"attack2_03": {
+"hand": [
+114,
+80
+],
+"angle": 0
+},
+"attack2_04": {
+"hand": [
+114,
+81
+],
+"angle": 0
+},
+"attack2_05": {
+"hand": [
+104,
+79
+],
+"angle": 0
+},
+"attack3_01": {
+"hand": [
+93,
+87
+],
+"angle": 0
+},
+"attack3_02": {
+"hand": [
+106,
+76
+],
+"angle": 0
+},
+"attack3_03": {
+"hand": [
+129,
+76
+],
+"angle": 0
+},
+"attack3_04": {
+"hand": [
+122,
+78
+],
+"angle": 0
+},
+"attack3_05": {
+"hand": [
+120,
+90
+],
+"angle": 0
+},
+"attack3_06": {
+"hand": [
+127,
+84
+],
+"angle": 0
+},
+"getup_01": {
+"hand": [
+116,
+98
+],
+"angle": 0,
+"hide": true
+},
+"getup_02": {
+"hand": [
+104,
+97
+],
+"angle": 0,
+"hide": true
+},
+"getup_03": {
+"hand": [
+102,
+91
+],
+"angle": 0
+},
+"getup_04": {
+"hand": [
+101,
+80
+],
+"angle": 0
+},
+"hurt2_01": {
+"hand": [
+99,
+86
+],
+"angle": 0
+},
+"hurt2_02": {
+"hand": [
+97,
+82
+],
+"angle": 0
+},
+"hurt2_03": {
+"hand": [
+96,
+79
+],
+"angle": 0
+},
+"hurt_01": {
+"hand": [
+102,
+78
+],
+"angle": 0
+},
+"hurt_02": {
+"hand": [
+105,
+83
+],
+"angle": 0
+},
+"hurt_03": {
+"hand": [
+109,
+79
+],
+"angle": 0
+},
+"idle_01": {
+"hand": [
+104,
+79
+],
+"angle": 0
+},
+"idle_02": {
+"hand": [
+105,
+79
+],
+"angle": 0
+},
+"idle_03": {
+"hand": [
+105,
+79
+],
+"angle": 0
+},
+"idle_04": {
+"hand": [
+105,
+79
+],
+"angle": 0
+},
+"knockdown_01": {
+"hand": [
+90,
+81
+],
+"angle": 0,
+"hide": true
+},
+"knockdown_02": {
+"hand": [
+110,
+74
+],
+"angle": 0,
+"hide": true
+},
+"knockdown_03": {
+"hand": [
+95,
+90
+],
+"angle": 0,
+"hide": true
+},
+"knockdown_04": {
+"hand": [
+105,
+102
+],
+"angle": 0,
+"hide": true
+},
+"knockdown_05": {
+"hand": [
+104,
+110
+],
+"angle": 0,
+"hide": true
+},
+"walk_01": {
+"hand": [
+106,
+80
+],
+"angle": 0
+},
+"walk_02": {
+"hand": [
+95,
+80
+],
+"angle": 0
+},
+"walk_03": {
+"hand": [
+83,
+80
+],
+"angle": 0
+},
+"walk_04": {
+"hand": [
+98,
+80
+],
+"angle": 0
+},
+"walk_05": {
+"hand": [
+105,
+80
+],
+"angle": 0
+},
+"walk_06": {
+"hand": [
+97,
+80
+],
+"angle": 0
+},
+"walk_07": {
+"hand": [
+83,
+80
+],
+"angle": 0
+},
+"walk_08": {
+"hand": [
+101,
+80
+],
+"angle": 0
+}
+}
+}

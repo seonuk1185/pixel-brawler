@@ -1,0 +1,132 @@
+{
+"note": "assassin (twin daggers baked into the art): hand = front dagger blade centre (1x art px), spot for the enhancement-grade glow. made by asanchors.py",
+"angleUnit": "deg",
+"frames": {
+"motion_dash_01": {
+"hand": [
+103,
+77
+],
+"angle": 0
+},
+"motion_dash_02": {
+"hand": [
+97,
+86
+],
+"angle": 0
+},
+"motion_dash_03": {
+"hand": [
+105,
+84
+],
+"angle": 0
+},
+"motion_dash_04": {
+"hand": [
+103,
+84
+],
+"angle": 0
+},
+"motion_dash_05": {
+"hand": [
+111,
+82
+],
+"angle": 0
+},
+"motion_dash_06": {
+"hand": [
+104,
+77
+],
+"angle": 0
+},
+"motion_spin_01": {
+"hand": [
+105,
+79
+],
+"angle": 0
+},
+"motion_spin_02": {
+"hand": [
+96,
+80
+],
+"angle": 0
+},
+"motion_spin_03": {
+"hand": [
+106,
+79
+],
+"angle": 0
+},
+"motion_spin_04": {
+"hand": [
+103,
+78
+],
+"angle": 0
+},
+"motion_spin_05": {
+"hand": [
+98,
+85
+],
+"angle": 0
+},
+"motion_spin_06": {
+"hand": [
+94,
+91
+],
+"angle": 0
+},
+"motion_throw_01": {
+"hand": [
+103,
+79
+],
+"angle": 0
+},
+"motion_throw_02": {
+"hand": [
+102,
+77
+],
+"angle": 0
+},
+"motion_throw_03": {
+"hand": [
+102,
+79
+],
+"angle": 0
+},
+"motion_throw_04": {
+"hand": [
+106,
+82
+],
+"angle": 0
+},
+"motion_throw_05": {
+"hand": [
+113,
+84
+],
+"angle": 0
+},
+"motion_throw_06": {
+"hand": [
+101,
+79
+],
+"angle": 0
+}
+}
+}
