@@ -234,6 +234,42 @@
   };
   ARCHER.female.combo = ARCHER.male.combo;
 
+  // ---------- 암살자(쌍단검) 3타 콤보 (2026-11-09, art\assassin-t1 · js/assassin.js) ----------
+  // 단검은 그림에 박혀 있음(bakedWeapon). 빠른 근접 타 여러 번: 1타 = 앞·뒤 단검 두 번 찌르기, 2타 = X자 두 번 베기, 3타 = 한 바퀴 돌며 둘레 베기 → 넓은 마무리 베기
+  //   한 콤보에 6번 맞음(합 0.5 x 2 + 0.6 x 2 + 0.45 + 1.45 = 4.1, 기사 검 콤보와 비슷 · 마지막 돌기는 앞뒤 둘레를 다 맞혀 몹 떼에도 괜찮음)
+  //   fx type 'aifx' = AI 그림(js/assassin.js swingFx, g = 그림 묶음, 2차 갈래면 갈래 색 그림)
+  var AS_REACH = { x0: 6, x1: 78, yTop: -98, yBot: -36 };
+  var ASSASSIN = {
+    male: {
+      stride: 112, attack1Count: 4, attack2Count: 5, attack3Count: 6,
+      combo: [
+        { anim: 'attack1', f: [0, 1, 2, 3], d: [38, 55, 55, 70], cancel: 3, reach: AS_REACH, hitY: -72,
+          hits: [
+            { active: [1, 1], lunge: 3, dmg: 0.5, hitstop: 0.55, knock: 0.35, shake: 0.5, spark: 0.7, noJuggle: true,
+              fx: { type: 'aifx', g: 'as_slash_slash', x: 56, y: -74, sx: 0.65, sy: 0.35, rot: 0 } },
+            { active: [2, 2], lunge: 3, dmg: 0.5, hitstop: 0.6, knock: 0.6, shake: 0.55, spark: 0.75,
+              fx: { type: 'aifx', g: 'as_slash_slash', x: 60, y: -66, sx: 0.7, sy: 0.38, rot: 0 } }
+          ] },
+        { anim: 'attack2', f: [0, 1, 2, 3, 4], d: [40, 45, 65, 65, 80], cancel: 4, reach: { x0: 4, x1: 84, yTop: -104, yBot: -30 }, hitY: -66,
+          hits: [
+            { active: [2, 2], lunge: 6, dmg: 0.6, hitstop: 0.7, knock: 0.4, shake: 0.7, spark: 0.85, noJuggle: true,
+              fx: { type: 'aifx', g: 'as_slash_cross', x: 58, y: -70, sx: 0.9, rot: 0 } },
+            { active: [3, 3], lunge: 2, dmg: 0.6, hitstop: 0.8, knock: 0.9, shake: 0.8, spark: 0.9 }
+          ] },
+        { anim: 'attack3', f: [0, 1, 2, 3, 4, 5], d: [40, 50, 55, 95, 90, 100], cancel: 99, endAdvance: 6, reach: { x0: -40, x1: 104, yTop: -104, yBot: -10 }, hitY: -64,
+          hits: [
+            { active: [1, 2], lunge: 0, reach: { x0: -74, x1: 74, yTop: -100, yBot: -20, depth: 26 }, dmg: 0.45, hitstop: 0.5, knock: 0.3, shake: 0.6, spark: 0.8, noJuggle: true, away: true,
+              fx: { type: 'aifx', g: 'as_slash_spin', x: 0, y: -60, sx: 0.85, rot: 0 } },
+            { active: [3, 3], lunge: 8, dmg: 1.45, hitstop: 1.7, knock: 2.4, shake: 2.0, finisher: true, spark: 1.1, hitsDown: true,
+              fx: { type: 'aifx', g: 'as_dash_cut', x: 54, y: -64, sx: 0.85, rot: 0 } }
+          ] }
+      ]
+    },
+    female: { stride: 96, attack1Count: 4, attack2Count: 5, attack3Count: 6, combo: null }
+  };
+  ASSASSIN.female.combo = ASSASSIN.male.combo;
+  var ASSASSIN_FEMALE_DONE = false;   // 여자 그림(artssassin-t1emale)을 넣으면 true
+
   // ---------- 직업 기술 (2026-11-03): 기사 2개 · 법사 2개, 견습은 없음 ----------
   //   2026-11-06 성장 4단계: 기사·법사 각 4개(+ 늘 켜진 기술 2개, 아래 SKILL_TREE). 기술 = 마나(mp) + 쿨타임, 기술 Lv1~5
   // 키보드 U(또는 C) · I(V) · O(B) · P(N) = 기술 칸 1~4 (Lv13 전엔 2칸) / 폰 = 공격 버튼 둘레 작은 동그라미. 칸에 무엇을 끼울지는 기술 창
@@ -275,6 +311,18 @@
       motion_shoot: { count: 6, ms: [80, 110, 120, 160, 90, 130], active: [3] },
       motion_sky:   { count: 6, ms: [80, 110, 150, 120, 110, 120], active: [3] },
       motion_leap:  { count: 6, ms: [70, 90, 90, 140, 120, 120], active: [3] }
+    },
+    // 암살자(2026-11-09, Flow 그림 art\assassin-t1): dash = 낮게 웅크렸다 앞으로 쏘아 나가며 베기(2-3 돌진 · 4 베기),
+    //   spin = 팔 벌려 도는 칼날 회오리(2-4 도는 장), throw = 단검 던지기(3 앞 손 · 4 뒤 손)
+    assassin_male: {
+      motion_dash:  { count: 6, ms: [70, 60, 70, 70, 110, 130], active: [2, 3, 4] },
+      motion_spin:  { count: 6, ms: [70, 60, 60, 60, 60, 120], active: [2, 3, 4] },
+      motion_throw: { count: 6, ms: [70, 70, 60, 90, 80, 110], active: [3, 4] }
+    },
+    assassin_female: {
+      motion_dash:  { count: 6, ms: [70, 60, 70, 70, 110, 130], active: [2, 3, 4] },
+      motion_spin:  { count: 6, ms: [70, 60, 60, 60, 60, 120], active: [2, 3, 4] },
+      motion_throw: { count: 6, ms: [70, 70, 60, 90, 80, 110], active: [3, 4] }
     }
   };
 
@@ -665,8 +713,173 @@
       arc: { kind: 'barrage', frame: 3, n: 8, gapMs: 200, depth: 40, r: 30, hit: RG_BARRAGE, last: RG_BARRAGE_LAST, chainPad: 800 }
     }
   };
+  // ---------- 암살자 기술 (2026-11-09, 효과 = AI 그림 art\skill-fx\as_* · sw_* · ps_*, 움직임 = js/assassin.js) ----------
+  //   asn = 암살자 기술 진행(js/assassin.js Assassin.step). asn 안 거리 값은 화면 도트(scaleActors 가 안 건드림, 궁수 arc 와 같음). move.dist · hits 는 원래 그림 도트(줄어듦)
+  //   데미지 = 같은 칸(Lv)의 기사 · 궁수 기술과 비슷하게(한 적이 다 맞을 때 「합」)
+  // 그림자 습격(1차 첫 기술 ↔ 돌진베기 1.9): 앞으로 쏘아 나가며 길 위 적을 모두 벰 1.2 + 끝 베기 0.9 = 2.1
+  var AS_DASH = { reach: { x0: -20, x1: 110, yTop: -110, yBot: -4, depth: 22 }, dmg: 1.2, hitstop: 0.5, knock: 0.9, shake: 1.1, spark: 1.2, big: true, hitY: -60, hitsDown: true, noJuggle: true };
+  var AS_DASH_CUT = { reach: { x0: -10, x1: 120, yTop: -112, yBot: -4, depth: 24 }, dmg: 0.9, hitstop: 1.4, knock: 1.8, shake: 1.8, knockdown: true, spark: 1.3, big: true, hitY: -62, hitsDown: true,
+                      flash: { color: '#ffd0d0', alpha: 0.3, ms: 110 }, slowMs: 120 };
+  // 칼날 올려치기(기본기 띄우기 ↔ 올려베기 1.5): 두 단검으로 아래에서 위로 → 띄움
+  var AS_RISE = { reach: { x0: -10, x1: 120, yTop: -150, yBot: -4, depth: 30 }, launch: 1.05, dmg: 1.55, hitstop: 1.4, knock: 0.3, shake: 1.6, spark: 1.3, big: true, hitY: -74,
+                  flash: { color: '#ffe0e0', alpha: 0.25, ms: 100 }, slowMs: 130 };
+  // 단검 부채(Lv8 ↔ 검기 2.0): 단검 5자루 x 1.0(위아래로 퍼짐, 한 적은 보통 2자루)
+  var AS_FAN = { dmg: 1.0, hitstop: 0.5, knock: 0.8, shake: 0.7, spark: 1.0, big: true, hitsDown: true };
+  // 칼날 회오리(Lv11 ↔ 회전베기 3.2): 0.15초마다 0.33 x 7 = 2.3 + 터짐 1.1 (끌어당김)
+  var AS_WHIRL = { dmg: 0.33, hitstop: 0.25, knock: 0.1, shake: 0.5, spark: 0.8, hitsDown: true, noRage: true, noJuggle: true };
+  var AS_WHIRL_LAST = { dmg: 1.1, hitstop: 1.4, knock: 2.2, shake: 2.0, knockdown: true, spark: 1.3, big: true, hitsDown: true, flash: { color: '#ffd0d0', alpha: 0.3, ms: 120 } };
+  // 그림자 걸음(Lv14 ↔ 내려찍기 2.5): 가장 가까운 적 등 뒤로 순간이동 → 등 찌르기 2.4(늘 치명타) + 둘레 0.6
+  var AS_BACK = { dmg: 2.4, hitstop: 2.0, knock: 2.0, shake: 2.4, knockdown: true, spark: 1.5, big: true, hitsDown: true, crit: true, flash: { color: '#ffe8e8', alpha: 0.4, ms: 140 }, slowMs: 200 };
+  var AS_BACK_AREA = { dmg: 0.6, hitstop: 0.6, knock: 1.4, shake: 1.0, spark: 1.0, big: true, hitsDown: true };
+  // 연막탄(Lv17 ↔ 연속 찌르기 3.85): 터짐 2.2(눈멀어 기절 stunMs) + 남은 연기 0.3초마다 0.25 x 6 = 3.7
+  var AS_SMOKE = { dmg: 2.2, hitstop: 1.6, knock: 0.8, shake: 2.4, stunMs: 1300, spark: 1.3, big: true, hitsDown: true, noJuggle: true, flash: { color: '#c8c8d0', alpha: 0.3, ms: 140 }, slowMs: 160 };
+  var AS_SMOKE_TICK = { dmg: 0.25, hitstop: 0.15, knock: 0.02, shake: 0.25, spark: 0.6, hitsDown: true, noRage: true, noJuggle: true, noMp: true };
+  // 늘 켜진 기술: 잔영 베기(평타가 맞으면 가끔 잔상 베기 한 번 더) · 떠도는 단검(몇 초마다 저절로) · 독 바르기(맞으면 독)
+  var AS_ECHO = { dmg: 1.0, hitstop: 0.3, knock: 0.3, shake: 0.4, spark: 0.8, noRage: true, noMp: true, noJuggle: true, numStyle: 'push', asEcho: true };
+  var AS_ORBIT = { dmg: 0.8, hitstop: 0.3, knock: 0.4, shake: 0.4, spark: 0.9, hitsDown: true, noRage: true, noMp: true, noJuggle: true, numStyle: 'push', asOrbit: true };
+  // ---- 그림자 무사(2차 갈래 a) ----
+  // 그림자 분신(25 ↔ 칼날 폭풍 5.7): 분신 둘이 2.6초 동안 적에게 뛰어들어 벰 0.5 x 약 9 + 끝 터짐 1.2
+  var SW_CLONE = { dmg: 0.5, hitstop: 0.35, knock: 0.4, shake: 0.6, spark: 1.0, big: true, hitsDown: true, noRage: true, noJuggle: true };
+  var SW_CLONE_END = { dmg: 1.2, hitstop: 1.2, knock: 1.8, shake: 1.8, knockdown: true, spark: 1.2, big: true, hitsDown: true };
+  // 그림자 동행(28, 늘 켜짐): 그림자 하나가 따라다니며 몇 초마다 X자 베기(이 값 x passive.mul)
+  var SW_SHADE = { dmg: 1.5, hitstop: 0.6, knock: 0.9, shake: 0.8, spark: 1.1, big: true, hitsDown: true, noRage: true, noMp: true, numStyle: 'push', swShade: true };
+  // 그림자 난무(31 ↔ 성검 낙뢰 6.2): 적 사이를 순간이동하며 다섯 번 X자 베기 1.25 x 5 (적이 하나면 그 적만)
+  var SW_FLASH = { dmg: 1.25, hitstop: 1.0, knock: 0.6, shake: 1.4, spark: 1.3, big: true, hitsDown: true, noJuggle: true, flash: { color: '#a8c8ff', alpha: 0.2, ms: 80 } };
+  // 암영 십자참(35 ↔ 심판의 십자 5.6): 그림자 물결 둘이 엇갈려 나아감 1.5 x 2 + 엇갈린 자리 큰 X 2.6
+  var SW_WAVE = { dmg: 1.5, hitstop: 0.8, knock: 1.2, shake: 1.4, spark: 1.2, big: true, hitsDown: true };
+  var SW_X = { dmg: 2.6, hitstop: 2.0, knock: 2.4, shake: 3.0, knockdown: true, spark: 1.6, big: true, hitsDown: true, flash: { color: '#c0d8ff', alpha: 0.42, ms: 170 }, slowMs: 240 };
+  // 월영참(39 필살 ↔ 7.7): 화면 안 적마다 그림자 칼날 0.5 x 6 + 거대한 초승달 베기 4.6
+  var SW_RAIN = { dmg: 0.5, hitstop: 0.25, knock: 0.15, shake: 0.6, spark: 0.9, hitsDown: true, noRage: true, noJuggle: true };
+  var SW_MOON = { dmg: 4.6, hitstop: 2.8, knock: 2.6, shake: 4.6, knockdown: true, stunMs: 400, spark: 2.0, big: true, hitsDown: true, flash: { color: '#e0ecff', alpha: 0.7, ms: 260 }, slowMs: 420 };
+  // ---- 독술사(2차 갈래 b) ----  독 = 맞은 적에 독 겹(stack, 최대 10): 0.5초마다 겹 x (독 건 타 피해 x 4%), 3초 뒤 사라짐(다시 맞으면 새로). 독으로는 안 쓰러짐(체력 1 남김)
+  // 독침 부채(25 ↔ 칼날 폭풍 5.7): 독침 7자루 x 0.75(꿰뚫음 2, 한 적 보통 3자루 = 2.25) + 독 겹 2씩
+  var PS_DART = { dmg: 0.75, hitstop: 0.4, knock: 0.6, shake: 0.6, spark: 0.9, big: true, hitsDown: true, noRage: true, asPsn: 2 };
+  // 역병 전염(28, 늘 켜짐): 독 걸린 적이 쓰러지면 터져 둘레에 독 + 작은 피해(이 값 x passive.val)
+  var PS_PLAGUE = { dmg: 0.8, hitstop: 0.3, knock: 0.5, shake: 0.5, spark: 0.8, hitsDown: true, noRage: true, noMp: true, noJuggle: true, numStyle: 'push', asPlague: true };
+  // 독구름(31 ↔ 성검 낙뢰 6.2): 병이 깨진 자리 독구름 3초: 0.3초마다 0.35 x 10 + 독 겹 1씩 · 느려짐
+  var PS_CLOUD = { dmg: 0.35, hitstop: 0.15, knock: 0.02, shake: 0.3, spark: 0.6, hitsDown: true, noRage: true, noJuggle: true, noMp: true, asPsn: 1 };
+  var PS_SHATTER = { dmg: 1.4, hitstop: 1.0, knock: 0.8, shake: 1.6, spark: 1.1, big: true, hitsDown: true, asPsn: 2, flash: { color: '#c8ffb0', alpha: 0.22, ms: 100 } };
+  // 맹독 웅덩이(35 ↔ 빙결 폭풍 5.7): 웅덩이 셋(4초): 0.25초마다 0.22 x 16 + 독 겹(한 적은 보통 웅덩이 하나)
+  var PS_POOL = { dmg: 0.22, hitstop: 0.1, knock: 0.02, shake: 0.2, spark: 0.5, hitsDown: true, noRage: true, noJuggle: true, noMp: true, asPsn: 1 };
+  // 역병 폭발(39 필살 ↔ 7.7): 화면 안 적 발밑 독 분출 3.2 + 독 겹마다 0.45(최대 10겹 = 4.5) → 독 겹을 다 터뜨림
+  var PS_ERUPT = { dmg: 3.2, hitstop: 2.4, knock: 1.4, shake: 4.0, launch: 1.0, spark: 1.8, big: true, hitsDown: true, flash: { color: '#d8ffc0', alpha: 0.55, ms: 220 }, slowMs: 360 };
+  var ASSASSIN_SKILLS = {
+    // ---- 1차 ----
+    ashadow: {
+      name: '그림자 습격', icon: '습', mp: 6, cooldownMs: 4000, damageStyle: 'skill_blade', motion: 'motion_dash', sfx: 'skDash',
+      desc: '몸을 낮췄다가 그림자처럼 앞으로 쏘아 나가며 길 위의 적을 모두 베고, 끝에 크게 베어 넘어뜨려요',
+      lv5: { dist: 1.3, say: '돌진 거리 +30%' },
+      darken: { ms: 420, alpha: 0.4 }, iframes: [0, 520],
+      move: { frames: [2, 3], dist: 150 },
+      trail: { frames: [2, 4], everyMs: 28, lifeMs: 200, alpha: 0.4, color: '#ff5a6a' },
+      hits: [ merge(AS_DASH, { frames: [2, 3] }), merge(AS_DASH_CUT, { frame: 4 }) ],
+      asn: { kind: 'dash', frame: 2 },
+      fx: [ { frame: 1, type: 'dust' } ]
+    },
+    arise: {
+      name: '칼날 올려치기', icon: '올', mp: 8, cooldownMs: 6000, damageStyle: 'skill_blade', launcher: true, sfx: 'skUpper',
+      desc: '두 단검으로 아래에서 위로 베어 올려 적을 공중에 띄워요. 뜬 적은 평타·기술이 다 맞아요(보스·큰 적은 휘청만)',
+      lv5: { area: 1.25, say: '베는 범위 +25%' },
+      darken: { ms: 320, alpha: 0.3 }, iframes: [0, 300],
+      hits: [ merge(AS_RISE, { frame: 2 }) ],
+      asn: { kind: 'rise', frame: 2 },
+      placeholder: { anim: 'attack2', f: [0, 1, 2, 3, 4], d: [50, 50, 90, 120, 100] }
+    },
+    afan: {
+      name: '단검 부채', icon: '부', mp: 10, cooldownMs: 6000, damageStyle: 'skill_blade', motion: 'motion_throw', sfx: 'daggerThrow',
+      desc: '단검 다섯 자루를 부채꼴로 던져요. 위아래로 퍼진 몹 떼를 한 번에 쓸어요(단검마다 두 마리 꿰뚫음)',
+      lv5: { n: 7, say: '단검 5자루 → 7자루' },
+      darken: { ms: 340, alpha: 0.3 }, iframes: [0, 300],
+      asn: { kind: 'fan', frame: 3, n: 5, lanes: [-30, -15, 0, 15, 30, -45, 45], x: 26, y: -40, speed: 640, range: 260, pierce: 2, hit: AS_FAN }
+    },
+    awhirl: {
+      name: '칼날 회오리', icon: '회', mp: 14, cooldownMs: 8500, damageStyle: 'skill_blade', motion: 'motion_spin', sfx: 'skSpin',
+      desc: '팔을 벌리고 빙글빙글 돌며 칼날 회오리를 일으켜요. 둘레 적을 끌어당기며 여러 번 베고 끝에 터뜨려 넘어뜨려요',
+      lv5: { area: 1.3, say: '회오리 크기 +30%' },
+      darken: { ms: 600, alpha: 0.35 }, iframes: [0, 1000],
+      motionSeq: [0, 1, 2, 3, 4, 2, 3, 4, 2, 3, 4, 5], motionMs: [60, 60, 70, 70, 70, 70, 70, 70, 70, 70, 70, 130],
+      asn: { kind: 'whirl', frame: 2, ms: 1050, tickMs: 150, r: 66, depth: 40, pullR: 150, pull: 120, hit: AS_WHIRL, last: AS_WHIRL_LAST, chainPad: 900 }
+    },
+    ablink: {
+      name: '그림자 걸음', icon: '걸', mp: 10, cooldownMs: 7000, damageStyle: 'skill_blade', motion: 'motion_dash', sfx: 'blink',
+      desc: '연기 속으로 사라졌다가 가장 가까운 적의 등 뒤에 나타나 급소를 찔러요(늘 치명타). 둘레 적도 조금 베어요',
+      lv5: { area: 1.3, say: '둘레 베기 범위 +30%' },
+      iframes: [0, 640],
+      motionSeq: [0, 1, 4, 5], motionMs: [70, 160, 140, 140],
+      asn: { kind: 'blink', frame: 1, aim: { range: 300, depth: 90 }, hideMs: 150, behind: 34, r: 60, depth: 36, hit: AS_BACK, area: AS_BACK_AREA, chainPad: 200 }
+    },
+    asmoke: {
+      name: '연막탄', icon: '연', mp: 14, cooldownMs: 8000, damageStyle: 'skill_blade', motion: 'motion_throw', sfx: 'daggerThrow',
+      desc: '연막탄을 던져요. 터지면 둘레 적이 눈이 멀어 잠깐 멈추고, 남은 연기가 계속 조금씩 피해를 줘요',
+      lv5: { area: 1.3, say: '연기 크기 +30%' },
+      darken: { ms: 420, alpha: 0.35 }, iframes: [0, 400],
+      asn: { kind: 'smoke', frame: 3, x: 110, aim: { range: 220, depth: 70 }, r: 62, depth: 40, flyMs: 300, ms: 1800, tickMs: 300, hit: AS_SMOKE, tick: AS_SMOKE_TICK, chainPad: 300 }
+    },
+    // ---- 그림자 무사(2차 갈래 a) ----
+    sclone: {
+      name: '그림자 분신', icon: '분', mp: 22, cooldownMs: 12000, damageStyle: 'skill_shadow', motion: 'motion_spin', sfx: 'shadow',
+      desc: '(2차) 그림자 분신 둘을 불러내요. 분신은 2.6초 동안 둘레 적에게 번개처럼 뛰어들어 베고, 끝에 그림자로 터져요',
+      lv5: { n: 3, say: '분신 2 → 3' },
+      darken: { ms: 700, alpha: 0.45 }, iframes: [0, 500],
+      asn: { kind: 'clone', frame: 2, n: 2, ms: 2600, gapMs: 300, find: 280, findDepth: 90, r: 50, hit: SW_CLONE, last: SW_CLONE_END, chainPad: 200 }
+    },
+    sflash: {
+      name: '그림자 난무', icon: '난', mp: 28, cooldownMs: 15000, damageStyle: 'skill_shadow', motion: 'motion_dash', sfx: 'shadow',
+      desc: '(2차) 그림자가 되어 적 사이를 순간이동하며 다섯 번 X자로 베어요. 마지막에 처음 자리로 돌아와요(쓰는 동안 안 보여요)',
+      lv5: { n: 7, say: '베기 5번 → 7번' },
+      darken: { ms: 1100, alpha: 0.55 }, iframes: [0, 1200], zoom: { k: 1.04, ms: 900 },
+      motionSeq: [0, 1, 4, 5], motionMs: [70, 900, 120, 140],
+      asn: { kind: 'flash', frame: 1, n: 5, gapMs: 150, find: 320, findDepth: 100, r: 40, hit: SW_FLASH, chainPad: 700 }
+    },
+    sstorm: {
+      name: '암영 십자참', icon: '십', mp: 30, cooldownMs: 15000, damageStyle: 'skill_shadow', motion: 'motion_spin', sfx: 'shadow',
+      desc: '(2차) 그림자 물결 두 줄기를 엇갈려 날려요. 줄 위 적을 꿰뚫고, 엇갈린 자리에서 거대한 X자 베기가 터져요',
+      lv5: { area: 1.3, say: 'X자 베기 크기 +30%' },
+      darken: { ms: 900, alpha: 0.5 }, iframes: [0, 700], zoom: { k: 1.04, ms: 700 },
+      asn: { kind: 'xwave', frame: 3, x: 20, speed: 420, range: 300, cross: 170, lane: 34, r: 76, depth: 44, hit: SW_WAVE, last: SW_X, chainPad: 500 }
+    },
+    smoon: {
+      name: '월영참', icon: '월', mp: 40, cooldownMs: 22000, damageStyle: 'skill_shadow', motion: 'motion_spin', sfx: 'charge',
+      desc: '(2차 필살) 화면이 어두워지고 화면 안 모든 적 위로 그림자 칼날이 쏟아져요. 끝에 거대한 초승달 베기가 화면을 가르며 모두 날려 버려요',
+      lv5: { n: 8, say: '그림자 칼날 6번 → 8번' },
+      darken: { ms: 2200, alpha: 0.7 }, iframes: [0, 1400], zoom: { k: 1.06, ms: 1500 },
+      motionMs: [80, 120, 300, 300, 300, 200],
+      asn: { kind: 'moon', frame: 2, n: 6, gapMs: 160, hit: SW_RAIN, last: SW_MOON, chainPad: 1300 }
+    },
+    // ---- 독술사(2차 갈래 b) ----
+    pdarts: {
+      name: '독침 부채', icon: '침', mp: 22, cooldownMs: 11000, damageStyle: 'skill_poison', motion: 'motion_throw', sfx: 'daggerThrow',
+      desc: '(2차) 독침 일곱 개를 넓게 흩뿌려요. 독침마다 두 마리 꿰뚫고 독을 두 겹씩 쌓아요',
+      lv5: { n: 9, say: '독침 7 → 9개' },
+      darken: { ms: 600, alpha: 0.4 }, iframes: [0, 500],
+      asn: { kind: 'darts', frame: 3, n: 7, lanes: [-36, -24, -12, 0, 12, 24, 36, -48, 48], x: 26, y: -40, speed: 620, range: 300, pierce: 2, hit: PS_DART }
+    },
+    pcloud: {
+      name: '독구름', icon: '구', mp: 26, cooldownMs: 14000, damageStyle: 'skill_poison', motion: 'motion_throw', sfx: 'daggerThrow',
+      desc: '(2차) 독병을 던져 깨뜨려요. 깨진 자리에 독구름이 3초 동안 남아 안의 적을 느리게 하고 계속 독을 쌓아요',
+      lv5: { area: 1.3, say: '독구름 크기 +30%' },
+      darken: { ms: 600, alpha: 0.4 }, iframes: [0, 500],
+      asn: { kind: 'cloud', frame: 3, x: 120, aim: { range: 260, depth: 80 }, flyMs: 320, r: 74, depth: 46, ms: 3000, tickMs: 300, hit: PS_SHATTER, tick: PS_CLOUD, chainPad: 350 }
+    },
+    ppool: {
+      name: '맹독 웅덩이', icon: '웅', mp: 32, cooldownMs: 16000, damageStyle: 'skill_poison', motion: 'motion_throw', sfx: 'daggerThrow',
+      desc: '(2차) 독병 세 개를 앞쪽에 흩던져 맹독 웅덩이를 만들어요. 웅덩이 위 적은 4초 동안 계속 독이 쌓이며 녹아요',
+      lv5: { n: 4, say: '웅덩이 3 → 4개' },
+      darken: { ms: 700, alpha: 0.45 }, iframes: [0, 600],
+      asn: { kind: 'pools', frame: 3, n: 3, xs: [80, 150, 220, 290], flyMs: 340, r: 56, depth: 34, ms: 4000, tickMs: 250, tick: PS_POOL, chainPad: 400 }
+    },
+    perupt: {
+      name: '역병 폭발', icon: '역', mp: 40, cooldownMs: 22000, damageStyle: 'skill_poison', motion: 'motion_spin', sfx: 'charge',
+      desc: '(2차 필살) 화면 안 모든 적의 발밑에서 맹독이 솟구쳐 띄워요. 독이 쌓인 적일수록 더 크게 터지고, 쌓인 독은 다 터져 사라져요',
+      lv5: { area: 1.25, say: '분출 크기 +25%' },
+      darken: { ms: 1800, alpha: 0.65 }, iframes: [0, 1200], zoom: { k: 1.06, ms: 1300 },
+      motionMs: [80, 120, 260, 200, 200, 200],
+      asn: { kind: 'erupt', frame: 2, delayMs: 260, gapMs: 70, r: 46, depth: 40, perStack: 0.45, hit: PS_ERUPT, chainPad: 1000 }
+    }
+  };
   var SKILLS = {
     archer: ARCHER_SKILLS,
+    assassin: ASSASSIN_SKILLS,
     knight: {
       // 돌진베기: 1~2장 동안 앞으로 약 120도트 미끄러지며 길 위의 적을 한 번씩 벤다(무적), 베는 장 다음 장에 「쾅」 멈춤
       dash: {
@@ -1342,6 +1555,21 @@
                     leap: ['바람 공중제비', '맞으면 가시 화살이 둘레 적 하나에게 튐 · 맞은 적에 가시 2초(0.5초마다 작은 피해)'],
                     burst: ['가시 폭발 화살', '맞으면 가시 화살이 둘레 적 하나에게 튐 · 맞은 적에 가시 2초(0.5초마다 작은 피해)'] } }
     },
+    // 암살자(2026-11-09): 그림자 무사 a = 짙은 남색 그림자(맞은 적에 echoMs 뒤 그림자 잔상이 한 번 더 벰 = 그 타 피해 x echo) /
+    //   독술사 b = 독초록(맞은 적에 독 psn 겹). 덤 처리 = js/assassin.js(onHit). 그림 = 1차 AI 그림을 갈래 색으로(art/skill-fx/_scripts/assassin_brfx.py, as_*_a|b)
+    assassin: {
+      a: { tag: '그림자', color: '#6a8aff', tw: { echo: 0.3, echoMs: 220 },
+           names: { ashadow: ['암영 습격', '맞은 적을 0.2초 뒤 그림자 잔상이 한 번 더 베어요(그 타 피해의 30%)'],
+                    arise: ['그림자 올려치기', '맞은 적을 0.2초 뒤 그림자 잔상이 한 번 더 베어요(그 타 피해의 30%)'],
+                    afan: ['그림자 단검 부채', '맞은 적을 0.2초 뒤 그림자 잔상이 한 번 더 베어요(그 타 피해의 30%)'],
+                    awhirl: ['암흑 회오리', '맞은 적을 0.2초 뒤 그림자 잔상이 한 번 더 베어요(그 타 피해의 30%)'],
+                    ablink: ['순영 걸음', '맞은 적을 0.2초 뒤 그림자 잔상이 한 번 더 베어요(그 타 피해의 30%)'],
+                    asmoke: ['암흑 연막', '맞은 적을 0.2초 뒤 그림자 잔상이 한 번 더 베어요(그 타 피해의 30%)'] } },
+      b: { tag: '독', color: '#8ae05a', tw: { psn: 1 },
+           names: { ashadow: ['독아 습격', '맞은 적에 독 1겹(0.5초마다 작은 피해, 3초)'], arise: ['독칼 올려치기', '맞은 적에 독 1겹(0.5초마다 작은 피해, 3초)'],
+                    afan: ['독 단검 부채', '맞은 적에 독 1겹(0.5초마다 작은 피해, 3초)'], awhirl: ['독안개 회오리', '맞은 적에 독 1겹(0.5초마다 작은 피해, 3초)'],
+                    ablink: ['독그림자 걸음', '맞은 적에 독 1겹(0.5초마다 작은 피해, 3초)'], asmoke: ['독 연막탄', '맞은 적에 독 1겹(0.5초마다 작은 피해, 3초)'] } }
+    },
     // 늘 켜진 기술 추천 갈래(SKILL_TREE 의 rec): 그 갈래면 효과 x recK(+25%). 마력 소용돌이는 「몇 초마다」라 시간이 1/recK 로 짧아짐(recInv)
     recK: 1.25
   };
@@ -1451,6 +1679,56 @@
       { id: 'twister', unlock: 35, tier: 2, branch: 'b', short: '적을 빨아들이는 회오리 화살' },
       { id: 'barrage', unlock: 39, tier: 2, branch: 'b', short: '화면 가득 천 개의 화살' }
     ],
+    // 2026-11-09 암살자(쌍단검, 궁수와 같은 짜임): 쓰는 기술 1차 6 + 2차 갈래마다 4 / 늘 켜진 기술 1차 7 + 2차 갈래마다 1. 3렙마다 늘 켜진 기술, 그 사이 쓰는 기술
+    //   rec: 그림자 무사 a = 한 방 · 치명타(급소 노리기 · 잔영 베기 · 처형), 독술사 b = 몹 떼 · 저절로 공격 · 독(단검 숙련 · 떠도는 단검 · 독 바르기)
+    assassin: [
+      { id: 'ashadow', unlock: 0, short: '그림자처럼 쏘아 나가며 베요' },
+      { id: 'arise', unlock: 0, short: '두 단검으로 적을 띄워요' },
+      { id: 'nimble', unlock: 7, maxLv: 1, short: '회피 2번 연달아 · 쿨타임이 줄고 더 멀리 빠져요', name: '날렵한 몸놀림', icon: '날',
+        desc: '회피를 2번 연달아 쓸 수 있고, 쿨타임이 줄고(두 번 다 쓴 뒤 1.8초 → 1.2초) 더 멀리 빠져요 · 1번만 찍을 수 있어요',
+        passive: { stat: 'nimble', charges: [2], val: [1200], refillMs: [470], dist: [0.3] } },
+      { id: 'afan', unlock: 8, short: '단검 다섯 자루를 부채꼴로' },
+      { id: 'amast', unlock: 9, rec: 'b', short: '단검 공격이 세져요', name: '단검 숙련', icon: '숙', desc: '단검으로 하는 모든 공격(평타 · 기술)이 세져요',
+        passive: { stat: 'phys', val: [0.08, 0.12, 0.16, 0.2, 0.25] } },
+      { id: 'awhirl', unlock: 11, short: '돌며 칼날 회오리로 끌어당겨 베요' },
+      // passive.stat 'akeen' = 치명타 확률 +val, 치명타 배율 +critDmg (js/assassin.js critAdd · critDmg)
+      { id: 'akeen', unlock: 12, rec: 'a', short: '치명타가 더 자주, 더 세게', name: '급소 노리기', icon: '급', desc: '적의 급소를 노려 치명타가 더 자주 나고 더 세게 터져요',
+        passive: { stat: 'akeen', val: [0.05, 0.07, 0.09, 0.11, 0.13], critDmg: [0.1, 0.15, 0.2, 0.25, 0.3] } },
+      { id: 'ablink', unlock: 14, short: '적의 등 뒤로 순간이동해 찔러요' },
+      // passive.stat 'aecho'(저절로 공격) = 평타가 맞으면 chance 확률로 맞은 적 자리에 잔상 베기(AS_ECHO x val, icdMs 에 한 번)
+      { id: 'aecho', unlock: 15, rec: 'a', short: '평타가 맞으면 잔상이 한 번 더 베요', name: '잔영 베기', icon: '잔',
+        desc: '평타가 적에게 맞으면 가끔 붉은 잔상이 나타나 그 적과 둘레를 한 번 더 베어요',
+        passive: { stat: 'aecho', val: [0.5, 0.58, 0.66, 0.75, 0.85], chance: [0.3, 0.33, 0.36, 0.4, 0.45], r: 46, depth: 30, icdMs: 180, hit: AS_ECHO } },
+      { id: 'asmoke', unlock: 17, short: '연막탄으로 눈멀게 하고 깎아요' },
+      // passive.stat 'aorbit'(저절로 공격) = val(ms) 마다 둘레(find) 가까운 적들에게 유령 단검 n 자루가 저절로 날아감. mul = 데미지 배율(AS_ORBIT)
+      { id: 'aorbit', unlock: 18, rec: 'b', recInv: true, short: '몇 초마다 유령 단검이 저절로 날아가요', name: '떠도는 단검', icon: '떠',
+        desc: '몸 둘레를 맴도는 유령 단검들이 몇 초마다 저절로 가까운 적들에게 날아가 꽂혀요',
+        passive: { stat: 'aorbit', val: [4200, 3900, 3600, 3300, 3000], n: [3, 3, 4, 4, 5], mul: [1, 1.1, 1.2, 1.35, 1.5], find: 240, findDepth: 80, hit: AS_ORBIT } },
+      // passive.stat 'avenom' = 단검 공격(평타 · 기술)이 맞으면 val 확률로 독 1겹(js/assassin.js 독)
+      { id: 'avenom', unlock: 21, rec: 'b', short: '맞히면 가끔 독이 묻어요', name: '독 바르기', icon: '독', desc: '단검에 독을 발라 평타 · 기술이 맞으면 가끔 독이 한 겹 쌓여요(0.5초마다 작은 피해, 3초)',
+        passive: { stat: 'avenom', val: [0.2, 0.25, 0.3, 0.35, 0.42] } },
+      // passive.stat 'aexec' = 체력이 below 이하인 적에게 피해 +val (머리 위 붉은 해골 표시)
+      { id: 'aexec', unlock: 24, rec: 'a', short: '체력 적은 적에게 훨씬 세게', name: '처형', icon: '처', desc: '체력이 30% 밑인 적은 머리 위에 붉은 해골이 뜨고, 그 적에게는 모든 공격이 더 세게 들어가요',
+        passive: { stat: 'aexec', val: [0.15, 0.2, 0.25, 0.3, 0.36], below: 0.3 } },
+      // ---- 그림자 무사(2차 갈래 a) ----
+      { id: 'sclone', unlock: 25, tier: 2, branch: 'a', short: '그림자 분신 둘이 뛰어들어 베요' },
+      // passive.stat 'sshade'(저절로 공격) = 그림자 하나가 따라다니며 val(ms) 마다 가까운 적에게 순간이동해 X자 베기. mul = 데미지 배율(SW_SHADE)
+      { id: 'sshade', unlock: 28, tier: 2, branch: 'a', recInv: true, short: '그림자가 따라다니며 저절로 베요', name: '그림자 동행', icon: '동',
+        desc: '내 그림자 하나가 몸에서 떨어져 따라다니다가 몇 초마다 가까운 적에게 뛰어들어 X자로 베어요',
+        passive: { stat: 'sshade', val: [2800, 2600, 2400, 2200, 2000], mul: [1, 1.12, 1.25, 1.4, 1.55], find: 280, findDepth: 90, hit: SW_SHADE } },
+      { id: 'sflash', unlock: 31, tier: 2, branch: 'a', short: '적 사이를 순간이동하며 다섯 번' },
+      { id: 'sstorm', unlock: 35, tier: 2, branch: 'a', short: '엇갈린 그림자 물결 + 큰 X' },
+      { id: 'smoon', unlock: 39, tier: 2, branch: 'a', short: '그림자 칼날 비 + 거대한 초승달' },
+      // ---- 독술사(2차 갈래 b) ----
+      { id: 'pdarts', unlock: 25, tier: 2, branch: 'b', short: '독침 일곱 개로 독을 쌓아요' },
+      // passive.stat 'pplague'(저절로 공격) = 독 걸린 적이 쓰러지면 터져 둘레 r 적에게 독(그 적 겹의 spread 만큼, 최소 1) + PS_PLAGUE x val
+      { id: 'pplague', unlock: 28, tier: 2, branch: 'b', short: '독 걸린 적이 쓰러지면 독이 퍼져요', name: '역병 전염', icon: '전',
+        desc: '독이 걸린 채 쓰러진 적이 독구름으로 터져 둘레 적에게 독을 옮기고 조금 피해를 줘요. 몹 떼에 독이 줄줄이 퍼져요',
+        passive: { stat: 'pplague', val: [0.7, 0.85, 1.0, 1.15, 1.3], spread: [0.5, 0.55, 0.6, 0.7, 0.8], r: [70, 76, 82, 90, 100], depth: 40, hit: PS_PLAGUE } },
+      { id: 'pcloud', unlock: 31, tier: 2, branch: 'b', short: '독병을 깨 독구름을 남겨요' },
+      { id: 'ppool', unlock: 35, tier: 2, branch: 'b', short: '맹독 웅덩이 셋' },
+      { id: 'perupt', unlock: 39, tier: 2, branch: 'b', short: '모든 적 발밑에서 맹독이 솟아요' }
+    ],
     // 2026-11-08 형님 승인: 법사도 기사처럼 다시 배치(아래 mage 순서 = 기술 창 순서) + 2차 전직 Lv25 대마법사(tier: 2)
     //   새 기술 원소 파편 · 중력 구체 · 마력 소용돌이(1차) / 원소 연쇄 · 빙결 폭풍 · 천둥 심판(2차) → 법사 17개(쓰는 기술 10 + 늘 켜진 기술 7). 1차 법사 = 원소 낙인(Lv24)까지
     //   예전 저장: 지금 Lv 보다 늦게 열리게 바뀐 기술(마나 순환 11 → 12 · 마나 방패 19 → 21 · 원소 낙인 23 → 24, 2차 전 메테오 · 불기둥)은 저장을 읽을 때 빠짐
@@ -1525,6 +1803,8 @@
                                  attack2Count: MAGE[who].attack2Count, attack3Count: MAGE[who].attack3Count, combo: MAGE[who].combo };
     if (outfit === 'archer') M = { stride: ARCHER[who].stride, attack1Prefix: 'attack1_', attack1Count: ARCHER[who].attack1Count,   // 궁수(2026-11-09)
                                    attack2Count: ARCHER[who].attack2Count, attack3Count: ARCHER[who].attack3Count, combo: ARCHER[who].combo };
+    if (outfit === 'assassin') M = { stride: ASSASSIN[who].stride, attack1Prefix: 'attack1_', attack1Count: ASSASSIN[who].attack1Count,   // 암살자(2026-11-09)
+                                     attack2Count: ASSASSIN[who].attack2Count, attack3Count: ASSASSIN[who].attack3Count, combo: ASSASSIN[who].combo };
     // 검 콤보: 기사 옷이면 knightCombo 에 있는 타만 바꿔 끼운다(나머지 타는 견습과 같은 수치)
     var swordCombo = M.combo;
     if (outfit === 'knight' && M.knightCombo) {
@@ -1534,7 +1814,8 @@
       label: who === 'male' ? '남' : '여',
       frameW: 176, frameH: 136,
       pivot: { x: 68, y: 130 },
-      bakedWeapon: outfit === 'archer',   // 궁수 = 활이 그림에 박혀 있음(2026-11-09). 손 위치 json 은 활 가운데(화살 · 오라 자리 참고용)
+      bakedWeapon: outfit === 'archer' || outfit === 'assassin',   // 암살자(2026-11-09) = 쌍단검도 그림에 박힘(손 위치 json = 단검 날 가운데, 강화 빛 자리)
+        // 궁수 = 활이 그림에 박혀 있음(2026-11-09). 손 위치 json 은 활 가운데(화살 · 오라 자리 참고용)
       anchors: anchors,
       anims: {
         idle:    { frames: seq(p + 'idle_', 4),   fps: 6,  loop: true },
@@ -1556,7 +1837,7 @@
         getup:     { frames: seq(p + 'getup_', 4),     d: [220, 180, 160, 140], loop: false }
       },
       combo: swordCombo,
-      combos: outfit === 'mage' ? { magic: M.combo } : outfit === 'archer' ? { bow: M.combo } : { sword: swordCombo }
+      combos: outfit === 'mage' ? { magic: M.combo } : outfit === 'archer' ? { bow: M.combo } : outfit === 'assassin' ? { dagger: M.combo } : { sword: swordCombo }
     };
     // 달리기·점프 (2026-11-03, art\stage1\motions_move → 같은 옷 폴더). run 8 · jump 5 · run_attack 5 · jump_attack 4 장.
     //   장마다 시간·보폭·판정은 motions_move.json(CFG.move.data)의 moveWho 항목, 손 위치 = anchors_move_<옷_성별>.json
@@ -1606,6 +1887,11 @@
     // 궁수 옷 (2026-11-09, 직업 「궁수(활)」): Flow 그림 artrcher-t1 → assets/chars/stage1/archer_<성별>. 견습 그림을 포즈 참고로 다시 그려 장 수 · 발 위치가 견습과 같음
     var archerMale = stage1('male', 'assets/chars/stage1/anchors_archer_male.json', 'archer');
     var archerFemale = stage1('female', 'assets/chars/stage1/anchors_archer_female.json', 'archer');
+    // 암살자 옷 (2026-11-09, 직업 「암살자(쌍단검)」): Flow 그림 artssassin-t1 → assets/chars/stage1/assassin_<성별>. 궁수처럼 견습 그림을 포즈 참고로 다시 그림
+    //   ASSASSIN_FEMALE_DONE = false 면 여자도 남자 그림을 씀(여자 그림이 오기 전 임시)
+    var assassinMale = stage1('male', 'assets/chars/stage1/anchors_assassin_male.json', 'assassin');
+    var assassinFemale = ASSASSIN_FEMALE_DONE ? stage1('female', 'assets/chars/stage1/anchors_assassin_female.json', 'assassin') : null;
+    if (!assassinFemale) { assassinFemale = stage1('male', 'assets/chars/stage1/anchors_assassin_male.json', 'assassin'); assassinFemale.label = '여'; assassinFemale.moveWho = 'assassin_male'; }
   }
   // 성기사 옷 (2026-11-07, 기사 2차 · classes.knight.tier2): 남자(여자는 아래 knightT2Female). 그림 = assets/chars/stage1/knight_t2_male (art\knight-t2\male 에서 복사).
   //   파일 이름·장 수·발 위치가 기사(1차) 그림과 똑같아서 기사 남 묶음을 그대로 쓰고 그림 폴더·손 위치 json 만 바꾼다
@@ -1691,6 +1977,19 @@
   //   ARCHER_T2_DONE 에 있는 것만 진짜 그림, 없는 것은 classes.archer.tier2.branches 의 look(1차 옷 물들임) 그대로
   var ARCHER_T2_DONE = ['t2a_male', 't2a_female', 't2b_male', 't2b_female'];
   var archerT2Sets = {};
+  // 암살자 2차 옷(2026-11-09, 그림자 무사 = assassin_t2a · 독술사 = assassin_t2b): 궁수 2차와 같은 방식(1차 암살자 그림 위에 옷만 다시 그림)
+  var ASSASSIN_T2_DONE = [];
+  var assassinT2Sets = {};
+  ASSASSIN_T2_DONE.forEach(function (k) {
+    if (artSet === 'novice') return;
+    var at = k.split('_')[0], who = k.split('_')[1], name = 'assassin_' + at + '_' + who;
+    var d = stage1(who, 'assets/chars/stage1/anchors_' + name + '.json', 'assassin');
+    var dir = 'assets/chars/stage1/' + name + '/', from = 'assets/chars/stage1/assassin_' + who + '/';
+    Object.keys(d.anims).forEach(function (n) { var A = d.anims[n]; A.frames = A.frames.map(function (f) { return f.replace(from, dir); }); });
+    d.moveAnchors = 'assets/chars/stage1/anchors_move_' + name + '.json';
+    d.t2Dir = dir;
+    assassinT2Sets[name] = d;
+  });
   ARCHER_T2_DONE.forEach(function (k) {
     if (artSet === 'novice') return;
     var at = k.split('_')[0], who = k.split('_')[1], name = 'archer_' + at + '_' + who;
@@ -1711,6 +2010,8 @@
   if (mageT2Female) characters.mage_t2_female = mageT2Female;
   Object.keys(t2bSets).forEach(function (k) { characters[k] = t2bSets[k]; });
   Object.keys(archerT2Sets).forEach(function (k) { characters[k] = archerT2Sets[k]; });   // 궁수 2차 옷(2026-11-09)
+  if (assassinMale) { characters.assassin_male = assassinMale; characters.assassin_female = assassinFemale; }   // 암살자(2026-11-09)
+  Object.keys(assassinT2Sets).forEach(function (k) { characters[k] = assassinT2Sets[k]; });   // 암살자 2차 옷(2026-11-09)
 
   // ---------- 적 그림 (art\stage1-enemies 에서 복사, 그림은 전부 「왼쪽을 봄」) ----------
   // playback = 그림 번호(1부터) 재생 순서, fps = 1초에 몇 칸. 순서를 늘리면 그 장면이 길어진다(예: 몽둥이 치켜든 장면 = 예고)
@@ -2002,7 +2303,23 @@
         staff_dark_rare:      { label: '해골 지팡이', img: 'assets/weapons/staff_dark_rare.png',      grip: { x: 23, y: 5 },  baseAngle: 0, layer: 'back', kind: 'staff' },
         staff_dark_epic:      { label: '해골 지팡이', img: 'assets/weapons/staff_dark_epic.png',      grip: { x: 23, y: 8 },  baseAngle: 0, layer: 'back', kind: 'staff' },
         staff_dark_legendary: { label: '해골 지팡이', img: 'assets/weapons/staff_dark_legendary.png', grip: { x: 24, y: 15 },  baseAngle: 0, layer: 'back', kind: 'staff' },
-        staff_dark_mythic:    { label: '해골 지팡이', img: 'assets/weapons/staff_dark_mythic.png',    grip: { x: 25, y: 16 }, baseAngle: 0, layer: 'back', kind: 'staff', mythic: true }
+        staff_dark_mythic:    { label: '해골 지팡이', img: 'assets/weapons/staff_dark_mythic.png',    grip: { x: 25, y: 16 }, baseAngle: 0, layer: 'back', kind: 'staff', mythic: true },
+        // 암살자 쌍단검 강화 단계 그림(2026-11-09, art/weapons-assassin, weapons_branch.py): 단검은 몸 그림에 박혀 있어 강화 창 그림 · 단계 빛 색 고르기에만 씀
+        dagger_common:             { label: '단검', img: 'assets/weapons/dagger_common.png', grip: { x: 5, y: 3 }, baseAngle: 0, layer: 'back', kind: 'sword' },
+        dagger_rare:               { label: '단검', img: 'assets/weapons/dagger_rare.png', grip: { x: 6, y: 3 }, baseAngle: 0, layer: 'back', kind: 'sword' },
+        dagger_epic:               { label: '단검', img: 'assets/weapons/dagger_epic.png', grip: { x: 7, y: 3 }, baseAngle: 0, layer: 'back', kind: 'sword' },
+        dagger_legendary:          { label: '단검', img: 'assets/weapons/dagger_legendary.png', grip: { x: 5, y: 5 }, baseAngle: 0, layer: 'back', kind: 'sword' },
+        dagger_mythic:             { label: '단검', img: 'assets/weapons/dagger_mythic.png', grip: { x: 7, y: 5 }, baseAngle: 0, layer: 'back', kind: 'sword', mythic: true },
+        dagger_shadow_common:      { label: '그림자 단검', img: 'assets/weapons/dagger_shadow_common.png', grip: { x: 5, y: 3 }, baseAngle: 0, layer: 'back', kind: 'sword' },
+        dagger_shadow_rare:        { label: '그림자 단검', img: 'assets/weapons/dagger_shadow_rare.png', grip: { x: 5, y: 3 }, baseAngle: 0, layer: 'back', kind: 'sword' },
+        dagger_shadow_epic:        { label: '그림자 단검', img: 'assets/weapons/dagger_shadow_epic.png', grip: { x: 7, y: 4 }, baseAngle: 0, layer: 'back', kind: 'sword' },
+        dagger_shadow_legendary:   { label: '그림자 단검', img: 'assets/weapons/dagger_shadow_legendary.png', grip: { x: 7, y: 4 }, baseAngle: 0, layer: 'back', kind: 'sword' },
+        dagger_shadow_mythic:      { label: '그림자 단검', img: 'assets/weapons/dagger_shadow_mythic.png', grip: { x: 11, y: 5 }, baseAngle: 0, layer: 'back', kind: 'sword', mythic: true },
+        dagger_poison_common:      { label: '독 단검', img: 'assets/weapons/dagger_poison_common.png', grip: { x: 6, y: 3 }, baseAngle: 0, layer: 'back', kind: 'sword' },
+        dagger_poison_rare:        { label: '독 단검', img: 'assets/weapons/dagger_poison_rare.png', grip: { x: 6, y: 3 }, baseAngle: 0, layer: 'back', kind: 'sword' },
+        dagger_poison_epic:        { label: '독 단검', img: 'assets/weapons/dagger_poison_epic.png', grip: { x: 7, y: 3 }, baseAngle: 0, layer: 'back', kind: 'sword' },
+        dagger_poison_legendary:   { label: '독 단검', img: 'assets/weapons/dagger_poison_legendary.png', grip: { x: 8, y: 3 }, baseAngle: 0, layer: 'back', kind: 'sword' },
+        dagger_poison_mythic:      { label: '독 단검', img: 'assets/weapons/dagger_poison_mythic.png', grip: { x: 14, y: 5 }, baseAngle: 0, layer: 'back', kind: 'sword', mythic: true }
       },
       // 허수아비: 없으면(null) 코드로 그린 나무 기둥. hit 그림은 「왼쪽에서 맞음」 기준, 오른쪽에서 맞으면 뒤집어 씀
       dummy: artSet === 'novice' ? null : {
@@ -2086,7 +2403,7 @@
         ghosts: 5,          // 잔상 개수(길 따라 고르게)
         ghostMs: 300,       // 잔상 하나가 사라지는 시간
         ghostAlpha: 0.6,    // 잔상 처음 진하기
-        colors: { novice: '#fff0c0', knight: '#6ab8ff', mage: '#c890ff', archer: '#8affb8' },   // 잔상 색(직업별). 없는 직업 = novice
+        colors: { novice: '#fff0c0', knight: '#6ab8ff', mage: '#c890ff', archer: '#8affb8', assassin: '#ff6a7a' },   // 잔상 색(직업별). 없는 직업 = novice
         dust: 0.45          // 시작·끝 먼지 크기
       }
     },
@@ -2126,6 +2443,14 @@
                     look: { base: 'archer', tint: '#0c2a3a', k: 0.32, outline: { color: '#bfe6ff', alpha: 0.55, glow: true } } },
                   { key: 'b', name: '레인저', outfit: 'archer_t2b', desc: '숲의 레인저. 화살 폭풍 · 덫 · 회오리로 몹 떼를 쓸고, 매 동료가 저절로 적을 공격해요',
                     look: { base: 'archer', tint: '#5a3a08', k: 0.24, outline: { color: '#c8ff7a', alpha: 0.55, glow: true } } }
+                ] } },
+      // 암살자(2026-11-09): 쌍단검(그림에 박힘) · 평타 = 빠른 단검 3타(ASSASSIN) · 2차 Lv25 = 그림자 무사 / 독술사. 2차 옷 그림이 오기 전엔 1차 옷 물들임(look)
+      assassin: { label: '암살자(쌍단검)', weapon: 'dagger', moves: 'dagger', outfit: 'assassin', tier2: { lv: 25, outfit: 'assassin_t2a', name: '그림자 무사',
+                branches: [
+                  { key: 'a', name: '그림자 무사', outfit: 'assassin_t2a', desc: '그림자를 다루는 무사. 분신 · 순간이동 난무 · 엇갈린 그림자 물결로 몰아치고, 내 그림자가 저절로 적을 베어요',
+                    look: { base: 'assassin', tint: '#0a1440', k: 0.36, outline: { color: '#6a8aff', alpha: 0.6, glow: true } } },
+                  { key: 'b', name: '독술사', outfit: 'assassin_t2b', desc: '독을 다루는 검은 암살자. 독침 · 독구름 · 맹독 웅덩이로 독을 쌓아 녹이고, 쓰러진 적의 독이 둘레로 퍼져요',
+                    look: { base: 'assassin', tint: '#06140a', k: 0.34, outline: { color: '#7ae05a', alpha: 0.55, glow: true } } }
                 ] } }
       // , axe: { label: '도끼', weapon: 'axe', moves: 'sword' }
     },
@@ -2136,7 +2461,7 @@
       { key: 'mage',   name: '법사', weapon: '지팡이', desc: '마법탄과 폭발로 여러 적을 한꺼번에. 몸은 약하지만 멀리서 강함' },
       { key: 'archer', name: '궁수', weapon: '활', desc: '빠른 화살로 멀리서 꿰뚫는 사냥꾼. 화살비 · 폭발 화살로 몹 떼를 쓸어요' },
       { name: '맨손파이터', soon: true, desc: '주먹과 발차기의 달인' },
-      { name: '도적', soon: true, desc: '빠른 단검과 함정' },
+      { key: 'assassin', name: '암살자', weapon: '쌍단검', desc: '두 단검으로 빠르게 몰아치는 그림자. 연속 베기 · 치명타 · 순간이동으로 몹 떼를 쓸어요' },
       { name: '소환사', soon: true, desc: '동료를 불러 함께 싸움' }
     ],
 
@@ -2152,7 +2477,9 @@
       staff: { damage: [11, 15],  magic: true, hitstopMul: 1.0, shakeMul: 0.95, knockMul: 0.95, speed: 1.0, arcColor: '#d9c2ff', sparkColor: '#c99bff' },
       wand:  { damage: [10, 14],  magic: true, hitstopMul: 0.95, shakeMul: 0.9, knockMul: 0.9, speed: 1.0, arcColor: '#e6d2ff', sparkColor: '#e0a8ff' },
       // 궁수 활(2026-11-09): 물리(힘). 한 발은 검보다 조금 약하고(10~14) 화살이 꿰뚫어 여러 마리를 맞힘
-      bow:   { damage: [10, 14], hitstopMul: 0.85, shakeMul: 0.8, knockMul: 0.9, speed: 1.0, arcColor: '#d8ffe8', sparkColor: '#d8ffc0' }
+      bow:   { damage: [10, 14], hitstopMul: 0.85, shakeMul: 0.8, knockMul: 0.9, speed: 1.0, arcColor: '#d8ffe8', sparkColor: '#d8ffc0' },
+      // 암살자 쌍단검(2026-11-09): 물리(힘). 한 타는 약하고(9~13) 자주 · 빠르게 맞힘(콤보 6타)
+      dagger: { damage: [9, 13], hitstopMul: 0.75, shakeMul: 0.75, knockMul: 0.8, speed: 1.1, arcColor: '#ffd8dc', sparkColor: '#ffd0d8' }
     },
 
     // ---------- 법사 마법 그림 재생 ----------
@@ -2207,6 +2534,8 @@
                 look: { hue: 12, sat: 1.35, bright: 0.72, color: '#3a0a6a', colorK: 0.3 } },
       // archer 「매의 눈」(2026-11-09): 화살마다 한 발 더 · 더 꿰뚫음(+2) · 금빛 두건
       archer: { name: '매의 눈', color: '#9dff8a', glow: '#fff2a0', look: { hue: 40, sat: 1.2, bright: 0.85, color: '#6a5a0a', colorK: 0.3 } },
+      // assassin 「암영 폭주」(2026-11-09): 평타가 맞을 때마다 붉은 잔상 베기가 한 번 더(js/assassin.js) · 진홍 목도리가 더 붉게
+      assassin: { name: '암영 폭주', color: '#ff3a5a', glow: '#ffb0c0', look: { hue: -10, sat: 1.3, bright: 0.8, color: '#5a0a1a', colorK: 0.3 } },
       novice: { name: '각성', color: '#ffd23f', glow: '#fff2a0' }
     },
     // ---------- 효과음 (2026-11-07, js/sfx.js: 소리 파일 없이 코드로 만든 칩튠 소리) ----------
@@ -2332,6 +2661,15 @@
                       pop: { top: '#ffffff', bottom: '#e0f4ff' } },
       skill_wild:   { font: 'giant', scale: 1, bold: true, zoom: 1.2, top: '#f6ffd0', bottom: '#8ae040', outline: '#1e3408', shadow: 'rgba(10,20,4,0.45)',
                       pop: { top: '#ffffff', bottom: '#e0ffa0' } },
+      // 암살자(2026-11-09): 단검 = 흰색 → 진홍 / 그림자 무사 = 흰색 → 짙은 하늘 / 독술사 = 연두 → 독초록 · 암영 폭주 각성 = 흰 → 진홍
+      skill_blade:  { font: 'giant', scale: 1, bold: true, zoom: 1.2, top: '#ffffff', bottom: '#ff5a6a', outline: '#3a0a12', shadow: 'rgba(24,4,8,0.45)',
+                      pop: { top: '#ffffff', bottom: '#ffd0d8' } },
+      skill_shadow: { font: 'giant', scale: 1, bold: true, zoom: 1.25, top: '#f0f6ff', bottom: '#6a8aff', outline: '#0a1238', shadow: 'rgba(4,6,24,0.5)',
+                      pop: { top: '#ffffff', bottom: '#c8d8ff' } },
+      skill_poison: { font: 'giant', scale: 1, bold: true, zoom: 1.2, top: '#f0ffd8', bottom: '#7ad84a', outline: '#0e2a06', shadow: 'rgba(6,18,4,0.5)',
+                      pop: { top: '#ffffff', bottom: '#d8ffb0' } },
+      awk_assassin: { font: 'giant', scale: 1, bold: true, zoom: 1.45, top: '#ffffff', bottom: '#ff3a5a', outline: '#3a0610', shadow: 'rgba(24,4,8,0.5)',
+                      pop: { top: '#ffffff', bottom: '#ffb0c0' } },
       awk_archer:   { font: 'giant', scale: 1, bold: true, zoom: 1.45, top: '#fffbe0', bottom: '#9dff8a', outline: '#1a3a08', shadow: 'rgba(10,24,4,0.5)',
                       pop: { top: '#ffffff', bottom: '#fff2a0' } },
       // 늘 켜진 기술 알림 글자(2026-11-06): 「투지!」(붉은 주황) · 「반격!」(금색) · 마나 방패가 막은 마나 「MP -12」(파랑)
@@ -2466,12 +2804,13 @@
           novice: { str: 4, vit: 3, agi: 3 },
           knight: { str: 5, vit: 3, agi: 2 },
           mage:   { int: 5, wis: 3, vit: 2 },
-          archer: { str: 4, agi: 4, vit: 2 }   // 궁수(2026-11-09): 힘 · 민첩(치명타 · 빠르기)
+          archer: { str: 4, agi: 4, vit: 2 },   // 궁수(2026-11-09): 힘 · 민첩(치명타 · 빠르기)
+          assassin: { str: 4, agi: 5, vit: 2 }   // 암살자(2026-11-09): 민첩 많이(치명타 · 빠르기)
         }
       },
       // 직업마다 기본 몫: hp = 최대 체력에 더함(기사가 더 튼튼), mp = 기본 마나(법사가 더 많음)
       //   2026-11-06 법사 균형: 법사 hp 0 → 35 (멀리 서도 보스 공격 폭이 넓어 자주 맞음. 3판 보스 두꺼비 앞에서 너무 쉽게 쓰러짐. 기사는 체력 능력치를 더 찍어서 Lv 가 오르면 기사가 더 튼튼)
-      classBase: { novice: { hp: 0, mp: 40 }, knight: { hp: 15, mp: 40 }, mage: { hp: 35, mp: 80 }, archer: { hp: 25, mp: 60 } },   // 궁수(2026-11-09): 기사와 법사 사이
+      classBase: { novice: { hp: 0, mp: 40 }, knight: { hp: 15, mp: 40 }, mage: { hp: 35, mp: 80 }, archer: { hp: 25, mp: 60 }, assassin: { hp: 20, mp: 55 } },   // 궁수(2026-11-09): 기사와 법사 사이
       // 마나(MP, 2026-11-06): 체력 막대 밑 파란 막대. 지금은 쓰는 곳 없음(기술이 마나 + 쿨타임을 쓰는 건 다음 단계)
       //   최대 = classBase.mp + perLv × (Lv-1) + 지혜 × stats.wis.mp. 초당 regen + 지혜 × stats.wis.regen 씩 참,
       //   적·허수아비를 맞힐 때마다 onHit 만큼 더(소품은 안 셈). 새 판·다시 하기 = 가득, 레벨업 = 늘어난 만큼 참
@@ -5845,12 +6184,15 @@
       bonus: {
         knight: { 3: { crit: 0.05 }, 6: { atkSpd: 0.08 }, 9: { cd: 0.1, mp: 0.1 }, 10: { reach: 0.1 } },
         mage:   { 3: { mpRegen: 0.15 }, 6: { castSpd: 0.1 }, 9: { cd: 0.1, mp: 0.1 }, 10: { area: 0.1 } },
+        assassin: { 3: { crit: 0.05 }, 6: { atkSpd: 0.08 }, 9: { cd: 0.1, mp: 0.1 }, 10: { reach: 0.1 } },   // 암살자(2026-11-09)
         archer: { 3: { crit: 0.05 }, 6: { atkSpd: 0.08 }, 9: { cd: 0.1, mp: 0.1 }, 10: { reach: 0.1 } }   // 궁수(2026-11-09): reach = 화살 사거리 +
       },
       slotLv: [3, 6, 9],
       art: {
         knight: [[0, 'sword_common'], [3, 'sword_rare'], [6, 'sword_epic'], [9, 'sword_legendary'], [10, 'sword_mythic']],
         mage:   [[0, 'staff_common'], [3, 'staff_rare'], [6, 'staff_epic'], [9, 'staff_legendary'], [10, 'staff_mythic']],
+        // 암살자(2026-11-09): 쌍단검은 몸 그림에 박혀 있어 이 그림은 강화 창 · 단계 빛(js/assassin.js) 용. 손에는 단계 색 빛만 붙음
+        assassin: [[0, 'dagger_common'], [3, 'dagger_rare'], [6, 'dagger_epic'], [9, 'dagger_legendary'], [10, 'dagger_mythic']],
         archer: []   // 궁수 활은 그림에 박혀 있어 강화 단계 그림 없음(속성은 화살 빛으로, js/archer.js)
       },
       // 2차 갈래 전용 무기 그림(2026-11-09 형님 「전용무기 만들어보자」): artBranch[직업][갈래] 가 있으면 2차 Lv 뒤 그 갈래는 이 목록(없으면 위 art)
@@ -5858,7 +6200,10 @@
       //   궁수 갈래 활 그림(art/weapons-branch/bow_*)은 미리 만들어만 둠(활이 몸 그림에 박혀 있어 아직 안 붙임)
       artBranch: {
         knight: { b: [[0, 'sword_dark_common'], [3, 'sword_dark_rare'], [6, 'sword_dark_epic'], [9, 'sword_dark_legendary'], [10, 'sword_dark_mythic']] },
-        mage:   { b: [[0, 'staff_dark_common'], [3, 'staff_dark_rare'], [6, 'staff_dark_epic'], [9, 'staff_dark_legendary'], [10, 'staff_dark_mythic']] }
+        mage:   { b: [[0, 'staff_dark_common'], [3, 'staff_dark_rare'], [6, 'staff_dark_epic'], [9, 'staff_dark_legendary'], [10, 'staff_dark_mythic']] },
+        // 암살자(2026-11-09): 그림자 무사 = 검푸른 그림자 단검 / 독술사 = 독 단검(art/weapons-assassin)
+        assassin: { a: [[0, 'dagger_shadow_common'], [3, 'dagger_shadow_rare'], [6, 'dagger_shadow_epic'], [9, 'dagger_shadow_legendary'], [10, 'dagger_shadow_mythic']],
+                    b: [[0, 'dagger_poison_common'], [3, 'dagger_poison_rare'], [6, 'dagger_poison_epic'], [9, 'dagger_poison_legendary'], [10, 'dagger_poison_mythic']] }
       },
       tierName: [[0, '일반'], [3, '희귀'], [6, '영웅'], [9, '전설'], [10, '신화']],
       // ---- 속성 7가지: 칸마다 하나(같은 속성 두 번 안 됨), 끼운 속성은 전부 함께 켜짐. 부여 · 바꾸기 = 그 속성 결정 setCost[칸] 개(언제든) ----
@@ -5966,7 +6311,7 @@
     //   test = 시험 버튼(견습/기사/법사)으로 저장된 직업과 다른 직업을 입었을 때: 이번 창에서만 이번에 만든 기술 전부 Lv1 + 칸 4개 +
     //     기술 점수 pts 점(Lv5 까지 올려 보기). 저장 안 함(저장된 직업의 기술 책은 그대로)
     //   botPlan = 시험용(GAME.test.skillSetup): 기술 점수를 이 순서로 돌아가며 1점씩
-    skills: { bufferMs: 300, cancelAfterHit: true, knight: SKILLS.knight, mage: SKILLS.mage, archer: SKILLS.archer,
+    skills: { bufferMs: 300, cancelAfterHit: true, knight: SKILLS.knight, mage: SKILLS.mage, archer: SKILLS.archer, assassin: SKILLS.assassin,
               cancel: { fromActive: true, padMs: 60 },
               // 2026-11-07 형님: 저절로 배우기 · 저절로 끼우기 없앰. 기술 점수 = 전직 때 firstPts(1) + 그 뒤 레벨마다 perLv(1).
               //   그 기술 Lv(unlock)가 되면 「배울 수 있음」 → 1점으로 배움(기술 Lv1) → 점수로 Lv5 까지. 늘 켜진 기술도 같음.
@@ -5980,12 +6325,13 @@
               branchFx: BRANCH_FX, brBurst: BR_BURST,   // 갈래 맛(2026-11-08, 위 BRANCH_FX)
               // 2026-11-07 형님: 견습 기본기 noviceSkill(올려치기, 위 SKILLS.novice) → 전직하면 basic[직업](기사 올려베기 · 법사 땅 융기)으로 바뀜:
               //   전직 때 공짜 Lv1(기술 점수 안 씀, unlock Lv 무시) + 1번 칸. Lv2~5 는 보통처럼 점수. 초기화해도 Lv1 은 남음
-              noviceSkill: 'nupper', basic: { knight: 'upper', mage: 'rise', archer: 'upshot' },
+              noviceSkill: 'nupper', basic: { knight: 'upper', mage: 'rise', archer: 'upshot', assassin: 'arise' },
               novice: SKILLS.novice,
               tree: SKILL_TREE, perLv: 1, maxLv: 5, classLv: 7, slots: [2, 3, 4, 5, 7], moreLv: [10, 13, 15, 15], pcSlots: 10, pcLv: 15, noMpMs: 500,
               curve: { dmg: [1, 1.2, 1.4, 1.6, 1.85], cd: [1, 0.94, 0.88, 0.82, 0.75], mp: [1, 1.05, 1.1, 1.15, 1.2] },
               test: { pts: 24 },
               botPlan: { knight: ['dash', 'upper', 'nimble', 'wave', 'mastery', 'spin', 'skin', 'slam', 'shards', 'thrust', 'pressure', 'grit', 'counter', 'storm', 'aegis', 'holy', 'cross', 'charge', 'arcwave', 'infuse', 'rift', 'msword', 'unleash'],
+                         assassin: ['ashadow', 'arise', 'nimble', 'afan', 'amast', 'awhirl', 'akeen', 'ablink', 'aecho', 'asmoke', 'aorbit', 'avenom', 'aexec', 'sclone', 'sshade', 'sflash', 'sstorm', 'smoon', 'pdarts', 'pplague', 'pcloud', 'ppool', 'perupt'],   // 암살자(2026-11-09)
                          archer: ['pshot', 'upshot', 'nimble', 'multi', 'aim', 'rain', 'focus', 'leap', 'split', 'burst', 'volley', 'gale', 'mark', 'snipe', 'deadeye', 'ballista', 'rapid', 'skyfall', 'tempest', 'hawk', 'trap', 'twister', 'barrage'],   // 궁수(2026-11-09)
                          mage: ['fireball', 'rise', 'nimble', 'bolt', 'amp', 'ice', 'flow', 'blink', 'eshard', 'gravity', 'vortex', 'shield', 'brand', 'meteor', 'echain', 'pillar', 'frost', 'judgment', 'darkorb', 'leech', 'swamp', 'wraith', 'abyss'] } },   // 2026-11-08 갈래 B 기술도(고른 갈래 것만 배워짐)   // 법사 다시 배치(2026-11-08)
 
@@ -6103,6 +6449,13 @@
       Object.keys(M1).forEach(function (m) { if (M1[m].count > 0) D.anims[m] = { frames: seq(D.t2Dir + m + '_', M1[m].count), fps: 14, loop: false }; });
       D.motionAnchors = 'assets/chars/stage1/anchors_motions_' + name + '.json';
     });
+    // 암살자 2차 옷(2026-11-09): 궁수 2차와 같은 방식
+    ASSASSIN_T2_DONE.forEach(function (k) {
+      var who = k.split('_')[1], name = 'assassin_' + k, D = C.art.characters[name], M1 = C.motions['assassin_' + who];
+      if (!D || !M1) return;
+      Object.keys(M1).forEach(function (m) { if (M1[m].count > 0) D.anims[m] = { frames: seq(D.t2Dir + m + '_', M1[m].count), fps: 14, loop: false }; });
+      D.motionAnchors = 'assets/chars/stage1/anchors_motions_' + name + '.json';
+    });
     // 2차 전직 갈래 임시 옷(2026-11-08, classes.<직업>.tier2.branches 의 look): 그 갈래 옷 그림(「옷_성별」)이 아직 없으면
     //   1차 옷(look.base) 묶음을 그대로 빌려 쓰고 그릴 때 물들임 + 빛 테두리(entities.js Player.draw 의 def.look). 그림 · 손 위치 · 동작 = 1차 옷과 똑같음
     //   anims 는 묶음마다 새로 복사(아래 scaleActors 가 걷기 보폭을 옷마다 한 번씩 줄이므로)
@@ -6210,7 +6563,7 @@
       if (d.male) skill2(d.male);
       if (d.female) skill2(d.female);
     }
-    ['knight', 'mage', 'archer'].forEach(function (c) {
+    ['knight', 'mage', 'archer', 'assassin'].forEach(function (c) {
       var L = C.skills[c];
       if (L) Object.keys(L).forEach(function (id) { skill(L[id]); skill2(L[id]); });
     });

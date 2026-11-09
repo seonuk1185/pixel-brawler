@@ -316,7 +316,7 @@
     // 치명타(민첩, 2026-11-06): 적·허수아비를 때릴 때 확률 Growth.critChance() → 데미지 x critMul + 큰 주황 숫자(agicrit). GAME.test.crit 로 시험 고정
     //   무기(2026-11-06): 기사 +3 치명타 확률 + · 어둠 속성 = 확률 + · 배율 +
     var dark = WP && WP.has('darkness'), DK = ENC && ENC.fx.darkness;
-    var AR = window.Archer && G.classKey === 'archer' ? Archer : null;   // 궁수 늘 켜진 기술 · 갈래 덤(2026-11-09): 치명타 확률 · 배율 · 표식 데미지
+    var AR = window.Archer && G.classKey === 'archer' ? Archer : window.Assassin && G.classKey === 'assassin' ? Assassin : null;   // 암살자(2026-11-09): 같은 갈고리(급소 노리기 · 처형 · 독 · 잔상)   // 궁수 늘 켜진 기술 · 갈래 덤(2026-11-09): 치명타 확률 · 배율 · 표식 데미지
     var crit = !target.isProp && (G.forceCrit != null ? G.forceCrit : Math.random() < Growth.critChance() + (WP ? WP.bonus('crit') : 0) + (dark ? DK.crit : 0) + (AR ? AR.critAdd(p, st) : 0));
     if (crit) { dmg = Math.round(dmg * (CFG.growth.stats.critMul + (dark ? DK.critDmg : 0) + (AR ? AR.critDmg(p, st) : 0))); if (dark) Enchant.logAdd('darkCrit'); }
     if (AR && !target.isProp) dmg = Math.round(dmg * AR.dmgMul(p, target, st));
@@ -2127,6 +2127,7 @@
     // 공통: 슈퍼아머 · 쿨타임 2배 빨리 / 법사: 마나 0 · 한 번 더 · 효과 더 크고 밝게 / 갑옷·로브 다시 칠하기 + 빛 테두리(entities.js look)
     p.superArmor = true; p.cdRate = AW.cdRate;
     p.freeMp = p.echoCast = cls === 'mage';
+    p.awkEcho = cls === 'assassin';   // 암살자 각성 「암영 폭주」(2026-11-09): 평타마다 붉은 잔상 베기 한 번 더(js/assassin.js)
     p.awkArrow = cls === 'archer';   // 궁수 각성 「매의 눈」(2026-11-09): 화살 하나 더 + 더 꿰뚫음(js/archer.js)
     Skills.setBright(cls === 'mage' ? 1.35 : 1);
     p.look = { paint: awkPaint(cls), outline: { color: A.color, alpha: 0.9, glow: true }, white: 1 };
@@ -2169,6 +2170,8 @@
       if (a.cls === 'knight') {   // 머리 위로 솟는 불꽃 + 몸 둘레 불티
         Skills.debris(p.x + (Math.random() * 2 - 1) * 7 * AS, hy - 92 * AS, p.y, 2, { cols: ['#fff2a0', '#ffb040', '#ff5a1a', '#ff2a10'], glow: true, sp: 70, size: 2.2, ms: 520, g: -260, spread: 0.45 });
         Skills.debris(p.x + (Math.random() * 2 - 1) * 16 * AS, hy - (20 + Math.random() * 60) * AS, p.y, 1, { cols: ['#ffd27a', '#ff5a1a', '#ff2a10'], glow: true, sp: 50, size: 1.6, ms: 420, g: -220, spread: 0.6 });
+      } else if (a.cls === 'assassin') {   // 암살자 암영 폭주(2026-11-09): 몸 둘레 진홍 · 검은 연기 알갱이
+        Skills.debris(p.x + (Math.random() * 2 - 1) * 16 * AS, hy - (20 + Math.random() * 60) * AS, p.y, 1, { cols: ['#ffffff', '#ff8a9a', '#ff2a4a', '#3a0a14'], glow: true, sp: 50, size: 1.6, ms: 460, g: -180, spread: 0.7 });
       } else if (a.cls === 'archer') {   // 궁수 매의 눈(2026-11-09): 눈 높이에서 흩날리는 금빛 · 연두 깃털빛
         Skills.debris(p.x + (Math.random() * 2 - 1) * 18 * AS, hy - (40 + Math.random() * 50) * AS, p.y, 1, { cols: ['#ffffff', '#fff2a0', '#9dff8a'], glow: true, sp: 60, size: 1.5, ms: 520, g: -120, spread: 0.9 });
       } else if (a.cls === 'mage') {   // 발밑 마법진에서 오르는 보라·하늘 빛 알갱이
@@ -2785,6 +2788,8 @@
       magicSprite('spark', p.x + p.dir * sfx.x, p.y + sfx.y, p.dir, sfx.scale);
     } else if (sfx && sfx.type === 'whoosh') {   // 발차기: 베기 그림을 흐리고 납작하게 → 바람 가르는 느낌
       if (fxs) FX.slash(p.x + p.dir * sfx.x, p.y + sfx.y, p.dir, a, '#ffffff', ms, fxs, sfx);
+    } else if (sfx && sfx.type === 'aifx') {     // 암살자 평타(2026-11-09): AI 효과 그림(js/assassin.js, 2차 갈래면 갈래 색)
+      if (window.Assassin) Assassin.swingFx(p, st0, sfx);
     } else if (sfx && sfx.type === 'thrust') {   // 찌르기: 짧은 직선 궤적(코드로 그림)
       FX.thrust(p.x + p.dir * sfx.x, p.y + sfx.y, p.dir, sfx.len || 40, W.arcColor, ms);
     } else if (fxs) {   // 그림 효과: 캐릭터 앞에 놓기 (타마다 위치·회전·뒤집기 다름)
@@ -3086,7 +3091,7 @@
       hud.pRage.parentNode.parentNode.className = 'prg ' + v;
       var ready = v === 'full';
       [hud.btnAwk, hud.pcAwk].forEach(function (el) { if (el) { el.classList.toggle('ready', ready); el.classList.toggle('on', !!A); } });
-      if (hud.pcAwk) ['knight', 'mage', 'archer', 'novice'].forEach(function (c) { hud.pcAwk.classList.toggle('awk-' + c, !!A && A.cls === c); });
+      if (hud.pcAwk) ['knight', 'mage', 'archer', 'assassin', 'novice'].forEach(function (c) { hud.pcAwk.classList.toggle('awk-' + c, !!A && A.cls === c); });
     });
     // PC 각성 칸(2026-11-07): 물 높이 = 분노(각성 중 = 남은 시간), 글자 = 분노 % / 각성 중 남은 초 / 가득 = 「준비!」
     setIf('pcawk', Math.round(rg * 100) / 100, function (v) { if (hud.pcAwk) { hud.pcAwk.style.setProperty('--rg', v); hud.pcAwk.classList.toggle('has', v > 0 && v < 1); } });
@@ -3661,6 +3666,14 @@
     if (P.stat === 'amark') return '표식 찍힌 적 피해 +' + v + ' · ' + secTxt(P.ms || 5000);
     if (P.stat === 'deadeye') return '치명타 배율 +' + v + ' · 치명타 확률 +' + pctTxt(P.chance[li]);
     if (P.stat === 'hawk') return (Math.round(P.val[li] / 100) / 10) + '초마다 매가 내리꽂힘 · 피해 ' + pctTxt(P.mul[li]);
+    // 암살자(2026-11-09): 급소 노리기 · 잔영 베기 · 떠도는 단검 · 독 바르기 · 처형 · 그림자 동행 · 역병 전염
+    if (P.stat === 'akeen') return '치명타 확률 +' + v + ' · 치명타 배율 +' + pctTxt(P.critDmg[li]);
+    if (P.stat === 'aecho') return '확률 ' + pctTxt(P.chance[li]) + ' · 잔상 피해 ' + v;
+    if (P.stat === 'aorbit') return (Math.round(P.val[li] / 100) / 10) + '초마다 유령 단검 ' + P.n[li] + '자루 · 피해 ' + pctTxt(P.mul[li]);
+    if (P.stat === 'avenom') return '맞히면 ' + v + ' 확률로 독 1겹';
+    if (P.stat === 'aexec') return '체력 ' + pctTxt(P.below || 0.3) + ' 밑 적 피해 +' + v;
+    if (P.stat === 'sshade') return (Math.round(P.val[li] / 100) / 10) + '초마다 그림자가 벰 · 피해 ' + pctTxt(P.mul[li]);
+    if (P.stat === 'pplague') return '터짐 피해 ' + v + ' · 독 ' + pctTxt(P.spread[li]) + ' 옮김 · 반경 ' + P.r[li];
     if (P.stat === 'regen') return '초당 체력 +' + (Math.round(P.val[Math.max(1, lv) - 1] * 1000) / 10) + '%';   // 신성 가호(2026-11-08): 최대 체력의 0.4~0.8%
     var k = { phys: '물리 공격 +', magic: '마법 공격 +', guard: '받는 피해 -', mpRegen: '마나 회복 +',
               grit: '체력 적으면 공격 최대 +', counter: '반격 확률 ', brand: '낙인 찍힌 적 피해 +' }[P.stat] || '';
@@ -3819,7 +3832,10 @@
     arcane: '평타에 보라 마력이 실려요 — 가끔 칼끝에서 작은 마력이 터져요',
     acrit: '평타 화살로 고블린을 맞혀요 — 치명타(큰 주황 숫자)가 더 자주 나요', split: '평타 화살이 맞으면 작은 화살이 둘레 고블린에게 튀어요',
     volley: '몇 초마다 빛 화살이 저절로 날아가 꽂혀요', amark: '기술을 맞힌 고블린 머리 위에 과녁이 찍혀요 — 더 아파요',
-    deadeye: '치명타가 터지면 숫자가 훨씬 커져요', hawk: '매가 따라다니다가 고블린에게 내리꽂혀요', leech: '체력을 일부러 50%로 낮춰서 보여 줘요 — 마법을 맞히면 붉은 기운이 빨려 들며 체력이 차요'
+    deadeye: '치명타가 터지면 숫자가 훨씬 커져요', hawk: '매가 따라다니다가 고블린에게 내리꽂혀요',
+    akeen: '평타로 고블린을 베요 — 치명타(큰 주황 숫자)가 더 자주 나요', aecho: '평타가 맞으면 붉은 잔상이 한 번 더 베어요', aorbit: '몇 초마다 유령 단검이 저절로 날아가 꽂혀요',
+    avenom: '평타가 맞으면 가끔 독(초록 거품)이 묻어요', aexec: '체력이 적은 고블린 머리 위에 붉은 해골 — 더 아프게 맞아요', sshade: '그림자가 따라다니다가 고블린에게 뛰어들어 베어요',
+    pplague: '독 걸린 고블린이 쓰러지면 독구름으로 터져 둘레에 독이 퍼져요', leech: '체력을 일부러 50%로 낮춰서 보여 줘요 — 마법을 맞히면 붉은 기운이 빨려 들며 체력이 차요'
   };
   // 2차 이름: 갈래 기술(e.branch)이면 그 갈래 이름(성기사 · 마검사 …), 아니면 지금 갈래 이름(2차 전 = 「성기사 / 마검사」) — 2026-11-08 갈래
   function t2Name(cls, e) {

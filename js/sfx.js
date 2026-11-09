@@ -99,6 +99,32 @@
     noise(x, o, t, k, { ft: 'bandpass', f: 300, f2: 1700, fd: 0.11, q: 0.6, d: 0.26, v: 0.6, a: 0.07 });
     noise(x, o, t, k, { ft: 'bandpass', f: 1700, f2: 380, q: 0.8, d: 0.2, v: 0.32, a: 0.03, at: 0.1 });
   });
+  // 암살자(2026-11-09): 단검 = 짧고 날카로운 「쉭」 / 마무리 = 「쉬익」 두 겹 / 던지기 = 「휙」 / 독 = 보글 · 「치익」 / 그림자 = 낮은 「쉬우웅」 / 연막탄 = 「펑」 + 연기
+  def('swingDagger', { cap: 3, gap: 35, vary: 0.14 }, function (x, o, t, k) {
+    noise(x, o, t, k, { ft: 'bandpass', f: 1800, f2: 4200, fd: 0.05, q: 1.1, d: 0.08, v: 0.42, a: 0.01 });
+    noise(x, o, t, k, { ft: 'highpass', f: 6000, d: 0.04, v: 0.06, a: 0.005, at: 0.02 });
+  });
+  def('swingDaggerHeavy', { cap: 2, gap: 60, vary: 0.08 }, function (x, o, t, k) {
+    noise(x, o, t, k, { ft: 'bandpass', f: 900, f2: 3600, fd: 0.09, q: 0.8, d: 0.18, v: 0.5, a: 0.03 });
+    noise(x, o, t, k, { ft: 'bandpass', f: 2600, f2: 900, q: 1.0, d: 0.12, v: 0.3, a: 0.02, at: 0.08 });
+  });
+  def('daggerThrow', { cap: 3, gap: 45, vary: 0.12 }, function (x, o, t, k) {
+    noise(x, o, t, k, { ft: 'bandpass', f: 2200, f2: 800, q: 1.3, d: 0.1, v: 0.35, a: 0.01 });
+    tone(x, o, t, k, { w: 'triangle', f: 900, f2: 1400, d: 0.04, v: 0.05 });
+  });
+  def('poison', { cap: 2, gap: 90, vary: 0.1 }, function (x, o, t, k) {
+    tone(x, o, t, k, { w: 'sine', f: 260, f2: 520, d: 0.07, v: 0.12 });
+    tone(x, o, t, k, { w: 'sine', f: 330, f2: 700, d: 0.06, v: 0.1, at: 0.07 });
+    noise(x, o, t, k, { ft: 'highpass', f: 3500, d: 0.18, v: 0.12, a: 0.02, at: 0.03 });
+  });
+  def('shadow', { cap: 2, gap: 100, vary: 0.05 }, function (x, o, t, k) {
+    noise(x, o, t, k, { ft: 'bandpass', f: 260, f2: 900, fd: 0.12, q: 0.7, d: 0.3, v: 0.45, a: 0.05 });
+    tone(x, o, t, k, { w: 'sawtooth', f: 90, f2: 55, d: 0.26, v: 0.08, lp: 600 });
+  });
+  def('smoke', { cap: 2, gap: 100, vary: 0.06 }, function (x, o, t, k) {
+    tone(x, o, t, k, { w: 'sine', f: 140, f2: 50, d: 0.16, v: 0.4 });
+    noise(x, o, t, k, { ft: 'lowpass', f: 1400, f2: 400, d: 0.4, v: 0.4, a: 0.01 });
+  });
   // 법사 평타 마법탄 쏨: 작은 「퓻」
   def('magicShot', { cap: 2, gap: 60, vary: 0.08 }, function (x, o, t, k) {
     tone(x, o, t, k, { w: 'square', f: 700, f2: 1500, d: 0.08, v: 0.045, lp: 3000 });
@@ -539,7 +565,7 @@
     // 기술 시작 소리(skills.js start): 기술 id → 소리 이름
     cast: function (id) { var n = CAST[id]; return n ? play(n) : false; },
     // 휘두르기(main.js): 무기 → 소리
-    swing: function (wk, heavy) { return play(heavy ? 'swingHeavy' : wk === 'fist' ? 'swingFist' : wk === 'staff' || wk === 'wand' ? 'swingStaff' : 'swingSword'); },
+    swing: function (wk, heavy) { return play(heavy ? (wk === 'dagger' ? 'swingDaggerHeavy' : 'swingHeavy') : wk === 'fist' ? 'swingFist' : wk === 'staff' || wk === 'wand' ? 'swingStaff' : wk === 'dagger' ? 'swingDagger' : 'swingSword'); },
     toggle: toggle, setMuted: setMuted, isMuted: function () { return muted; },
     unlock: unlock, names: function () { return Object.keys(S); },
     state: function () { return { ctx: ac ? ac.state : 'none', muted: muted, stats: stats, live: allEnds.length }; },

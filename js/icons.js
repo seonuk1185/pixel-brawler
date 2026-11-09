@@ -29,6 +29,7 @@
     steel: ['#3e5478', '#1c2640'], fire: ['#7a2412', '#2e0c08'], ice: ['#2a5a8e', '#0e1e3a'],
     storm: ['#4a2e86', '#1a1036'], earth: ['#5e3e22', '#24160a'], arcane: ['#4e2a74', '#1c0e2e'],
     holy: ['#8a6418', '#2e2008'], blood: ['#6e1a26', '#26080c'], dark: ['#3e1048', '#120416'],   // dark = 흑마법사(2026-11-08)
+    blade: ['#5a1a24', '#1e080c'], shadow: ['#1a2456', '#080c22'], venom: ['#2a4a14', '#0c1a06'],   // 암살자(2026-11-09): 단검 = 1차 · 그림자 = 그림자 무사 · 독 = 독술사
     wind: ['#1e5a3e', '#0a2216'], snipe: ['#2a4a6a', '#0c1828'], wild: ['#4a5a14', '#1a2006']        // 궁수(2026-11-09): 바람 = 1차 · 저격 = 저격수 · 숲 = 레인저
   };
   // 액자(테두리) 색: [밝은, 가운데, 어두운] — 작게 봐도 갈래가 보이게 원소 색으로
@@ -44,7 +45,10 @@
     dark:  ['#f0b8ff', '#9a2ac0', '#3a0848'],   // 어둠 = 검보라(흑마법사, 2026-11-08)
     wind:  ['#d8fff0', '#4ad89a', '#14603a'],   // 궁수 바람 = 민트(2026-11-09)
     snipe: ['#eef8ff', '#8fc8f0', '#2a5a8a'],   // 저격수 = 은빛 하늘
-    wild:  ['#f0ffc0', '#a8d840', '#4a6a10']    // 레인저 = 숲 연두
+    wild:  ['#f0ffc0', '#a8d840', '#4a6a10'],   // 레인저 = 숲 연두
+    blade: ['#ffc8d0', '#e83a50', '#6a0a18'],   // 암살자 단검 = 진홍(2026-11-09)
+    shadow:['#d0dcff', '#5a7ae8', '#141e5a'],   // 그림자 무사 = 짙은 남색 · 하늘
+    venom: ['#e0ffc0', '#7ad040', '#24500a']    // 독술사 = 독초록
   };
 
   // ---------- 24 x 24 그림판 ----------
@@ -150,6 +154,18 @@
     g.rect(cx + 4, top + Math.floor(h / 2) - 1, 2, 3, K.b2);
   }
   var MINT = '#7affc0', MINTD = '#2aa86a', ICE = '#bfe6ff', LEAF = '#b8ff6a';
+  // 단검(암살자, 2026-11-09): (x0,y0) = 손잡이 끝 → (x1,y1) = 칼끝. 앞 32% 손잡이 · 코등이 · 은빛 날
+  var CRIM = '#ff4a5a', CRIMD = '#8a0a1a', NAVY = '#6a8aff', NAVYD = '#1a2a7a', VEN = '#8ae05a', VEND = '#2a6a10';
+  function dagger(g, x0, y0, x1, y1, blade) {
+    var dx = x1 - x0, dy = y1 - y0, n = Math.max(Math.abs(dx), Math.abs(dy)), px = -dy / (n || 1), py = dx / (n || 1);
+    for (var i = 0; i <= n; i++) {
+      var t = i / n, x = x0 + dx * t, y = y0 + dy * t;
+      if (t < 0.32) { g.px(x, y, K.b1); g.px(x + px * 0.6, y + py * 0.6, K.b2); }
+      else { g.px(x, y, t > 0.9 ? K.wht : (blade || K.s0)); g.px(x + px, y + py, K.s2); }
+    }
+    var gx = x0 + dx * 0.32, gy = y0 + dy * 0.32;
+    for (var k = -2; k <= 2; k++) g.px(gx + px * k, gy + py * k, k ? K.g1 : K.g0);
+  }
   // 아래를 향한 곧은 검(x = 칼날 왼쪽, 칼날 폭 3): 손잡이 위 → 칼끝 tipY
   function downSword(g, x, topY, tipY, gold) {
     var L = gold ? K.g0 : K.s0, M = gold ? K.g1 : K.s1, D = gold ? K.g2 : K.s2;
@@ -178,6 +194,29 @@
 
   // ---------- 아이콘 22개 (growth/config SKILL_TREE 순서, 2026-11-06 칼날 폭풍 +1) ----------
   var ART = {
+    // ===== 암살자(2026-11-09): 단검 = 진홍 · 그림자 무사 = 남색 · 독술사 = 독초록 =====
+    ashadow: function (g) { g.rect(1, 11, 9, 3, '#2a2a34'); g.line(1, 12, 9, 12, CRIM); dagger(g, 8, 15, 21, 9); g.outline(); g.spark(20, 5, false, CRIM); },
+    arise: function (g) { dagger(g, 6, 20, 13, 4); dagger(g, 12, 21, 19, 6); g.outline(); g.ring(12, 12, 9, 10.5, 200, 300, CRIM); g.spark(17, 3, false); },
+    afan: function (g) { dagger(g, 3, 12, 20, 4); dagger(g, 3, 12, 21, 12); dagger(g, 3, 12, 20, 20); g.outline(); g.spark(21, 8, false, CRIM); },
+    awhirl: function (g) { g.ring(12, 12, 7, 9, 0, 300, CRIM); dagger(g, 12, 12, 20, 5); dagger(g, 12, 12, 4, 19); g.outline(); g.spark(4, 4, false, CRIM); },
+    ablink: function (g) { g.disc(7, 15, 5, function (d) { return d < 2 ? '#5a5a66' : '#2a2a34'; }); dagger(g, 21, 6, 10, 15); g.outline(); g.spark(5, 5, true, CRIM); },
+    asmoke: function (g) { g.disc(10, 15, 6, function (d) { return d < 3 ? '#6a6a76' : '#34343e'; }); g.disc(16, 13, 4, '#4a4a56'); g.disc(12, 7, 3, '#1a1a22'); g.px(13, 4, K.f1); g.px(14, 3, K.f0); g.outline(); g.spark(19, 5, false, CRIM); },
+    amast: function (g) { dagger(g, 4, 20, 20, 4); dagger(g, 20, 20, 4, 4); g.outline(); g.spark(12, 3, true); },
+    akeen: function (g) { g.ring(12, 12, 7, 8.5, 0, 359, CRIM); g.ring(12, 12, 3, 4, 0, 359, CRIMD); g.px(12, 12, K.wht); dagger(g, 2, 22, 11, 13); g.outline(); },
+    aecho: function (g) { dagger(g, 4, 18, 18, 4, '#ffb0b8'); dagger(g, 7, 21, 21, 7); g.outline(); g.line(3, 14, 13, 4, CRIM); g.spark(20, 3, false, CRIM); },
+    aorbit: function (g) { g.ring(12, 13, 7, 8, 0, 359, '#ffb0c0'); dagger(g, 6, 7, 11, 2, '#ffd8e0'); dagger(g, 19, 12, 22, 18, '#ffd8e0'); dagger(g, 7, 20, 2, 16, '#ffd8e0'); g.outline(); g.px(12, 13, CRIM); },
+    avenom: function (g) { dagger(g, 4, 20, 19, 5, VEN); g.outline(); g.disc(17, 18, 3, VEN); g.px(17, 18, '#e0ffc0'); g.px(20, 14, VEN); },
+    aexec: function (g) { g.disc(12, 10, 6, function (d) { return d < 4 ? '#ffd0d0' : '#c83040'; }); g.rect(9, 15, 7, 3, '#c83040'); g.rect(10, 9, 2, 2, '#3a0610'); g.rect(13, 9, 2, 2, '#3a0610'); g.outline(); g.line(3, 21, 21, 3, CRIM); },
+    sclone: function (g) { g.disc(8, 12, 5, NAVYD); g.rect(5, 15, 6, 6, NAVYD); g.disc(16, 12, 5, '#2a3a8a'); g.rect(13, 15, 6, 6, '#2a3a8a'); g.px(9, 11, NAVY); g.px(17, 11, NAVY); g.outline(); g.spark(20, 4, false, NAVY); },
+    sshade: function (g) { g.disc(12, 9, 5, NAVYD); g.rect(8, 13, 9, 8, NAVYD); g.px(14, 8, '#c8d8ff'); g.outline(); g.ring(12, 13, 9, 10, 200, 340, NAVY); },
+    sflash: function (g) { g.line(2, 20, 21, 3, NAVY); g.line(2, 3, 21, 20, NAVY); g.line(3, 20, 21, 4, '#c8d8ff'); g.outline(); g.spark(12, 12, true, NAVY); g.px(4, 12, NAVYD); g.px(20, 12, NAVYD); },
+    sstorm: function (g) { g.ring(8, 12, 6, 8, 280, 440, NAVY); g.ring(16, 12, 6, 8, 100, 260, NAVY); g.outline(); g.line(9, 7, 15, 17, '#c8d8ff'); g.line(15, 7, 9, 17, '#c8d8ff'); },
+    smoon: function (g) { g.disc(12, 12, 9, function (d) { return d < 7 ? '#c8d8ff' : NAVY; }); g.disc(16, 9, 8, '#141e5a'); g.outline(); g.spark(5, 18, true, NAVY); },
+    pdarts: function (g) { [[3, 6, 20, 3], [3, 12, 21, 12], [3, 18, 20, 21]].forEach(function (q) { g.line(q[0], q[1], q[2], q[3], VEN); g.px(q[2], q[3], '#e0ffc0'); }); g.outline(); g.disc(5, 12, 2, VEND); },
+    pplague: function (g) { g.disc(12, 12, 5, VEN); g.disc(5, 6, 3, VEND); g.disc(19, 6, 3, VEND); g.disc(5, 19, 3, VEND); g.disc(19, 19, 3, VEND); g.px(11, 11, '#1a2a08'); g.px(13, 11, '#1a2a08'); g.outline(); },
+    pcloud: function (g) { g.disc(8, 14, 5, '#3a6a2a'); g.disc(15, 12, 6, '#4a7a30'); g.disc(12, 17, 5, '#2a5a1a'); g.px(13, 11, VEN); g.px(8, 14, VEN); g.outline(); g.rect(4, 3, 4, 5, '#8ae05a'); g.rect(5, 2, 2, 1, K.b1); },
+    ppool: function (g) { g.ellipse(12, 18, 10, 3, function (v) { return v < 0.5 ? VEN : VEND; }); g.px(8, 16, '#e0ffc0'); g.px(15, 17, '#e0ffc0'); g.rect(10, 4, 4, 6, '#8ae05a'); g.rect(11, 3, 2, 1, K.b1); g.outline(); },
+    perupt: function (g) { g.poly([[5, 22], [9, 6], [12, 12], [15, 2], [19, 22]], function (x, y) { return y < 10 ? '#e0ffc0' : y < 16 ? VEN : VEND; }); g.outline(); g.disc(12, 8, 2, '#5a2a7a'); g.spark(4, 6, true, VEN); },
     // ===== 궁수(2026-11-09) =====
     pshot: function (g) { g.rect(3, 11, 16, 2, MINTD); arrow(g, 2, 12, 21, 12, K.wht, K.b0); g.outline(); g.ring(8, 12, 3, 4, 0, 359, MINT); g.ring(13, 12, 3, 4, 0, 359, MINT); g.spark(20, 8, false, MINT); },
     upshot: function (g) { arrow(g, 7, 4, 12, 15, K.s1); g.outline(); g.ellipse(12, 18, 8, 2.5, MINTD); g.ellipse(12, 18, 5, 1.5, MINT); g.line(6, 14, 4, 6, MINT); g.line(18, 14, 20, 6, MINT); g.spark(12, 3, false, MINT); },
@@ -673,6 +712,15 @@
     darkorb: ['어둠의 구체', 'mage', 'active', 'dark'], leech: ['생명 흡수', 'mage', 'passive', 'blood'], swamp: ['저주의 늪', 'mage', 'active', 'dark'],   // 흑마법사(2차 갈래 B, 2026-11-08)
     wraith: ['악령 회오리', 'mage', 'active', 'dark'], abyss: ['심연의 문', 'mage', 'active', 'dark'],
     nimble: ['날렵한 몸놀림', 'all', 'passive', 'ice'],   // 기사 · 법사 늘 켜진 기술(2026-11-08)
+    // 암살자(2026-11-09): 1차 = 단검(blade) · 그림자 무사 = shadow · 독술사 = venom
+    ashadow: ['그림자 습격', 'assassin', 'active', 'blade'], arise: ['칼날 올려치기', 'assassin', 'active', 'blade'], afan: ['단검 부채', 'assassin', 'active', 'blade'],
+    awhirl: ['칼날 회오리', 'assassin', 'active', 'blade'], ablink: ['그림자 걸음', 'assassin', 'active', 'blade'], asmoke: ['연막탄', 'assassin', 'active', 'blade'],
+    amast: ['단검 숙련', 'assassin', 'passive', 'blade'], akeen: ['급소 노리기', 'assassin', 'passive', 'blood'], aecho: ['잔영 베기', 'assassin', 'passive', 'blade'],
+    aorbit: ['떠도는 단검', 'assassin', 'passive', 'blade'], avenom: ['독 바르기', 'assassin', 'passive', 'venom'], aexec: ['처형', 'assassin', 'passive', 'blood'],
+    sclone: ['그림자 분신', 'assassin', 'active', 'shadow'], sshade: ['그림자 동행', 'assassin', 'passive', 'shadow'], sflash: ['그림자 난무', 'assassin', 'active', 'shadow'],
+    sstorm: ['암영 십자참', 'assassin', 'active', 'shadow'], smoon: ['월영참', 'assassin', 'active', 'shadow'],
+    pdarts: ['독침 부채', 'assassin', 'active', 'venom'], pplague: ['역병 전염', 'assassin', 'passive', 'venom'], pcloud: ['독구름', 'assassin', 'active', 'venom'],
+    ppool: ['맹독 웅덩이', 'assassin', 'active', 'venom'], perupt: ['역병 폭발', 'assassin', 'active', 'venom'],
     // 궁수(2026-11-09): 1차 = 바람(wind) · 저격수 = snipe · 레인저 = wild
     pshot: ['관통 화살', 'archer', 'active', 'wind'], upshot: ['솟구치는 화살', 'archer', 'active', 'wind'], multi: ['부채꼴 화살', 'archer', 'active', 'wind'],
     rain: ['화살비', 'archer', 'active', 'wind'], leap: ['공중제비 사격', 'archer', 'active', 'wind'], burst: ['폭발 화살', 'archer', 'active', 'fire'],
