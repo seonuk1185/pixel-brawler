@@ -90,9 +90,10 @@
   //   t3On(직업) = 3차가 켜졌나: 2차 갈래가 정해짐(brOn) + 그 갈래 3차가 있음 + Lv >= tier3.lv. 저장칸 tier3(1) = 전직 화면을 봤음(화면을 다시 안 띄움).
   //     예전 저장(Lv50 넘음)은 그대로 3차로 봄(2차 갈래와 같은 길) + 처음 한 번 전직 화면이 뜸
   //   시험: ?t3=0 = Lv50 이 넘어도 3차 끔(2차와 비교) · ?t3=1 = 전직 화면 건너뜀(이미 함)
-  var urlT3 = !CFG.demo && /^[01]$/.test(params.get('t3') || '') ? params.get('t3') : null;
+  //     ?t3=2 = 켜되 전직 화면은 아직 안 본 것으로(전직 화면 시험 · 영상용)
+  var urlT3 = !CFG.demo && /^[012]$/.test(params.get('t3') || '') ? params.get('t3') : null;
   //   공개 스위치(2026-11-10): config tier3Enabled = false 면 3차 전체가 없는 것으로 봄(전직 화면 · 3차 기술 · 3차 옷 · 3차 맛 전부 안 나옴). 시험 = 주소 ?t3=1 만 켬
-  var T3_ON = !!CFG.tier3Enabled || urlT3 === '1';
+  var T3_ON = !!CFG.tier3Enabled || urlT3 === '1' || urlT3 === '2';
   function tier3Of(cls, b) { if (!T3_ON) return null; var d = branchDef(cls, b || branchOf(cls)), t = d && d.tier3; return t && !t.soon ? t : null; }
   function tier3LvOf(cls, b) { var t = tier3Of(cls, b); return t ? t.lv || 50 : 999; }
   function t3On(cls) { if (urlT3 === '0') return false; var b = brOn(cls), t = b && tier3Of(cls, b); return !!t && G.lv >= (t.lv || 50); }

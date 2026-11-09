@@ -333,7 +333,7 @@
       }
       if (o.stage === 3 && o.t >= holeEnd) {   // 대폭발
         o.stage = 4;
-        spawn('t3_sgorb_boom', cx, gy - 40 * k, { sx: 2.6 * ar3 });
+        spawn('t3_sgorb_boom', cx, gy - 40 * k, { sx: 1.7 * ar3, life: 300, fade: 110 }); spawn('t3_doom_hole', cx, gy - 44 * k, { sx: 1.6 * ar3, from: 3, fps: 10, add: true });
         screenFoes(p, o.boom).forEach(function (t, i) {
           if (hitT(o.boom, t, t.x, mid(t), t.x >= cx ? 1 : -1, o.mul, p) && i < 10) spawn('t3_sgorb_boom', t.x, mid(t), { sx: 0.6, delay: 40 + i * 30 });
         });

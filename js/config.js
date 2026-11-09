@@ -1552,7 +1552,7 @@
         motionSeq: [0, 1, 2, 2, 2, 3], motionMs: [160, 80, 700, 600, 500, 220],
         desc: '(3차 필살) 칼을 하늘로 치켜들면 하늘이 갈라지고 거대한 성검이 내려와 땅에 꽂혀요. 화면 안 모든 적이 금빛 충격파에 휩쓸려 날아가요',
         lv5: { area: 1.25, say: '충격파 크기 +25%' },
-        darken: { ms: 2600, alpha: 0.75 }, iframes: [0, 2200], zoom: { k: 1.08, ms: 2000 },
+        darken: { ms: 3400, alpha: 0.75 }, iframes: [0, 2200], zoom: { k: 1.08, ms: 2000 },
         t3: { kind: 'ssjudge', frame: 2, n: 5, gapMs: 110, pre: SS_JUDGE_PRE, hit: SS_JUDGE_HIT, wave: SS_JUDGE_WAVE, x: 110, chainPad: 1600 }
       }
     },
@@ -1584,7 +1584,7 @@
         motionMs: [160, 240, 900, 120, 700, 220],
         desc: '(3차 필살) 하늘에 마법진을 열어 별을 떨어뜨려요. 떨어진 자리에 블랙홀이 생겨 적을 빨아들이며 깎고, 끝에 화면 전체가 터져요',
         lv5: { area: 1.25, say: '블랙홀 · 폭발 크기 +25%' },
-        darken: { ms: 2800, alpha: 0.78 }, iframes: [0, 2200], zoom: { k: 1.08, ms: 2200 },
+        darken: { ms: 4000, alpha: 0.78 }, iframes: [0, 2200], zoom: { k: 1.08, ms: 2200 },
         t3: { kind: 'sgdoom', frame: 1, x: 130, ticks: 6, tickMs: 160, pull: 140, tick: SG_DOOM_TICK, boom: SG_DOOM_BOOM, chainPad: 1900 },
         female: { motionMs: [110, 230, 880, 100, 700, 200] }
       }
