@@ -1,0 +1,527 @@
+{
+ "frameSize": [
+  176,
+  136
+ ],
+ "weapon": "sword",
+ "note": "2nd-job branch b \uac80\uc131(\ub0a8). Same format as anchors_move_knight_t2_male.json: hand = [x,y] grip in the 176x136 frame, angle deg (0 = right, + = clockwise). Values = branch-a anchors, hand nudged by local silhouette matching; check.manual = read by eye.",
+ "frames": {
+  "run_01": {
+   "hand": [
+    54,
+    82
+   ],
+   "angle": 139,
+   "layer": "front",
+   "fist": [
+    50,
+    78,
+    9,
+    9
+   ],
+   "check": {
+    "fromTier1": [
+     54,
+     82
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.996,
+    "match0": 0.994
+   }
+  },
+  "run_02": {
+   "hand": [
+    50,
+    84
+   ],
+   "angle": 163,
+   "layer": "front",
+   "fist": [
+    46,
+    80,
+    9,
+    9
+   ],
+   "check": {
+    "fromTier1": [
+     50,
+     84
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.999,
+    "match0": 0.997
+   }
+  },
+  "run_03": {
+   "hand": [
+    51,
+    79
+   ],
+   "angle": 160,
+   "layer": "front",
+   "fist": [
+    47,
+    75,
+    9,
+    9
+   ],
+   "check": {
+    "fromTier1": [
+     51,
+     79
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 1.0,
+    "match0": 1.0
+   }
+  },
+  "run_04": {
+   "hand": [
+    50,
+    72
+   ],
+   "angle": 154,
+   "layer": "front",
+   "fist": [
+    46,
+    68,
+    9,
+    9
+   ],
+   "check": {
+    "fromTier1": [
+     52,
+     71
+    ],
+    "shift": [
+     -2,
+     1
+    ],
+    "match": 0.995,
+    "match0": 0.982
+   }
+  },
+  "run_05": {
+   "hand": [
+    54,
+    80
+   ],
+   "angle": 143,
+   "layer": "front",
+   "fist": [
+    50,
+    76,
+    9,
+    9
+   ],
+   "check": {
+    "fromTier1": [
+     54,
+     80
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.995,
+    "match0": 0.995
+   }
+  },
+  "run_06": {
+   "hand": [
+    51,
+    82
+   ],
+   "angle": 157,
+   "layer": "front",
+   "fist": [
+    47,
+    78,
+    9,
+    9
+   ],
+   "check": {
+    "fromTier1": [
+     51,
+     82
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.972,
+    "match0": 0.963
+   }
+  },
+  "run_07": {
+   "hand": [
+    52,
+    79
+   ],
+   "angle": 159,
+   "layer": "front",
+   "fist": [
+    48,
+    75,
+    9,
+    9
+   ],
+   "check": {
+    "fromTier1": [
+     52,
+     79
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 1.0,
+    "match0": 1.0
+   }
+  },
+  "run_08": {
+   "hand": [
+    53,
+    72
+   ],
+   "angle": 155,
+   "layer": "front",
+   "fist": [
+    49,
+    68,
+    9,
+    9
+   ],
+   "check": {
+    "fromTier1": [
+     53,
+     72
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.995,
+    "match0": 0.995
+   }
+  },
+  "jump_01": {
+   "hand": [
+    96,
+    81
+   ],
+   "angle": -30,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     96,
+     81
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.976,
+    "match0": 0.976
+   }
+  },
+  "jump_02": {
+   "hand": [
+    105,
+    25
+   ],
+   "angle": -60,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     105,
+     25
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.99,
+    "match0": 0.99
+   }
+  },
+  "jump_03": {
+   "hand": [
+    90,
+    74
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     90,
+     74
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.958,
+    "match0": 0.958
+   }
+  },
+  "jump_04": {
+   "hand": [
+    104,
+    51
+   ],
+   "angle": -30,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     104,
+     51
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.986,
+    "match0": 0.986
+   }
+  },
+  "jump_05": {
+   "hand": [
+    98,
+    82
+   ],
+   "angle": -30,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     98,
+     82
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.966,
+    "match0": 0.966
+   }
+  },
+  "run_attack_01": {
+   "hand": [
+    70,
+    80
+   ],
+   "angle": 150,
+   "layer": "back",
+   "mythic": {
+    "hand": [
+     70,
+     80
+    ],
+    "angle": 163
+   },
+   "check": {
+    "fromTier1": [
+     70,
+     80
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.999,
+    "match0": 0.994
+   }
+  },
+  "run_attack_02": {
+   "hand": [
+    80,
+    78
+   ],
+   "angle": 160,
+   "layer": "back",
+   "mythic": {
+    "hand": [
+     80,
+     78
+    ],
+    "angle": 165
+   },
+   "check": {
+    "fromTier1": [
+     80,
+     78
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.997,
+    "match0": 0.997
+   }
+  },
+  "run_attack_03": {
+   "hand": [
+    66,
+    90
+   ],
+   "angle": 155,
+   "layer": "back",
+   "mythic": {
+    "hand": [
+     67,
+     90
+    ],
+    "angle": 168
+   },
+   "fix": "2026-11-08 shoulder-bash sword fix: 03 hand moved to the rear hip so the blade tip shows under the cape (was fully hidden -> flicker), 04 hand toward body (hilt no longer peeks in front of the belt). mythic = +10 sword only (longer 44-dot blade): flatter angle so the tip stays off the ground, hand toward body so grip/glow does not poke out in front",
+   "check": {
+    "fromTier1": [
+     66,
+     90
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 1.0,
+    "match0": 1.0
+   }
+  },
+  "run_attack_04": {
+   "hand": [
+    83,
+    83
+   ],
+   "angle": 165,
+   "layer": "back",
+   "mythic": {
+    "hand": [
+     70,
+     86
+    ],
+    "angle": 168
+   },
+   "check": {
+    "fromTier1": [
+     83,
+     83
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.979,
+    "match0": 0.979
+   }
+  },
+  "run_attack_05": {
+   "hand": [
+    104,
+    76
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     104,
+     76
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.955,
+    "match0": 0.955
+   }
+  },
+  "jump_attack_01": {
+   "hand": [
+    69,
+    36
+   ],
+   "angle": -150,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     69,
+     36
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.896,
+    "match0": 0.896
+   }
+  },
+  "jump_attack_02": {
+   "hand": [
+    102,
+    88
+   ],
+   "angle": 40,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     102,
+     88
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.995,
+    "match0": 0.995
+   }
+  },
+  "jump_attack_03": {
+   "hand": [
+    100,
+    80
+   ],
+   "angle": 70,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     100,
+     80
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.994,
+    "match0": 0.994
+   }
+  },
+  "jump_attack_04": {
+   "hand": [
+    94,
+    58
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     94,
+     58
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.936,
+    "match0": 0.936
+   }
+  }
+ }
+}
