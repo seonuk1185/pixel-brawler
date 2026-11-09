@@ -1487,16 +1487,16 @@
   //   데미지 = 2차 같은 자리 기술의 약 1.2~1.4배(한 적이 다 맞을 때 「합」), 쿨타임은 조금 김. 필살(Lv58) = 화면 안 모든 적
   //   나머지 3차 6개(마검왕 · 심연술사 · 신궁 · 숲의 수호자 · 그림자 군주 · 역병술사)도 여기에 같은 모양으로 넣으면 됨(pipeline/ai-sprite/t3/README.txt)
   // ---- 검성(기사 3차) ----
-  // 성검 파도(50 ↔ 칼날 폭풍 5.7): 거대한 금빛 검기 세 줄기(가운데 · 위 · 아래 줄)가 화면을 가로지름 2.3 x 3 = 6.9 (꿰뚫음)
-  var SS_WAVE = { dmg: 2.3, hitstop: 0.9, knock: 1.4, shake: 1.6, spark: 1.3, big: true, hitsDown: true, flash: { color: '#fff4c0', alpha: 0.18, ms: 80 } };
+  // 성검 파도(50 ↔ 칼날 폭풍 5.7): 거대한 금빛 검기 세 줄기(가운데 · 위 · 아래 줄)가 화면을 가로지름 2.7 x 3 = 8.1 (꿰뚫음). 2026-11-10 자동 조종 DPS 비교 뒤 검성 +15% · 현자 -12%
+  var SS_WAVE = { dmg: 2.7, hitstop: 0.9, knock: 1.4, shake: 1.6, spark: 1.3, big: true, hitsDown: true, flash: { color: '#fff4c0', alpha: 0.18, ms: 80 } };
   // 검성의 경지(52, 늘 켜짐): 몇 초마다 금빛 영검이 저절로 가까운 적에게 날아가 꽂힘(이 값 x passive.mul)
   var SS_AURA = { dmg: 1.8, hitstop: 0.5, knock: 0.8, shake: 0.7, spark: 1.1, big: true, hitsDown: true, noRage: true, noMp: true, numStyle: 'push', t3Auto: true };
   // 천검 강림(53 ↔ 성검 낙뢰 6.2): 화면 안 적마다 하늘에서 금빛 검 0.75 x 6 + 마지막 큰 검 3.0 = 7.5
-  var SS_RAIN = { dmg: 0.75, hitstop: 0.3, knock: 0.2, shake: 0.6, spark: 1.0, hitsDown: true, noRage: true, noJuggle: true };
+  var SS_RAIN = { dmg: 0.85, hitstop: 0.3, knock: 0.2, shake: 0.6, spark: 1.0, hitsDown: true, noRage: true, noJuggle: true };
   var SS_RAIN_LAST = { dmg: 3.0, hitstop: 1.8, knock: 2.0, shake: 2.6, knockdown: true, stunMs: 300, spark: 1.6, big: true, hitsDown: true, flash: { color: '#fff0b0', alpha: 0.35, ms: 140 } };
   // 일섬(55 ↔ 심판의 십자 5.6): 한 줄로 꿰뚫고 지나감(지나가며 1.0) → 잠깐 뒤 지나간 길 전체가 갈라짐 7.6 = 8.6
   var SS_FLASH_PASS = { dmg: 1.0, hitstop: 0.4, knock: 0.2, shake: 0.6, spark: 1.0, hitsDown: true, noJuggle: true };
-  var SS_FLASH_CUT = { dmg: 7.6, hitstop: 3.0, knock: 2.4, shake: 4.0, knockdown: true, stunMs: 400, spark: 2.0, big: true, hitsDown: true, crit: true,
+  var SS_FLASH_CUT = { dmg: 8.4, hitstop: 3.0, knock: 2.4, shake: 4.0, knockdown: true, stunMs: 400, spark: 2.0, big: true, hitsDown: true, crit: true,
                        flash: { color: '#ffffff', alpha: 0.55, ms: 180 }, slowMs: 320 };
   // 천상의 심판(58 필살 ↔ 2차 필살 7.7): 하늘에서 작은 빛 0.5 x 5 → 거대한 성검이 꽂힘 2.0 + 충격파 13 = 17.5 (화면 안 모든 적)
   var SS_JUDGE_PRE = { dmg: 0.5, hitstop: 0.2, knock: 0.1, shake: 0.5, spark: 0.8, hitsDown: true, noRage: true, noJuggle: true };
@@ -1506,15 +1506,15 @@
   // ---- 현자(법사 3차) ----
   // 원소 융합탄(50 ↔ 메테오): 불 · 얼음 · 번개가 섞인 구슬이 나아가며 닿은 적 1.2 → 끝에서 큰 원소 폭발 5.4 = 6.6
   var SG_ORB = { dmg: 1.2, hitstop: 0.5, knock: 0.4, shake: 0.8, spark: 1.1, big: true, hitsDown: true, noJuggle: true };
-  var SG_ORB_BOOM = { dmg: 5.4, hitstop: 2.2, knock: 2.4, shake: 3.2, knockdown: true, spark: 1.7, big: true, hitsDown: true, flash: { color: '#fff0d0', alpha: 0.4, ms: 150 }, slowMs: 200 };
+  var SG_ORB_BOOM = { dmg: 4.8, hitstop: 2.2, knock: 2.4, shake: 3.2, knockdown: true, spark: 1.7, big: true, hitsDown: true, flash: { color: '#fff0d0', alpha: 0.4, ms: 150 }, slowMs: 200 };
   // 원소 순환(52, 늘 켜짐): 몇 초마다 화면 안 적 하나에 원소 폭발이 저절로(이 값 x passive.mul)
   var SG_CYCLE = { dmg: 2.0, hitstop: 0.6, knock: 0.9, shake: 0.9, spark: 1.1, big: true, hitsDown: true, noRage: true, noMp: true, numStyle: 'push', t3Auto: true };
   // 삼원소 폭풍(53 ↔ 불기둥): 화면 안 적 발밑마다 마법진 → 원소 기둥 4.4 + 남은 기둥 1.0 x 2 = 6.4 (한 적은 보통 기둥 하나)
-  var SG_PILLAR = { dmg: 4.4, hitstop: 1.8, knock: 0.6, shake: 2.4, launch: 1.1, spark: 1.6, big: true, hitsDown: true, flash: { color: '#fff4e0', alpha: 0.3, ms: 120 } };
+  var SG_PILLAR = { dmg: 3.8, hitstop: 1.8, knock: 0.6, shake: 2.4, launch: 1.1, spark: 1.6, big: true, hitsDown: true, flash: { color: '#fff4e0', alpha: 0.3, ms: 120 } };
   var SG_PILLAR_TICK = { dmg: 1.0, hitstop: 0.3, knock: 0.1, shake: 0.5, spark: 0.8, hitsDown: true, noRage: true, noJuggle: true, noMp: true };
   // 원소 대폭발(55 ↔ 빙결 폭풍): 발밑 큰 마법진 → 양옆으로 원소 폭발이 세 번씩 퍼져 나감 3.4 x 보통 2번 + 가운데 2.4 = 9.2
   var SG_NOVA_C = { dmg: 2.4, hitstop: 1.2, knock: 1.6, shake: 2.0, spark: 1.4, big: true, hitsDown: true };
-  var SG_NOVA = { dmg: 3.4, hitstop: 1.4, knock: 1.8, shake: 2.4, knockdown: true, spark: 1.5, big: true, hitsDown: true, flash: { color: '#fff0d0', alpha: 0.22, ms: 100 } };
+  var SG_NOVA = { dmg: 3.0, hitstop: 1.4, knock: 1.8, shake: 2.4, knockdown: true, spark: 1.5, big: true, hitsDown: true, flash: { color: '#fff0d0', alpha: 0.22, ms: 100 } };
   // 종말의 별(58 필살 ↔ 천둥 심판 · 2차 필살 9.0): 블랙홀이 빨아들이며 0.4 x 6 → 마지막 대폭발 12.5 = 14.9 (화면 안 모든 적)
   var SG_DOOM_TICK = { dmg: 0.4, hitstop: 0.15, knock: 0.05, shake: 0.6, spark: 0.7, hitsDown: true, noRage: true, noJuggle: true, noMp: true };
   var SG_DOOM_BOOM = { dmg: 12.5, hitstop: 3.4, knock: 3.0, shake: 6.0, knockdown: true, stunMs: 700, spark: 2.4, big: true, hitsDown: true, launch: 1.0,
@@ -1648,10 +1648,10 @@
                     bolt: ['천뢰', '더 크고 화려하게 · 효과 · 범위 +20%'], ice: ['대빙하 균열', '더 크고 화려하게 · 효과 · 범위 +20%'],
                     blink: ['원소 도약', '더 크고 화려하게 · 효과 · 범위 +20%'], gravity: ['대중력 구체', '더 크고 화려하게 · 효과 · 범위 +20%'] },
            // 3차 맛(2026-11-10, 현자 Lv50 뒤): 이름이 한 번 더 바뀌고 크기 +20% → +40%
-           t3: { tag: '현자', color: '#fff4d0', tw: { area: 1.4 },
-                 names: { fireball: ['현자의 화염구', '(3차 현자) 더 크고 화려하게 · 효과 · 범위 +40%'], rise: ['대지 붕괴', '(3차 현자) 더 크고 화려하게 · 효과 · 범위 +40%'], bolt: ['천벌 번개', '(3차 현자) 더 크고 화려하게 · 효과 · 범위 +40%'], ice: ['절대 빙하', '(3차 현자) 더 크고 화려하게 · 효과 · 범위 +40%'],
-                          blink: ['차원 도약', '(3차 현자) 더 크고 화려하게 · 효과 · 범위 +40%'], gravity: ['붕괴의 구체', '(3차 현자) 더 크고 화려하게 · 효과 · 범위 +40%'], meteor: ['대운석', '(3차 현자) 더 크고 화려하게 · 효과 · 범위 +40%'], pillar: ['원소 불기둥', '(3차 현자) 더 크고 화려하게 · 효과 · 범위 +40%'],
-                          frost: ['절대 빙결', '(3차 현자) 더 크고 화려하게 · 효과 · 범위 +40%'], judgment: ['천벌의 뇌정', '(3차 현자) 더 크고 화려하게 · 효과 · 범위 +40%'] } } },
+           t3: { tag: '현자', color: '#fff4d0', tw: { area: 1.3 },
+                 names: { fireball: ['현자의 화염구', '(3차 현자) 더 크고 화려하게 · 효과 · 범위 +30%'], rise: ['대지 붕괴', '(3차 현자) 더 크고 화려하게 · 효과 · 범위 +30%'], bolt: ['천벌 번개', '(3차 현자) 더 크고 화려하게 · 효과 · 범위 +30%'], ice: ['절대 빙하', '(3차 현자) 더 크고 화려하게 · 효과 · 범위 +30%'],
+                          blink: ['차원 도약', '(3차 현자) 더 크고 화려하게 · 효과 · 범위 +30%'], gravity: ['붕괴의 구체', '(3차 현자) 더 크고 화려하게 · 효과 · 범위 +30%'], meteor: ['대운석', '(3차 현자) 더 크고 화려하게 · 효과 · 범위 +30%'], pillar: ['원소 불기둥', '(3차 현자) 더 크고 화려하게 · 효과 · 범위 +30%'],
+                          frost: ['절대 빙결', '(3차 현자) 더 크고 화려하게 · 효과 · 범위 +30%'], judgment: ['천벌의 뇌정', '(3차 현자) 더 크고 화려하게 · 효과 · 범위 +30%'] } } },
       b: { tag: '어둠', color: '#a040d0', tw: { curseMs: 3000, dotMs: 500, dotDmg: 0.05, weak: 0.1, steal: 0.02, stealCap: 0.02 },
            names: { fireball: ['흑염구', '맞은 적에 저주 3초(0.5초마다 작은 피해 · 그 적의 공격 -10%) · 준 피해의 2% 체력 흡수'],
                     rise: ['저주 융기', '맞은 적에 저주 3초(0.5초마다 작은 피해 · 그 적의 공격 -10%) · 준 피해의 2% 체력 흡수'],
