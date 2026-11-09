@@ -1984,7 +1984,7 @@
         sword_legendary: { label: '검', img: 'assets/weapons/sword_legendary.png', grip: { x: 10, y: 7 },  baseAngle: 0, layer: 'back', kind: 'sword' },
         staff_common:    { label: '지팡이', img: 'assets/weapons/staff_common.png',    grip: { x: 23, y: 7 }, baseAngle: 0, layer: 'back', kind: 'staff' },
         staff_rare:      { label: '지팡이', img: 'assets/weapons/staff_rare.png',      grip: { x: 23, y: 8 }, baseAngle: 0, layer: 'back', kind: 'staff' },
-        staff_epic:      { label: '지팡이', img: 'assets/weapons/staff_epic.png',      grip: { x: 23, y: 13 }, baseAngle: 0, layer: 'back', kind: 'staff' },
+        staff_epic:      { label: '지팡이', img: 'assets/weapons/staff_epic.png',      grip: { x: 23, y: 9 }, baseAngle: 0, layer: 'back', kind: 'staff' },
         staff_legendary: { label: '지팡이', img: 'assets/weapons/staff_legendary.png', grip: { x: 23, y: 15 }, baseAngle: 0, layer: 'back', kind: 'staff' },
         // +10 신화(2026-11-06): mythic = 고유 효과(js/mythicfx.js) 켬
         sword_mythic:    { label: '검', img: 'assets/weapons/sword_mythic.png',    grip: { x: 6, y: 11 }, baseAngle: 0, layer: 'back', kind: 'sword', mythic: true },
@@ -1994,13 +1994,13 @@
         sword_dark_common:    { label: '마검', img: 'assets/weapons/sword_dark_common.png',    grip: { x: 6, y: 5 },  baseAngle: 0, layer: 'back', kind: 'sword' },
         sword_dark_rare:      { label: '마검', img: 'assets/weapons/sword_dark_rare.png',      grip: { x: 6, y: 5 },  baseAngle: 0, layer: 'back', kind: 'sword' },
         sword_dark_epic:      { label: '마검', img: 'assets/weapons/sword_dark_epic.png',      grip: { x: 7, y: 6 },  baseAngle: 0, layer: 'back', kind: 'sword' },
-        sword_dark_legendary: { label: '마검', img: 'assets/weapons/sword_dark_legendary.png', grip: { x: 8, y: 7 },  baseAngle: 0, layer: 'back', kind: 'sword' },
+        sword_dark_legendary: { label: '마검', img: 'assets/weapons/sword_dark_legendary.png', grip: { x: 9, y: 4 },  baseAngle: 0, layer: 'back', kind: 'sword' },
         sword_dark_mythic:    { label: '마검', img: 'assets/weapons/sword_dark_mythic.png',    grip: { x: 10, y: 8 }, baseAngle: 0, layer: 'back', kind: 'sword', mythic: true },
         staff_dark_common:    { label: '해골 지팡이', img: 'assets/weapons/staff_dark_common.png',    grip: { x: 23, y: 5 },  baseAngle: 0, layer: 'back', kind: 'staff' },
         staff_dark_rare:      { label: '해골 지팡이', img: 'assets/weapons/staff_dark_rare.png',      grip: { x: 23, y: 5 },  baseAngle: 0, layer: 'back', kind: 'staff' },
-        staff_dark_epic:      { label: '해골 지팡이', img: 'assets/weapons/staff_dark_epic.png',      grip: { x: 23, y: 9 },  baseAngle: 0, layer: 'back', kind: 'staff' },
-        staff_dark_legendary: { label: '해골 지팡이', img: 'assets/weapons/staff_dark_legendary.png', grip: { x: 23, y: 14 },  baseAngle: 0, layer: 'back', kind: 'staff' },
-        staff_dark_mythic:    { label: '해골 지팡이', img: 'assets/weapons/staff_dark_mythic.png',    grip: { x: 23, y: 15 }, baseAngle: 0, layer: 'back', kind: 'staff', mythic: true }
+        staff_dark_epic:      { label: '해골 지팡이', img: 'assets/weapons/staff_dark_epic.png',      grip: { x: 23, y: 8 },  baseAngle: 0, layer: 'back', kind: 'staff' },
+        staff_dark_legendary: { label: '해골 지팡이', img: 'assets/weapons/staff_dark_legendary.png', grip: { x: 24, y: 15 },  baseAngle: 0, layer: 'back', kind: 'staff' },
+        staff_dark_mythic:    { label: '해골 지팡이', img: 'assets/weapons/staff_dark_mythic.png',    grip: { x: 25, y: 16 }, baseAngle: 0, layer: 'back', kind: 'staff', mythic: true }
       },
       // 허수아비: 없으면(null) 코드로 그린 나무 기둥. hit 그림은 「왼쪽에서 맞음」 기준, 오른쪽에서 맞으면 뒤집어 씀
       dummy: artSet === 'novice' ? null : {
