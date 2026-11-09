@@ -1978,7 +1978,7 @@
   var ARCHER_T2_DONE = ['t2a_male', 't2a_female', 't2b_male', 't2b_female'];
   var archerT2Sets = {};
   // 암살자 2차 옷(2026-11-09, 그림자 무사 = assassin_t2a · 독술사 = assassin_t2b): 궁수 2차와 같은 방식(1차 암살자 그림 위에 옷만 다시 그림)
-  var ASSASSIN_T2_DONE = [];
+  var ASSASSIN_T2_DONE = ['t2a_male'];
   var assassinT2Sets = {};
   ASSASSIN_T2_DONE.forEach(function (k) {
     if (artSet === 'novice') return;
