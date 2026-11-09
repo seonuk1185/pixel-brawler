@@ -1806,6 +1806,65 @@
   };
   Object.keys(T3_FG).forEach(function (k) { T3_SKILLS.archer[k] = T3_FG[k]; SKILLS.archer[k] = T3_FG[k]; });
 
+  // ---- 그림자 군주(암살자 3차 갈래 a, 2026-11-10): 검정 + 짙은 남색 갑주 · 푸른 날 단검. 그림 = t3_sm_*(AI: 그림자 초승달 · 그림자 터짐 · 그림자 단검 · 가로 그림자 베기) + 그림자 무사 sw_ult_*(그림자 칼날 · 큰 초승달) ----
+  //   그림자 무사 = 분신 · 순간이동 난무 → 화면을 가르는 그림자 물결 · 칼날 비 · 그림자 섬광. 숫자 = 신궁 자리에서 시작(MP 낮게, 쿨타임 짧게: 암살자 기술은 MP 를 빨리 씀)
+  // 그림자 초승달(50 ↔ 그림자 분신): 거대한 그림자 초승달 셋이 가운데 · 위 · 아래 줄을 꿰뚫음 3.4 x 3
+  var SM_WAVE = { dmg: 3.4, hitstop: 0.8, knock: 1.4, shake: 1.5, spark: 1.2, big: true, hitsDown: true, flash: { color: '#c0d8ff', alpha: 0.14, ms: 80 } };
+  // 군주의 그림자 칼날(52, 늘 켜짐): 몇 초마다 그림자 단검이 저절로 가까운 적에게 날아가 꽂힘(이 값 x passive.mul)
+  var SM_SHADE = { dmg: 2.4, hitstop: 0.5, knock: 0.8, shake: 0.7, spark: 1.1, big: true, hitsDown: true, noRage: true, noMp: true, numStyle: 'push', t3Auto: true };
+  // 그림자 칼날비(53 ↔ 월영참 칼날 비): 화면 안 적마다 그림자 칼날 1.0 x 6 + 마지막 큰 칼날 3.6
+  var SM_RAIN = { dmg: 1.0, hitstop: 0.3, knock: 0.2, shake: 0.6, spark: 1.0, hitsDown: true, noRage: true, noJuggle: true };
+  var SM_RAIN_LAST = { dmg: 3.6, hitstop: 1.8, knock: 2.0, shake: 2.6, knockdown: true, stunMs: 300, spark: 1.6, big: true, hitsDown: true, flash: { color: '#c0d8ff', alpha: 0.35, ms: 140 } };
+  // 그림자 섬광(55 ↔ 그림자 난무): 그림자가 되어 한 줄을 꿰뚫고 지나감 1.2 → 칼을 거두면 지나간 길 전체가 그림자로 갈라짐 9.0(늘 치명타)
+  var SM_FLASH_PASS = { dmg: 1.2, hitstop: 0.4, knock: 0.2, shake: 0.6, spark: 1.0, hitsDown: true, noJuggle: true };
+  var SM_FLASH_CUT = { dmg: 9.0, hitstop: 3.0, knock: 2.4, shake: 4.0, knockdown: true, stunMs: 400, spark: 2.0, big: true, hitsDown: true, crit: true,
+                       flash: { color: '#c0d8ff', alpha: 0.5, ms: 180 }, slowMs: 320 };
+  // 그림자 군주 강림(58 필살 ↔ 월영참 7.7): 하늘의 작은 그림자 0.5 x 5 → 거대한 그림자 칼날이 꽂힘 2.0 + 거대한 초승달 · 그림자 충격파 15 (화면 안 모든 적)
+  var SM_SKY_WAVE = { dmg: 15, hitstop: 3.4, knock: 3.0, shake: 6.0, knockdown: true, stunMs: 700, spark: 2.4, big: true, hitsDown: true, launch: 1.0,
+                      flash: { color: '#c0d8ff', alpha: 0.85, ms: 320 }, slowMs: 520 };
+  var T3_SM = {
+    smwave: {
+      name: '그림자 초승달', icon: '초', mp: 20, cooldownMs: 9000, damageStyle: 'skill_shadow', motion: 'motion_spin', sfx: 'shadow',
+      desc: '(3차) 몸을 돌려 거대한 그림자 초승달 셋을 날려요. 가운데 · 위 · 아래 줄을 나란히 화면 끝까지 가르며 닿는 적을 모두 꿰뚫어요',
+      lv5: { n: 5, say: '초승달 3 → 5개' },
+      darken: { ms: 700, alpha: 0.5 }, iframes: [0, 600], zoom: { k: 1.03, ms: 500 },
+      t3: { kind: 'sswave', frame: 3, n: 3, lanes: [0, -20, 20, -36, 36], gapMs: 80, x: 26, speed: 600, range: 440, w: 58, depth: 22, hit: SM_WAVE, chainPad: 250,
+            art: 't3_sm_wave', sx: 0.95, add: false, hitArt: 't3_sm_burst', boom: 't3_sm_burst', boomSx: 0.8, color: '#6a8aff' }
+    },
+    smrain: {
+      name: '그림자 칼날비', icon: '비', mp: 24, cooldownMs: 12000, damageStyle: 'skill_shadow', motion: 'motion_throw', sfx: 'shadow',
+      motionMs: [70, 70, 60, 300, 260, 140],
+      desc: '(3차) 단검을 하늘로 던지면 화면 안 모든 적 위로 그림자 칼날이 비처럼 쏟아져요. 마지막에 큰 그림자 칼날이 한 번 더 꽂혀 넘어뜨려요',
+      lv5: { n: 8, say: '쏟아지는 칼날 6 → 8번' },
+      darken: { ms: 1500, alpha: 0.55 }, iframes: [0, 1000], zoom: { k: 1.04, ms: 1000 },
+      t3: { kind: 'ssrain', frame: 3, n: 6, gapMs: 140, fallMs: 150, hit: SM_RAIN, last: SM_RAIN_LAST, chainPad: 900,
+            fall: 'sw_ult_blade', fallSx: 1.0, impact: 'sw_ult_impact', impactSx: 0.6, bigHit: 't3_sm_burst', bigSx: 1.0, color: '#6a8aff' }
+    },
+    smflash: {
+      name: '그림자 섬광', icon: '섬', mp: 24, cooldownMs: 12000, damageStyle: 'skill_shadow', motion: 'motion_dash', sfx: 'shadow',
+      motionSeq: [0, 1, 2, 3, 3, 4, 5], motionMs: [70, 60, 60, 120, 380, 120, 140],
+      desc: '(3차) 그림자가 되어 앞으로 쏘아 나가며 한 줄의 적을 꿰뚫어요. 칼을 거두는 순간 지나간 길 전체가 거대한 그림자 베기로 갈라져요(아주 큰 한 방, 늘 치명타)',
+      lv5: { dist: 1.3, say: '거리 +30%' },
+      darken: { ms: 1100, alpha: 0.6 }, iframes: [0, 900], zoom: { k: 1.05, ms: 800 },
+      move: { frames: [1, 2], dist: 300 },
+      trail: { frames: [1, 3], everyMs: 22, lifeMs: 260, alpha: 0.5, color: '#4a6aff' },
+      t3: { kind: 'ssflash', frame: 1, cutFrame: 4, depth: 34, hit: SM_FLASH_PASS, cut: SM_FLASH_CUT, chainPad: 300,
+            passArt: 't3_sm_burst', passSx: 0.5, passAdd: false, lineArt: 't3_sm_line', lineAdd: false, lineSy: 0.9, cutHit: 't3_sm_burst', cutHitSx: 0.75,
+            flash: '#c0d8ff', cols: ['#e0ecff', '#6a8aff', '#141e5a'] }
+    },
+    smjudge: {
+      name: '그림자 군주 강림', icon: '군', mp: 60, cooldownMs: 40000, damageStyle: 'skill_shadow', motion: 'motion_spin', sfx: 'charge',
+      motionMs: [80, 120, 700, 600, 500, 200],
+      desc: '(3차 필살) 하늘이 그림자로 뒤덮이고 거대한 그림자 칼날이 내리꽂혀요. 거대한 초승달 베기와 그림자 충격파가 화면 안 모든 적을 휩쓸어요',
+      lv5: { area: 1.25, say: '충격파 크기 +25%' },
+      darken: { ms: 3400, alpha: 0.8 }, iframes: [0, 2200], zoom: { k: 1.08, ms: 2000 },
+      t3: { kind: 'ssjudge', frame: 2, n: 5, gapMs: 110, pre: SS_JUDGE_PRE, hit: SS_JUDGE_HIT, wave: SM_SKY_WAVE, x: 110, chainPad: 1600,
+            sword: 'sw_ult_blade', swordSx: 3.0, swordLoop: true, impact: 'sw_ult_impact', impactSx: 2.0, boom: 'sw_ult_moon', boomSx: 2.2,
+            groundWave: 't3_sm_wave', groundSx: 1.0, hitArt: 't3_sm_burst', hitSx: 0.6, cols: ['#e0ecff', '#6a8aff', '#141e5a'], flash: '#c0d8ff', preCol: '#6a8aff' }
+    }
+  };
+  Object.keys(T3_SM).forEach(function (k) { T3_SKILLS.assassin = T3_SKILLS.assassin || {}; T3_SKILLS.assassin[k] = T3_SM[k]; SKILLS.assassin[k] = T3_SM[k]; });
+
 
   // ---------- 기술 책 (성장 4단계, 2026-11-06, 기획\성장시스템-설계안.md) : 직업마다 11개 = 쓰는 기술(active) 7 + 늘 켜진 기술(passive) 4 (2026-11-06 기사 칼날 폭풍 넣음) ----------
   // 순서 = 기술 창에 나오는 순서. unlock = 그 레벨이 되면 열림(0 = 전직 즉시). 전직 뒤 대략 2레벨마다 하나 → Lv23 에 다 열림(기사·법사 11개)
@@ -1918,7 +1977,12 @@
                     afan: ['그림자 단검 부채', '맞은 적을 0.2초 뒤 그림자 잔상이 한 번 더 베어요(그 타 피해의 30%)'],
                     awhirl: ['암흑 회오리', '맞은 적을 0.2초 뒤 그림자 잔상이 한 번 더 베어요(그 타 피해의 30%)'],
                     ablink: ['순영 걸음', '맞은 적을 0.2초 뒤 그림자 잔상이 한 번 더 베어요(그 타 피해의 30%)'],
-                    asmoke: ['암흑 연막', '맞은 적을 0.2초 뒤 그림자 잔상이 한 번 더 베어요(그 타 피해의 30%)'] } },
+                    asmoke: ['암흑 연막', '맞은 적을 0.2초 뒤 그림자 잔상이 한 번 더 베어요(그 타 피해의 30%)'] },
+           // 3차 맛(2026-11-10, 그림자 군주 Lv50 뒤): 이름이 한 번 더 바뀌고 크기 +20%(잔상 덤은 그대로)
+           t3: { tag: '그림자 군주', color: '#8aa8ff', tw: { area: 1.2 },
+                 names: { ashadow: ['군주의 습격', '(3차 그림자 군주) 효과 · 판정 크기 +20% · 맞은 적을 0.2초 뒤 그림자 잔상이 한 번 더 베어요(그 타 피해의 30%)'], arise: ['심연 올려치기', '(3차 그림자 군주) 효과 · 판정 크기 +20% · 맞은 적을 0.2초 뒤 그림자 잔상이 한 번 더 베어요(그 타 피해의 30%)'], afan: ['군주의 단검 부채', '(3차 그림자 군주) 효과 · 판정 크기 +20% · 맞은 적을 0.2초 뒤 그림자 잔상이 한 번 더 베어요(그 타 피해의 30%)'], awhirl: ['그림자 대회오리', '(3차 그림자 군주) 효과 · 판정 크기 +20% · 맞은 적을 0.2초 뒤 그림자 잔상이 한 번 더 베어요(그 타 피해의 30%)'],
+                          ablink: ['군주의 걸음', '(3차 그림자 군주) 효과 · 판정 크기 +20% · 맞은 적을 0.2초 뒤 그림자 잔상이 한 번 더 베어요(그 타 피해의 30%)'], asmoke: ['칠흑 연막', '(3차 그림자 군주) 효과 · 판정 크기 +20% · 맞은 적을 0.2초 뒤 그림자 잔상이 한 번 더 베어요(그 타 피해의 30%)'], sclone: ['그림자 군단', '(3차 그림자 군주) 효과 · 판정 크기 +20% · 맞은 적을 0.2초 뒤 그림자 잔상이 한 번 더 베어요(그 타 피해의 30%)'], sflash: ['그림자 대난무', '(3차 그림자 군주) 효과 · 판정 크기 +20% · 맞은 적을 0.2초 뒤 그림자 잔상이 한 번 더 베어요(그 타 피해의 30%)'],
+                          sstorm: ['군주의 십자참', '(3차 그림자 군주) 효과 · 판정 크기 +20% · 맞은 적을 0.2초 뒤 그림자 잔상이 한 번 더 베어요(그 타 피해의 30%)'], smoon: ['흑월참', '(3차 그림자 군주) 효과 · 판정 크기 +20% · 맞은 적을 0.2초 뒤 그림자 잔상이 한 번 더 베어요(그 타 피해의 30%)'] } } },
       b: { tag: '독', color: '#8ae05a', tw: { psn: 1 },
            names: { ashadow: ['독아 습격', '맞은 적에 독 1겹(0.5초마다 작은 피해, 3초)'], arise: ['독칼 올려치기', '맞은 적에 독 1겹(0.5초마다 작은 피해, 3초)'],
                     afan: ['독 단검 부채', '맞은 적에 독 1겹(0.5초마다 작은 피해, 3초)'], awhirl: ['독안개 회오리', '맞은 적에 독 1겹(0.5초마다 작은 피해, 3초)'],
@@ -2119,7 +2183,16 @@
         passive: { stat: 'pplague', val: [0.7, 0.85, 1.0, 1.15, 1.3], spread: [0.5, 0.55, 0.6, 0.7, 0.8], r: [70, 76, 82, 90, 100], depth: 40, hit: PS_PLAGUE } },
       { id: 'pcloud', unlock: 31, tier: 2, branch: 'b', short: '독병을 깨 독구름을 남겨요' },
       { id: 'ppool', unlock: 35, tier: 2, branch: 'b', short: '맹독 웅덩이 셋' },
-      { id: 'perupt', unlock: 39, tier: 2, branch: 'b', short: '모든 적 발밑에서 맹독이 솟아요' }
+      { id: 'perupt', unlock: 39, tier: 2, branch: 'b', short: '모든 적 발밑에서 맹독이 솟아요' },
+      // ---- 그림자 군주(3차 전직, 그림자 무사 갈래 a, 2026-11-10): passive 't3auto' = 몇 초마다 그림자 단검(t3_sm_blade)이 저절로 날아가 꽂힘 ----
+      { id: 'smwave', unlock: 50, tier: 3, branch: 'a', short: '거대한 그림자 초승달 셋이 꿰뚫어요' },
+      { id: 'smshade', unlock: 52, tier: 3, branch: 'a', recInv: true, short: '몇 초마다 그림자 단검이 저절로 날아가요', name: '군주의 그림자 칼날', icon: '칼',
+        desc: '그림자 단검들이 몸 둘레를 맴돌아요. 몇 초마다 그림자 단검이 저절로 가까운 적에게 날아가 꽂혀요(Lv 오르면 더 자주 · 더 많이)',
+        passive: { stat: 't3auto', val: [3200, 2900, 2600, 2300, 2000], n: [1, 1, 2, 2, 3], mul: [1, 1.1, 1.2, 1.35, 1.5], find: 300, findDepth: 90,
+                   art: 'sm_blade', fly: 't3_sm_blade', flySx: 0.7, flyAdd: false, hitArt: 't3_sm_burst', hitSx: 0.4, glow: '#6a8aff', hit: SM_SHADE } },
+      { id: 'smrain', unlock: 53, tier: 3, branch: 'a', short: '화면 안 적 위로 그림자 칼날이 쏟아져요' },
+      { id: 'smflash', unlock: 55, tier: 3, branch: 'a', short: '꿰뚫고 지나간 길이 그림자로 갈라져요' },
+      { id: 'smjudge', unlock: 58, tier: 3, branch: 'a', short: '거대한 그림자 칼날 · 초승달이 화면을 휩쓸어요' }
     ],
     // 2026-11-08 형님 승인: 법사도 기사처럼 다시 배치(아래 mage 순서 = 기술 창 순서) + 2차 전직 Lv25 대마법사(tier: 2)
     //   새 기술 원소 파편 · 중력 구체 · 마력 소용돌이(1차) / 원소 연쇄 · 빙결 폭풍 · 천둥 심판(2차) → 법사 17개(쓰는 기술 10 + 늘 켜진 기술 7). 1차 법사 = 원소 낙인(Lv24)까지
@@ -2433,7 +2506,7 @@
   // 3차 옷 — 무기가 그림에 박힌 직업(궁수 · 암살자, 2026-11-10): 그 갈래 2차 옷 그림 위에 옷 + 무기만 다시 그림(pipeline/ai-sprite/t3)
   //   → 2차처럼 1차 옷 묶음을 그대로 쓰고 그림 폴더 · 손 위치 json 만 바꿈. 이름 '<직업>_<갈래>_<성별>' → 묶음 '<직업>_t3<갈래>_<성별>'
   //   (신궁 = archer_t3a · 숲의 수호자 = archer_t3b · 그림자 군주 = assassin_t3a · 역병술사 = assassin_t3b). 여기에 넣은 것만 진짜 그림
-  var T3_BAKED_DONE = ['archer_a_male', 'archer_a_female', 'archer_b_male', 'archer_b_female'];   // + 숲의 수호자(2026-11-10)   // 신궁(2026-11-10)
+  var T3_BAKED_DONE = ['archer_a_male', 'archer_a_female', 'archer_b_male', 'archer_b_female', 'assassin_a_male', 'assassin_a_female'];   // + 그림자 군주(2026-11-10)   // + 숲의 수호자(2026-11-10)   // 신궁(2026-11-10)
   var t3BakedSets = {};
   T3_BAKED_DONE.forEach(function (k) {
     if (artSet === 'novice') return;
@@ -2906,7 +2979,7 @@
                 branches: [
                   { key: 'a', name: '그림자 무사', outfit: 'assassin_t2a', desc: '그림자를 다루는 무사. 분신 · 순간이동 난무 · 엇갈린 그림자 물결로 몰아치고, 내 그림자가 저절로 적을 베어요',
                     look: { base: 'assassin', tint: '#0a1440', k: 0.36, outline: { color: '#6a8aff', alpha: 0.6, glow: true } },
-                    tier3: { lv: 50, name: '그림자 군주', soon: true } },
+                    tier3: { lv: 50, name: '그림자 군주', outfit: 'assassin_t3a', desc: '그림자를 다스리는 군주. 화면을 가르는 그림자 초승달 · 쏟아지는 그림자 칼날 · 그림자 섬광, 필살 그림자 군주 강림' } },
                   { key: 'b', name: '독술사', outfit: 'assassin_t2b', desc: '독을 다루는 검은 암살자. 독침 · 독구름 · 맹독 웅덩이로 독을 쌓아 녹이고, 쓰러진 적의 독이 둘레로 퍼져요',
                     look: { base: 'assassin', tint: '#06140a', k: 0.34, outline: { color: '#7ae05a', alpha: 0.55, glow: true } },
                     tier3: { lv: 50, name: '역병술사', soon: true } }
@@ -6795,7 +6868,7 @@
               curve: { dmg: [1, 1.2, 1.4, 1.6, 1.85], cd: [1, 0.94, 0.88, 0.82, 0.75], mp: [1, 1.05, 1.1, 1.15, 1.2] },
               test: { pts: 24 },
               botPlan: { knight: ['dash', 'upper', 'nimble', 'wave', 'mastery', 'spin', 'skin', 'slam', 'shards', 'thrust', 'pressure', 'grit', 'counter', 'storm', 'aegis', 'holy', 'cross', 'charge', 'arcwave', 'infuse', 'rift', 'msword', 'unleash', 'sswave', 'ssaura', 'ssrain', 'ssflash', 'ssjudge', 'mkcross', 'mkblades', 'mkrain', 'mkrift', 'mkking'],
-                         assassin: ['ashadow', 'arise', 'nimble', 'afan', 'amast', 'awhirl', 'akeen', 'ablink', 'aecho', 'asmoke', 'aorbit', 'avenom', 'aexec', 'sclone', 'sshade', 'sflash', 'sstorm', 'smoon', 'pdarts', 'pplague', 'pcloud', 'ppool', 'perupt'],   // 암살자(2026-11-09)
+                         assassin: ['ashadow', 'arise', 'nimble', 'afan', 'amast', 'awhirl', 'akeen', 'ablink', 'aecho', 'asmoke', 'aorbit', 'avenom', 'aexec', 'sclone', 'sshade', 'sflash', 'sstorm', 'smoon', 'smwave', 'smshade', 'smrain', 'smflash', 'smjudge', 'pdarts', 'pplague', 'pcloud', 'ppool', 'perupt'],   // 암살자(2026-11-09) + 그림자 군주(2026-11-10)
                          archer: ['pshot', 'upshot', 'nimble', 'multi', 'aim', 'rain', 'focus', 'leap', 'split', 'burst', 'volley', 'gale', 'mark', 'snipe', 'deadeye', 'ballista', 'rapid', 'skyfall', 'dvlance', 'dveye', 'dvrain', 'dvpierce', 'dvsky', 'tempest', 'hawk', 'trap', 'twister', 'barrage', 'fgwind', 'fgspirit', 'fgroots', 'fgstorm', 'fgjudge'],   // 궁수(2026-11-09)
                          mage: ['fireball', 'rise', 'nimble', 'bolt', 'amp', 'ice', 'flow', 'blink', 'eshard', 'gravity', 'vortex', 'shield', 'brand', 'meteor', 'echain', 'pillar', 'frost', 'judgment', 'darkorb', 'leech', 'swamp', 'wraith', 'abyss', 'sgorb', 'sgcycle', 'sgstorm', 'sgnova', 'sgdoom', 'abhex', 'absoul', 'abmaw', 'abnova', 'abgate'] } },   // 3차(2026-11-10) 도   // 2026-11-08 갈래 B 기술도(고른 갈래 것만 배워짐)   // 법사 다시 배치(2026-11-08)
 

@@ -1,0 +1,352 @@
+{
+ "note": "2nd-job branch b \uadf8\ub9bc\uc790 \uad70\uc8fc(\uc5ec). Same format as anchors_motions_assassin_t2a_female.json: hand = [x,y] grip in the 176x136 frame, angle deg (0 = right, + = clockwise). Values = branch-a anchors, hand nudged by local silhouette matching; check.manual = read by eye.",
+ "angleUnit": "deg",
+ "frameSize": [
+  176,
+  136
+ ],
+ "frames": {
+  "motion_dash_01": {
+   "hand": [
+    59,
+    38
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     59,
+     38
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.982,
+    "match0": 0.982
+   }
+  },
+  "motion_dash_02": {
+   "hand": [
+    75,
+    67
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     75,
+     67
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.985,
+    "match0": 0.981
+   }
+  },
+  "motion_dash_03": {
+   "hand": [
+    84,
+    50
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     84,
+     50
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.941,
+    "match0": 0.941
+   }
+  },
+  "motion_dash_04": {
+   "hand": [
+    84,
+    52
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     84,
+     52
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.95,
+    "match0": 0.949
+   }
+  },
+  "motion_dash_05": {
+   "hand": [
+    67,
+    55
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     67,
+     55
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.964,
+    "match0": 0.962
+   }
+  },
+  "motion_dash_06": {
+   "hand": [
+    58,
+    38
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     58,
+     38
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.989,
+    "match0": 0.989
+   }
+  },
+  "motion_spin_01": {
+   "hand": [
+    60,
+    40
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     60,
+     41
+    ],
+    "shift": [
+     0,
+     -1
+    ],
+    "match": 0.982,
+    "match0": 0.968
+   }
+  },
+  "motion_spin_02": {
+   "hand": [
+    90,
+    53
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     90,
+     53
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.982,
+    "match0": 0.973
+   }
+  },
+  "motion_spin_03": {
+   "hand": [
+    88,
+    51
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     88,
+     51
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.937,
+    "match0": 0.93
+   }
+  },
+  "motion_spin_04": {
+   "hand": [
+    74,
+    40
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     74,
+     40
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.966,
+    "match0": 0.962
+   }
+  },
+  "motion_spin_05": {
+   "hand": [
+    63,
+    45
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     63,
+     45
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.98,
+    "match0": 0.976
+   }
+  },
+  "motion_spin_06": {
+   "hand": [
+    70,
+    60
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     70,
+     61
+    ],
+    "shift": [
+     0,
+     -1
+    ],
+    "match": 0.98,
+    "match0": 0.97
+   }
+  },
+  "motion_throw_01": {
+   "hand": [
+    59,
+    40
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     60,
+     40
+    ],
+    "shift": [
+     -1,
+     0
+    ],
+    "match": 0.991,
+    "match0": 0.974
+   }
+  },
+  "motion_throw_02": {
+   "hand": [
+    54,
+    40
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     55,
+     40
+    ],
+    "shift": [
+     -1,
+     0
+    ],
+    "match": 0.985,
+    "match0": 0.966
+   }
+  },
+  "motion_throw_03": {
+   "hand": [
+    61,
+    38
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     62,
+     38
+    ],
+    "shift": [
+     -1,
+     0
+    ],
+    "match": 0.966,
+    "match0": 0.944
+   }
+  },
+  "motion_throw_04": {
+   "hand": [
+    68,
+    40
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     68,
+     40
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.946,
+    "match0": 0.939
+   }
+  },
+  "motion_throw_05": {
+   "hand": [
+    62,
+    43
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     62,
+     44
+    ],
+    "shift": [
+     0,
+     -1
+    ],
+    "match": 0.975,
+    "match0": 0.962
+   }
+  },
+  "motion_throw_06": {
+   "hand": [
+    58,
+    41
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     59,
+     41
+    ],
+    "shift": [
+     -1,
+     0
+    ],
+    "match": 0.99,
+    "match0": 0.976
+   }
+  }
+ }
+}

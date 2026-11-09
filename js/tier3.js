@@ -49,7 +49,12 @@
     t3_fg_burst:        { n: 5, pv: [55.0, 52.5], fps: 14 },    // 110x105 잎 터짐
     t3_fg_hawk:         { n: 4, pv: [32.0, 24.0], fps: 12 },    // 64x48 초록 정령 매(반복)
     t3_fg2_vine:        { n: 6, pv: [40.0, 130], fps: 14 },     // 80x130 가시 덩굴 기둥(바닥)
-    t3_fg2_arrow:       { n: 4, pv: [36.5, 120], fps: 12 }      // 73x120 거대한 정령 화살(아래를 봄, 기준 = 촉, 반복)
+    t3_fg2_arrow:       { n: 4, pv: [36.5, 120], fps: 12 },     // 73x120 거대한 정령 화살(아래를 봄, 기준 = 촉, 반복)
+    // 그림자 군주(암살자 3차 갈래 a, 2026-11-10): 어두운 그림이라 더하기 빛(lighter)으로 그리면 안 보임 → add: false
+    t3_sm_wave:         { n: 4, pv: [66.5, 55.0], fps: 14 },    // 133x110 거대한 그림자 초승달(오른쪽으로 날아감, 반복)
+    t3_sm_burst:        { n: 4, pv: [55.0, 34.5], fps: 16 },    // 110x69 그림자 베기 터짐
+    t3_sm_blade:        { n: 4, pv: [32.0, 8.5], fps: 12 },     // 64x17 날아가는 그림자 단검(오른쪽, 반복)
+    t3_sm_line:         { n: 4, pv: [150.0, 58.0], fps: 14 }    // 300x116 긴 가로 그림자 베기
   };
   (function reg() { var S = window.Skills && Skills._api; if (S) S.addAifx(AFX); })();
 
@@ -164,21 +169,21 @@
           var hb = t.hurtbox();
           if (Math.abs(hb.z - p.y) > C.depth || hb.x1 < x0 || hb.x0 > x1) return;
           S.done[id] = 1; hitT(S.passSt, t, t.x, mid(t), p.dir, s.mul, p);
-          spawn('t3_ssslash_sword', t.x, mid(t), { sx: 0.6, dir: p.dir, add: true });
+          spawn(C.passArt || 't3_ssslash_sword', t.x, mid(t), { sx: C.passSx || 0.6, dir: p.dir, add: C.passAdd !== false });
         });
       }
       if (!S.cut && C.cutAt != null && t1 >= C.cutAt) {
         S.cut = 1;
         var cx = (x0 + x1) / 2, len = Math.max(120 * k, x1 - x0 + 60 * k);
-        fxs.push({ kind: 'line', x: cx, y: p.y - 40 * k, sx: len / 300 * 1.05, dir: p.dir, t: 0 });
+        fxs.push({ kind: 'line', x: cx, y: p.y - 40 * k, sx: len / 300 * 1.05, sy: C.lineSy || 0.75, dir: p.dir, t: 0, art: C.lineArt || 't3_ssslash_line', add: C.lineAdd !== false });
         var hitN = 0;
         foes(S.cutSt).forEach(function (t) {
           var hb = t.hurtbox();
           if (Math.abs(hb.z - p.y) > C.depth * 1.4 || hb.x1 < x0 - 30 * k || hb.x0 > x1 + 30 * k) return;
-          if (hitT(S.cutSt, t, t.x, mid(t), p.dir, s.mul, p)) { hitN++; spawn('t3_sswave_hit', t.x, mid(t), { sx: 0.7 }); }
+          if (hitT(S.cutSt, t, t.x, mid(t), p.dir, s.mul, p)) { hitN++; spawn(C.cutHit || 't3_sswave_hit', t.x, mid(t), { sx: C.cutHitSx || 0.7 }); }
         });
-        api().doFlash({ color: '#ffffff', alpha: 0.5, ms: 200 }); H().hitstop(90); shake(3.2, 420);
-        debris(cx, p.y - 40 * k, p.y, 18, { cols: ['#ffffff', '#fff0a0', '#ffd040'], glow: true, sp: 260, size: 1.6, ms: 520, g: 40, spread: 3 });
+        api().doFlash({ color: C.flash || '#ffffff', alpha: 0.5, ms: 200 }); H().hitstop(90); shake(3.2, 420);
+        debris(cx, p.y - 40 * k, p.y, 18, { cols: C.cols || ['#ffffff', '#fff0a0', '#ffd040'], glow: true, sp: 260, size: 1.6, ms: 520, g: 40, spread: 3 });
         snd('skSlam'); snd('holyBolt', { v: 0.8 });
       }
     },
@@ -286,7 +291,7 @@
       while (o.wave <= Math.min(due2, J.n - 1) && o.t < T1) {
         screenFoes(p, o.pre, 14).forEach(function (t) {
           hitT(o.pre, t, t.x, mid(t), Math.random() < 0.5 ? -1 : 1, o.mul, p);
-          glow(t.x, mid(t), 18 * k, '#fff4c0', 160, 0.6);
+          glow(t.x, mid(t), 18 * k, J.preCol || '#fff4c0', 160, 0.6);
           debris(t.x, t.y - 60 * k, t.y, 3, { cols: ['#ffffff', '#fff0a0'], glow: true, sp: 60, size: 1.3, ms: 360, g: 200, spread: 0.6 });
         });
         o.wave++;
@@ -401,8 +406,8 @@
     var k = K(), now = performance.now();
     if (o.kind === 'line') {
       var i = Math.min(3, Math.floor(o.t * 14 / 1000)), a = o.t > 300 ? clamp((420 - o.t) / 120, 0, 1) : 1;
-      ctx.save(); ctx.globalCompositeOperation = 'lighter';
-      aiDraw(ctx, 't3_ssslash_line', i, o.x - camX, o.y, o.dir * o.sx, 0.75, 0, a);
+      ctx.save(); if (o.add !== false) ctx.globalCompositeOperation = 'lighter';
+      aiDraw(ctx, o.art || 't3_ssslash_line', i, o.x - camX, o.y, o.dir * o.sx, o.sy || 0.75, 0, a);
       ctx.restore();
       return;
     }
@@ -428,7 +433,7 @@
       var w = clamp(o.t / o.ms, 0, 1), tx = alive(o.tgt) ? o.tgt.x : o.x1, ty = alive(o.tgt) ? mid(o.tgt) : o.y1;
       var x3 = o.x0 + (tx - o.x0) * w, y3 = o.y0 + (ty - o.y0) * w - Math.sin(w * Math.PI) * 30 * k, ang2 = Math.atan2(ty - o.y0, tx - o.x0);
       if (w >= 1) return;
-      ctx.save(); ctx.globalCompositeOperation = 'lighter';
+      ctx.save(); if (o.flyAdd !== false) ctx.globalCompositeOperation = 'lighter';
       var FA = o.fly || 't3_ssslash_sword';
       aiDraw(ctx, FA, (FA === 't3_ssslash_sword' ? 1 : 0) + Math.floor(o.t / 70) % 2, x3 - camX, y3, o.flySx || 0.6, o.flySx || 0.6, ang2, 0.95);
       ctx.restore();
@@ -437,7 +442,7 @@
 
   // ---------- 늘 켜진 기술 't3auto'(저절로 공격) · 몸 둘레 기운 ----------
   //   passive = { val = 몇 ms 마다, n = 한 번에 몇 개, mul = 데미지 배율, find · findDepth = 찾는 둘레, art = 'ss_sword'(금빛 영검이 날아감) | 'sg_cycle'(원소 폭발), r = 폭발 반지름 }
-  var AUTO_IDS = ['ssaura', 'sgcycle', 'mkblades', 'absoul', 'dveye', 'fgspirit'], autoT = {}, auraOn = null;   // 마검왕 떠도는 마검(2026-11-10)
+  var AUTO_IDS = ['ssaura', 'sgcycle', 'mkblades', 'absoul', 'dveye', 'fgspirit', 'smshade'], autoT = {}, auraOn = null;   // + 그림자 군주 그림자 칼날(2026-11-10)   // 마검왕 떠도는 마검(2026-11-10)
   function passiveStep(p, dt) {
     auraOn = null;
     if (!p || p.state === 'dead' || !p.classKey || p.classKey === 'novice') return;
@@ -456,8 +461,8 @@
         var t = L[i % L.length];
         if (P.fly || P.art === 'ss_sword' || P.art === 'mk_sword') {   // 날아가 꽂히는 것(영검 · 마검 · 해골)
           var x0 = p.x - p.dir * 10 * k + Math.cos(i * 2.1) * 16 * k, y0 = p.y - (p.z || 0) - 78 * k;
-          fxs.push({ kind: 'auto', pas: 1, p: p, tgt: t, x0: x0, y0: y0, x1: t.x, y1: mid(t), t: -i * 90, ms: 230, st: st, mul: mul, dir: t.x >= p.x ? 1 : -1, fly: P.fly || 't3_ssslash_sword', hitArt: P.hitArt || 't3_sswave_hit', flySx: P.flySx || 0.6, hitSx: P.hitSx, heal: P.heal ? P.heal[lv] || 0 : 0 });
-          glow(x0, y0, 14 * k, '#fff0a0', 160, 0.6);
+          fxs.push({ kind: 'auto', pas: 1, p: p, tgt: t, x0: x0, y0: y0, x1: t.x, y1: mid(t), t: -i * 90, ms: 230, st: st, mul: mul, dir: t.x >= p.x ? 1 : -1, fly: P.fly || 't3_ssslash_sword', hitArt: P.hitArt || 't3_sswave_hit', flySx: P.flySx || 0.6, flyAdd: P.flyAdd, hitSx: P.hitSx, heal: P.heal ? P.heal[lv] || 0 : 0 });
+          glow(x0, y0, 14 * k, P.glow || '#fff0a0', 160, 0.6);
         } else {
           (function (t, i) {
             fxs.push({ kind: 'later', pas: 1, t: -i * 120, fn: function () {
@@ -482,6 +487,7 @@
       var a = now / (sw ? 700 : 560) + i * Math.PI * 2 / n, ox = Math.cos(a) * 26 * k, oy = Math.sin(a) * 9 * k - (sw ? 14 * k : 0);
       if (auraOn === 'dv_arrow') aiDraw(ctx, 't3_dv_arrow', Math.floor(now / 80 + i) % 4, p.x + ox - camX, cy + oy - 6 * k, 0.28, 0.28, -Math.PI / 2, 0.75);   // 신궁: 얼음 화살이 맴돎
       else if (auraOn === 'fg_hawk') aiDraw(ctx, 't3_fg_hawk', Math.floor(now / 90 + i) % 4, p.x + ox - camX, cy + oy - 10 * k, (Math.sin(a) > 0 ? 1 : -1) * 0.34, 0.34, 0, 0.8);   // 숲의 수호자: 정령 매가 맴돎
+      else if (auraOn === 'sm_blade') { ctx.save(); ctx.globalCompositeOperation = 'source-over'; aiDraw(ctx, 't3_sm_blade', Math.floor(now / 90 + i) % 4, p.x + ox - camX, cy + oy - 4 * k, 0.5, 0.5, a + Math.PI / 2, 0.85); ctx.restore(); }   // 그림자 군주: 그림자 단검이 맴돎
       else if (auraOn === 'ab_skull') aiDraw(ctx, 't3_ab_skull', Math.floor(now / 90 + i) % 4, p.x + ox - camX, cy + oy, p.dir * 0.32, 0.32, 0, 0.75);
       else if (auraOn === 'mk_sword') aiDraw(ctx, 'msword_sword', Math.floor(now / 90 + i) % 4, p.x + ox - camX, cy + oy, 0.55, 0.55, -Math.PI / 2, 0.7);
       else if (sw) aiDraw(ctx, 't3_ssslash_sword', 1, p.x + ox - camX, cy + oy, 0.32, 0.32, -Math.PI / 2, 0.55);

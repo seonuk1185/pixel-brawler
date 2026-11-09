@@ -232,6 +232,12 @@
     dvlance: function (g) { [6, 12, 18].forEach(function (y) { g.line(2, y, 19, y, K.i1); g.px(20, y, K.wht); g.px(19, y - 1, K.i0); g.px(19, y + 1, K.i0); }); g.outline(); g.spark(4, 3, false, K.i0); },
     dveye: function (g) { g.ellipse(12, 12, 8, 5, K.i3); g.disc(12, 12, 3, function (d) { return d < 1.5 ? K.wht : K.i1; }); g.outline(); g.line(3, 21, 20, 4, K.i0); g.px(20, 4, K.wht); },
     // 숲의 수호자(3차 궁수 b, 2026-11-10): 잎 · 덩굴 · 정령 매
+    // 그림자 군주(암살자 3차 a, 2026-11-10): 검정 + 남색 그림자
+    smwave: function (g) { g.ring(9, 12, 7, 9, 290, 430, NAVYD); g.ring(14, 12, 7, 9, 290, 430, NAVY); g.outline(); g.spark(20, 12, false, '#c0d8ff'); },
+    smshade: function (g) { g.ring(12, 13, 8, 9, 0, 359, NAVYD); g.line(5, 6, 10, 11, NAVY); g.line(19, 6, 14, 11, NAVY); g.line(12, 20, 12, 15, '#c0d8ff'); g.outline(); g.px(12, 13, '#c0d8ff'); },
+    smrain: function (g) { [[6, 2], [12, 5], [18, 1]].forEach(function (q) { g.line(q[0], q[1], q[0], q[1] + 10, NAVY); g.px(q[0], q[1] + 10, '#c0d8ff'); }); g.rect(3, 19, 18, 2, NAVYD); g.outline(); },
+    smflash: function (g) { g.line(1, 13, 22, 11, '#141e5a'); g.line(1, 14, 22, 12, NAVY); g.line(4, 10, 20, 9, '#c0d8ff'); g.outline(); g.spark(12, 12, true, NAVY); },
+    smjudge: function (g) { g.disc(12, 11, 9, function (d) { return d < 6 ? '#141e5a' : NAVY; }); g.line(12, 2, 12, 20, '#c0d8ff'); g.line(9, 6, 15, 6, NAVY); g.outline(); g.spark(4, 19, false, '#c0d8ff'); },
     fgwind: function (g) { g.line(2, 12, 20, 12, K.e1); g.line(17, 9, 21, 12, '#c8ff9a'); g.line(17, 15, 21, 12, '#c8ff9a'); g.ring(8, 12, 4, 6, 0, 359, '#4ab830'); g.ring(13, 12, 4, 6, 0, 359, '#7ae05a'); g.outline(); g.px(21, 12, K.wht); },
     fgspirit: function (g) { g.poly([[2, 10], [12, 14], [22, 8], [16, 15], [12, 20], [8, 15]], '#7ae05a'); g.disc(12, 13, 2, '#e8ffd8'); g.outline(); g.px(13, 12, K.ink); g.spark(4, 4, false, '#c8ff9a'); },
     fgroots: function (g) { g.rect(5, 8, 3, 13, K.e2); g.rect(11, 4, 3, 17, '#3a7a20'); g.rect(17, 9, 3, 12, K.e2); g.px(4, 10, '#7ae05a'); g.px(14, 6, '#7ae05a'); g.px(20, 11, '#7ae05a'); g.rect(2, 20, 20, 2, K.e1); g.outline(); },
@@ -761,6 +767,8 @@
     ssflash: ['일섬', 'knight', 'active', 'holy'], ssjudge: ['천상의 심판', 'knight', 'active', 'holy'],
     sgorb: ['원소 융합탄', 'mage', 'active', 'fire'], sgcycle: ['원소 순환', 'mage', 'passive', 'arcane'], sgstorm: ['삼원소 폭풍', 'mage', 'active', 'storm'],
     sgnova: ['원소 대폭발', 'mage', 'active', 'fire'], sgdoom: ['종말의 별', 'mage', 'active', 'arcane'],
+    smwave: ['그림자 초승달', 'assassin', 'active', 'shadow'], smshade: ['군주의 그림자 칼날', 'assassin', 'passive', 'shadow'], smrain: ['그림자 칼날비', 'assassin', 'active', 'shadow'],
+    smflash: ['그림자 섬광', 'assassin', 'active', 'shadow'], smjudge: ['그림자 군주 강림', 'assassin', 'active', 'shadow'],   // 그림자 군주(2026-11-10)
     fgwind: ['대풍 화살', 'archer', 'active', 'wild'], fgspirit: ['숲의 정령 매', 'archer', 'passive', 'wild'], fgroots: ['가시나무 대지', 'archer', 'active', 'wild'],
     fgstorm: ['폭풍의 숲', 'archer', 'active', 'wild'], fgjudge: ['대자연의 심판', 'archer', 'active', 'wild'],   // 숲의 수호자(3차, 2026-11-10)
     dvlance: ['빙결 삼연시', 'archer', 'active', 'snipe'], dveye: ['신궁의 눈', 'archer', 'passive', 'snipe'], dvrain: ['천궁 유성우', 'archer', 'active', 'snipe'],
