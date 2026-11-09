@@ -843,7 +843,7 @@
       //   3장(여 2장)부터 법사 바로 앞 땅에서 얼음이 하나씩 솟아 앞으로 나아감(가까운 건 작게 → 멀수록 크게) → 마지막에 송곳처럼 뾰족한 큰 빙산.
       //   효과 = 전부 우리 코드(skills.js 빙산). 법사가 다른 걸 해도 얼음 줄은 그대로. 값 = 위 ICE_CRAG
       ice: {
-        name: '빙하 균열', icon: '산', mp: 10, cooldownMs: 6000, damageStyle: 'skill_ice', motion: 'motion_cast_forward', launcher: true, sfx: 'iceSpear',
+        name: '빙하 균열', icon: '균', mp: 10, cooldownMs: 6000, damageStyle: 'skill_ice', motion: 'motion_cast_forward', launcher: true, sfx: 'iceSpear',
         desc: '땅이 갈라지며 앞쪽으로 기운 얼음이 줄줄이 이어져 솟아 나아가요. 앞으로 갈수록 커지며 적을 살짝 띄우고, 마지막 뾰족한 빙산이 적을 높이 띄워요. 맞은 적은 잠깐 얼었다가 느려져요(보스·큰 적은 휘청만)',
         lv5: { n: 7, big: 1.15, say: '얼음 7개로 더 길게 · 마지막 빙산 +15%' },
         darken: { ms: 700, alpha: 0.32 },

@@ -356,14 +356,14 @@
       g.outline();
       g.rect(2, 21, 20, 1, K.p1); g.px(11, 21, K.wht); g.spark(21, 17, false, K.p0);
     },
-    unleash: function (g) {                 // 마검 해방(필살): 화면을 가르는 거대한 보라 검 + 땅 터짐
-      g.rect(0, 20, 24, 4, K.e2); g.rect(0, 20, 24, 1, K.e1);
-      g.poly([[1, 19], [19, 4], [22, 5], [5, 20]], function (x, y) { return x + y < 22 ? K.p0 : K.p1; });
-      g.line(4, 18, 20, 5, K.wht);
-      g.rect(0, 17, 3, 3, K.g1); g.px(1, 18, K.g0);
-      g.outline();
-      g.ellipse(12, 20, 9, 2, function (v) { return v < 0.5 ? K.wht : K.p0; });
-      g.spark(20, 2, false, K.p0); g.px(8, 6, K.p1); g.px(14, 15, K.p0);
+    unleash: function (g) {                 // 마검 해방(필살, 2026-11-09 게임 그림에 맞춤): 땅을 타고 오른쪽으로 밀려가는 검은 기운 파도(보라 테) + 튀는 돌
+      g.rect(0, 21, 24, 3, K.e3); g.rect(0, 21, 24, 1, K.p2);
+      g.poly([[0, 21], [5, 16], [7, 18], [11, 11], [13, 14], [17, 4], [19, 9], [21, 6], [22, 21]], function (x, y) { return y > 17 ? K.p2 : y > 12 ? K.p3 : '#12041e'; });
+      g.outline(K.p1);
+      g.line(9, 18, 16, 8, K.p3); g.line(14, 19, 19, 10, K.p3);
+      g.rect(2, 20, 20, 1, K.p0); g.px(18, 20, K.wht);
+      g.px(9, 7, K.c2); g.px(10, 6, K.c1); g.px(14, 2, K.c2); g.px(22, 3, K.c1); g.px(4, 12, K.c2);
+      g.spark(22, 1, false, K.p0);
     },
     darkorb: function (g) {                 // 어둠의 구체: 검은 속 + 검보라 테 + 둘레 어둠 조각 + 뒤로 남는 꼬리
       g.disc(14, 12, 6.6, function (d, x, y) { return d < 4 ? '#0a0210' : d < 5.4 ? '#6a1a8a' : (x + y < 26 ? '#d070e0' : '#8a2ab0'); });

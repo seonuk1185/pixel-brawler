@@ -4874,6 +4874,7 @@
     applyGrowth(p);
     p.setCharacter(outfitAssets()); p.weaponKey = G.weaponKey; p.setMoveSet(G.moveSet);
     p.x = Math.round(LW * (I.pas ? 0.3 : 0.24)); p.y = Math.round((world.laneTop + world.laneBottom) / 2); p.dir = 1;
+    if (PV.id === 'darkorb') p.x = Math.round(LW * 0.06);   // 2026-11-09: 어둠의 구체는 멀리(220) 가서 터짐 → 왼쪽 끝에서 쏴야 터짐이 액자 안에 보임
     p.god = !PV_FIGHT[I.stat];
     if (I.stat === 'regen' || I.stat === 'leech') p.hp = Math.round(p.maxHp * 0.5);   // 신성 가호 · 생명 흡수(2026-11-08): 체력이 차는 중
     G.camX = 0;
@@ -4935,7 +4936,7 @@
         if (p.state === 'skill') pv.cast = pv.t;
         else if (pv.t >= 420 && pv.t - pv.press > 500) { pv.press = pv.t; Input.pressSkill('A'); }
       } else if (!pv.done && p.state !== 'skill' && pv.t - pv.cast > 500) pv.done = pv.t;
-      if ((pv.done && pv.t - pv.done > 1700) || pv.t > 9000) pvReset();
+      if ((pv.done && pv.t - pv.done > 1700 && !(Skills.busy && Skills.busy())) || pv.t > 9000) pvReset();   // 2026-11-09: 어둠의 구체처럼 늦게 터지는 효과는 터질 때까지 기다림
       return;
     }
     // 늘 켜진 기술: 원소 낙인 = 처음에 도우미 화염구 → 평타. 6.5초마다 처음부터
