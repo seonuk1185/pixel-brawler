@@ -8,7 +8,7 @@
  "frames": {
   "run_01": {
    "hand": [
-    51,
+    53,
     80
    ],
    "angle": 150,
@@ -18,19 +18,14 @@
      51,
      80
     ],
-    "shift": [
-     0,
-     0
-    ],
-    "match": 0.921,
-    "match0": 0.83,
-    "note": "auto shift hit the search limit (cape covers the hand area) -> 1st-tier hand kept"
+    "skinPx": 56,
+    "note": "run staff hold = \ub300\ub9c8\ubc95\uc0ac(\uc5ec) style (2026-11-09 \ud615\ub2d8): back layer, head trailing"
    }
   },
   "run_02": {
    "hand": [
-    51,
-    80
+    52,
+    81
    ],
    "angle": 150,
    "layer": "back",
@@ -39,19 +34,14 @@
      51,
      80
     ],
-    "shift": [
-     0,
-     0
-    ],
-    "match": 0.818,
-    "match0": 0.728,
-    "note": "auto shift hit the search limit (cape covers the hand area) -> 1st-tier hand kept"
+    "skinPx": 67,
+    "note": "run staff hold = \ub300\ub9c8\ubc95\uc0ac(\uc5ec) style (2026-11-09 \ud615\ub2d8): back layer, head trailing"
    }
   },
   "run_03": {
    "hand": [
-    53,
-    80
+    54,
+    79
    ],
    "angle": 150,
    "layer": "back",
@@ -60,19 +50,14 @@
      53,
      80
     ],
-    "shift": [
-     0,
-     0
-    ],
-    "match": 0.841,
-    "match0": 0.621,
-    "note": "auto shift hit the search limit (cape covers the hand area) -> 1st-tier hand kept"
+    "skinPx": 60,
+    "note": "run staff hold = \ub300\ub9c8\ubc95\uc0ac(\uc5ec) style (2026-11-09 \ud615\ub2d8): back layer, head trailing"
    }
   },
   "run_04": {
    "hand": [
-    53,
-    79
+    55,
+    78
    ],
    "angle": 150,
    "layer": "back",
@@ -81,19 +66,14 @@
      54,
      78
     ],
-    "shift": [
-     -6,
-     4
-    ],
-    "match": 0.93,
-    "match0": 0.829,
-    "manual": true
+    "skinPx": 65,
+    "note": "run staff hold = \ub300\ub9c8\ubc95\uc0ac(\uc5ec) style (2026-11-09 \ud615\ub2d8): back layer, head trailing"
    }
   },
   "run_05": {
    "hand": [
     52,
-    81
+    79
    ],
    "angle": 150,
    "layer": "back",
@@ -102,18 +82,13 @@
      52,
      81
     ],
-    "shift": [
-     0,
-     0
-    ],
-    "match": 0.907,
-    "match0": 0.805,
-    "note": "auto shift hit the search limit (cape covers the hand area) -> 1st-tier hand kept"
+    "skinPx": 65,
+    "note": "run staff hold = \ub300\ub9c8\ubc95\uc0ac(\uc5ec) style (2026-11-09 \ud615\ub2d8): back layer, head trailing"
    }
   },
   "run_06": {
    "hand": [
-    53,
+    54,
     81
    ],
    "angle": 150,
@@ -123,19 +98,14 @@
      53,
      81
     ],
-    "shift": [
-     0,
-     0
-    ],
-    "match": 0.902,
-    "match0": 0.797,
-    "note": "auto shift hit the search limit (cape covers the hand area) -> 1st-tier hand kept"
+    "skinPx": 65,
+    "note": "run staff hold = \ub300\ub9c8\ubc95\uc0ac(\uc5ec) style (2026-11-09 \ud615\ub2d8): back layer, head trailing"
    }
   },
   "run_07": {
    "hand": [
     53,
-    80
+    79
    ],
    "angle": 150,
    "layer": "back",
@@ -144,19 +114,14 @@
      53,
      80
     ],
-    "shift": [
-     0,
-     0
-    ],
-    "match": 0.933,
-    "match0": 0.816,
-    "note": "auto shift hit the search limit (cape covers the hand area) -> 1st-tier hand kept"
+    "skinPx": 61,
+    "note": "run staff hold = \ub300\ub9c8\ubc95\uc0ac(\uc5ec) style (2026-11-09 \ud615\ub2d8): back layer, head trailing"
    }
   },
   "run_08": {
    "hand": [
-    52,
-    75
+    55,
+    76
    ],
    "angle": 150,
    "layer": "back",
@@ -165,13 +130,8 @@
      52,
      75
     ],
-    "shift": [
-     0,
-     0
-    ],
-    "match": 0.866,
-    "match0": 0.789,
-    "note": "auto shift hit the search limit (cape covers the hand area) -> 1st-tier hand kept"
+    "skinPx": 65,
+    "note": "run staff hold = \ub300\ub9c8\ubc95\uc0ac(\uc5ec) style (2026-11-09 \ud615\ub2d8): back layer, head trailing"
    }
   },
   "jump_01": {
