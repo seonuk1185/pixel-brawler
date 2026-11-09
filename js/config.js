@@ -1718,7 +1718,9 @@
   var MIDV2 = { scale: 1, hpBoss: 0.5, tint: { hue: 0, sat: 1, bright: 1, colorK: 0 } };   // 11~20판 중간보스 덮어쓰기(midBoss.list)
   // 11~20단계 v2 기술 효과 그림(2026-11-09, AI 그림 · art/stages-11-20/v2/fx): 이름 → [장 수, 기준점 x, y]. FX2('thorn', 14) = fxArt 한 칸
   var FX2T = {aura: [4, 80, 222], beam: [4, 2, 15], bolt: [5, 67, 152], boulder: [4, 24, 26], cdust: [4, 22, 27], crescent: [4, 87, 112], cring: [5, 82, 39], cspike: [5, 42, 78], curseburst: [5, 52, 82], ering: [5, 82, 45], feather: [4, 17, 7], geyser: [5, 50, 92], gust: [4, 37, 21], harpoon: [4, 37, 14], holyhit: [5, 49, 82], ink: [4, 17, 9], javelin: [4, 42, 12], jet: [4, 2, 17], laser: [4, 21, 10], lightfall: [4, 11, 42], meteor: [4, 29, 37], pillar: [5, 36, 142], puddle: [6, 37, 42], rootspike: [5, 35, 72], shard: [4, 17, 5], shatter: [5, 59, 82], skull: [4, 22, 9], spark: [5, 54, 32], splash: [5, 53, 72], spore: [4, 19, 9], stalac: [4, 34, 34], tentacle: [5, 56, 92], thorn: [4, 25, 9], thornfall: [4, 10, 37], thornhit: [5, 53, 82], thunderhit: [5, 60, 82], tide: [4, 74, 82], vblast: [5, 66, 92], vorb: [4, 17, 10], vring: [5, 82, 50]};
-  function FX2(n, fps) { var t = FX2T[n]; return { frames: seq(EN + 'fx2/' + n + '/' + n + '_', t[0]), pivot: { x: t[1], y: t[2] }, fps: fps || 12 }; }
+  //   FX2R = 오른쪽으로 날아가는 그림(꼬리가 왼쪽): 엔진 기준(왼쪽으로 날아감)과 반대 → faceR 로 한 번 더 뒤집음(2026-11-09)
+  var FX2R = { thorn: 1, spore: 1, skull: 1, shard: 1, ink: 1, vorb: 1, tide: 1, laser: 1 };
+  function FX2(n, fps) { var t = FX2T[n]; return { frames: seq(EN + 'fx2/' + n + '/' + n + '_', t[0]), pivot: { x: t[1], y: t[2] }, fps: fps || 12, faceR: !!FX2R[n] }; }
   function enemyAnims(name, list) {
     var out = {};
     Object.keys(list).forEach(function (k) {
@@ -3519,6 +3521,7 @@
       // 가시나무 정령(11·12): 할퀴기 + 「가시 부채」(가시 셋이 세 줄로 날아옴, 바닥 빨간 줄 예고)
       thorn: {
         label: '가시나무 정령', frameW: 135, frameH: 114, pivot: { x: 60, y: 108 },
+        faceR: true,   // 2026-11-09 그림이 오른쪽을 봄(AI가 왼쪽 지시를 안 따름) → 엔진(왼쪽 기준)이 한 번 더 뒤집어 그림. 몸·숨결·던진 것 모두 플레이어 쪽
         anims: enemyAnims('thorn', { idle: [4, 6, true], walk: [6, 8, true], attack: [5, 10, false, [1, 2, 2, 2, 3, 4, 4, 5]], hit: [3, 10, false, [1, 2, 2, 3]], hit2: [3, 10, false, [1, 1, 2, 2, 3]], knockdown: [5, 10, false, [1, 2, 3, 4, 5, 5]], getup: [3, 8, false, [1, 1, 2, 2, 3]], death: [5, 8, false] }),
         fxArt: { thorn: FX2('thorn', 14), burst: FX2('curseburst', 14) },
         walkAnim: 'walk',
@@ -3537,6 +3540,7 @@
       // 뿌리 괴물(11·12): 물어뜯기 + 「뿌리 덫」(발밑에서 가시 뿌리가 줄지어 솟음 — 금 간 땅 그림이 예고)
       root: {
         label: '뿌리 괴물', frameW: 187, frameH: 116, pivot: { x: 68, y: 110 },
+        faceR: true,
         anims: enemyAnims('root', { idle: [4, 6, true], walk: [6, 8, true], attack: [5, 10, false, [1, 2, 2, 2, 3, 4, 4, 5]], skill: [5, 10, false, [1, 2, 2, 2, 2, 3, 4, 4, 5]], hit: [3, 10, false, [1, 2, 2, 3]], hit2: [3, 10, false, [1, 1, 2, 2, 3]], knockdown: [5, 10, false, [1, 2, 3, 4, 5, 5]], getup: [3, 8, false, [1, 1, 2, 2, 3]], death: [5, 8, false] }),
         fxArt: { root: FX2('rootspike', 13) },
         walkAnim: 'walk',
@@ -3554,6 +3558,7 @@
       // 독버섯 괴물(11·12): 머리 박치기 + 「독 포자」(포물선으로 뱉음 → 떨어진 자리 독 웅덩이, 빨간 원 예고)
       shroom: {
         label: '독버섯 괴물', frameW: 118, frameH: 84, pivot: { x: 57, y: 78 },
+        faceR: true,
         anims: enemyAnims('shroom', { idle: [4, 6, true], walk: [5, 8, true], attack: [5, 10, false, [1, 2, 2, 2, 3, 4, 4, 5]], skill: [5, 10, false, [1, 2, 2, 2, 2, 3, 4, 4, 5]], hit: [3, 10, false, [1, 2, 2, 3]], hit2: [3, 10, false, [1, 1, 2, 2, 3]], knockdown: [5, 10, false, [1, 2, 3, 4, 5, 5]], getup: [3, 8, false, [1, 1, 2, 2, 3]], death: [5, 8, false] }),
         fxArt: { spore: FX2('spore', 10), puddle: FX2('puddle', 10) },
         walkAnim: 'walk',
@@ -3574,6 +3579,7 @@
       // 11판 중간보스 가시나무 장로: 두 번 할퀴기 · 뿌리 덫 6줄 · 가시 부채 5발
       thornelder: {
         label: '가시나무 장로', frameW: 206, frameH: 168, pivot: { x: 94, y: 162 },
+        faceR: true,
         anims: enemyAnims('thornelder', { idle: [4, 6, true], walk: [6, 8, true], attack: [5, 9, false, [1, 2, 2, 2, 3, 4, 4, 5]], skill: [5, 9, false, [1, 2, 2, 2, 2, 3, 4, 4, 5]], hit: [3, 10, false, [1, 2, 2, 3]], hit2: [3, 10, false, [1, 1, 2, 2, 3]], knockdown: [2, 8, false, [1, 2, 2, 2]], getup: [2, 8, false, [1, 2, 2]], death: [5, 7, false, [1, 1, 2, 2, 3, 4, 5]] }),
         fxArt: { thorn: FX2('thorn', 13), root: FX2('rootspike', 13), burst: FX2('curseburst', 13) },
         walkAnim: 'walk',
@@ -3594,6 +3600,7 @@
       // 12판 중간보스 독버섯 왕: 배치기 · 뛰어올라 깔아뭉개기 · 큰 독 포자(웅덩이)
       shroomking: {
         label: '독버섯 왕', frameW: 189, frameH: 170, pivot: { x: 89, y: 164 },
+        faceR: true,
         anims: enemyAnims('shroomking', { idle: [4, 6, true], walk: [6, 8, true], attack: [5, 9, false, [1, 2, 2, 2, 3, 4, 4, 5]], skill: [5, 9, false, [1, 2, 2, 2, 2, 3, 4, 4, 5]], hit: [3, 10, false, [1, 2, 2, 3]], hit2: [3, 10, false, [1, 1, 2, 2, 3]], knockdown: [2, 8, false, [1, 2, 2, 2]], getup: [2, 8, false, [1, 2, 2]], death: [5, 7, false, [1, 1, 2, 2, 3, 4, 5]] }),
         fxArt: { spore: FX2('spore', 10), puddle: FX2('puddle', 10) },
         walkAnim: 'walk',
@@ -3614,6 +3621,7 @@
       // 11판 보스 저주받은 고목왕: 가지 두 번 쓸기 · 뿌리 덫 8줄 · 가시 비(하늘에서 가시창, 빨간 원) · 몸통 돌진 / 분노: 졸개(뿌리 괴물 · 독버섯 · 가시 정령) + 가시 비 10발
       treantking: {
         label: '저주받은 고목왕', frameW: 336, frameH: 247, pivot: { x: 154, y: 241 },
+        faceR: true,
         boss: true,
         anims: Object.assign(enemyAnims('treantking', { idle: [4, 5, true], walk: [6, 7, true], attack1: [5, 9, false, [1, 2, 2, 2, 3, 3, 4, 4, 5]], attack2: [5, 9, false, [1, 2, 2, 2, 3, 3, 4, 4, 5]], special: [6, 8, false, [1, 2, 2, 2, 2, 3, 4, 5, 6]], hit: [3, 8, false, [1, 2, 2, 3]], hit2: [3, 8, false, [1, 1, 2, 2, 3]], death: [5, 6, false, [1, 1, 2, 3, 4, 5, 5]] })),
         fxArt: { root: FX2('rootspike', 13), fall: FX2('thornfall', 13), blast: FX2('thornhit', 13) },
@@ -3642,6 +3650,7 @@
       // 12판 보스 가시덩굴 마녀: 지팡이 휘두르기 · 따라오는 해골불 3발 · 저주 문양(바닥이 보라로 터짐, 빨간 원) · 등 뒤 순간이동 / 분노: 졸개 + 해골불 5발 · 순간이동 자주
       witch: {
         label: '가시덩굴 마녀', frameW: 276, frameH: 206, pivot: { x: 114, y: 200 },
+        faceR: true,
         boss: true,
         anims: Object.assign(enemyAnims('witch', { idle: [4, 5, true], walk: [6, 7, true], attack1: [5, 9, false, [1, 2, 2, 2, 3, 3, 4, 4, 5]], attack2: [5, 9, false, [1, 2, 2, 2, 3, 3, 4, 4, 5]], special: [6, 8, false, [1, 2, 2, 2, 2, 3, 4, 5, 6]], hit: [3, 8, false, [1, 2, 2, 3]], hit2: [3, 8, false, [1, 1, 2, 2, 3]], death: [5, 6, false, [1, 1, 2, 3, 4, 5, 5]] }), { vanish: { frames: [EN + 'witch/special_01.png', EN + 'witch/special_02.png'], fps: 7, loop: false, playback: [1, 1, 2, 2] }, appear: { frames: [EN + 'witch/special_05.png', EN + 'witch/special_01.png'], fps: 7, loop: false, playback: [1, 1, 2, 2] } }),
         fxArt: { skull: FX2('skull', 13), blast: FX2('curseburst', 13) },
@@ -3689,6 +3698,7 @@
       // 수정 파수꾼(13·14): 떠 있는 수정 덩어리. 가시 찌르기 + 「수정 파편」(파편 3발이 세 줄로)
       turret: {
         label: '수정 파수꾼', frameW: 149, frameH: 129, pivot: { x: 56, y: 123 },
+        faceR: true,
         anims: enemyAnims('turret', { idle: [4, 6, true], walk: [6, 8, true], attack: [5, 10, false, [1, 2, 2, 2, 3, 4, 4, 5]], skill: [5, 10, false, [1, 2, 2, 2, 2, 3, 4, 4, 5]], hit: [3, 10, false, [1, 2, 2, 3]], hit2: [3, 10, false, [1, 1, 2, 2, 3]], knockdown: [5, 10, false, [1, 2, 3, 4, 5, 5]], getup: [3, 8, false, [1, 1, 2, 2, 3]], death: [5, 8, false] }),
         fxArt: { shard: FX2('shard', 14), burst: FX2('shatter', 14) },
         walkAnim: 'walk',
@@ -3708,6 +3718,7 @@
       // 수정 거미(13·14): 독니 + 「덮치기」(높이 뛰어 플레이어 자리로 떨어짐, 빨간 원 예고)
       spider: {
         label: '수정 거미', frameW: 179, frameH: 100, pivot: { x: 95, y: 94 },
+        faceR: true,
         anims: enemyAnims('spider', { idle: [4, 6, true], run: [6, 13, true], attack: [5, 10, false, [1, 2, 2, 2, 3, 4, 4, 5]], skill: [5, 10, false, [1, 2, 2, 2, 2, 3, 4, 4, 5]], hit: [3, 10, false, [1, 2, 2, 3]], hit2: [3, 10, false, [1, 1, 2, 2, 3]], knockdown: [5, 10, false, [1, 2, 3, 4, 5, 5]], getup: [3, 8, false, [1, 1, 2, 2, 3]], death: [5, 8, false] }),
         walkAnim: 'run',
         down: { slide: 70, lyingFrames: [4, 5] },
@@ -3724,6 +3735,7 @@
       // 13판 중간보스 수정 장수풍뎅이: 뿔 들이받기 · 뿔 돌진 · 수정 가시 줄
       rhinobeetle: {
         label: '수정 장수풍뎅이', frameW: 214, frameH: 126, pivot: { x: 85, y: 120 },
+        faceR: true,
         anims: enemyAnims('rhinobeetle', { idle: [4, 6, true], walk: [6, 8, true], attack: [5, 9, false, [1, 2, 2, 2, 3, 4, 4, 5]], skill: [5, 9, false, [1, 2, 2, 2, 2, 3, 4, 4, 5]], hit: [3, 10, false, [1, 2, 2, 3]], hit2: [3, 10, false, [1, 1, 2, 2, 3]], knockdown: [2, 8, false, [1, 2, 2, 2]], getup: [2, 8, false, [1, 2, 2]], death: [5, 7, false, [1, 1, 2, 2, 3, 4, 5]] }),
         fxArt: { spike: FX2('cspike', 13) },
         walkAnim: 'walk',
@@ -3744,6 +3756,7 @@
       // 14판 중간보스 수정 거미 여왕: 독니 · 수정 파편 5발 · 덮치기
       spiderqueen: {
         label: '수정 거미 여왕', frameW: 224, frameH: 120, pivot: { x: 95, y: 114 },
+        faceR: true,
         anims: enemyAnims('spiderqueen', { idle: [4, 6, true], walk: [6, 8, true], attack: [5, 9, false, [1, 2, 2, 2, 3, 4, 4, 5]], skill: [5, 9, false, [1, 2, 2, 2, 2, 3, 4, 4, 5]], hit: [3, 10, false, [1, 2, 2, 3]], hit2: [3, 10, false, [1, 1, 2, 2, 3]], knockdown: [2, 8, false, [1, 2, 2, 2]], getup: [2, 8, false, [1, 2, 2]], death: [5, 7, false, [1, 1, 2, 2, 3, 4, 5]] }),
         fxArt: { shard: FX2('shard', 14), hit: FX2('shatter', 14) },
         walkAnim: 'walk',
@@ -3764,6 +3777,7 @@
       // 13판 보스 수정 지네왕: 큰턱 물기 · 수정 파편 5발(분노 7발) · 머리 내려찍기 = 수정 가시 9줄 · 몸통 돌진 / 분노: 졸개(갑충 · 거미 · 파수꾼)
       centipede: {
         label: '수정 지네왕', frameW: 332, frameH: 202, pivot: { x: 166, y: 196 },
+        faceR: true,
         boss: true,
         anims: Object.assign(enemyAnims('centipede', { idle: [4, 5, true], walk: [6, 7, true], attack1: [5, 9, false, [1, 2, 2, 2, 3, 3, 4, 4, 5]], attack2: [5, 9, false, [1, 2, 2, 2, 3, 3, 4, 4, 5]], special: [5, 8, false, [1, 2, 2, 2, 2, 3, 4, 5]], hit: [3, 8, false, [1, 2, 2, 3]], hit2: [3, 8, false, [1, 1, 2, 2, 3]], death: [5, 6, false, [1, 1, 2, 3, 4, 5, 5]] })),
         fxArt: { shard: FX2('shard', 13), spike: FX2('cspike', 13), hit: FX2('shatter', 13) },
@@ -3793,6 +3807,7 @@
       // 14판 보스 수정 거신: 두 주먹 내려찍기 · 수정 덩어리 던지기 · 땅울림 수정 고리(뛰어넘기) · 종유석 비 / 분노: 졸개 + 고리 3겹 · 종유석 10개
       colossus: {
         label: '수정 거신', frameW: 322, frameH: 255, pivot: { x: 132, y: 249 },
+        faceR: true,
         boss: true,
         anims: Object.assign(enemyAnims('colossus', { idle: [4, 5, true], walk: [6, 7, true], attack1: [5, 9, false, [1, 2, 2, 2, 3, 3, 4, 4, 5]], attack2: [5, 9, false, [1, 2, 2, 2, 3, 3, 4, 4, 5]], special: [6, 8, false, [1, 2, 2, 2, 2, 3, 4, 5, 6]], hit: [3, 8, false, [1, 2, 2, 3]], hit2: [3, 8, false, [1, 1, 2, 2, 3]], death: [5, 6, false, [1, 1, 2, 3, 4, 5, 5]] })),
         fxArt: { rock: FX2('boulder', 12), ring: FX2('cring', 12), fall: FX2('stalac', 12), hit: FX2('shatter', 12) },
@@ -3820,6 +3835,7 @@
       // 심해 어인(15·16): 찌르기 + 「작살 던지기」(삼지창을 던짐, 바닥 줄 예고)
       fishman: {
         label: '심해 어인', frameW: 258, frameH: 112, pivot: { x: 109, y: 106 },
+        faceR: true,
         anims: enemyAnims('fishman', { idle: [4, 6, true], walk: [6, 9, true], attack: [5, 10, false, [1, 2, 2, 2, 3, 4, 4, 5]], skill: [5, 10, false, [1, 2, 2, 2, 2, 3, 4, 4, 5]], hit: [3, 10, false, [1, 2, 2, 3]], hit2: [3, 10, false, [1, 1, 2, 2, 3]], knockdown: [5, 10, false, [1, 2, 3, 4, 5, 5]], getup: [3, 8, false, [1, 1, 2, 2, 3]], death: [5, 8, false] }),
         fxArt: { harpoon: FX2('harpoon', 14), splash: FX2('splash', 14) },
         walkAnim: 'walk',
@@ -3838,6 +3854,7 @@
       // 전기 해파리(15·16): 촉수 채찍 + 「전기 파동」(몸에서 번개 고리가 퍼짐 — 뛰어넘으면 피함)
       jelly: {
         label: '전기 해파리', frameW: 173, frameH: 148, pivot: { x: 104, y: 142 },
+        faceR: true,
         anims: enemyAnims('jelly', { idle: [4, 6, true], fly: [6, 8, true], attack: [5, 10, false, [1, 2, 2, 2, 3, 4, 4, 5]], skill: [5, 10, false, [1, 2, 2, 2, 2, 3, 4, 4, 5]], hit: [3, 10, false, [1, 2, 2, 3]], hit2: [3, 10, false, [1, 1, 2, 2, 3]], knockdown: [5, 10, false, [1, 2, 3, 4, 5, 5]], getup: [3, 8, false, [1, 1, 2, 2, 3]], death: [5, 8, false] }),
         fxArt: { ring: FX2('ering', 12) },
         walkAnim: 'fly',
@@ -3857,6 +3874,7 @@
       // 게 기사(15·16): 집게 내려찍기 + 「물기둥」(땅을 치면 물기둥이 줄지어 솟음)
       crab: {
         label: '게 기사', frameW: 171, frameH: 106, pivot: { x: 67, y: 100 },
+        faceR: true,
         anims: enemyAnims('crab', { idle: [4, 6, true], walk: [6, 8, true], attack: [5, 10, false, [1, 2, 2, 2, 3, 4, 4, 5]], skill: [5, 10, false, [1, 2, 2, 2, 2, 3, 4, 4, 5]], hit: [3, 10, false, [1, 2, 2, 3]], hit2: [3, 10, false, [1, 1, 2, 2, 3]], knockdown: [5, 10, false, [1, 2, 3, 4, 5, 5]], getup: [3, 8, false, [1, 1, 2, 2, 3]], death: [5, 8, false] }),
         fxArt: { geyser: FX2('geyser', 13) },
         walkAnim: 'walk',
@@ -3874,6 +3892,7 @@
       // 15판 중간보스 어인 장군: 삼지창 쓸기 · 물줄기 뿜기 · 물기둥 줄
       fishlord: {
         label: '어인 장군', frameW: 239, frameH: 170, pivot: { x: 107, y: 164 },
+        faceR: true,
         anims: enemyAnims('fishlord', { idle: [4, 6, true], walk: [6, 8, true], attack: [5, 9, false, [1, 2, 2, 2, 3, 4, 4, 5]], skill: [5, 9, false, [1, 2, 2, 2, 2, 3, 4, 4, 5]], hit: [3, 10, false, [1, 2, 2, 3]], hit2: [3, 10, false, [1, 1, 2, 2, 3]], knockdown: [2, 8, false, [1, 2, 2, 2]], getup: [2, 8, false, [1, 2, 2]], death: [5, 7, false, [1, 1, 2, 2, 3, 4, 5]] }),
         fxArt: { jet: FX2('jet', 13), geyser: FX2('geyser', 13) },
         walkAnim: 'walk',
@@ -3894,6 +3913,7 @@
       // 16판 중간보스 해파리 여왕: 촉수 폭풍 · 번개 고리 2겹 · 낙뢰(빨간 원)
       jellyqueen: {
         label: '해파리 여왕', frameW: 222, frameH: 258, pivot: { x: 111, y: 252 },
+        faceR: true,
         anims: enemyAnims('jellyqueen', { idle: [4, 6, true], fly: [7, 8, true], attack: [5, 9, false, [1, 2, 2, 2, 3, 4, 4, 5]], skill: [5, 9, false, [1, 2, 2, 2, 2, 3, 4, 4, 5]], hit: [3, 10, false, [1, 2, 2, 3]], hit2: [3, 10, false, [1, 1, 2, 2, 3]], knockdown: [2, 8, false, [1, 2, 2, 2]], getup: [2, 8, false, [1, 2, 2]], death: [5, 7, false, [1, 1, 2, 2, 3, 4, 5]] }),
         fxArt: { ring: FX2('ering', 13), bolt: FX2('bolt', 13) },
         walkAnim: 'fly',
@@ -3916,6 +3936,7 @@
       // 15판 보스 심해 마녀: 촉수 쓸기 · 따라오는 먹물 구슬 3발 · 땅속 촉수 7줄 · 물기둥 비(빨간 원) / 분노: 졸개(어인 · 해파리 · 게) + 먹물 5발
       seawitch: {
         label: '심해 마녀', frameW: 264, frameH: 205, pivot: { x: 106, y: 199 },
+        faceR: true,
         boss: true,
         anims: Object.assign(enemyAnims('seawitch', { idle: [4, 5, true], walk: [6, 7, true], attack1: [5, 9, false, [1, 2, 2, 2, 3, 3, 4, 4, 5]], attack2: [5, 9, false, [1, 2, 2, 2, 3, 3, 4, 4, 5]], special: [6, 8, false, [1, 2, 2, 2, 2, 3, 4, 5, 6]], hit: [3, 8, false, [1, 2, 2, 3]], hit2: [3, 8, false, [1, 1, 2, 2, 3]], death: [5, 6, false, [1, 1, 2, 3, 4, 5, 5]] })),
         fxArt: { ink: FX2('ink', 13), splash: FX2('splash', 13), tent: FX2('tentacle', 13), geyser: FX2('geyser', 13) },
@@ -3945,6 +3966,7 @@
       // 16판 보스 해신 나가: 삼지창 연타 · 물줄기 뿜기 · 해일(바닥을 따라 오는 큰 파도, 뛰어넘기) · 물속으로 사라져 등 뒤에서 / 분노: 졸개 + 해일 2번
       naga: {
         label: '해신 나가', frameW: 305, frameH: 211, pivot: { x: 120, y: 205 },
+        faceR: true,
         boss: true,
         anims: Object.assign(enemyAnims('naga', { idle: [4, 5, true], walk: [6, 7, true], attack1: [5, 9, false, [1, 2, 2, 2, 3, 3, 4, 4, 5]], attack2: [5, 9, false, [1, 2, 2, 2, 3, 3, 4, 4, 5]], special: [6, 8, false, [1, 2, 2, 2, 2, 3, 4, 5, 6]], hit: [3, 8, false, [1, 2, 2, 3]], hit2: [3, 8, false, [1, 1, 2, 2, 3]], death: [5, 6, false, [1, 1, 2, 3, 4, 5, 5]] }), { vanish: { frames: [EN + 'naga/special_01.png', EN + 'naga/special_02.png'], fps: 7, loop: false, playback: [1, 1, 2, 2] }, appear: { frames: [EN + 'naga/special_04.png', EN + 'naga/special_03.png'], fps: 7, loop: false, playback: [1, 1, 2, 2] } }),
         fxArt: { jet: FX2('jet', 12), tide: FX2('tide', 12) },
@@ -3992,6 +4014,7 @@
       // 먹구름 정령(17·18): 구름 주먹 + 「돌풍」(바닥을 쓸고 오는 바람 — 맞으면 멀리 밀려남, 뛰어넘기)
       cloud: {
         label: '먹구름 정령', frameW: 144, frameH: 144, pivot: { x: 57, y: 138 },
+        faceR: true,
         anims: enemyAnims('cloud', { idle: [4, 6, true], fly: [6, 8, true], attack: [5, 10, false, [1, 2, 2, 2, 3, 4, 4, 5]], skill: [5, 10, false, [1, 2, 2, 2, 2, 3, 4, 4, 5]], hit: [3, 10, false, [1, 2, 2, 3]], hit2: [3, 10, false, [1, 1, 2, 2, 3]], knockdown: [5, 10, false, [1, 2, 3, 4, 5, 5]], getup: [3, 8, false, [1, 1, 2, 2, 3]], death: [5, 8, false] }),
         fxArt: { gust: FX2('gust', 12) },
         walkAnim: 'fly',
@@ -4011,6 +4034,7 @@
       // 석상 가고일(17·18): 할퀴기 + 「낙하 강타」(날아올라 플레이어 자리로 내리꽂힘, 빨간 원)
       gargoyle: {
         label: '석상 가고일', frameW: 160, frameH: 104, pivot: { x: 82, y: 98 },
+        faceR: true,
         anims: enemyAnims('gargoyle', { idle: [4, 6, true], walk: [6, 8, true], attack: [5, 10, false, [1, 2, 2, 2, 3, 4, 4, 5]], skill: [5, 10, false, [1, 2, 2, 2, 2, 3, 4, 4, 5]], hit: [3, 10, false, [1, 2, 2, 3]], hit2: [3, 10, false, [1, 1, 2, 2, 3]], knockdown: [4, 10, false, [1, 2, 3, 4, 4]], getup: [3, 8, false, [1, 1, 2, 2, 3]], death: [5, 8, false] }),
         walkAnim: 'walk',
         down: { slide: 70, lyingFrames: [3, 4] },
@@ -4027,6 +4051,7 @@
       // 17판 중간보스 하피 여왕: 발톱 할퀴기 · 낙뢰 5번 · 번개 깃털 5발
       harpyqueen: {
         label: '하피 여왕', frameW: 282, frameH: 236, pivot: { x: 129, y: 230 },
+        faceR: true,
         anims: enemyAnims('harpyqueen', { idle: [4, 6, true], fly: [6, 8, true], attack: [5, 9, false, [1, 2, 2, 2, 3, 4, 4, 5]], skill: [5, 9, false, [1, 2, 2, 2, 2, 3, 4, 4, 5]], hit: [3, 10, false, [1, 2, 2, 3]], hit2: [3, 10, false, [1, 1, 2, 2, 3]], knockdown: [2, 8, false, [1, 2, 2, 2]], getup: [2, 8, false, [1, 2, 2]], death: [5, 7, false, [1, 1, 2, 2, 3, 4, 5]] }),
         fxArt: { bolt: FX2('bolt', 13), feather: FX2('feather', 13) },
         walkAnim: 'fly',
@@ -4049,6 +4074,7 @@
       // 18판 중간보스 가고일 군주: 미늘창 내려찍기 · 낙하 강타 · 미늘창으로 땅 쳐서 번개 고리
       gargoylelord: {
         label: '가고일 군주', frameW: 272, frameH: 166, pivot: { x: 133, y: 160 },
+        faceR: true,
         anims: enemyAnims('gargoylelord', { idle: [4, 6, true], walk: [6, 8, true], attack: [5, 9, false, [1, 2, 2, 2, 3, 4, 4, 5]], skill: [5, 9, false, [1, 2, 2, 2, 2, 3, 4, 4, 5]], hit: [3, 10, false, [1, 2, 2, 3]], hit2: [3, 10, false, [1, 1, 2, 2, 3]], knockdown: [2, 8, false, [1, 2, 2, 2]], getup: [2, 8, false, [1, 2, 2]], death: [5, 7, false, [1, 1, 2, 2, 3, 4, 5]] }),
         fxArt: { ring: FX2('ering', 12) },
         walkAnim: 'walk',
@@ -4132,6 +4158,7 @@
       // 공허 사도(19·20): 「따라오는 공허 구체」 2발(플레이어 줄로 천천히 꺾임)
       voidpriest: {
         label: '공허 사도', frameW: 161, frameH: 137, pivot: { x: 89, y: 131 },
+        faceR: true,
         anims: enemyAnims('voidpriest', { idle: [4, 6, true], walk: [6, 8, true], skill: [5, 10, false, [1, 2, 2, 2, 2, 3, 4, 4, 5]], hit: [3, 10, false, [1, 2, 2, 3]], hit2: [3, 10, false, [1, 1, 2, 2, 3]], knockdown: [5, 10, false, [1, 2, 3, 4, 5, 5]], getup: [3, 8, false, [1, 1, 2, 2, 3]], death: [5, 8, false] }),
         fxArt: { orb: FX2('vorb', 14), blast: FX2('vblast', 14) },
         walkAnim: 'walk',
@@ -4151,6 +4178,7 @@
       // 공허 사냥개(19·20): 뛰어들어 물기 + 「그림자 도약」(연기로 사라져 등 뒤에서 나타나 물기 — 바닥 빨간 원 예고)
       hound: {
         label: '공허 사냥개', frameW: 190, frameH: 95, pivot: { x: 95, y: 89 },
+        faceR: true,
         anims: Object.assign(enemyAnims('hound', { idle: [4, 6, true], run: [6, 14, true], attack: [5, 10, false, [1, 2, 2, 2, 3, 4, 4, 5]], skill: [5, 10, false, [1, 2, 2, 2, 2, 3, 4, 4, 5]], hit: [3, 10, false, [1, 2, 2, 3]], hit2: [3, 10, false, [1, 1, 2, 2, 3]], knockdown: [5, 10, false, [1, 2, 3, 4, 5, 5]], getup: [3, 8, false, [1, 1, 2, 2, 3]], death: [4, 8, false] }), { vanish: { frames: [EN + 'hound/skill_01.png', EN + 'hound/skill_02.png', EN + 'hound/skill_03.png'], fps: 9, loop: false, playback: [1, 1, 2, 2, 3] }, appear: { frames: [EN + 'hound/skill_04.png', EN + 'hound/skill_05.png'], fps: 9, loop: false, playback: [1, 1, 2, 2] } }),
         walkAnim: 'run',
         down: { slide: 70, lyingFrames: [4, 5] },
@@ -4168,6 +4196,7 @@
       // 심연 촉수괴(19·20): 촉수 채찍 + 「땅속 촉수」(바닥 틈에서 촉수가 줄지어 솟음)
       horror: {
         label: '심연 촉수괴', frameW: 214, frameH: 147, pivot: { x: 89, y: 141 },
+        faceR: true,
         anims: enemyAnims('horror', { idle: [4, 6, true], walk: [6, 8, true], attack: [5, 10, false, [1, 2, 2, 2, 3, 4, 4, 5]], skill: [5, 10, false, [1, 2, 2, 2, 2, 3, 4, 4, 5]], hit: [3, 10, false, [1, 2, 2, 3]], hit2: [3, 10, false, [1, 1, 2, 2, 3]], knockdown: [5, 10, false, [1, 2, 3, 4, 5, 5]], getup: [3, 8, false, [1, 1, 2, 2, 3]], death: [5, 8, false] }),
         fxArt: { tent: FX2('tentacle', 13) },
         walkAnim: 'walk',
@@ -4185,6 +4214,7 @@
       // 19판 중간보스 쌍두 사냥개: 두 머리 물기 · 그림자 도약(등 뒤) · 돌진
       houndalpha: {
         label: '쌍두 사냥개', frameW: 240, frameH: 150, pivot: { x: 105, y: 144 },
+        faceR: true,
         anims: Object.assign(enemyAnims('houndalpha', { idle: [4, 6, true], walk: [6, 8, true], attack: [5, 9, false, [1, 2, 2, 2, 3, 4, 4, 5]], skill: [5, 9, false, [1, 2, 2, 2, 2, 3, 4, 4, 5]], hit: [3, 10, false, [1, 2, 2, 3]], hit2: [3, 10, false, [1, 1, 2, 2, 3]], knockdown: [2, 8, false, [1, 2, 2, 2]], getup: [2, 8, false, [1, 2, 2]], death: [5, 7, false, [1, 1, 2, 2, 3, 4, 5]] }), { vanish: { frames: [EN + 'houndalpha/skill_01.png', EN + 'houndalpha/skill_02.png', EN + 'houndalpha/skill_03.png'], fps: 9, loop: false, playback: [1, 1, 2, 2, 3] }, appear: { frames: [EN + 'houndalpha/skill_04.png', EN + 'houndalpha/skill_05.png'], fps: 9, loop: false, playback: [1, 1, 2, 2] } }),
         walkAnim: 'walk',
         down: { slide: 60, lyingFrames: [2] },
@@ -4205,6 +4235,7 @@
       // 20판 중간보스 공허 대사제: 지팡이 내려치기 · 따라오는 구체 4발 · 땅속 촉수 6줄
       archpriest: {
         label: '공허 대사제', frameW: 221, frameH: 179, pivot: { x: 91, y: 173 },
+        faceR: true,
         anims: enemyAnims('archpriest', { idle: [4, 6, true], walk: [4, 8, true], attack: [5, 9, false, [1, 2, 2, 2, 3, 4, 4, 5]], skill: [5, 9, false, [1, 2, 2, 2, 2, 3, 4, 4, 5]], hit: [3, 10, false, [1, 2, 2, 3]], hit2: [3, 10, false, [1, 1, 2, 2, 3]], knockdown: [2, 8, false, [1, 2, 2, 2]], getup: [2, 8, false, [1, 2, 2]], death: [5, 7, false, [1, 1, 2, 2, 3, 4, 5]] }),
         fxArt: { orb: FX2('vorb', 13), blast: FX2('vblast', 13), tent: FX2('tentacle', 13) },
         walkAnim: 'walk',
@@ -4226,6 +4257,7 @@
       // 19판 보스 심연의 눈: 촉수 연타 · 눈빛 광선 · 따라오는 구체 4발(분노 6발) · 땅속 촉수 8줄 · 공허 운석 비 / 분노: 졸개(사냥개 · 촉수괴 · 사도)
       abysseye: {
         label: '심연의 눈', frameW: 266, frameH: 256, pivot: { x: 94, y: 250 },
+        faceR: true,
         boss: true,
         anims: Object.assign(enemyAnims('abysseye', { idle: [4, 5, true], walk: [6, 7, true], attack1: [5, 9, false, [1, 2, 2, 2, 3, 3, 4, 4, 5]], attack2: [6, 9, false, [1, 2, 2, 2, 3, 3, 4, 4, 5, 6]], special: [6, 8, false, [1, 2, 2, 2, 2, 3, 4, 5, 6]], hit: [3, 8, false, [1, 2, 2, 3]], hit2: [3, 8, false, [1, 1, 2, 2, 3]], death: [6, 6, false, [1, 1, 2, 3, 4, 5, 6, 6]] })),
         fxArt: { beam: FX2('beam', 13), orb: FX2('vorb', 13), blast: FX2('vblast', 13), tent: FX2('tentacle', 13), meteor: FX2('meteor', 13) },
@@ -4258,6 +4290,7 @@
       // 20판 보스 공허의 마왕(마지막): 낫창 연타 · 공허 초승달(분노 3줄) · 공허 운석 비 · 땅속 촉수 10줄 · 공허 고리 · 등 뒤 순간이동 / 절반에서 각성(오라 + 밀어냄) + 졸개 4
       voidlord: {
         label: '공허의 마왕', frameW: 548, frameH: 270, pivot: { x: 274, y: 264 },
+        faceR: true,
         boss: true,
         anims: Object.assign(enemyAnims('voidlord', { idle: [4, 5, true], walk: [6, 7, true], attack1: [5, 9, false, [1, 2, 2, 2, 3, 3, 4, 4, 5]], attack2: [5, 9, false, [1, 2, 2, 2, 3, 3, 4, 4, 5]], special: [6, 8, false, [1, 2, 2, 2, 2, 3, 4, 5, 6]], hit: [3, 8, false, [1, 2, 2, 3]], hit2: [3, 8, false, [1, 1, 2, 2, 3]], death: [5, 6, false, [1, 1, 2, 3, 4, 5, 5]], awaken: [4, 6, false, [1, 1, 2, 2, 3, 3, 3, 4, 4]], rift: [5, 8, false, [1, 2, 2, 2, 3, 4, 4, 4, 5]] }), { vanish: { frames: [EN + 'voidlord/vanish_01.png', EN + 'voidlord/vanish_02.png'], fps: 7, loop: false, playback: [1, 1, 1, 2, 2, 2] }, appear: { frames: [EN + 'voidlord/vanish_03.png', EN + 'voidlord/vanish_04.png'], fps: 7, loop: false, playback: [1, 1, 1, 2, 2, 2] } }),
         fxArt: { wave: FX2('crescent', 12), meteor: FX2('meteor', 12), blast: FX2('vblast', 12), tent: FX2('tentacle', 12), ring: FX2('vring', 12), aura: FX2('aura', 12) },

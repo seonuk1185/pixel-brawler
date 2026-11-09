@@ -6,7 +6,7 @@
 //   + 8단계 유령 기사(내려베기·옅어져 돌진 찌르기) · 흡혈 백작(보스, 발톱·박쥐 떼·안개 순간이동 물어 빨기)
 //   + 9단계 마족 병사(방패 막기·미늘창) · 흑마법사(멀리서 암흑 구체) · 마왕군 장군(보스, 대검 두 번·돌진 찌르기·칼 꽂기 화염 충격파)
 //   + 10단계 마왕(마지막 보스, 대검 세 번·초승달 파동·암흑 구슬 비·어둠 순간이동, 절반에서 각성 + 오라). 수치는 전부 config.js 의 enemies.
-// 그림은 전부 「왼쪽을 봄」 → 그릴 때 ctx.scale(-dir, 1)  (dir = 1 이면 오른쪽을 봄)
+// 그림은 전부 「왼쪽을 봄」 → 그릴 때 ctx.scale(-dir, 1)  (dir = 1 이면 오른쪽을 봄). 예외: config faceR = 오른쪽을 보는 그림(11~20판 AI 그림) → 한 번 더 뒤집음
 (function () {
   var uid = 0;
   function rand(a, b) { return a + Math.random() * (b - a); }
@@ -1288,7 +1288,9 @@
     var ds = T.drawScale || 1;    // 6단계 선장: 그림만 조금 크게(판정은 config 에서 같이 키움)
     // 걷기 그림 장마다 높이 맞춤(T.walkDy = 그림 점, + 아래로): 발이 땅에서 뜬 장을 바닥에 붙임(마왕 1장·전갈 2~6장)
     if (T.walkDy && T.walkStride && this.state === 'walk') { var wdy = T.walkDy[this.walkIdx()] || 0; if (wdy) g.translate(0, snapPx(wdy * AS() * ds)); }
-    g.scale(-this.dir * ds, ds);  // 그림이 왼쪽을 보므로 반대로
+    // faceR(2026-11-09, 11~20판 AI 그림 대부분) = 그림이 오른쪽을 봄 → 한 번 더 뒤집어 늘 바라보는 쪽(dir)을 보게
+    var fR = T.faceR ? -1 : 1;
+    g.scale(-this.dir * ds * fR, ds);  // 그림이 왼쪽을 보므로 반대로
     var rage = this.rageK();      // 보스 분노(마왕 각성 빼고): 몸 뒤 일렁이는 불꽃 테두리
     if (rage > 0) drawRageAura(g, img, T.pivot, rage, this.clock, this.rageColor());
     var rim = (auk > 0 && T.awaken.rim) || T.rim;   // 마왕은 각성 뒤 붉은 보랏빛 테두리
@@ -1304,7 +1306,7 @@
       Assets.blit(g, img, T.pivot.x, T.pivot.y, redSilhouette(img));
       g.globalAlpha = alpha;
     }
-    if (this.state === 'attack' && this.atk.spec.type === 'breath') this.drawBreath(g);   // 불 뿜기: 입 앞 불길(몸과 같은 좌표 = 왼쪽을 보는 그림 기준)
+    if (this.state === 'attack' && this.atk.spec.type === 'breath') { if (fR < 0) { g.save(); g.scale(-1, 1); } this.drawBreath(g); if (fR < 0) g.restore(); }   // 불 뿜기: 입 앞 불길(몸과 같은 좌표 = 왼쪽을 보는 그림 기준, faceR 이면 뒤집기 전 좌표로)
     if (chk > 0) {   // 기 모으기: 몸이 점점 붉게 물듦(실루엣을 붉게 칠해 겹침)
       g.globalAlpha = alpha * 0.5 * chk * (0.85 + 0.15 * Math.sin(this.clock / 50));
       Assets.blit(g, img, T.pivot.x, T.pivot.y, redSilhouette(img));

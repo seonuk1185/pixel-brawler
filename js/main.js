@@ -1638,9 +1638,11 @@
   // 플레이어 공격 탄(Projectiles)과 따로: 적이 던진 것. { e: 던진 적, s: 공격 수치, x0,y0: 출발(땅 줄), h0: 출발 높이, tx,ty: 떨어질 자리, t }
   //   3단계 두꺼비 독 뱉기도 같은 길: s.proj / s.burstArt = 날아가는 그림 / 터지는 그림 이름(fxArt, 없으면 골렘 바위), s.puddle = 떨어진 자리에 독 웅덩이
   var rocks = [];
+  // faceR(2026-11-09, config FX2R): 오른쪽으로 날아가는 그림(11~20판 AI 효과) → 뒤집기를 반대로. 그림 이름 = 적 config fxArt 의 이름
+  function fxFaceR(e, name) { var A = e.T && e.T.fxArt && e.T.fxArt[name]; return !!(A && A.faceR); }
   function throwRock(e, s, tx, ty) {
     var F = G.assets.enemyFx && G.assets.enemyFx[e.type];
-    rocks.push({ e: e, s: s, x0: e.x + e.dir * s.spawn.x, y0: e.y, h0: -s.spawn.y, tx: tx, ty: ty, t: 0, dir: e.dir,
+    rocks.push({ e: e, s: s, x0: e.x + e.dir * s.spawn.x, y0: e.y, h0: -s.spawn.y, tx: tx, ty: ty, t: 0, dir: e.dir, fr: fxFaceR(e, s.proj || 'boulder'),
                  art: F && F[s.proj || 'boulder'], burst: F && (s.burstArt !== undefined ? F[s.burstArt] : F.rockburst) });
   }
   function rockPos(r) {
@@ -1717,7 +1719,7 @@
       var q = rockPos(r), A = r.art, x = snap(q.x - camX), y = snap(q.gy - q.z);
       if (!A || !A.frames.length) { ctx.fillStyle = '#6a6458'; ctx.fillRect(x - 8, y - 8, 16, 16); return; }
       var im = A.frames[Math.floor(r.t * A.fps / 1000) % A.frames.length];
-      ctx.save(); ctx.translate(x, y); if (r.dir > 0) ctx.scale(-1, 1);   // 그림은 왼쪽으로 돌며 날아감 → 오른쪽으로 던지면 뒤집기
+      ctx.save(); ctx.translate(x, y); if ((r.dir > 0) !== r.fr) ctx.scale(-1, 1);   // 그림은 왼쪽으로 돌며 날아감 → 오른쪽으로 던지면 뒤집기(fr = 오른쪽으로 나는 그림이면 반대)
       Assets.blit(ctx, im, A.pivot.x, A.pivot.y); ctx.restore();
     });
   }
@@ -1737,7 +1739,7 @@
   function fireShot(e, s, o) {
     var F = G.assets.enemyFx && G.assets.enemyFx[e.type];
     var mx = e.x + e.dir * s.spawn.x, my = e.y + s.spawn.y, z = clamp(e.y + ((o && o.dz) || 0), world.laneTop, world.laneBottom);
-    shots.push({ e: e, s: s, x: mx, z: z, h0: -s.spawn.y, h: -s.spawn.y, dir: e.dir, trav: 0, t: 0, wait: (o && o.wait) || 0, sc: (o && o.scale) || 1,
+    shots.push({ e: e, s: s, x: mx, z: z, h0: -s.spawn.y, h: -s.spawn.y, dir: e.dir, trav: 0, t: 0, wait: (o && o.wait) || 0, sc: (o && o.scale) || 1, fr: fxFaceR(e, s.proj || 'bullet'),
                  art: F && F[s.proj || 'bullet'], imp: F && s.impact ? F[s.impact] : null });
     if (o && o.wait) return;   // 늦게 나가는 무리: 연기·불꽃은 첫 무리 때만
     snd('enemyShot');
@@ -1776,7 +1778,7 @@
         }
         if (b.trav >= s.range - 0.01) {   // 끝까지 날아간 불덩이도 그 자리에서 터짐 / 파동은 흩어지는 그림 한 장
           if (!gone && b.imp) shotImpact(b);
-          if (s.projEnd && b.art && b.art.frames[s.projEnd - 1]) FX.sprite(b.x, b.z - b.h, [b.art.frames[s.projEnd - 1]], 7, b.art.pivot, b.dir > 0, false);
+          if (s.projEnd && b.art && b.art.frames[s.projEnd - 1]) FX.sprite(b.x, b.z - b.h, [b.art.frames[s.projEnd - 1]], 7, b.art.pivot, (b.dir > 0) !== b.fr, false);
           gone = true;
         }
       }
@@ -1792,7 +1794,7 @@
       if (!A || !A.frames.length) { ctx.fillStyle = '#fff2a0'; ctx.fillRect(x - 2, y - 1, 4, 3); return; }
       var fi = Math.floor(b.t * A.fps / 1000), L = b.s.projLoop;
       var im = L ? A.frames[(fi < 1 ? 1 : L[(fi - 1) % L.length]) - 1] : A.frames[fi % A.frames.length];   // projLoop: 1장 → 2·3장 반복(10단계 파동)
-      ctx.save(); ctx.translate(x, y); ctx.scale(b.dir > 0 ? -b.sc : b.sc, b.sc);   // 그림은 왼쪽으로 날아감(꼬리가 오른쪽) → 오른쪽으로 쏘면 뒤집기. sc = 작은 박쥐 무리
+      ctx.save(); ctx.translate(x, y); ctx.scale((b.dir > 0) !== b.fr ? -b.sc : b.sc, b.sc);   // 그림은 왼쪽으로 날아감(꼬리가 오른쪽) → 오른쪽으로 쏘면 뒤집기(fr = 오른쪽으로 나는 그림이면 반대). sc = 작은 박쥐 무리
       Assets.blit(ctx, im, A.pivot.x, A.pivot.y); ctx.restore();
     });
   }
