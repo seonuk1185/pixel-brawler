@@ -1591,6 +1591,56 @@
     }
   };
   Object.keys(T3_SKILLS).forEach(function (c) { Object.keys(T3_SKILLS[c]).forEach(function (k) { SKILLS[c][k] = T3_SKILLS[c][k]; }); });
+  // ---- 마검왕(기사 3차 갈래 b, 2026-11-10): 보라 · 검정 마력 검. 그림 = t3_mk_*(AI) + 2차 마검사 그림(msword · rift · unleash) ----
+  // 마검 십자참(50 ↔ 성검 파도 8.1): 보라 X자 마력 베기 둘이 나란히 화면을 가로지름 3.9 x 2 = 7.8 (꿰뚫음), 끝에서 마력 터짐(그림만)
+  var MK_X = { dmg: 3.9, hitstop: 1.0, knock: 1.4, shake: 1.8, spark: 1.3, big: true, hitsDown: true, flash: { color: '#e0c8ff', alpha: 0.18, ms: 80 } };
+  // 떠도는 마검(52, 늘 켜짐): 몸 둘레 마검이 몇 초마다 저절로 가까운 적에게 꽂힘(이 값 x passive.mul)
+  var MK_AUTO = { dmg: 1.8, hitstop: 0.5, knock: 0.8, shake: 0.7, spark: 1.1, big: true, hitsDown: true, noRage: true, noMp: true, numStyle: 'push', t3Auto: true };
+  // 마검 폭우(53 ↔ 천검 강림): 화면 안 적마다 거대 마검 0.85 x 6 + 마지막 마검 3.0 = 8.1
+  var MK_RAIN = { dmg: 0.85, hitstop: 0.3, knock: 0.2, shake: 0.6, spark: 1.0, hitsDown: true, noRage: true, noJuggle: true };
+  var MK_RAIN_LAST = { dmg: 3.0, hitstop: 1.8, knock: 2.0, shake: 2.6, knockdown: true, stunMs: 300, spark: 1.6, big: true, hitsDown: true, flash: { color: '#e0c8ff', alpha: 0.35, ms: 140 } };
+  // 차원 붕괴(55 ↔ 일섬 9.4): 앞으로 차원 균열 다섯이 줄지어 터짐 1.6(한 적은 보통 둘 = 3.2) + 마지막 큰 균열 5.6 = 8.8
+  var MK_RIFT = { dmg: 1.6, hitstop: 0.8, knock: 0.6, shake: 1.2, spark: 1.2, big: true, hitsDown: true, noJuggle: true };
+  var MK_RIFT_LAST = { dmg: 5.6, hitstop: 2.6, knock: 2.6, shake: 3.4, knockdown: true, stunMs: 300, spark: 1.8, big: true, hitsDown: true, launch: 1.0, slowMs: 260 };
+  // 마검왕 강림(58 필살 ↔ 천상의 심판 17.5): 하늘의 작은 마력 0.5 x 5 → 거대 마검이 꽂힘 2.0 → 마력 대폭발 + 검은 파동 13 (화면 안 모든 적)
+  var MK_KING_PRE = SS_JUDGE_PRE, MK_KING_HIT = SS_JUDGE_HIT;
+  var MK_KING_WAVE = { dmg: 13, hitstop: 3.4, knock: 3.0, shake: 6.0, knockdown: true, stunMs: 700, spark: 2.4, big: true, hitsDown: true, launch: 1.0,
+                       flash: { color: '#f0e0ff', alpha: 0.85, ms: 320 }, slowMs: 520 };
+  T3_SKILLS.knight.mkcross = {
+    name: '마검 십자참', icon: '십', mp: 34, cooldownMs: 11000, damageStyle: 'skill_arcane', motion: 'motion_spin', sfx: 'skSpin',
+    desc: '(3차) 한 바퀴 돌며 보라빛 X자 마력 베기 둘을 날려요. 화면 끝까지 가르며 닿는 적을 모두 꿰뚫고, 끝에서 마력이 터져요',
+    lv5: { n: 3, say: '마력 베기 2 → 3줄기' },
+    darken: { ms: 700, alpha: 0.5 }, iframes: [0, 600], zoom: { k: 1.03, ms: 500 },
+    t3: { kind: 'sswave', frame: 5, n: 2, lanes: [-12, 12, 0], gapMs: 90, x: 30, speed: 540, range: 400, w: 64, depth: 26, hit: MK_X, chainPad: 200,
+          art: 't3_mk_x', frames: [1, 2], sx: 0.9, hitArt: 'msword_hit', boom: 't3_mk_boom', boomSx: 1.4, color: '#c890ff' }
+  };
+  T3_SKILLS.knight.mkrain = {
+    name: '마검 폭우', icon: '우', mp: 40, cooldownMs: 15000, damageStyle: 'skill_arcane', motion: 'motion_upper', sfx: 'skHoly',
+    motionSeq: [0, 1, 2, 2, 3], motionMs: [110, 60, 520, 300, 160],
+    desc: '(3차) 칼을 치켜들면 화면 안 모든 적 위로 거대한 마검이 쏟아져 꽂혀요. 마지막에 한 번 더 크게 꽂히며 마력이 터져요',
+    lv5: { n: 8, say: '쏟아지는 마검 6 → 8번' },
+    darken: { ms: 1600, alpha: 0.6 }, iframes: [0, 1000], zoom: { k: 1.04, ms: 1000 },
+    t3: { kind: 'ssrain', frame: 2, n: 6, gapMs: 150, fallMs: 160, hit: MK_RAIN, last: MK_RAIN_LAST, chainPad: 900,
+          fall: 't3_mk_sword', fallSx: 0.55, impact: 'msword_hit', impactSx: 1.0, bigHit: 't3_mk_boom', bigSx: 1.2, color: '#c890ff' }
+  };
+  T3_SKILLS.knight.mkrift = {
+    name: '차원 붕괴', icon: '붕', mp: 44, cooldownMs: 16000, damageStyle: 'skill_arcane', motion: 'motion_dash', sfx: 'skDash',
+    desc: '(3차) 칼을 땅에 긋자 앞으로 차원 균열이 다섯 번 줄지어 터져요. 마지막 균열은 크게 터지며 적을 띄워요',
+    lv5: { n: 6, say: '균열 5 → 6번' },
+    darken: { ms: 1100, alpha: 0.55 }, iframes: [0, 800], zoom: { k: 1.04, ms: 800 },
+    t3: { kind: 'mkrift', frame: 3, n: 5, x: 50, step: 46, gapMs: 110, r: 36, depth: 36, hit: MK_RIFT, last: MK_RIFT_LAST, chainPad: 700 }
+  };
+  T3_SKILLS.knight.mkking = {
+    name: '마검왕 강림', icon: '왕', mp: 60, cooldownMs: 40000, damageStyle: 'skill_arcane', motion: 'motion_upper', sfx: 'charge',
+    motionSeq: [0, 1, 2, 2, 2, 3], motionMs: [160, 80, 700, 600, 500, 220],
+    desc: '(3차 필살) 하늘이 보랏빛으로 갈라지고 거대한 마검이 내려와 꽂혀요. 마력 대폭발과 검은 파동이 화면 안 모든 적을 휩쓸어요',
+    lv5: { area: 1.25, say: '폭발 크기 +25%' },
+    darken: { ms: 3400, alpha: 0.78 }, iframes: [0, 2200], zoom: { k: 1.08, ms: 2000 },
+    t3: { kind: 'ssjudge', frame: 2, n: 5, gapMs: 110, pre: MK_KING_PRE, hit: MK_KING_HIT, wave: MK_KING_WAVE, x: 110, chainPad: 1600,
+          sword: 't3_mk_sword', swordSx: 1.5, swordLoop: true, impact: 'msword_hit', impactSx: 2.4, boom: 't3_mk_boom', boomSx: 3.6,
+          groundWave: 'unleash_wave', groundSx: 0.8, hitArt: 'msword_hit', hitSx: 0.9, cols: ['#ffffff', '#d8b0ff', '#8a3aff'], flash: '#f0e0ff' }
+  };
+  Object.keys(T3_SKILLS.knight).forEach(function (k) { SKILLS.knight[k] = T3_SKILLS.knight[k]; });
 
   // ---------- 기술 책 (성장 4단계, 2026-11-06, 기획\성장시스템-설계안.md) : 직업마다 11개 = 쓰는 기술(active) 7 + 늘 켜진 기술(passive) 4 (2026-11-06 기사 칼날 폭풍 넣음) ----------
   // 순서 = 기술 창에 나오는 순서. unlock = 그 레벨이 되면 열림(0 = 전직 즉시). 전직 뒤 대략 2레벨마다 하나 → Lv23 에 다 열림(기사·법사 11개)
@@ -1640,7 +1690,11 @@
                     wave: ['마검기', '맞은 자리에 0.45초 뒤 작은 마력 터짐 · 맞히면 마나 1 돌려받음(한 번에 4까지)'],
                     spin: ['마력 회전베기', '맞은 자리에 0.45초 뒤 작은 마력 터짐 · 맞히면 마나 1 돌려받음(한 번에 4까지)'],
                     slam: ['마력 내려찍기', '맞은 자리에 0.45초 뒤 작은 마력 터짐 · 맞히면 마나 1 돌려받음(한 번에 4까지)'],
-                    thrust: ['마검 찌르기', '맞은 자리에 0.45초 뒤 작은 마력 터짐 · 맞히면 마나 1 돌려받음(한 번에 4까지)'] } }
+                    thrust: ['마검 찌르기', '맞은 자리에 0.45초 뒤 작은 마력 터짐 · 맞히면 마나 1 돌려받음(한 번에 4까지)'] },
+           // 3차 맛(2026-11-10, 마검왕 Lv50 뒤): 이름이 한 번 더 바뀌고 크기 +20%(마검사 덤 그대로)
+           t3: { tag: '마검왕', color: '#d8b0ff', tw: { area: 1.2 },
+                 names: { dash: ['마왕 돌진', '(3차 마검왕) 효과 · 판정 크기 +20% · 맞은 자리 늦게 마력 터짐 · 맞히면 마나 돌려받음'], upper: ['마왕 올려베기', '(3차 마검왕) 효과 · 판정 크기 +20% · 맞은 자리 늦게 마력 터짐 · 맞히면 마나 돌려받음'], wave: ['마왕검기', '(3차 마검왕) 효과 · 판정 크기 +20% · 맞은 자리 늦게 마력 터짐 · 맞히면 마나 돌려받음'], spin: ['마왕 회전베기', '(3차 마검왕) 효과 · 판정 크기 +20% · 맞은 자리 늦게 마력 터짐 · 맞히면 마나 돌려받음'], slam: ['마왕 내려찍기', '(3차 마검왕) 효과 · 판정 크기 +20% · 맞은 자리 늦게 마력 터짐 · 맞히면 마나 돌려받음'],
+                          thrust: ['마왕 찌르기', '(3차 마검왕) 효과 · 판정 크기 +20% · 맞은 자리 늦게 마력 터짐 · 맞히면 마나 돌려받음'], arcwave: ['대마력 검기', '(3차 마검왕) 효과 · 판정 크기 +20% · 맞은 자리 늦게 마력 터짐 · 맞히면 마나 돌려받음'], rift: ['차원 절단', '(3차 마검왕) 효과 · 판정 크기 +20% · 맞은 자리 늦게 마력 터짐 · 맞히면 마나 돌려받음'], msword: ['마검 군단', '(3차 마검왕) 효과 · 판정 크기 +20% · 맞은 자리 늦게 마력 터짐 · 맞히면 마나 돌려받음'], unleash: ['마검 대해방', '(3차 마검왕) 효과 · 판정 크기 +20% · 맞은 자리 늦게 마력 터짐 · 맞히면 마나 돌려받음'] } } }
     },
     mage: {
       a: { tag: '원소', color: '#ffe08a', tw: { area: 1.2 },
@@ -1761,7 +1815,15 @@
         passive: { stat: 't3auto', val: [3200, 2900, 2600, 2300, 2000], n: [1, 1, 2, 2, 3], mul: [1, 1.1, 1.2, 1.35, 1.5], find: 320, findDepth: 90, art: 'ss_sword', hit: SS_AURA } },
       { id: 'ssrain', unlock: 53, tier: 3, branch: 'a', short: '화면 안 적 위로 금빛 검이 쏟아져요' },
       { id: 'ssflash', unlock: 55, tier: 3, branch: 'a', short: '꿰뚫고 지나간 길이 통째로 갈라져요' },
-      { id: 'ssjudge', unlock: 58, tier: 3, branch: 'a', short: '하늘에서 거대한 성검이 내리꽂혀요' }
+      { id: 'ssjudge', unlock: 58, tier: 3, branch: 'a', short: '하늘에서 거대한 성검이 내리꽂혀요' },
+      // ---- 마검왕(3차 전직, 마검사 갈래 b, 2026-11-10): passive 't3auto' art 'mk_sword' = 몸 둘레 마검(msword 그림)이 날아가 꽂힘 ----
+      { id: 'mkcross', unlock: 50, tier: 3, branch: 'b', short: '보라 X자 마력 베기 둘' },
+      { id: 'mkblades', unlock: 52, tier: 3, branch: 'b', recInv: true, short: '몇 초마다 마검이 저절로 날아가요', name: '떠도는 마검', icon: '떠',
+        desc: '마검 셋이 몸 둘레를 맴돌아요. 몇 초마다 마검이 저절로 가까운 적에게 날아가 꽂혀요(Lv 오르면 더 자주 · 더 많이)',
+        passive: { stat: 't3auto', val: [3200, 2900, 2600, 2300, 2000], n: [1, 1, 2, 2, 3], mul: [1, 1.1, 1.2, 1.35, 1.5], find: 320, findDepth: 90, art: 'mk_sword', fly: 'msword_sword', hitArt: 'msword_hit', flySx: 0.85, hit: MK_AUTO } },
+      { id: 'mkrain', unlock: 53, tier: 3, branch: 'b', short: '화면 안 적 위로 거대 마검이 쏟아져요' },
+      { id: 'mkrift', unlock: 55, tier: 3, branch: 'b', short: '차원 균열이 줄지어 터져요' },
+      { id: 'mkking', unlock: 58, tier: 3, branch: 'b', short: '거대 마검 강림 · 마력 대폭발' }
     ],
     // 2026-11-09 궁수(새 직업, 기사 · 법사와 같은 짜임): 쓰는 기술 1차 6 + 2차 갈래마다 4 / 늘 켜진 기술 1차 7 + 2차 갈래마다 1. 3렙마다 늘 켜진 기술, 그 사이 쓰는 기술
     //   rec: 저격수 a = 한 방 · 치명타(활 숙련 · 집중 · 사냥꾼의 표식), 레인저 b = 몹 떼 · 저절로 공격(갈래 화살 · 자동 연사 · 바람의 가호)
@@ -2115,7 +2177,7 @@
   // 3차 전직 옷(2026-11-10, 검성 = knight_t3 · 현자 = mage_t3): 그 갈래 2차 옷 그림(갈래 a = knight_t2 / mage_t2) 위에 옷만 다시 그린 것
   //   (pipeline/ai-sprite/t3, Higgsfield) → 장 수 · 파일 이름 · 발 위치가 2차 옷과 같다. 그래서 2차 옷과 똑같이 1차 옷 묶음을 빌려 쓰고 그림 폴더 · 손 위치 json 만 바꿈.
   //   T3_DONE 에 있는 것만 진짜 그림. 이름 = <직업>_t3<갈래(a 는 빈칸)>_<성별>, 예: 'knight_male' = knight_t3_male, 나중 갈래 b = 'knight_b_male' → knight_t3b_male
-  var T3_DONE = ['knight_male', 'knight_female', 'mage_male', 'mage_female'];
+  var T3_DONE = ['knight_male', 'knight_female', 'mage_male', 'mage_female', 'knight_b_male', 'knight_b_female'];   // 마검왕(2026-11-10)
   var T3_ANIMS = { knight: KNIGHT_T2_MALE_ANIMS, mage: MAGE_T2_MALE_ANIMS };
   var t3Sets = {};
   function t3Name(k) { var q = k.split('_'), br = q.length > 2 ? q[1] : ''; return q[0] + '_t3' + br + '_' + q[q.length - 1]; }
@@ -2594,7 +2656,7 @@
                     tier3: { lv: 50, name: '검성', outfit: 'knight_t3', desc: '검의 끝에 다다른 성스러운 검사. 화면을 가르는 금빛 검기 · 쏟아지는 성검 · 일섬, 필살 천상의 심판' } },
                   { key: 'b', name: '마검사', outfit: 'knight_t2b', desc: '칼에 마력을 실은 보라빛 검사. 검기 · 순간 돌진 · 마력 검으로 몰아치고, 평타가 마법으로 세져요',
                     look: { base: 'knight', tint: '#8a3aff', k: 0.2, outline: { color: '#b46aff', alpha: 0.55, glow: true } },
-                    tier3: { lv: 50, name: '마검왕', soon: true } }
+                    tier3: { lv: 50, name: '마검왕', outfit: 'knight_t3b', desc: '마력 검의 끝에 다다른 마검의 왕. X자 마력 베기 · 쏟아지는 거대 마검 · 차원 붕괴, 필살 마검왕 강림' } }
                 ] } },
       // 법사: 무기가 성별마다 다름(남 지팡이 staff / 여 짧은 지팡이 wand)
       //   법사 2차(2026-11-08) = Lv25 대마법사: 남 = mage_t2_male, 여 = mage_t2_female / 갈래 b 흑마법사 = 그림이 올 때까지 법사 옷을 어둡게 + 검보라 빛
@@ -6509,7 +6571,7 @@
               tree: SKILL_TREE, perLv: 1, maxLv: 5, classLv: 7, slots: [2, 3, 4, 5, 7], moreLv: [10, 13, 15, 15], pcSlots: 10, pcLv: 15, noMpMs: 500,
               curve: { dmg: [1, 1.2, 1.4, 1.6, 1.85], cd: [1, 0.94, 0.88, 0.82, 0.75], mp: [1, 1.05, 1.1, 1.15, 1.2] },
               test: { pts: 24 },
-              botPlan: { knight: ['dash', 'upper', 'nimble', 'wave', 'mastery', 'spin', 'skin', 'slam', 'shards', 'thrust', 'pressure', 'grit', 'counter', 'storm', 'aegis', 'holy', 'cross', 'charge', 'arcwave', 'infuse', 'rift', 'msword', 'unleash', 'sswave', 'ssaura', 'ssrain', 'ssflash', 'ssjudge'],
+              botPlan: { knight: ['dash', 'upper', 'nimble', 'wave', 'mastery', 'spin', 'skin', 'slam', 'shards', 'thrust', 'pressure', 'grit', 'counter', 'storm', 'aegis', 'holy', 'cross', 'charge', 'arcwave', 'infuse', 'rift', 'msword', 'unleash', 'sswave', 'ssaura', 'ssrain', 'ssflash', 'ssjudge', 'mkcross', 'mkblades', 'mkrain', 'mkrift', 'mkking'],
                          assassin: ['ashadow', 'arise', 'nimble', 'afan', 'amast', 'awhirl', 'akeen', 'ablink', 'aecho', 'asmoke', 'aorbit', 'avenom', 'aexec', 'sclone', 'sshade', 'sflash', 'sstorm', 'smoon', 'pdarts', 'pplague', 'pcloud', 'ppool', 'perupt'],   // 암살자(2026-11-09)
                          archer: ['pshot', 'upshot', 'nimble', 'multi', 'aim', 'rain', 'focus', 'leap', 'split', 'burst', 'volley', 'gale', 'mark', 'snipe', 'deadeye', 'ballista', 'rapid', 'skyfall', 'tempest', 'hawk', 'trap', 'twister', 'barrage'],   // 궁수(2026-11-09)
                          mage: ['fireball', 'rise', 'nimble', 'bolt', 'amp', 'ice', 'flow', 'blink', 'eshard', 'gravity', 'vortex', 'shield', 'brand', 'meteor', 'echain', 'pillar', 'frost', 'judgment', 'darkorb', 'leech', 'swamp', 'wraith', 'abyss', 'sgorb', 'sgcycle', 'sgstorm', 'sgnova', 'sgdoom'] } },   // 3차(2026-11-10) 도   // 2026-11-08 갈래 B 기술도(고른 갈래 것만 배워짐)   // 법사 다시 배치(2026-11-08)

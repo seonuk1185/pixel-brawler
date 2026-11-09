@@ -1,0 +1,350 @@
+{
+ "note": "2nd-job branch b \ub9c8\uac80\uc655(\uc5ec). Same format as anchors_motions_knight_t2b_female.json: hand = [x,y] grip in the 176x136 frame, angle deg (0 = right, + = clockwise). Values = branch-a anchors, hand nudged by local silhouette matching; check.manual = read by eye.",
+ "weapon": "sword",
+ "frameSize": [
+  176,
+  136
+ ],
+ "frames": {
+  "motion_dash_01": {
+   "hand": [
+    55,
+    84
+   ],
+   "angle": 165,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     55,
+     84
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.994,
+    "match0": 0.994
+   }
+  },
+  "motion_dash_02": {
+   "hand": [
+    93,
+    77
+   ],
+   "angle": 175,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     93,
+     77
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.976,
+    "match0": 0.976
+   }
+  },
+  "motion_dash_03": {
+   "hand": [
+    150,
+    41
+   ],
+   "angle": -45,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     150,
+     41
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.978,
+    "match0": 0.978
+   }
+  },
+  "motion_dash_04": {
+   "hand": [
+    84,
+    24
+   ],
+   "angle": -150,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     84,
+     24
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.973,
+    "match0": 0.973
+   }
+  },
+  "motion_dash_05": {
+   "hand": [
+    78,
+    19
+   ],
+   "angle": -160,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     78,
+     19
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.928,
+    "match0": 0.928
+   }
+  },
+  "motion_dash_06": {
+   "hand": [
+    100,
+    74
+   ],
+   "angle": -38,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     100,
+     74
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.981,
+    "match0": 0.981
+   }
+  },
+  "motion_spin_01": {
+   "hand": [
+    90,
+    52
+   ],
+   "angle": -150,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     89,
+     53
+    ],
+    "shift": [
+     1,
+     -1
+    ],
+    "match": 0.978,
+    "match0": 0.949
+   }
+  },
+  "motion_spin_02": {
+   "hand": [
+    109,
+    53
+   ],
+   "angle": 0,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     109,
+     53
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.992,
+    "match0": 0.992
+   }
+  },
+  "motion_spin_03": {
+   "hand": [
+    103,
+    53
+   ],
+   "angle": 10,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     103,
+     53
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.976,
+    "match0": 0.976
+   }
+  },
+  "motion_spin_04": {
+   "hand": [
+    32,
+    55
+   ],
+   "angle": 180,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     32,
+     55
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.995,
+    "match0": 0.995
+   }
+  },
+  "motion_spin_05": {
+   "hand": [
+    37,
+    57
+   ],
+   "angle": 180,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     37,
+     57
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.994,
+    "match0": 0.994
+   }
+  },
+  "motion_spin_06": {
+   "hand": [
+    121,
+    71
+   ],
+   "angle": 5,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     121,
+     71
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.989,
+    "match0": 0.989
+   }
+  },
+  "motion_spin_07": {
+   "hand": [
+    68,
+    26
+   ],
+   "angle": -160,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     68,
+     26
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.931,
+    "match0": 0.931
+   }
+  },
+  "motion_upper_01": {
+   "hand": [
+    81,
+    88
+   ],
+   "angle": 160,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     81,
+     88
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.997,
+    "match0": 0.997
+   }
+  },
+  "motion_upper_02": {
+   "hand": [
+    117,
+    88
+   ],
+   "angle": 20,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     117,
+     88
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.984,
+    "match0": 0.984
+   }
+  },
+  "motion_upper_03": {
+   "hand": [
+    130,
+    25
+   ],
+   "angle": -50,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     130,
+     25
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.986,
+    "match0": 0.986
+   }
+  },
+  "motion_upper_04": {
+   "hand": [
+    116,
+    69
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     116,
+     69
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.978,
+    "match0": 0.978
+   }
+  }
+ }
+}

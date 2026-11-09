@@ -30,7 +30,11 @@
     t3_doom_rift:       { n: 4, pv: [85.5, 31.3], fps: 10 },   // 171x63 하늘 균열
     t3_doom_star:       { n: 2, pv: [51.3, 51.3], fps: 12 },   // 63x63 떨어지는 별(머리)
     t3_doom_impact:     { n: 1, pv: [36.5, 52.4], fps: 16 },   // 73x57 별이 닿는 번쩍
-    t3_doom_hole:       { n: 6, pv: [62.7, 62.7], fps: 12 }    // 125x125 블랙홀
+    t3_doom_hole:       { n: 6, pv: [62.7, 62.7], fps: 12 },   // 125x125 블랙홀
+    // 마검왕(기사 3차 갈래 b, 2026-11-10): 거대 마검(칼끝 = 아래) · X자 마력 베기 · 마력 대폭발
+    t3_mk_sword:        { n: 4, pv: [28.0, 120], fps: 12 },     // 56x120 거대 마검(칼끝 = 아래, 반복)
+    t3_mk_x:            { n: 4, pv: [46.0, 36.5], fps: 14 },    // 92x73 X자 마력 베기(날아갈 땐 1 · 2장 반복)
+    t3_mk_boom:         { n: 6, pv: [75.0, 32.5], fps: 14 }     // 150x65 마력 대폭발
   };
   (function reg() { var S = window.Skills && Skills._api; if (S) S.addAifx(AFX); })();
 
@@ -99,7 +103,7 @@
     if (a.trav >= a.range) { a.dead = true; if (a.onEnd) a.onEnd(a); }
   }
   function drawShot(ctx, camX, a) {
-    var A = AFX[a.art], i = Math.floor(a.t * (a.fps || A.fps) / 1000) % A.n, fade = clamp((a.range - a.trav) / 60, 0, 1);
+    var A = AFX[a.art] || { n: 4, fps: 14 }, q = Math.floor(a.t * (a.fps || A.fps) / 1000), i = a.frames ? a.frames[q % a.frames.length] : q % A.n, fade = clamp((a.range - a.trav) / 60, 0, 1);
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
     aiDraw(ctx, a.art, i, a.x - camX, a.y, a.dir * a.sx, a.sx, 0, 0.95 * fade);
     ctx.restore();
@@ -121,8 +125,9 @@
       for (var i = 0; i < n; i++) fxs.push({ kind: 'later', t: -i * C.gapMs, fn: (function (i) { return function () {
         var lane = (C.lanes[i] || 0) * k;
         shoot({ p: p, x: p.x + p.dir * C.x * k, y: p.y + lane - 46 * k, z: p.y + lane, dir: p.dir, speed: C.speed * k, range: C.range * k, w: C.w * k * ar, depth: C.depth * ar,
-                st: st, mul: s.mul, art: 't3_sswave_fly', sx: 1.15 * ar, hitArt: 't3_sswave_hit', hitSx: 0.45 });
-        glow(p.x + p.dir * C.x * k, p.y + lane - 46 * k, 40 * k, '#fff0a0', 200, 0.6);
+                st: st, mul: s.mul, art: C.art || 't3_sswave_fly', frames: C.frames || null, sx: (C.sx || 1.15) * ar, hitArt: C.hitArt || 't3_sswave_hit', hitSx: 0.45,
+                onEnd: C.boom ? function (a) { spawn(C.boom, a.x, a.y, { sx: (C.boomSx || 0.8) * ar }); } : null });
+        glow(p.x + p.dir * C.x * k, p.y + lane - 46 * k, 40 * k, C.color || '#fff0a0', 200, 0.6);
         snd('skWave', { v: 0.8 });
       }; })(i) });
       api().doFlash({ color: '#fff4c0', alpha: 0.25, ms: 120 });
@@ -131,7 +136,7 @@
     ssrain: function (p, d, s, C, S, t0, t1) {
       if (S.fired || t1 < C.at) return; S.fired = 1;
       fxs.push({ kind: 'rain', p: p, C: C, n: lv5(s, 'n', C.n), t: 0, wave: 0, mul: s.mul, st: stOf(C.hit, d), last: stOf(C.last, d) });
-      glow(p.x, p.y - 90 * K(), 60 * K(), '#fff0a0', 600, 0.7);
+      glow(p.x, p.y - 90 * K(), 60 * K(), C.color || '#fff0a0', 600, 0.7);
       snd('skHoly');
     },
     // 일섬: 돌진(config move) 동안 지나간 줄의 적을 가볍게 → cutAt 에 지나간 길 전체가 거대한 섬광으로 갈라짐
@@ -170,6 +175,20 @@
                  pre: stOf(C.pre, d), hit: stOf(C.hit, d), wv: stOf(C.wave, d), stage: 0, wave: 0 });
       glow(p.x, p.y - 100 * k, 70 * k, '#fff4c0', 900, 0.8);
       snd('charge'); snd('skHoly', { v: 0.7 });
+    },
+    // 차원 붕괴(마검왕): 앞으로 차원 균열이 n 번 줄지어 터짐(가까운 곳부터) → 마지막에 큰 마력 폭발
+    mkrift: function (p, d, s, C, S, t0, t1) {
+      if (S.fired || t1 < C.at) return; S.fired = 1;
+      var k = K(), ar = s.area || 1, n = lv5(s, 'n', C.n), st = stOf(C.hit, d), last = stOf(C.last, d), x0 = p.x, z = p.y, dir = p.dir, mul = s.mul;
+      for (var i = 0; i < n; i++) fxs.push({ kind: 'later', t: -i * C.gapMs, fn: (function (i) { return function () {
+        var x = x0 + dir * (C.x + i * C.step) * k, fin = i === n - 1;
+        spawn('rift_rift', x, z - 30 * k, { sx: (fin ? 1.6 : 1.1) * ar, dir: dir });
+        if (fin) spawn('t3_mk_boom', x, z - 36 * k, { sx: 2.0 * ar });
+        hitArea(fin ? last : st, p, x, z, (fin ? C.r * 1.5 : C.r) * k * ar, C.depth * ar, mul, {});
+        shake(fin ? 3 : 1.4, fin ? 380 : 180); snd(fin ? 'skSlam' : 'blink', { v: fin ? 1 : 0.6 });
+        if (fin) api().doFlash({ color: '#d8b0ff', alpha: 0.4, ms: 150 });
+      }; })(i) });
+      api().doFlash({ color: '#c890ff', alpha: 0.2, ms: 100 });
     },
     // 원소 융합탄: 구슬이 나아가며 닿은 적 → 끝에서 큰 원소 폭발
     sgorb: function (p, d, s, C, S, t0, t1) {
@@ -222,9 +241,10 @@
     if (o.kind === 'fall') {   // 떨어지는 금빛 검 하나(천검 강림)
       if (o.t >= o.fall && !o.landed) {
         o.landed = true;
-        spawn('holy_impact', o.x, o.z + 2, { sx: 0.5 * (o.big ? 1.6 : 1) });
+        var RC = o.C || {};
+        spawn(RC.impact || 'holy_impact', o.x, o.z + 2, { sx: (RC.impactSx || 0.5) * (o.big ? 1.6 : 1) });
         if (alive(o.tgt)) hitT(o.st, o.tgt, o.tgt.x, mid(o.tgt), Math.random() < 0.5 ? -1 : 1, o.mul, o.p);
-        if (o.big) spawn('t3_sswave_hit', o.x, o.z - 30 * k, { sx: 0.9 });
+        if (o.big) spawn(RC.bigHit || 't3_sswave_hit', o.x, o.z - 30 * k, { sx: RC.bigSx || 0.9 });
       }
       return o.t < o.fall + 160;
     }
@@ -232,14 +252,14 @@
       var C = o.C, due = Math.floor(o.t / C.gapMs);
       while (o.wave <= Math.min(due, o.n - 1)) {
         screenFoes(p, o.st, 14).forEach(function (t) {
-          fxs.push({ kind: 'fall', p: p, x: t.x + (Math.random() * 2 - 1) * 8, z: t.y + 1, t: 0, fall: C.fallMs, tgt: t, st: o.st, mul: o.mul });
+          fxs.push({ kind: 'fall', p: p, C: C, x: t.x + (Math.random() * 2 - 1) * 8, z: t.y + 1, t: 0, fall: C.fallMs, tgt: t, st: o.st, mul: o.mul });
         });
         snd('holyBolt', { v: 0.45 });
         o.wave++;
       }
       if (!o.done && o.t >= o.n * C.gapMs + 120) {
         o.done = true;
-        screenFoes(p, o.last, 14).forEach(function (t) { fxs.push({ kind: 'fall', p: p, x: t.x, z: t.y + 1, t: 0, fall: 200, tgt: t, st: o.last, mul: o.mul, big: true }); });
+        screenFoes(p, o.last, 14).forEach(function (t) { fxs.push({ kind: 'fall', p: p, C: C, x: t.x, z: t.y + 1, t: 0, fall: 200, tgt: t, st: o.last, mul: o.mul, big: true }); });
         fxs.push({ kind: 'later', t: -200, fn: function () { api().doFlash({ color: '#fff0b0', alpha: 0.4, ms: 160 }); shake(2.6, 380); snd('skSlam'); } });
       }
       return o.t < o.n * C.gapMs + 500;
@@ -258,24 +278,27 @@
       }
       if (o.stage === 0 && o.t >= T1) {   // 거대한 성검이 하늘을 가르며 내려옴(6장 14fps: 3장 = 꽂힘)
         o.stage = 1;
-        spawn('t3_judge_sword', o.x, o.z + 4, { sx: 3.2 * ar, life: 1300, fade: 300 }); spawn('t3_judge_sword', o.x, o.z + 4, { sx: 3.6 * ar, life: 1300, fade: 300, add: true, a: 0.5 });
+        var JS = J.sword || 't3_judge_sword', jk = J.swordSx || 3.2;
+        spawn(JS, o.x, o.z + 4, { sx: jk * ar, life: 1300, fade: 300, loop: !!J.swordLoop }); spawn(JS, o.x, o.z + 4, { sx: jk * 1.12 * ar, life: 1300, fade: 300, add: true, a: 0.5, loop: !!J.swordLoop });
         snd('holyBolt');
       }
       if (o.stage === 1 && o.t >= T1 + 3 * 1000 / 14) {   // 꽂힘
         o.stage = 2;
         screenFoes(p, o.hit).forEach(function (t) { hitT(o.hit, t, t.x, mid(t), t.x >= o.x ? 1 : -1, o.mul, p); });
-        spawn('holy_impact', o.x, o.z + 2, { sx: 1.6 * ar });
+        spawn(J.impact || 'holy_impact', o.x, o.z + 2, { sx: (J.impactSx || 1.6) * ar });
         api().doFlash({ color: '#ffffff', alpha: 0.6, ms: 160 }); H().hitstop(70); shake(3, 300);
         snd('skSlam');
       }
       if (o.stage === 2 && o.t >= T1 + 4 * 1000 / 14 + 60) {   // 금빛 충격파
         o.stage = 3;
-        spawn('t3_judge_wave', o.x, o.z + 6, { sx: 2.4 * ar, sy: 1.6 * ar, layer: 'over' });
-        spawn('t3_judge_wave', o.x, o.z + 6, { sx: 3.4 * ar, sy: 1.2 * ar, layer: 'under', a: 0.6, delay: 80 });
-        screenFoes(p, o.wv).forEach(function (t) { if (hitT(o.wv, t, t.x, mid(t), t.x >= o.x ? 1 : -1, o.mul, p)) spawn('t3_sswave_hit', t.x, mid(t), { sx: 0.6 }); });
-        wave(o.x, o.z, SCREEN * k, { flat: 0.25, w: 8, ms: 600, color: '#fffbe0', glow: '#ffd040', ground: true });
-        debris(o.x, o.z - 40 * k, o.z, 30, { cols: ['#ffffff', '#fff0a0', '#ffd040'], glow: true, sp: 340, size: 1.8, ms: 700, g: 120, spread: 3 });
-        api().doFlash({ color: '#fffbe0', alpha: 0.85, ms: 340 }); H().hitstop(110); shake(5, 700);
+        if (J.boom) spawn(J.boom, o.x, o.z - 40 * k, { sx: (J.boomSx || 2) * ar, life: 400, fade: 120 });
+        else { spawn('t3_judge_wave', o.x, o.z + 6, { sx: 2.4 * ar, sy: 1.6 * ar, layer: 'over' }); spawn('t3_judge_wave', o.x, o.z + 6, { sx: 3.4 * ar, sy: 1.2 * ar, layer: 'under', a: 0.6, delay: 80 }); }
+        if (J.groundWave) [-1, 1].forEach(function (sd) { spawn(J.groundWave, o.x + sd * 10 * k, o.z + 2, { sx: sd * (J.groundSx || 0.9) * ar, sy: (J.groundSx || 0.9) * ar }); });
+        screenFoes(p, o.wv).forEach(function (t) { if (hitT(o.wv, t, t.x, mid(t), t.x >= o.x ? 1 : -1, o.mul, p)) spawn(J.hitArt || 't3_sswave_hit', t.x, mid(t), { sx: J.hitSx || 0.6 }); });
+        var JC = J.cols || ['#ffffff', '#fff0a0', '#ffd040'];
+        wave(o.x, o.z, SCREEN * k, { flat: 0.25, w: 8, ms: 600, color: JC[1], glow: JC[2], ground: true });
+        debris(o.x, o.z - 40 * k, o.z, 30, { cols: JC, glow: true, sp: 340, size: 1.8, ms: 700, g: 120, spread: 3 });
+        api().doFlash({ color: J.flash || '#fffbe0', alpha: 0.85, ms: 340 }); H().hitstop(110); shake(5, 700);
         snd('meteorBoom'); snd('holyBolt', { v: 0.7 });
       }
       return o.t < T1 + 1500;
@@ -348,7 +371,7 @@
       var u = clamp(o.t / o.ms, 0, 1);
       if (u >= 1 && !o.hit) {
         o.hit = true;
-        if (alive(o.tgt)) { hitT(o.st, o.tgt, o.tgt.x, mid(o.tgt), o.dir, o.mul, p); spawn('t3_sswave_hit', o.tgt.x, mid(o.tgt), { sx: 0.42 }); }
+        if (alive(o.tgt)) { hitT(o.st, o.tgt, o.tgt.x, mid(o.tgt), o.dir, o.mul, p); spawn(o.hitArt || 't3_sswave_hit', o.tgt.x, mid(o.tgt), { sx: 0.42 }); }
         snd('swingSword', { v: 0.4 });
       }
       return o.t < o.ms + 60;
@@ -367,7 +390,8 @@
     if (o.kind === 'fall') {
       if (o.t >= o.fall) return;
       var u = clamp(o.t / o.fall, 0, 1), y = o.z - (1 - u) * 170 * k, S = o.big ? 0.95 : 0.6;
-      aiDraw(ctx, 'holy_sword', Math.floor(o.t / 60) % 4, o.x - camX, y, S, S, 0, 0.95);
+      var FC = o.C || {}, fa = FC.fall || 'holy_sword';
+      aiDraw(ctx, fa, Math.floor(o.t / 60) % 4, o.x - camX, y, S * (FC.fallSx || 1), S * (FC.fallSx || 1), 0, 0.95);
       return;
     }
     if (o.kind === 'doom' && o.t >= 700 && o.t < 1150) {   // 떨어지는 별(하늘 균열에서 비스듬히)
@@ -386,14 +410,15 @@
       var x3 = o.x0 + (tx - o.x0) * w, y3 = o.y0 + (ty - o.y0) * w - Math.sin(w * Math.PI) * 30 * k, ang2 = Math.atan2(ty - o.y0, tx - o.x0);
       if (w >= 1) return;
       ctx.save(); ctx.globalCompositeOperation = 'lighter';
-      aiDraw(ctx, 't3_ssslash_sword', 1 + Math.floor(o.t / 70) % 2, x3 - camX, y3, 0.6, 0.6, ang2, 0.95);
+      var FA = o.fly || 't3_ssslash_sword';
+      aiDraw(ctx, FA, (FA === 't3_ssslash_sword' ? 1 : 0) + Math.floor(o.t / 70) % 2, x3 - camX, y3, o.flySx || 0.6, o.flySx || 0.6, ang2, 0.95);
       ctx.restore();
     }
   }
 
   // ---------- 늘 켜진 기술 't3auto'(저절로 공격) · 몸 둘레 기운 ----------
   //   passive = { val = 몇 ms 마다, n = 한 번에 몇 개, mul = 데미지 배율, find · findDepth = 찾는 둘레, art = 'ss_sword'(금빛 영검이 날아감) | 'sg_cycle'(원소 폭발), r = 폭발 반지름 }
-  var AUTO_IDS = ['ssaura', 'sgcycle'], autoT = {}, auraOn = null;
+  var AUTO_IDS = ['ssaura', 'sgcycle', 'mkblades'], autoT = {}, auraOn = null;   // 마검왕 떠도는 마검(2026-11-10)
   function passiveStep(p, dt) {
     auraOn = null;
     if (!p || p.state === 'dead' || (p.classKey !== 'knight' && p.classKey !== 'mage')) return;
@@ -410,9 +435,9 @@
       var n = P.n[lv] || 1, mul = P.mul[lv] || 1, st = P.hit;
       for (var i = 0; i < n; i++) {
         var t = L[i % L.length];
-        if (P.art === 'ss_sword') {
+        if (P.art === 'ss_sword' || P.art === 'mk_sword') {
           var x0 = p.x - p.dir * 10 * k + Math.cos(i * 2.1) * 16 * k, y0 = p.y - (p.z || 0) - 78 * k;
-          fxs.push({ kind: 'auto', pas: 1, p: p, tgt: t, x0: x0, y0: y0, x1: t.x, y1: mid(t), t: -i * 90, ms: 230, st: st, mul: mul, dir: t.x >= p.x ? 1 : -1 });
+          fxs.push({ kind: 'auto', pas: 1, p: p, tgt: t, x0: x0, y0: y0, x1: t.x, y1: mid(t), t: -i * 90, ms: 230, st: st, mul: mul, dir: t.x >= p.x ? 1 : -1, fly: P.fly || 't3_ssslash_sword', hitArt: P.hitArt || 't3_sswave_hit', flySx: P.flySx || 0.6 });
           glow(x0, y0, 14 * k, '#fff0a0', 160, 0.6);
         } else {
           (function (t, i) {
@@ -431,12 +456,13 @@
   // 몸 둘레 기운: 검성 = 금빛 영검 둘이 맴돔 / 현자 = 불 · 얼음 · 번개 구슬 셋이 맴돔 (늘 켜진 기술을 배웠을 때)
   function drawAura(ctx, camX, p) {
     if (!auraOn || !p || p.state === 'dead') return;
-    var now = performance.now(), k = K(), cy = p.y - (p.z || 0) - 56 * k, sw = auraOn === 'ss_sword';
+    var now = performance.now(), k = K(), cy = p.y - (p.z || 0) - 56 * k, sw = auraOn === 'ss_sword' || auraOn === 'mk_sword';
     var n = sw ? 2 : 3;
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
     for (var i = 0; i < n; i++) {
       var a = now / (sw ? 700 : 560) + i * Math.PI * 2 / n, ox = Math.cos(a) * 26 * k, oy = Math.sin(a) * 9 * k - (sw ? 14 * k : 0);
-      if (sw) aiDraw(ctx, 't3_ssslash_sword', 1, p.x + ox - camX, cy + oy, 0.32, 0.32, -Math.PI / 2, 0.55);
+      if (auraOn === 'mk_sword') aiDraw(ctx, 'msword_sword', Math.floor(now / 90 + i) % 4, p.x + ox - camX, cy + oy, 0.55, 0.55, -Math.PI / 2, 0.7);
+      else if (sw) aiDraw(ctx, 't3_ssslash_sword', 1, p.x + ox - camX, cy + oy, 0.32, 0.32, -Math.PI / 2, 0.55);
       else aiDraw(ctx, 't3_sgorb_orb', Math.floor(now / 70 + i) % 4, p.x + ox - camX, cy + oy, 0.32, 0.32, 0, 0.7);
     }
     ctx.restore();
