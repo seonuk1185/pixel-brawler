@@ -1,0 +1,352 @@
+{
+ "note": "2nd-job branch b \uc232\uc758 \uc218\ud638\uc790(\ub0a8). Same format as anchors_motions_archer_t2b_male.json: hand = [x,y] grip in the 176x136 frame, angle deg (0 = right, + = clockwise). Values = branch-a anchors, hand nudged by local silhouette matching; check.manual = read by eye.",
+ "angleUnit": "deg",
+ "frameSize": [
+  176,
+  136
+ ],
+ "frames": {
+  "motion_leap_01": {
+   "hand": [
+    66,
+    83
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     66,
+     83
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.995,
+    "match0": 0.995
+   }
+  },
+  "motion_leap_02": {
+   "hand": [
+    61,
+    52
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     61,
+     52
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 1.0,
+    "match0": 1.0
+   }
+  },
+  "motion_leap_03": {
+   "hand": [
+    75,
+    82
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     75,
+     82
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 1.0,
+    "match0": 1.0
+   }
+  },
+  "motion_leap_04": {
+   "hand": [
+    68,
+    60
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     68,
+     60
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 1.0,
+    "match0": 1.0
+   }
+  },
+  "motion_leap_05": {
+   "hand": [
+    65,
+    93
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     65,
+     93
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 1.0,
+    "match0": 1.0
+   }
+  },
+  "motion_leap_06": {
+   "hand": [
+    72,
+    75
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     72,
+     75
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.999,
+    "match0": 0.998
+   }
+  },
+  "motion_shoot_01": {
+   "hand": [
+    68,
+    66
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     68,
+     66
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 1.0,
+    "match0": 1.0
+   }
+  },
+  "motion_shoot_02": {
+   "hand": [
+    76,
+    84
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     76,
+     84
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.973,
+    "match0": 0.973
+   }
+  },
+  "motion_shoot_03": {
+   "hand": [
+    75,
+    75
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     75,
+     75
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.99,
+    "match0": 0.982
+   }
+  },
+  "motion_shoot_04": {
+   "hand": [
+    75,
+    76
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     75,
+     76
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.99,
+    "match0": 0.987
+   }
+  },
+  "motion_shoot_05": {
+   "hand": [
+    75,
+    73
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     75,
+     73
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.984,
+    "match0": 0.982
+   }
+  },
+  "motion_shoot_06": {
+   "hand": [
+    70,
+    76
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     70,
+     76
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 1.0,
+    "match0": 1.0
+   }
+  },
+  "motion_sky_01": {
+   "hand": [
+    71,
+    77
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     71,
+     77
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.994,
+    "match0": 0.994
+   }
+  },
+  "motion_sky_02": {
+   "hand": [
+    68,
+    62
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     68,
+     62
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 1.0,
+    "match0": 1.0
+   }
+  },
+  "motion_sky_03": {
+   "hand": [
+    74,
+    72
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     74,
+     72
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.986,
+    "match0": 0.986
+   }
+  },
+  "motion_sky_04": {
+   "hand": [
+    75,
+    78
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     75,
+     78
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.986,
+    "match0": 0.982
+   }
+  },
+  "motion_sky_05": {
+   "hand": [
+    70,
+    76
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     70,
+     76
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 1.0,
+    "match0": 1.0
+   }
+  },
+  "motion_sky_06": {
+   "hand": [
+    72,
+    79
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     72,
+     79
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.999,
+    "match0": 0.998
+   }
+  }
+ }
+}

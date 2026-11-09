@@ -1752,6 +1752,59 @@
     }
   };
   Object.keys(T3_SKILLS.archer).forEach(function (k) { SKILLS.archer[k] = T3_SKILLS.archer[k]; });
+  // ---- 숲의 수호자(궁수 3차 갈래 b, 2026-11-10): 초록 잎 갑옷 + 덩굴 활. 그림 = t3_fg_* · t3_fg2_*(AI, 자홍 바탕: 바람 화살 · 잎 터짐 · 정령 매 · 가시 덩굴 기둥 · 거대한 정령 화살) ----
+  //   레인저 = 몹 떼 쓸기 → 넓게 여러 번(덩굴 · 바람). 숫자 = 신궁 자리에서 시작(같은 MP · 쿨타임) → 자동 조종 DPS 가 레인저와 같아 약 +35% 올리고 MP 를 낮춤(2026-11-10), 레인저 갈래 덤(가시 화살 · 가시 지속)은 archer.js 가 그대로
+  // 대풍 화살(50 ↔ 화살 폭풍): 잎 바람을 감은 거대한 화살 셋이 가운데 · 위 · 아래 줄을 꿰뚫음 3.3 x 3 + 끝에서 잎 터짐(그림만)
+  var FG_WIND = { dmg: 4.5, hitstop: 0.8, knock: 1.6, shake: 1.4, spark: 1.2, big: true, hitsDown: true, flash: { color: '#e8ffd8', alpha: 0.14, ms: 80 } };
+  // 숲의 정령 매(52, 늘 켜짐): 몇 초마다 초록 정령 매가 저절로 가까운 적에게 내리꽂힘(이 값 x passive.mul)
+  var FG_HAWK = { dmg: 3.2, hitstop: 0.5, knock: 0.9, shake: 0.7, spark: 1.1, big: true, hitsDown: true, noRage: true, noMp: true, numStyle: 'push', t3Auto: true };
+  // 가시나무 대지(53 ↔ 덫 설치 · 회오리 화살): 화면 안 적 발밑마다 덩굴 기둥이 솟아 띄움 4.4 + 남은 가시 1.2 x 2 = 6.8 (한 적은 보통 기둥 하나)
+  var FG_ROOT = { dmg: 6.0, hitstop: 1.6, knock: 0.6, shake: 2.0, launch: 1.1, spark: 1.5, big: true, hitsDown: true, flash: { color: '#e8ffd8', alpha: 0.25, ms: 110 } };
+  var FG_ROOT_TICK = { dmg: 1.6, hitstop: 0.3, knock: 0.1, shake: 0.4, spark: 0.8, hitsDown: true, noRage: true, noJuggle: true, noMp: true };
+  // 폭풍의 숲(55 ↔ 천 개의 화살 전 단계): 거대한 바람 화살이 한 줄을 꿰뚫고(2.6) 끝에서 잎 폭풍이 크게 터짐 8.4
+  var FG_GALE = { dmg: 3.6, hitstop: 0.8, knock: 1.0, shake: 1.2, spark: 1.2, big: true, hitsDown: true, noJuggle: true };
+  var FG_GALE_BOOM = { dmg: 11.2, hitstop: 2.2, knock: 2.6, shake: 3.2, knockdown: true, spark: 1.8, big: true, hitsDown: true, flash: { color: '#e8ffd8', alpha: 0.42, ms: 160 }, slowMs: 220 };
+  // 대자연의 심판(58 필살 ↔ 천 개의 화살): 하늘에서 작은 빛 0.5 x 5 → 거대한 정령 화살이 꽂힘 2.0 + 양옆 덩굴 기둥 · 잎 충격파 15 (화면 안 모든 적)
+  var FG_SKY_WAVE = { dmg: 15, hitstop: 3.4, knock: 3.0, shake: 6.0, knockdown: true, stunMs: 700, spark: 2.4, big: true, hitsDown: true, launch: 1.0,
+                      flash: { color: '#eaffdc', alpha: 0.85, ms: 320 }, slowMs: 520 };
+  var T3_FG = {
+    fgwind: {
+      name: '대풍 화살', icon: '풍', mp: 18, cooldownMs: 9000, damageStyle: 'skill_wild', motion: 'motion_shoot', sfx: 'bowHeavy',
+      desc: '(3차) 잎 바람을 감은 거대한 화살 셋을 날려요. 가운데 · 위 · 아래 줄을 나란히 화면 끝까지 꿰뚫고, 끝에서 잎이 터져요',
+      lv5: { n: 5, say: '화살 3 → 5발' },
+      darken: { ms: 700, alpha: 0.45 }, iframes: [0, 600], zoom: { k: 1.03, ms: 500 },
+      t3: { kind: 'sswave', frame: 3, n: 3, lanes: [0, -20, 20, -36, 36], gapMs: 90, x: 30, speed: 600, range: 440, w: 58, depth: 22, hit: FG_WIND, chainPad: 250,
+            art: 't3_fg_wind', sx: 1.25, hitArt: 't3_fg_burst', boom: 't3_fg_burst', boomSx: 0.8, color: '#c8ff9a' }
+    },
+    fgroots: {
+      name: '가시나무 대지', icon: '대', mp: 20, cooldownMs: 12000, damageStyle: 'skill_wild', motion: 'motion_sky', sfx: 'bowHeavy',
+      desc: '(3차) 하늘로 씨앗 화살을 쏘아 올려요. 화면 안 적들 발밑마다 덫이 피어나고, 잠깐 뒤 가시 덩굴 기둥이 솟구쳐 띄우고 가시로 계속 찔러요',
+      lv5: { n: 10, say: '기둥 7 → 10개' },
+      darken: { ms: 1300, alpha: 0.5 }, iframes: [0, 900], zoom: { k: 1.04, ms: 900 },
+      t3: { kind: 'sgstorm', frame: 3, n: 7, gapMs: 70, markMs: 360, r: 40, depth: 34, ticks: 2, tickMs: 220, hit: FG_ROOT, tick: FG_ROOT_TICK, chainPad: 900,
+            mark: 'rg_trap_trap', markSx: 1.0, markSy: 1.0, pillar: 't3_fg2_vine', pillarSx: 1.15 }
+    },
+    fgstorm: {
+      name: '폭풍의 숲', icon: '폭', mp: 20, cooldownMs: 12000, damageStyle: 'skill_wild', motion: 'motion_shoot', sfx: 'bowHeavy',
+      motionMs: [80, 110, 260, 300, 90, 130],
+      desc: '(3차) 온 힘으로 시위를 당겨 거대한 바람 화살을 쏴요. 한 줄의 적을 모두 꿰뚫고, 끝에서 잎 폭풍이 크게 터져 둘레를 넘어뜨려요',
+      lv5: { area: 1.3, say: '터짐 크기 +30%' },
+      darken: { ms: 900, alpha: 0.5 }, iframes: [0, 700], zoom: { k: 1.04, ms: 700 },
+      t3: { kind: 'sgorb', frame: 3, x: 36, y: -44, speed: 520, range: 340, w: 70, depth: 28, r: 100, bdepth: 52, hit: FG_GALE, boom: FG_GALE_BOOM, chainPad: 250,
+            art: 't3_fg_wind', artSx: 2.0, hitArt: 't3_fg_burst', hitSx: 0.45, boomArt: 't3_fg_burst', boomSx: 2.0, cols: ['#e8ffd8', '#7ae05a'], snd: ['wave', 'bowHeavy'] }
+    },
+    fgjudge: {
+      name: '대자연의 심판', icon: '심', mp: 60, cooldownMs: 40000, damageStyle: 'skill_wild', motion: 'motion_sky', sfx: 'charge',
+      motionMs: [100, 140, 700, 600, 500, 200],
+      desc: '(3차 필살) 하늘 높이 화살을 쏘아 올리면 숲의 정령이 깨어나 거대한 정령 화살이 내리꽂혀요. 양옆으로 가시 덩굴이 솟고 화면 안 모든 적이 잎 폭풍에 휩쓸려요',
+      lv5: { area: 1.25, say: '충격파 크기 +25%' },
+      darken: { ms: 3400, alpha: 0.72 }, iframes: [0, 2200], zoom: { k: 1.08, ms: 2000 },
+      t3: { kind: 'ssjudge', frame: 2, n: 5, gapMs: 110, pre: SS_JUDGE_PRE, hit: SS_JUDGE_HIT, wave: FG_SKY_WAVE, x: 110, chainPad: 1600,
+            sword: 't3_fg2_arrow', swordSx: 2.4, swordLoop: true, impact: 't3_fg_burst', impactSx: 1.8, boom: 't3_fg_burst', boomSx: 2.6,
+            groundWave: 't3_fg2_vine', groundSx: 1.1, hitArt: 't3_fg_burst', hitSx: 0.6, cols: ['#ffffff', '#c8ff9a', '#4ab830'], flash: '#eaffdc' }
+    }
+  };
+  Object.keys(T3_FG).forEach(function (k) { T3_SKILLS.archer[k] = T3_FG[k]; SKILLS.archer[k] = T3_FG[k]; });
 
 
   // ---------- 기술 책 (성장 4단계, 2026-11-06, 기획\성장시스템-설계안.md) : 직업마다 11개 = 쓰는 기술(active) 7 + 늘 켜진 기술(passive) 4 (2026-11-06 기사 칼날 폭풍 넣음) ----------
@@ -1849,7 +1902,12 @@
                     multi: ['숲의 부채꼴', '맞으면 가시 화살이 둘레 적 하나에게 튐 · 맞은 적에 가시 2초(0.5초마다 작은 피해)'],
                     rain: ['바람 화살비', '맞으면 가시 화살이 둘레 적 하나에게 튐 · 맞은 적에 가시 2초(0.5초마다 작은 피해)'],
                     leap: ['바람 공중제비', '맞으면 가시 화살이 둘레 적 하나에게 튐 · 맞은 적에 가시 2초(0.5초마다 작은 피해)'],
-                    burst: ['가시 폭발 화살', '맞으면 가시 화살이 둘레 적 하나에게 튐 · 맞은 적에 가시 2초(0.5초마다 작은 피해)'] } }
+                    burst: ['가시 폭발 화살', '맞으면 가시 화살이 둘레 적 하나에게 튐 · 맞은 적에 가시 2초(0.5초마다 작은 피해)'] } ,
+           // 3차 맛(2026-11-10, 숲의 수호자 Lv50 뒤): 이름 + 크기 +20%(가시 덤 그대로)
+           t3: { tag: '숲의 수호자', color: '#c8ff9a', tw: { area: 1.2 },
+                 names: { pshot: ['정령 관통 화살', '(3차 숲의 수호자) 효과 · 범위 +20% · 맞으면 가시 화살이 둘레 적 하나에게 튐 · 맞은 적에 가시 2초'], upshot: ['대지 솟구침', '(3차 숲의 수호자) 효과 · 범위 +20% · 맞으면 가시 화살이 둘레 적 하나에게 튐 · 맞은 적에 가시 2초'], multi: ['대자연의 부채꼴', '(3차 숲의 수호자) 효과 · 범위 +20% · 맞으면 가시 화살이 둘레 적 하나에게 튐 · 맞은 적에 가시 2초'], rain: ['폭풍 화살비', '(3차 숲의 수호자) 효과 · 범위 +20% · 맞으면 가시 화살이 둘레 적 하나에게 튐 · 맞은 적에 가시 2초'],
+                          leap: ['정령 공중제비', '(3차 숲의 수호자) 효과 · 범위 +20% · 맞으면 가시 화살이 둘레 적 하나에게 튐 · 맞은 적에 가시 2초'], burst: ['대덩굴 폭발 화살', '(3차 숲의 수호자) 효과 · 범위 +20% · 맞으면 가시 화살이 둘레 적 하나에게 튐 · 맞은 적에 가시 2초'], tempest: ['대폭풍 화살', '(3차 숲의 수호자) 효과 · 범위 +20% · 맞으면 가시 화살이 둘레 적 하나에게 튐 · 맞은 적에 가시 2초'], trap: ['가시나무 덫', '(3차 숲의 수호자) 효과 · 범위 +20% · 맞으면 가시 화살이 둘레 적 하나에게 튐 · 맞은 적에 가시 2초'],
+                          twister: ['대회오리 화살', '(3차 숲의 수호자) 효과 · 범위 +20% · 맞으면 가시 화살이 둘레 적 하나에게 튐 · 맞은 적에 가시 2초'], barrage: ['만 개의 화살', '(3차 숲의 수호자) 효과 · 범위 +20% · 맞으면 가시 화살이 둘레 적 하나에게 튐 · 맞은 적에 가시 2초'] } } }
     },
     // 암살자(2026-11-09): 그림자 무사 a = 짙은 남색 그림자(맞은 적에 echoMs 뒤 그림자 잔상이 한 번 더 벰 = 그 타 피해 x echo) /
     //   독술사 b = 독초록(맞은 적에 독 psn 겹). 덤 처리 = js/assassin.js(onHit). 그림 = 1차 AI 그림을 갈래 색으로(art/skill-fx/_scripts/assassin_brfx.py, as_*_a|b)
@@ -2002,7 +2060,16 @@
         passive: { stat: 'hawk', val: [2600, 2400, 2200, 2000, 1800], mul: [1, 1.12, 1.25, 1.4, 1.55], find: 300, findDepth: 90, hit: RG_HAWK } },
       { id: 'trap', unlock: 31, tier: 2, branch: 'b', short: '덫 세 개 — 밟으면 묶고 터져요' },
       { id: 'twister', unlock: 35, tier: 2, branch: 'b', short: '적을 빨아들이는 회오리 화살' },
-      { id: 'barrage', unlock: 39, tier: 2, branch: 'b', short: '화면 가득 천 개의 화살' }
+      { id: 'barrage', unlock: 39, tier: 2, branch: 'b', short: '화면 가득 천 개의 화살' },
+      // ---- 숲의 수호자(3차 전직, 레인저 갈래 b, 2026-11-10): passive 't3auto' = 몇 초마다 초록 정령 매가 저절로 내리꽂힘(art 'fg_hawk') ----
+      { id: 'fgwind', unlock: 50, tier: 3, branch: 'b', short: '잎 바람 화살 세 발이 꿰뚫어요' },
+      { id: 'fgspirit', unlock: 52, tier: 3, branch: 'b', recInv: true, short: '몇 초마다 정령 매가 저절로 내리꽂혀요', name: '숲의 정령 매', icon: '정',
+        desc: '숲의 정령 매가 둘레를 날아요. 몇 초마다 가까운 적에게 저절로 내리꽂혀요(Lv 오르면 더 자주 · 더 많이)',
+        passive: { stat: 't3auto', val: [3200, 2900, 2600, 2300, 2000], n: [1, 1, 2, 2, 3], mul: [1, 1.1, 1.2, 1.35, 1.5], find: 340, findDepth: 100, art: 'fg_hawk',
+                   fly: 't3_fg_hawk', flySx: 0.75, hitArt: 't3_fg_burst', hitSx: 0.4, hit: FG_HAWK } },
+      { id: 'fgroots', unlock: 53, tier: 3, branch: 'b', short: '적 발밑마다 가시 덩굴이 솟아요' },
+      { id: 'fgstorm', unlock: 55, tier: 3, branch: 'b', short: '거대한 바람 화살 · 잎 폭풍' },
+      { id: 'fgjudge', unlock: 58, tier: 3, branch: 'b', short: '정령 화살이 내리꽂혀 숲이 깨어나요' }
     ],
     // 2026-11-09 암살자(쌍단검, 궁수와 같은 짜임): 쓰는 기술 1차 6 + 2차 갈래마다 4 / 늘 켜진 기술 1차 7 + 2차 갈래마다 1. 3렙마다 늘 켜진 기술, 그 사이 쓰는 기술
     //   rec: 그림자 무사 a = 한 방 · 치명타(급소 노리기 · 잔영 베기 · 처형), 독술사 b = 몹 떼 · 저절로 공격 · 독(단검 숙련 · 떠도는 단검 · 독 바르기)
@@ -2366,7 +2433,7 @@
   // 3차 옷 — 무기가 그림에 박힌 직업(궁수 · 암살자, 2026-11-10): 그 갈래 2차 옷 그림 위에 옷 + 무기만 다시 그림(pipeline/ai-sprite/t3)
   //   → 2차처럼 1차 옷 묶음을 그대로 쓰고 그림 폴더 · 손 위치 json 만 바꿈. 이름 '<직업>_<갈래>_<성별>' → 묶음 '<직업>_t3<갈래>_<성별>'
   //   (신궁 = archer_t3a · 숲의 수호자 = archer_t3b · 그림자 군주 = assassin_t3a · 역병술사 = assassin_t3b). 여기에 넣은 것만 진짜 그림
-  var T3_BAKED_DONE = ['archer_a_male', 'archer_a_female'];   // 신궁(2026-11-10)
+  var T3_BAKED_DONE = ['archer_a_male', 'archer_a_female', 'archer_b_male', 'archer_b_female'];   // + 숲의 수호자(2026-11-10)   // 신궁(2026-11-10)
   var t3BakedSets = {};
   T3_BAKED_DONE.forEach(function (k) {
     if (artSet === 'novice') return;
@@ -2832,7 +2899,7 @@
                     tier3: { lv: 50, name: '신궁', outfit: 'archer_t3a', desc: '하늘의 활을 쥔 검은 신궁. 거대한 얼음 화살 · 쏟아지는 빛 화살 · 한 줄 관통, 필살 천궁의 심판' } },
                   { key: 'b', name: '레인저', outfit: 'archer_t2b', desc: '숲의 레인저. 화살 폭풍 · 덫 · 회오리로 몹 떼를 쓸고, 매 동료가 저절로 적을 공격해요',
                     look: { base: 'archer', tint: '#5a3a08', k: 0.24, outline: { color: '#c8ff7a', alpha: 0.55, glow: true } },
-                    tier3: { lv: 50, name: '숲의 수호자', soon: true } }
+                    tier3: { lv: 50, name: '숲의 수호자', outfit: 'archer_t3b', desc: '숲과 바람의 수호자. 잎 바람 화살 · 가시 덩굴 · 잎 폭풍으로 몹 떼를 쓸고, 정령 매가 저절로 싸우고, 필살 대자연의 심판' } }
                 ] } },
       // 암살자(2026-11-09): 쌍단검(그림에 박힘) · 평타 = 빠른 단검 3타(ASSASSIN) · 2차 Lv25 = 그림자 무사 / 독술사. 2차 옷 그림이 오기 전엔 1차 옷 물들임(look)
       assassin: { label: '암살자(쌍단검)', weapon: 'dagger', moves: 'dagger', outfit: 'assassin', tier2: { lv: 25, outfit: 'assassin_t2a', name: '그림자 무사',
@@ -6729,7 +6796,7 @@
               test: { pts: 24 },
               botPlan: { knight: ['dash', 'upper', 'nimble', 'wave', 'mastery', 'spin', 'skin', 'slam', 'shards', 'thrust', 'pressure', 'grit', 'counter', 'storm', 'aegis', 'holy', 'cross', 'charge', 'arcwave', 'infuse', 'rift', 'msword', 'unleash', 'sswave', 'ssaura', 'ssrain', 'ssflash', 'ssjudge', 'mkcross', 'mkblades', 'mkrain', 'mkrift', 'mkking'],
                          assassin: ['ashadow', 'arise', 'nimble', 'afan', 'amast', 'awhirl', 'akeen', 'ablink', 'aecho', 'asmoke', 'aorbit', 'avenom', 'aexec', 'sclone', 'sshade', 'sflash', 'sstorm', 'smoon', 'pdarts', 'pplague', 'pcloud', 'ppool', 'perupt'],   // 암살자(2026-11-09)
-                         archer: ['pshot', 'upshot', 'nimble', 'multi', 'aim', 'rain', 'focus', 'leap', 'split', 'burst', 'volley', 'gale', 'mark', 'snipe', 'deadeye', 'ballista', 'rapid', 'skyfall', 'dvlance', 'dveye', 'dvrain', 'dvpierce', 'dvsky', 'tempest', 'hawk', 'trap', 'twister', 'barrage'],   // 궁수(2026-11-09)
+                         archer: ['pshot', 'upshot', 'nimble', 'multi', 'aim', 'rain', 'focus', 'leap', 'split', 'burst', 'volley', 'gale', 'mark', 'snipe', 'deadeye', 'ballista', 'rapid', 'skyfall', 'dvlance', 'dveye', 'dvrain', 'dvpierce', 'dvsky', 'tempest', 'hawk', 'trap', 'twister', 'barrage', 'fgwind', 'fgspirit', 'fgroots', 'fgstorm', 'fgjudge'],   // 궁수(2026-11-09)
                          mage: ['fireball', 'rise', 'nimble', 'bolt', 'amp', 'ice', 'flow', 'blink', 'eshard', 'gravity', 'vortex', 'shield', 'brand', 'meteor', 'echain', 'pillar', 'frost', 'judgment', 'darkorb', 'leech', 'swamp', 'wraith', 'abyss', 'sgorb', 'sgcycle', 'sgstorm', 'sgnova', 'sgdoom', 'abhex', 'absoul', 'abmaw', 'abnova', 'abgate'] } },   // 3차(2026-11-10) 도   // 2026-11-08 갈래 B 기술도(고른 갈래 것만 배워짐)   // 법사 다시 배치(2026-11-08)
 
     // ---------- 기술 효과 그림 (art\stage1\skills\fx 에서 복사 → assets/fx/skill/<이름>_01.png …, 크기·기준점은 fx.json) ----------

@@ -1,0 +1,428 @@
+{
+ "note": "2nd-job branch b \uc232\uc758 \uc218\ud638\uc790(\uc5ec). Same format as anchors_move_archer_t2b_female.json: hand = [x,y] grip in the 176x136 frame, angle deg (0 = right, + = clockwise). Values = branch-a anchors, hand nudged by local silhouette matching; check.manual = read by eye.",
+ "angleUnit": "deg",
+ "frameSize": [
+  176,
+  136
+ ],
+ "frames": {
+  "jump_01": {
+   "hand": [
+    59,
+    89
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     59,
+     89
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 1.0,
+    "match0": 1.0
+   }
+  },
+  "jump_02": {
+   "hand": [
+    63,
+    57
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     63,
+     57
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.995,
+    "match0": 0.995
+   }
+  },
+  "jump_03": {
+   "hand": [
+    66,
+    79
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     66,
+     79
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 1.0,
+    "match0": 1.0
+   }
+  },
+  "jump_04": {
+   "hand": [
+    63,
+    61
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     63,
+     61
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 1.0,
+    "match0": 1.0
+   }
+  },
+  "jump_05": {
+   "hand": [
+    60,
+    92
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     60,
+     92
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 1.0,
+    "match0": 1.0
+   }
+  },
+  "jump_attack_01": {
+   "hand": [
+    65,
+    68
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     65,
+     68
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 1.0,
+    "match0": 1.0
+   }
+  },
+  "jump_attack_02": {
+   "hand": [
+    69,
+    72
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     69,
+     72
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.998,
+    "match0": 0.998
+   }
+  },
+  "jump_attack_03": {
+   "hand": [
+    68,
+    69
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     68,
+     69
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.978,
+    "match0": 0.973
+   }
+  },
+  "jump_attack_04": {
+   "hand": [
+    60,
+    76
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     60,
+     76
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.999,
+    "match0": 0.997
+   }
+  },
+  "run_01": {
+   "hand": [
+    69,
+    77
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     69,
+     77
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.987,
+    "match0": 0.982
+   }
+  },
+  "run_02": {
+   "hand": [
+    72,
+    73
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     72,
+     73
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.98,
+    "match0": 0.979
+   }
+  },
+  "run_03": {
+   "hand": [
+    70,
+    78
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     70,
+     78
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.996,
+    "match0": 0.994
+   }
+  },
+  "run_04": {
+   "hand": [
+    66,
+    76
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     66,
+     76
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.987,
+    "match0": 0.986
+   }
+  },
+  "run_05": {
+   "hand": [
+    69,
+    83
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     69,
+     83
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.994,
+    "match0": 0.987
+   }
+  },
+  "run_06": {
+   "hand": [
+    72,
+    76
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     72,
+     76
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.981,
+    "match0": 0.968
+   }
+  },
+  "run_07": {
+   "hand": [
+    69,
+    82
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     69,
+     82
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.999,
+    "match0": 0.997
+   }
+  },
+  "run_08": {
+   "hand": [
+    67,
+    76
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     67,
+     76
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 1.0,
+    "match0": 1.0
+   }
+  },
+  "run_attack_01": {
+   "hand": [
+    68,
+    69
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     68,
+     69
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.999,
+    "match0": 0.995
+   }
+  },
+  "run_attack_02": {
+   "hand": [
+    55,
+    92
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     55,
+     92
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 1.0,
+    "match0": 1.0
+   }
+  },
+  "run_attack_03": {
+   "hand": [
+    70,
+    85
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     67,
+     86
+    ],
+    "shift": [
+     3,
+     -1
+    ],
+    "match": 0.959,
+    "match0": 0.918
+   }
+  },
+  "run_attack_04": {
+   "hand": [
+    65,
+    86
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     62,
+     87
+    ],
+    "shift": [
+     3,
+     -1
+    ],
+    "match": 0.956,
+    "match0": 0.92
+   }
+  },
+  "run_attack_05": {
+   "hand": [
+    68,
+    81
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     68,
+     81
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 1.0,
+    "match0": 1.0
+   }
+  }
+ }
+}

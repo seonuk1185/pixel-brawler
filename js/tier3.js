@@ -43,7 +43,13 @@
     // 신궁(궁수 3차 갈래 a, 2026-11-10): 거대한 얼음 화살(오른쪽 봄) · 얼음 터짐 · 하늘에서 내리꽂히는 빛 화살(촉 = 아래)
     t3_dv_arrow:        { n: 4, pv: [60.0, 23.0], fps: 14 },    // 120x46 반복
     t3_dv_burst:        { n: 5, pv: [55.0, 48.0], fps: 14 },    // 110x96
-    t3_dv_fall:         { n: 4, pv: [54.0, 110], fps: 12 }      // 108x110 반복
+    t3_dv_fall:         { n: 4, pv: [54.0, 110], fps: 12 },   // 108x110 반복
+    // 숲의 수호자(2026-11-10, art/skill-fx/t3_fg · t3_fg2, 자홍 바탕 + despill green)
+    t3_fg_wind:         { n: 4, pv: [60.0, 40.5], fps: 14 },    // 120x81 잎 바람 화살(반복)
+    t3_fg_burst:        { n: 5, pv: [55.0, 52.5], fps: 14 },    // 110x105 잎 터짐
+    t3_fg_hawk:         { n: 4, pv: [32.0, 24.0], fps: 12 },    // 64x48 초록 정령 매(반복)
+    t3_fg2_vine:        { n: 6, pv: [40.0, 130], fps: 14 },     // 80x130 가시 덩굴 기둥(바닥)
+    t3_fg2_arrow:       { n: 4, pv: [36.5, 120], fps: 12 }      // 73x120 거대한 정령 화살(아래를 봄, 기준 = 촉, 반복)
   };
   (function reg() { var S = window.Skills && Skills._api; if (S) S.addAifx(AFX); })();
 
@@ -431,7 +437,7 @@
 
   // ---------- 늘 켜진 기술 't3auto'(저절로 공격) · 몸 둘레 기운 ----------
   //   passive = { val = 몇 ms 마다, n = 한 번에 몇 개, mul = 데미지 배율, find · findDepth = 찾는 둘레, art = 'ss_sword'(금빛 영검이 날아감) | 'sg_cycle'(원소 폭발), r = 폭발 반지름 }
-  var AUTO_IDS = ['ssaura', 'sgcycle', 'mkblades', 'absoul', 'dveye'], autoT = {}, auraOn = null;   // 마검왕 떠도는 마검(2026-11-10)
+  var AUTO_IDS = ['ssaura', 'sgcycle', 'mkblades', 'absoul', 'dveye', 'fgspirit'], autoT = {}, auraOn = null;   // 마검왕 떠도는 마검(2026-11-10)
   function passiveStep(p, dt) {
     auraOn = null;
     if (!p || p.state === 'dead' || !p.classKey || p.classKey === 'novice') return;
@@ -475,6 +481,7 @@
     for (var i = 0; i < n; i++) {
       var a = now / (sw ? 700 : 560) + i * Math.PI * 2 / n, ox = Math.cos(a) * 26 * k, oy = Math.sin(a) * 9 * k - (sw ? 14 * k : 0);
       if (auraOn === 'dv_arrow') aiDraw(ctx, 't3_dv_arrow', Math.floor(now / 80 + i) % 4, p.x + ox - camX, cy + oy - 6 * k, 0.28, 0.28, -Math.PI / 2, 0.75);   // 신궁: 얼음 화살이 맴돎
+      else if (auraOn === 'fg_hawk') aiDraw(ctx, 't3_fg_hawk', Math.floor(now / 90 + i) % 4, p.x + ox - camX, cy + oy - 10 * k, (Math.sin(a) > 0 ? 1 : -1) * 0.34, 0.34, 0, 0.8);   // 숲의 수호자: 정령 매가 맴돎
       else if (auraOn === 'ab_skull') aiDraw(ctx, 't3_ab_skull', Math.floor(now / 90 + i) % 4, p.x + ox - camX, cy + oy, p.dir * 0.32, 0.32, 0, 0.75);
       else if (auraOn === 'mk_sword') aiDraw(ctx, 'msword_sword', Math.floor(now / 90 + i) % 4, p.x + ox - camX, cy + oy, 0.55, 0.55, -Math.PI / 2, 0.7);
       else if (sw) aiDraw(ctx, 't3_ssslash_sword', 1, p.x + ox - camX, cy + oy, 0.32, 0.32, -Math.PI / 2, 0.55);
