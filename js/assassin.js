@@ -661,7 +661,7 @@
   var TIERCOL_A = { rare: '#8aa8ff', epic: '#4a6aff', legendary: '#9fd0ff', mythic: '#3ad0ff' };
   var TIERCOL_B = { rare: '#a8e080', epic: '#6ad040', legendary: '#c8ff60', mythic: '#5aff3a' };
   function gradeGlow(ctx, camX, p) {
-    if (!p.wArt || !p.char || !p.char.anchors || hideOn) return;
+    if (!p.wArt || !p.char || !p.char.anchors || hideOn || p._dualOk) return;   // 덧그림 단검이 켜져 있으면 빛은 dualDraw 가 그림
     var tier = (p.wArt.match(/_(common|rare|epic|legendary|mythic)$/) || [])[1];
     if (!tier || tier === 'common') return;
     var fr = p.currentFrame(), L = p.char.anims[fr.anim], img = L && L[fr.idx], an = p.char.anchors[fr.anim], anc = an && an[fr.idx];
@@ -673,6 +673,70 @@
     var gr = ctx.createRadialGradient(x - camX, y, 0, x - camX, y, r * 2.2); gr.addColorStop(0, col); gr.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = gr; ctx.fillRect(x - camX - r * 2.4, y - r * 2.4, r * 4.8, r * 4.8); ctx.restore();
     if ((tier === 'legendary' || tier === 'mythic') && Math.random() < 0.18) debris(x + (Math.random() - 0.5) * 10, y, p.y, 1, { cols: ['#ffffff', col], glow: true, sp: 30, size: 1.2, ms: 360, g: -120, spread: 1.2 });
+  }
+
+  // ---------- 강화 단검 덧그림 (시험, 2026-11-10, 끔이 기본: config assassinDualDagger 또는 주소 ?dual=1) ----------
+  //   단검은 몸 그림에 박혀 있어 강화해도 모양이 안 바뀜 → +3(희귀)부터 두 손에 단계 단검 그림을 조금 크게 덧그려 박힌 단검을 덮음
+  //   손 위치 · 각도 = anchors_dual_<옷_성별>.json (pipeline\ai-sprite\assassin\asdual.py, 1배 그림 점: g = 날 밑동(손), a = 각도, L = 박힌 날 길이, front = 몸 앞)
+  //   뒤 손 단검 = 몸 그림 뒤, 앞 손 단검 = 몸 앞 + 주먹 자리 몸 그림을 한 번 더 덮어 손가락이 손잡이를 쥔 것처럼
+  var DUAL_GROW = { rare: 1.35, epic: 1.55, legendary: 1.75, mythic: 2.0 };   // 박힌 날 길이 대비 덧그림 날 길이(단계마다 커짐)
+  var dualData = {}, dualReq = {};
+  function dualOn() { return !!((CFG() && CFG().assassinDualDagger) || /[?&]dual=1/.test(location.search)); }
+  function dual(p, fr, weaponImgs) {
+    p._dualOk = false;
+    if (!dualOn() || !p.classKey || p.classKey !== 'assassin' || !p.wArt || hideOn) return null;
+    var tier = (p.wArt.match(/_(common|rare|epic|legendary|mythic)$/) || [])[1];
+    if (!tier || tier === 'common') return null;   // +0~2 일반 = 박힌 단검 그대로
+    var def = p.char.def, A = def.anims[fr.anim], path = A && A.frames && A.frames[fr.idx];
+    var m = typeof path === 'string' && path.match(/stage1\/([^/]+)\/([^/.]+)\.png$/); if (!m) return null;
+    var D = dualData[m[1]];
+    if (D === undefined) {
+      if (!dualReq[m[1]]) { dualReq[m[1]] = 1; fetch('assets/chars/stage1/anchors_dual_' + m[1] + '.json').then(function (r) { return r.json(); }).then(function (j) { dualData[m[1]] = j.frames || {}; }).catch(function () { dualData[m[1]] = null; }); }
+      return null;
+    }
+    var L = D && D[m[2]], wImg = weaponImgs && weaponImgs[p.wArt], wDef = CFG().art.weapons[p.wArt];
+    if (!L || !L.length || !wImg || !wDef) return null;
+    p._dualOk = true;
+    var im = p.char.anims[fr.anim] && p.char.anims[fr.anim][fr.idx], k = (im && im._k) || 1, f = def.pivot.x / 68;   // 1배 그림 점 → 이 그림 점(f, 기준점 68 이 바뀐 비율) → 도트(k)
+    return { list: L, wImg: wImg, wDef: wDef, tier: tier, def: def, k: k, f: f };
+  }
+  // 단계 테두리 색(작게 보여도 단계가 구분되게): 희귀 하늘 · 영웅 보라 · 전설 금 · 신화 빨강
+  var DUAL_EDGE = { rare: '#9fd8ff', epic: '#c070ff', legendary: '#ffc030', mythic: '#ff3040' };
+  var edgeCache = {};
+  function edgeOf(img, col) {
+    var key = (img.src || img._key || img.width + 'x' + img.height) + col; if (edgeCache[key]) return edgeCache[key];
+    var c = document.createElement('canvas'); c.width = img.width; c.height = img.height; var g = c.getContext('2d');
+    g.drawImage(img, 0, 0); g.globalCompositeOperation = 'source-in'; g.fillStyle = col; g.fillRect(0, 0, c.width, c.height);
+    if (Assets.copyMeta) Assets.copyMeta(img, c); edgeCache[key] = c; return c;
+  }
+  // pass = 'back'(몸 그림 앞에 부름) | 'front'(몸 그림 뒤에 부름, body = 그린 몸 그림). ctx = Player.draw 의 발 기준 · 좌우 뒤집힌 상태
+  //   박힌 단검이 몸 그림 안에 있어 몸 뒤에 그리면 가려짐 → 두 단검 다 몸 위에 그리고, 손 자리만 몸 그림을 다시 덮음(뒤 손 = 손등이 보여 손잡이를 거의 다 덮음)
+  function dualDraw(ctx, p, D, pass, body) {
+    if (pass !== 'front') return;
+    var S = D.f * D.k, pv = D.def.pivot, WS = CFG().weaponScale || 1, w = D.wImg, wd = D.wDef;
+    var artLen = Math.max(4, (w.width * (w._k || WS)) - (wd.grip.x * WS));   // 무기 그림 손잡이 점 → 날 끝(도트)
+    var edge = edgeOf(w, DUAL_EDGE[D.tier] || '#ffffff'), ow = 0.55 / Math.max(0.2, (w._k || WS));
+    D.list.slice().sort(function (a, b) { return (a.front ? 1 : 0) - (b.front ? 1 : 0); }).forEach(function (q) {
+      var gx = (q.g[0] * D.f - pv.x) * D.k, gy = (q.g[1] * D.f - pv.y) * D.k, ang = q.a * Math.PI / 180;
+      var grow = DUAL_GROW[D.tier] || 1.4, sc = (q.L * S * grow) / artLen;
+      ctx.save(); ctx.translate(gx, gy); ctx.rotate(ang); ctx.scale(sc, sc);
+      var my = wd.mythic && window.Enchant;
+      if (my) Enchant.mythic(ctx, wd, w, ang, 'back', 1);
+      [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (o) { ctx.save(); ctx.translate(o[0] * ow / sc, o[1] * ow / sc); Assets.blit(ctx, edge, wd.grip.x, wd.grip.y); ctx.restore(); });
+      Assets.blit(ctx, w, wd.grip.x, wd.grip.y);
+      if (my) Enchant.mythic(ctx, wd, w, ang, 'front', 1);
+      ctx.restore();
+      if (body) {   // 주먹 덮기: 날 밑동 뒤쪽(손) 둥근 자리만 몸 그림을 다시 → 손가락이 손잡이 위로
+        var c = Math.cos(ang), s = Math.sin(ang), back = !q.front, fx = gx - c * (back ? 2.6 : 2.0) * S, fy = gy - s * (back ? 2.6 : 2.0) * S;
+        ctx.save(); ctx.beginPath(); ctx.arc(fx, fy, (back ? 4.2 : 3.4) * S, 0, Math.PI * 2); ctx.clip(); Assets.blit(ctx, body, pv.x, pv.y); ctx.restore();
+      }
+      var col = DUAL_EDGE[D.tier]; if (!col) return;   // 강화 빛(gradeGlow 대신): 덧그린 날 가운데
+      var len = q.L * S * grow, cx = gx + Math.cos(ang) * len * 0.55, cy = gy + Math.sin(ang) * len * 0.55;
+      var r = { rare: 6, epic: 8, legendary: 10, mythic: 12 }[D.tier] * S / 0.55, fl = 0.75 + 0.25 * Math.sin(performance.now() / 120);
+      ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = (q.front ? 0.4 : 0.28) * fl;
+      var gr = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 2); gr.addColorStop(0, col); gr.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = gr; ctx.fillRect(cx - r * 2.2, cy - r * 2.2, r * 4.4, r * 4.4); ctx.restore();
+    });
   }
 
   // ---------- 매 장면 ----------
@@ -709,6 +773,7 @@
 
   window.Assassin = {
     swingFx: swingFx, step: step, update: update, drawUnder: drawUnder, drawOver: drawOver, clear: clear, busy: busy, hidden: hidden,
+    dual: dual, dualDraw: dualDraw,
     critAdd: critAdd, critDmg: critDmg, dmgMul: dmgMul, onHit: onHit, addPsn: addPsn,
     _state: function () { return { shots: shots.length, fxs: fxs.length, poisoned: poisoned.length, shade: !!shade, echoes: echoes.length, br: brNow, hide: hideOn }; }
   };

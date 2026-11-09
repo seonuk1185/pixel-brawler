@@ -720,7 +720,11 @@
     if (img && L && L.outline) drawOutline(ctx, img, def.pivot, L.outline);
     var els = anc && wImg ? this.els : null;   // 무기 속성 오라(js/enchant.js)
     if (back) drawWeapon(ctx, def, anc, wDef, wImg, k, els);
+    // 박힌 무기 위 강화 단검 덧그림(암살자 시험, 2026-11-10, js/assassin.js dual): 뒤 손 = 몸 뒤, 앞 손 = 몸 앞
+    var dual = def.bakedWeapon && window.Assassin && Assassin.dual ? Assassin.dual(this, fr, weaponImgs) : null;
+    if (dual) Assassin.dualDraw(ctx, this, dual, 'back', null);
     if (img) Assets.blit(ctx, body, def.pivot.x, def.pivot.y);
+    if (dual) Assassin.dualDraw(ctx, this, dual, 'front', body);
     if (anc && wImg && !back) {
       drawWeapon(ctx, def, anc, wDef, wImg, k, els);
       // 주먹 덮기(2026-11-07): 몸 앞에 그린 칼 위에 주먹 칸(anc.fist)의 몸 그림만 한 번 더 → 손잡이를 쥔 것처럼
