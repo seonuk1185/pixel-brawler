@@ -1,0 +1,813 @@
+{
+ "note": "2nd-job branch b \ub9c8\uac80\uc0ac(\ub0a8). Same format as anchors_knight_t2_male.json: hand = [x,y] grip in the 176x136 frame, angle deg (0 = right, + = clockwise). Values = branch-a anchors, hand nudged by local silhouette matching; check.manual = read by eye.",
+ "frameSize": [
+  176,
+  136
+ ],
+ "frames": {
+  "attack_01": {
+   "hand": [
+    98,
+    78
+   ],
+   "angle": -35,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     98,
+     78
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.982,
+    "match0": 0.982
+   }
+  },
+  "attack_02": {
+   "hand": [
+    62,
+    31
+   ],
+   "angle": -35,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     62,
+     31
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.968,
+    "match0": 0.968
+   }
+  },
+  "attack_03": {
+   "hand": [
+    106,
+    65
+   ],
+   "angle": -138,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     106,
+     65
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.984,
+    "match0": 0.984
+   }
+  },
+  "attack_04": {
+   "hand": [
+    124,
+    82
+   ],
+   "angle": 15,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     124,
+     82
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.982,
+    "match0": 0.982
+   }
+  },
+  "attack_05": {
+   "hand": [
+    97,
+    78
+   ],
+   "angle": -37,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     97,
+     78
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.99,
+    "match0": 0.99
+   }
+  },
+  "hurt_01": {
+   "hand": [
+    94,
+    71
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     94,
+     71
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.982,
+    "match0": 0.982
+   }
+  },
+  "hurt_02": {
+   "hand": [
+    101,
+    64
+   ],
+   "angle": 25,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     101,
+     64
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.987,
+    "match0": 0.987
+   }
+  },
+  "hurt_03": {
+   "hand": [
+    101,
+    75
+   ],
+   "angle": 28,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     101,
+     76
+    ],
+    "shift": [
+     0,
+     -1
+    ],
+    "match": 0.967,
+    "match0": 0.954
+   }
+  },
+  "idle_01": {
+   "hand": [
+    96,
+    76
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     96,
+     76
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.984,
+    "match0": 0.984
+   }
+  },
+  "idle_02": {
+   "hand": [
+    97,
+    76
+   ],
+   "angle": -39,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     97,
+     76
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.984,
+    "match0": 0.984
+   }
+  },
+  "idle_03": {
+   "hand": [
+    96,
+    75
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     97,
+     77
+    ],
+    "shift": [
+     -1,
+     -2
+    ],
+    "match": 0.955,
+    "match0": 0.922
+   }
+  },
+  "idle_04": {
+   "hand": [
+    97,
+    76
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     97,
+     76
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.968,
+    "match0": 0.968
+   }
+  },
+  "walk_01": {
+   "hand": [
+    96,
+    71
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     96,
+     71
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.971,
+    "match0": 0.971
+   }
+  },
+  "walk_02": {
+   "hand": [
+    96,
+    64
+   ],
+   "angle": -36,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     96,
+     64
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.984,
+    "match0": 0.984
+   }
+  },
+  "walk_03": {
+   "hand": [
+    96,
+    61
+   ],
+   "angle": -34,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     96,
+     61
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.984,
+    "match0": 0.984
+   }
+  },
+  "walk_04": {
+   "hand": [
+    100,
+    59
+   ],
+   "angle": -32,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     100,
+     59
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.986,
+    "match0": 0.986
+   }
+  },
+  "walk_05": {
+   "hand": [
+    98,
+    61
+   ],
+   "angle": -34,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     98,
+     61
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.979,
+    "match0": 0.979
+   }
+  },
+  "walk_06": {
+   "hand": [
+    97,
+    62
+   ],
+   "angle": -34,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     97,
+     62
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.982,
+    "match0": 0.982
+   }
+  },
+  "walk_07": {
+   "hand": [
+    95,
+    60
+   ],
+   "angle": -33,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     95,
+     60
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.997,
+    "match0": 0.997
+   }
+  },
+  "walk_08": {
+   "hand": [
+    101,
+    59
+   ],
+   "angle": -32,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     101,
+     59
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.99,
+    "match0": 0.99
+   }
+  },
+  "attack2_01": {
+   "hand": [
+    108,
+    100
+   ],
+   "angle": 45,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     108,
+     100
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.989,
+    "match0": 0.989
+   }
+  },
+  "attack2_02": {
+   "hand": [
+    54,
+    76
+   ],
+   "angle": 150,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     54,
+     76
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.987,
+    "match0": 0.987
+   }
+  },
+  "attack2_03": {
+   "hand": [
+    108,
+    72
+   ],
+   "angle": -30,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     108,
+     72
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.976,
+    "match0": 0.976
+   }
+  },
+  "attack2_04": {
+   "hand": [
+    104,
+    21
+   ],
+   "angle": -85,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     104,
+     21
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.995,
+    "match0": 0.995
+   }
+  },
+  "attack2_05": {
+   "hand": [
+    101,
+    76
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     101,
+     76
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.982,
+    "match0": 0.982
+   }
+  },
+  "attack3_01": {
+   "hand": [
+    51,
+    87
+   ],
+   "angle": 160,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     51,
+     87
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.99,
+    "match0": 0.99
+   }
+  },
+  "attack3_02": {
+   "hand": [
+    52,
+    31
+   ],
+   "angle": 120,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     52,
+     31
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.984,
+    "match0": 0.984
+   }
+  },
+  "attack3_03": {
+   "hand": [
+    72,
+    23
+   ],
+   "angle": 180,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     72,
+     24
+    ],
+    "shift": [
+     0,
+     -1
+    ],
+    "match": 0.986,
+    "match0": 0.971
+   }
+  },
+  "attack3_04": {
+   "hand": [
+    100,
+    49
+   ],
+   "angle": -60,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     100,
+     49
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.989,
+    "match0": 0.989
+   }
+  },
+  "attack3_05": {
+   "hand": [
+    114,
+    125
+   ],
+   "angle": 3,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     114,
+     125
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.989,
+    "match0": 0.989
+   }
+  },
+  "attack3_06": {
+   "hand": [
+    111,
+    121
+   ],
+   "angle": 10,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     111,
+     121
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.984,
+    "match0": 0.984
+   }
+  },
+  "getup_03": {
+   "hand": [
+    96,
+    83
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     96,
+     83
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.992,
+    "match0": 0.992
+   }
+  },
+  "getup_04": {
+   "hand": [
+    97,
+    76
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     97,
+     76
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.978,
+    "match0": 0.978
+   }
+  },
+  "hurt2_01": {
+   "hand": [
+    77,
+    82
+   ],
+   "angle": 60,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     77,
+     82
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.992,
+    "match0": 0.992
+   }
+  },
+  "hurt2_02": {
+   "hand": [
+    91,
+    92
+   ],
+   "angle": 80,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     91,
+     92
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.979,
+    "match0": 0.979
+   }
+  },
+  "hurt2_03": {
+   "hand": [
+    98,
+    76
+   ],
+   "angle": -40,
+   "layer": "back",
+   "check": {
+    "fromTier1": [
+     98,
+     76
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.982,
+    "match0": 0.982
+   }
+  },
+  "knockdown_01": {
+   "hand": [
+    68,
+    128
+   ],
+   "angle": 0,
+   "layer": "back",
+   "hide": true,
+   "check": {
+    "note": "weapon not drawn (dropped/hidden); hand = drop point on the ground (same as 1st tier)"
+   }
+  },
+  "knockdown_02": {
+   "hand": [
+    68,
+    128
+   ],
+   "angle": 0,
+   "layer": "back",
+   "hide": true,
+   "check": {
+    "note": "weapon not drawn (dropped/hidden); hand = drop point on the ground (same as 1st tier)"
+   }
+  },
+  "knockdown_03": {
+   "hand": [
+    68,
+    128
+   ],
+   "angle": 0,
+   "layer": "back",
+   "hide": true,
+   "check": {
+    "note": "weapon not drawn (dropped/hidden); hand = drop point on the ground (same as 1st tier)"
+   }
+  },
+  "knockdown_04": {
+   "hand": [
+    68,
+    128
+   ],
+   "angle": 0,
+   "layer": "back",
+   "hide": true,
+   "check": {
+    "note": "weapon not drawn (dropped/hidden); hand = drop point on the ground (same as 1st tier)"
+   }
+  },
+  "knockdown_05": {
+   "hand": [
+    68,
+    128
+   ],
+   "angle": 0,
+   "layer": "back",
+   "hide": true,
+   "check": {
+    "note": "weapon not drawn (dropped/hidden); hand = drop point on the ground (same as 1st tier)"
+   }
+  },
+  "getup_01": {
+   "hand": [
+    68,
+    128
+   ],
+   "angle": 0,
+   "layer": "back",
+   "hide": true,
+   "check": {
+    "note": "weapon not drawn (dropped/hidden); hand = drop point on the ground (same as 1st tier)"
+   }
+  },
+  "getup_02": {
+   "hand": [
+    68,
+    128
+   ],
+   "angle": 0,
+   "layer": "back",
+   "hide": true,
+   "check": {
+    "note": "weapon not drawn (dropped/hidden); hand = drop point on the ground (same as 1st tier)"
+   }
+  }
+ }
+}

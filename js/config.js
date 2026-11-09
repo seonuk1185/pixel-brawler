@@ -1379,6 +1379,27 @@
     mageT2Female.moveAnchors = 'assets/chars/stage1/anchors_move_mage_t2_female.json';
     mageT2Female.t2Dir = MT2FDIR;
   }
+  // 2차 갈래 b 옷 (2026-11-09, 마검사 = knight_t2b · 흑마법사 = mage_t2b): 그림 = assets/chars/stage1/<옷>_t2b_<성별> (art\<직업>-t2b\<성별> 에서 복사).
+  //   갈래 a(성기사 · 대마법사) 그림 위에 Flow 로 옷만 다시 그려 같은 실루엣에 맞춘 것 → 장 수 · 발 위치 · 손 위치가 갈래 a 와 같다.
+  //   그래서 1차 옷 묶음을 그대로 쓰고 그림 폴더 · 손 위치 json 만 바꾼다(콤보 · 보폭 · 달리기 수치 · 기술 동작 시간 = 1차 옷 그대로).
+  //   T2B_DONE 에 있는 것만 진짜 그림, 없는 것은 classes.<직업>.tier2.branches 의 look(1차 옷 물들임) 그대로
+  var T2B_DONE = ['knight_male', 'knight_female'];
+  var T2B_ANIMS = { knight: KNIGHT_T2_MALE_ANIMS, mage: MAGE_T2_MALE_ANIMS };
+  var t2bSets = {};
+  T2B_DONE.forEach(function (k) {
+    var cls = k.split('_')[0], who = k.split('_')[1];
+    if (artSet === 'novice') return;
+    var d = stage1(who, 'assets/chars/stage1/anchors_' + cls + '_t2b_' + who + '.json', cls);
+    var dir = 'assets/chars/stage1/' + cls + '_t2b_' + who + '/', from = 'assets/chars/stage1/' + cls + '_' + who + '/';
+    Object.keys(d.anims).forEach(function (n) {
+      var A = d.anims[n];
+      if (T2B_ANIMS[cls].indexOf(n) >= 0) A.frames = A.frames.map(function (f) { return f.replace(from, dir); });
+    });
+    d.moveAnchors = 'assets/chars/stage1/anchors_move_' + cls + '_t2b_' + who + '.json';
+    d.t2Dir = dir;
+    if (cls === 'knight' && who === 'male') d.raShow = { pushFirst: 1, pushFirstMs: 90, pushHold: 2 };   // 성기사 남과 같은 어깨빵 그림
+    t2bSets[cls + '_t2b_' + who] = d;
+  });
   var characters = { male: male, female: female };
   if (knightMale) { characters.knight_male = knightMale; characters.knight_female = knightFemale; }
   if (knightT2Male) characters.knight_t2_male = knightT2Male;
@@ -1386,6 +1407,7 @@
   if (mageMale) { characters.mage_male = mageMale; characters.mage_female = mageFemale; }
   if (mageT2Male) characters.mage_t2_male = mageT2Male;
   if (mageT2Female) characters.mage_t2_female = mageT2Female;
+  Object.keys(t2bSets).forEach(function (k) { characters[k] = t2bSets[k]; });
 
   // ---------- 적 그림 (art\stage1-enemies 에서 복사, 그림은 전부 「왼쪽을 봄」) ----------
   // playback = 그림 번호(1부터) 재생 순서, fps = 1초에 몇 칸. 순서를 늘리면 그 장면이 길어진다(예: 몽둥이 치켜든 장면 = 예고)
@@ -5678,6 +5700,18 @@
       });
       MT2F.motionAnchors = 'assets/chars/stage1/anchors_motions_mage_t2_female.json';
     }
+    // 갈래 b(마검사 · 흑마법사, 2026-11-09): 같은 방식. 기술 동작 = 1차 옷과 같은 동작 · 시간, 그림만 갈래 b 폴더, 손 위치 = anchors_motions_<옷>_t2b_<성별>.json
+    T2B_DONE.forEach(function (k) {
+      var cls = k.split('_')[0], who = k.split('_')[1];
+      var D = C.art.characters[cls + '_t2b_' + who], M1 = C.motions[cls + '_' + who];
+      if (!D || !M1) return;
+      Object.keys(M1).forEach(function (m) {
+        if (!(M1[m].count > 0)) return;
+        var dir = T2B_ANIMS[cls].indexOf(m) >= 0 ? D.t2Dir : 'assets/chars/stage1/' + cls + '_' + who + '/';
+        D.anims[m] = { frames: seq(dir + m + '_', M1[m].count), fps: 14, loop: false };
+      });
+      D.motionAnchors = 'assets/chars/stage1/anchors_motions_' + cls + '_t2b_' + who + '.json';
+    });
     // 2차 전직 갈래 임시 옷(2026-11-08, classes.<직업>.tier2.branches 의 look): 그 갈래 옷 그림(「옷_성별」)이 아직 없으면
     //   1차 옷(look.base) 묶음을 그대로 빌려 쓰고 그릴 때 물들임 + 빛 테두리(entities.js Player.draw 의 def.look). 그림 · 손 위치 · 동작 = 1차 옷과 똑같음
     //   anims 는 묶음마다 새로 복사(아래 scaleActors 가 걷기 보폭을 옷마다 한 번씩 줄이므로)
