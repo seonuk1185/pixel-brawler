@@ -8,7 +8,7 @@
  "frames": {
   "run_01": {
    "hand": [
-    51,
+    48,
     80
    ],
    "angle": 150,
@@ -23,13 +23,14 @@
      0
     ],
     "match": 0.99,
-    "match0": 0.99
+    "match0": 0.99,
+    "manual": true
    }
   },
   "run_02": {
    "hand": [
-    51,
-    80
+    43,
+    78
    ],
    "angle": 150,
    "layer": "back",
@@ -43,13 +44,14 @@
      0
     ],
     "match": 0.987,
-    "match0": 0.987
+    "match0": 0.987,
+    "manual": true
    }
   },
   "run_03": {
    "hand": [
-    53,
-    80
+    44,
+    79
    ],
    "angle": 150,
    "layer": "back",
@@ -63,12 +65,13 @@
      0
     ],
     "match": 0.995,
-    "match0": 0.995
+    "match0": 0.995,
+    "manual": true
    }
   },
   "run_04": {
    "hand": [
-    53,
+    49,
     79
    ],
    "angle": 150,
@@ -83,13 +86,14 @@
      0
     ],
     "match": 0.992,
-    "match0": 0.992
+    "match0": 0.992,
+    "manual": true
    }
   },
   "run_05": {
    "hand": [
-    52,
-    81
+    45,
+    78
    ],
    "angle": 150,
    "layer": "back",
@@ -103,13 +107,14 @@
      0
     ],
     "match": 0.99,
-    "match0": 0.99
+    "match0": 0.99,
+    "manual": true
    }
   },
   "run_06": {
    "hand": [
-    53,
-    81
+    47,
+    78
    ],
    "angle": 150,
    "layer": "back",
@@ -123,13 +128,14 @@
      0
     ],
     "match": 1.0,
-    "match0": 1.0
+    "match0": 1.0,
+    "manual": true
    }
   },
   "run_07": {
    "hand": [
-    53,
-    80
+    47,
+    79
    ],
    "angle": 150,
    "layer": "back",
@@ -143,7 +149,8 @@
      0
     ],
     "match": 0.99,
-    "match0": 0.99
+    "match0": 0.99,
+    "manual": true
    }
   },
   "run_08": {

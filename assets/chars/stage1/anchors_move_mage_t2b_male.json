@@ -9,13 +9,13 @@
   "run_01": {
    "hand": [
     50,
-    78
+    80
    ],
    "angle": 165,
    "layer": "front",
    "fist": [
     46,
-    74,
+    76,
     9,
     9
    ],
@@ -29,18 +29,19 @@
      0
     ],
     "match": 0.997,
-    "match0": 0.997
+    "match0": 0.997,
+    "manual": true
    }
   },
   "run_02": {
    "hand": [
-    52,
+    50,
     81
    ],
    "angle": 165,
    "layer": "front",
    "fist": [
-    48,
+    46,
     77,
     9,
     9
@@ -55,7 +56,8 @@
      0
     ],
     "match": 0.998,
-    "match0": 0.998
+    "match0": 0.998,
+    "manual": true
    }
   },
   "run_03": {
@@ -81,19 +83,20 @@
      0
     ],
     "match": 1.0,
-    "match0": 1.0
+    "match0": 1.0,
+    "manual": true
    }
   },
   "run_04": {
    "hand": [
     53,
-    77
+    79
    ],
    "angle": 165,
    "layer": "front",
    "fist": [
     49,
-    73,
+    75,
     9,
     9
    ],
@@ -107,19 +110,20 @@
      0
     ],
     "match": 0.997,
-    "match0": 0.997
+    "match0": 0.997,
+    "manual": true
    }
   },
   "run_05": {
    "hand": [
     53,
-    80
+    83
    ],
    "angle": 165,
    "layer": "front",
    "fist": [
     49,
-    76,
+    79,
     9,
     9
    ],
@@ -133,19 +137,20 @@
      0
     ],
     "match": 1.0,
-    "match0": 1.0
+    "match0": 1.0,
+    "manual": true
    }
   },
   "run_06": {
    "hand": [
-    53,
-    80
+    52,
+    82
    ],
    "angle": 165,
    "layer": "front",
    "fist": [
-    49,
-    76,
+    48,
+    78,
     9,
     9
    ],
@@ -159,19 +164,20 @@
      0
     ],
     "match": 0.998,
-    "match0": 0.998
+    "match0": 0.998,
+    "manual": true
    }
   },
   "run_07": {
    "hand": [
     50,
-    77
+    81
    ],
    "angle": 165,
    "layer": "front",
    "fist": [
     46,
-    73,
+    77,
     9,
     9
    ],
@@ -185,19 +191,20 @@
      0
     ],
     "match": 0.998,
-    "match0": 0.998
+    "match0": 0.998,
+    "manual": true
    }
   },
   "run_08": {
    "hand": [
-    53,
-    74
+    50,
+    80
    ],
    "angle": 165,
    "layer": "front",
    "fist": [
-    49,
-    70,
+    46,
+    76,
     9,
     9
    ],
@@ -211,7 +218,8 @@
      0
     ],
     "match": 0.998,
-    "match0": 0.998
+    "match0": 0.998,
+    "manual": true
    }
   },
   "jump_01": {
@@ -316,14 +324,14 @@
   },
   "run_attack_01": {
    "hand": [
-    49,
-    83
+    50,
+    82
    ],
    "angle": 165,
    "layer": "front",
    "fist": [
-    45,
-    79,
+    46,
+    78,
     9,
     9
    ],
@@ -337,19 +345,20 @@
      0
     ],
     "match": 0.986,
-    "match0": 0.986
+    "match0": 0.986,
+    "manual": true
    }
   },
   "run_attack_02": {
    "hand": [
-    50,
-    83
+    56,
+    81
    ],
    "angle": 165,
    "layer": "front",
    "fist": [
-    46,
-    79,
+    52,
+    77,
     9,
     9
    ],
@@ -363,7 +372,8 @@
      0
     ],
     "match": 0.99,
-    "match0": 0.99
+    "match0": 0.99,
+    "manual": true
    }
   },
   "run_attack_03": {

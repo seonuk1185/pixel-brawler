@@ -8,82 +8,46 @@
  "frames": {
   "idle_01": {
    "hand": [
-    92,
-    72
+    88,
+    71.0
    ],
    "angle": -40,
    "layer": "back",
    "check": {
-    "fromTier1": [
-     87,
-     72
-    ],
-    "shift": [
-     5,
-     0
-    ],
-    "match": 0.855,
-    "match0": 0.795
+    "note": "idle remade from idle_04 (t2bidle.py): feet planted, upper body sinks 0 HD px"
    }
   },
   "idle_02": {
    "hand": [
     88,
-    72
+    71.91
    ],
    "angle": -40,
    "layer": "back",
    "check": {
-    "fromTier1": [
-     87,
-     72
-    ],
-    "shift": [
-     1,
-     0
-    ],
-    "match": 0.951,
-    "match0": 0.938
+    "note": "idle remade from idle_04 (t2bidle.py): feet planted, upper body sinks 1 HD px"
    }
   },
   "idle_03": {
    "hand": [
-    90,
-    71
+    88,
+    72.82
    ],
    "angle": -40,
    "layer": "back",
    "check": {
-    "fromTier1": [
-     88,
-     71
-    ],
-    "shift": [
-     2,
-     0
-    ],
-    "match": 0.946,
-    "match0": 0.928
+    "note": "idle remade from idle_04 (t2bidle.py): feet planted, upper body sinks 2 HD px"
    }
   },
   "idle_04": {
    "hand": [
     88,
-    71
+    71.91
    ],
    "angle": -40,
    "layer": "back",
    "check": {
-    "fromTier1": [
-     88,
-     71
-    ],
-    "shift": [
-     0,
-     0
-    ],
-    "match": 0.948,
-    "match0": 0.941
+    "note": "idle remade from idle_04 (t2bidle.py): feet planted, upper body sinks 1 HD px"
    }
   },
   "walk_01": {
