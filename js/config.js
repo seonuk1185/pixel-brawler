@@ -1986,7 +1986,19 @@
         staff_legendary: { label: '지팡이', img: 'assets/weapons/staff_legendary.png', grip: { x: 23, y: 9 }, baseAngle: 0, layer: 'back', kind: 'staff' },
         // +10 신화(2026-11-06): mythic = 고유 효과(js/mythicfx.js) 켬
         sword_mythic:    { label: '검', img: 'assets/weapons/sword_mythic.png',    grip: { x: 6, y: 11 }, baseAngle: 0, layer: 'back', kind: 'sword', mythic: true },
-        staff_mythic:    { label: '지팡이', img: 'assets/weapons/staff_mythic.png',    grip: { x: 23, y: 16 }, baseAngle: 0, layer: 'back', kind: 'staff', mythic: true }
+        staff_mythic:    { label: '지팡이', img: 'assets/weapons/staff_mythic.png',    grip: { x: 23, y: 16 }, baseAngle: 0, layer: 'back', kind: 'staff', mythic: true },
+        // 2차 갈래 전용 무기(2026-11-09, art/weapons-branch, pipeline/ai-sprite/weapons_branch.py): 마검사 = 검은 마검(sword_dark_*), 흑마법사 = 해골 지팡이(staff_dark_*)
+        //   성기사 · 대마법사 = 위 기존 등급 그림 그대로(형님 2026-11-09). 고르는 곳 = enchant.artBranch. 크기 · 손잡이 규칙은 기존 묶음과 같음
+        sword_dark_common:    { label: '마검', img: 'assets/weapons/sword_dark_common.png',    grip: { x: 6, y: 4 },  baseAngle: 0, layer: 'back', kind: 'sword' },
+        sword_dark_rare:      { label: '마검', img: 'assets/weapons/sword_dark_rare.png',      grip: { x: 7, y: 4 },  baseAngle: 0, layer: 'back', kind: 'sword' },
+        sword_dark_epic:      { label: '마검', img: 'assets/weapons/sword_dark_epic.png',      grip: { x: 8, y: 4 },  baseAngle: 0, layer: 'back', kind: 'sword' },
+        sword_dark_legendary: { label: '마검', img: 'assets/weapons/sword_dark_legendary.png', grip: { x: 9, y: 4 },  baseAngle: 0, layer: 'back', kind: 'sword' },
+        sword_dark_mythic:    { label: '마검', img: 'assets/weapons/sword_dark_mythic.png',    grip: { x: 10, y: 8 }, baseAngle: 0, layer: 'back', kind: 'sword', mythic: true },
+        staff_dark_common:    { label: '해골 지팡이', img: 'assets/weapons/staff_dark_common.png',    grip: { x: 23, y: 5 },  baseAngle: 0, layer: 'back', kind: 'staff' },
+        staff_dark_rare:      { label: '해골 지팡이', img: 'assets/weapons/staff_dark_rare.png',      grip: { x: 23, y: 5 },  baseAngle: 0, layer: 'back', kind: 'staff' },
+        staff_dark_epic:      { label: '해골 지팡이', img: 'assets/weapons/staff_dark_epic.png',      grip: { x: 23, y: 8 },  baseAngle: 0, layer: 'back', kind: 'staff' },
+        staff_dark_legendary: { label: '해골 지팡이', img: 'assets/weapons/staff_dark_legendary.png', grip: { x: 23, y: 9 },  baseAngle: 0, layer: 'back', kind: 'staff' },
+        staff_dark_mythic:    { label: '해골 지팡이', img: 'assets/weapons/staff_dark_mythic.png',    grip: { x: 23, y: 9 }, baseAngle: 0, layer: 'back', kind: 'staff', mythic: true }
       },
       // 허수아비: 없으면(null) 코드로 그린 나무 기둥. hit 그림은 「왼쪽에서 맞음」 기준, 오른쪽에서 맞으면 뒤집어 씀
       dummy: artSet === 'novice' ? null : {
@@ -5805,6 +5817,13 @@
         knight: [[0, 'sword_common'], [3, 'sword_rare'], [6, 'sword_epic'], [9, 'sword_legendary'], [10, 'sword_mythic']],
         mage:   [[0, 'staff_common'], [3, 'staff_rare'], [6, 'staff_epic'], [9, 'staff_legendary'], [10, 'staff_mythic']],
         archer: []   // 궁수 활은 그림에 박혀 있어 강화 단계 그림 없음(속성은 화살 빛으로, js/archer.js)
+      },
+      // 2차 갈래 전용 무기 그림(2026-11-09 형님 「전용무기 만들어보자」): artBranch[직업][갈래] 가 있으면 2차 Lv 뒤 그 갈래는 이 목록(없으면 위 art)
+      //   기사 b 마검사 = 검은 마검 / 법사 b 흑마법사 = 해골 지팡이(여자도 지팡이 그림 — 위 art 와 같은 방식). 성기사(a) · 대마법사(a) = 위 기존 그림
+      //   궁수 갈래 활 그림(art/weapons-branch/bow_*)은 미리 만들어만 둠(활이 몸 그림에 박혀 있어 아직 안 붙임)
+      artBranch: {
+        knight: { b: [[0, 'sword_dark_common'], [3, 'sword_dark_rare'], [6, 'sword_dark_epic'], [9, 'sword_dark_legendary'], [10, 'sword_dark_mythic']] },
+        mage:   { b: [[0, 'staff_dark_common'], [3, 'staff_dark_rare'], [6, 'staff_dark_epic'], [9, 'staff_dark_legendary'], [10, 'staff_dark_mythic']] }
       },
       tierName: [[0, '일반'], [3, '희귀'], [6, '영웅'], [9, '전설'], [10, '신화']],
       // ---- 속성 7가지: 칸마다 하나(같은 속성 두 번 안 됨), 끼운 속성은 전부 함께 켜짐. 부여 · 바꾸기 = 그 속성 결정 setCost[칸] 개(언제든) ----

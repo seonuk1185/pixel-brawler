@@ -294,7 +294,12 @@
       milestones: function () { return Object.keys(BN).map(function (l) { return { lv: +l, val: BN[l], on: W.lv >= +l }; }); },
       // 강화 단계 그림 이름(config art.weapons) · 등급 이름
       //   has = 그 그림이 불러와졌나(없으면 한 단계 아래 그림, 예: +10 신화 그림이 아직 없으면 전설)
-      art: function (has) { var k = null; (EN.art[cls] || []).forEach(function (q) { if (W.lv >= q[0] && (!has || has(q[1]))) k = q[1]; }); return k; },
+      //   2차 갈래 전용 그림(2026-11-09, config enchant.artBranch): 2차 Lv 뒤(brOn) 그 갈래 목록이 있으면 그것(마검사 · 흑마법사), 없으면 기존 art
+      art: function (has) {
+        var b = brOn(cls), AB = EN.artBranch && EN.artBranch[cls], L = (b && AB && AB[b]) || EN.art[cls] || [], k = null;
+        L.forEach(function (q) { if (W.lv >= q[0] && (!has || has(q[1]))) k = q[1]; });
+        return k;
+      },
       tier: function () { var k = ''; EN.tierName.forEach(function (q) { if (W.lv >= q[0]) k = q[1]; }); return k; },
       save: function () { if (!test) G.save(); }
     };

@@ -1257,6 +1257,16 @@
   "assets/weapons/staff_epic.png",
   "assets/weapons/staff_legendary.png",
   "assets/weapons/sword_mythic.png",
-  "assets/weapons/staff_mythic.png"
+  "assets/weapons/staff_mythic.png",
+  "assets/weapons/sword_dark_common.png",
+  "assets/weapons/sword_dark_rare.png",
+  "assets/weapons/sword_dark_epic.png",
+  "assets/weapons/sword_dark_legendary.png",
+  "assets/weapons/sword_dark_mythic.png",
+  "assets/weapons/staff_dark_common.png",
+  "assets/weapons/staff_dark_rare.png",
+  "assets/weapons/staff_dark_epic.png",
+  "assets/weapons/staff_dark_legendary.png",
+  "assets/weapons/staff_dark_mythic.png"
  ]
 }
