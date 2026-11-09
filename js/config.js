@@ -268,7 +268,7 @@
     female: { stride: 96, attack1Count: 4, attack2Count: 5, attack3Count: 6, combo: null }
   };
   ASSASSIN.female.combo = ASSASSIN.male.combo;
-  var ASSASSIN_FEMALE_DONE = false;   // 여자 그림(artssassin-t1emale)을 넣으면 true
+  var ASSASSIN_FEMALE_DONE = true;    // 여자 그림(art/assassin-t1/female)을 넣으면 true
 
   // ---------- 직업 기술 (2026-11-03): 기사 2개 · 법사 2개, 견습은 없음 ----------
   //   2026-11-06 성장 4단계: 기사·법사 각 4개(+ 늘 켜진 기술 2개, 아래 SKILL_TREE). 기술 = 마나(mp) + 쿨타임, 기술 Lv1~5
@@ -1887,7 +1887,7 @@
     // 궁수 옷 (2026-11-09, 직업 「궁수(활)」): Flow 그림 artrcher-t1 → assets/chars/stage1/archer_<성별>. 견습 그림을 포즈 참고로 다시 그려 장 수 · 발 위치가 견습과 같음
     var archerMale = stage1('male', 'assets/chars/stage1/anchors_archer_male.json', 'archer');
     var archerFemale = stage1('female', 'assets/chars/stage1/anchors_archer_female.json', 'archer');
-    // 암살자 옷 (2026-11-09, 직업 「암살자(쌍단검)」): Flow 그림 artssassin-t1 → assets/chars/stage1/assassin_<성별>. 궁수처럼 견습 그림을 포즈 참고로 다시 그림
+    // 암살자 옷 (2026-11-09, 직업 「암살자(쌍단검)」): Flow 그림 art/assassin-t1 → assets/chars/stage1/assassin_<성별>. 궁수처럼 견습 그림을 포즈 참고로 다시 그림
     //   ASSASSIN_FEMALE_DONE = false 면 여자도 남자 그림을 씀(여자 그림이 오기 전 임시)
     var assassinMale = stage1('male', 'assets/chars/stage1/anchors_assassin_male.json', 'assassin');
     var assassinFemale = ASSASSIN_FEMALE_DONE ? stage1('female', 'assets/chars/stage1/anchors_assassin_female.json', 'assassin') : null;
@@ -2805,12 +2805,12 @@
           knight: { str: 5, vit: 3, agi: 2 },
           mage:   { int: 5, wis: 3, vit: 2 },
           archer: { str: 4, agi: 4, vit: 2 },   // 궁수(2026-11-09): 힘 · 민첩(치명타 · 빠르기)
-          assassin: { str: 4, agi: 5, vit: 2 }   // 암살자(2026-11-09): 민첩 많이(치명타 · 빠르기)
+          assassin: { str: 4, agi: 4, vit: 3 }   // 암살자(2026-11-09): 민첩 많이(치명타 · 빠르기)
         }
       },
       // 직업마다 기본 몫: hp = 최대 체력에 더함(기사가 더 튼튼), mp = 기본 마나(법사가 더 많음)
       //   2026-11-06 법사 균형: 법사 hp 0 → 35 (멀리 서도 보스 공격 폭이 넓어 자주 맞음. 3판 보스 두꺼비 앞에서 너무 쉽게 쓰러짐. 기사는 체력 능력치를 더 찍어서 Lv 가 오르면 기사가 더 튼튼)
-      classBase: { novice: { hp: 0, mp: 40 }, knight: { hp: 15, mp: 40 }, mage: { hp: 35, mp: 80 }, archer: { hp: 25, mp: 60 }, assassin: { hp: 20, mp: 55 } },   // 궁수(2026-11-09): 기사와 법사 사이
+      classBase: { novice: { hp: 0, mp: 40 }, knight: { hp: 15, mp: 40 }, mage: { hp: 35, mp: 80 }, archer: { hp: 25, mp: 60 }, assassin: { hp: 35, mp: 55 } },   // 암살자(2026-11-09): 근접이라 자동 조종 시험에서 궁수보다 일찍 쓰러짐 → 체력 20 → 35   // 궁수(2026-11-09): 기사와 법사 사이
       // 마나(MP, 2026-11-06): 체력 막대 밑 파란 막대. 지금은 쓰는 곳 없음(기술이 마나 + 쿨타임을 쓰는 건 다음 단계)
       //   최대 = classBase.mp + perLv × (Lv-1) + 지혜 × stats.wis.mp. 초당 regen + 지혜 × stats.wis.regen 씩 참,
       //   적·허수아비를 맞힐 때마다 onHit 만큼 더(소품은 안 셈). 새 판·다시 하기 = 가득, 레벨업 = 늘어난 만큼 참

@@ -4,127 +4,127 @@
 "frames": {
 "motion_dash_01": {
 "hand": [
-97,
-87
+71,
+39
 ],
 "angle": 0
 },
 "motion_dash_02": {
 "hand": [
-99,
-94
+84,
+67
 ],
 "angle": 0
 },
 "motion_dash_03": {
 "hand": [
-93,
-104
+97,
+53
 ],
 "angle": 0
 },
 "motion_dash_04": {
 "hand": [
-98,
-103
+97,
+54
 ],
 "angle": 0
 },
 "motion_dash_05": {
 "hand": [
-104,
-80
+89,
+96
 ],
 "angle": 0
 },
 "motion_dash_06": {
 "hand": [
-97,
-87
+70,
+39
 ],
 "angle": 0
 },
 "motion_spin_01": {
 "hand": [
-99,
-87
+69,
+41
 ],
 "angle": 0
 },
 "motion_spin_02": {
 "hand": [
-43,
-52
+98,
+61
 ],
 "angle": 0
 },
 "motion_spin_03": {
 "hand": [
-106,
-60
+88,
+53
 ],
 "angle": 0
 },
 "motion_spin_04": {
 "hand": [
-95,
-39
+75,
+49
 ],
 "angle": 0
 },
 "motion_spin_05": {
 "hand": [
-101,
-84
+76,
+46
 ],
 "angle": 0
 },
 "motion_spin_06": {
 "hand": [
-45,
-94
+81,
+63
 ],
 "angle": 0
 },
 "motion_throw_01": {
 "hand": [
-99,
-88
+79,
+41
 ],
 "angle": 0
 },
 "motion_throw_02": {
 "hand": [
-98,
-81
+74,
+39
 ],
 "angle": 0
 },
 "motion_throw_03": {
 "hand": [
-100,
-72
+70,
+39
 ],
 "angle": 0
 },
 "motion_throw_04": {
 "hand": [
-97,
-77
+85,
+40
 ],
 "angle": 0
 },
 "motion_throw_05": {
 "hand": [
-106,
-80
+75,
+44
 ],
 "angle": 0
 },
 "motion_throw_06": {
 "hand": [
-100,
-88
+75,
+42
 ],
 "angle": 0
 }

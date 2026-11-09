@@ -4,155 +4,155 @@
 "frames": {
 "jump_01": {
 "hand": [
-88,
-105
+78,
+53
 ],
 "angle": 0
 },
 "jump_02": {
 "hand": [
-109,
-22
+71,
+16
 ],
 "angle": 0
 },
 "jump_03": {
 "hand": [
-94,
-92
+71,
+52
 ],
 "angle": 0
 },
 "jump_04": {
 "hand": [
-96,
-72
+76,
+26
 ],
 "angle": 0
 },
 "jump_05": {
 "hand": [
-91,
-109
+77,
+54
 ],
 "angle": 0
 },
 "jump_attack_01": {
 "hand": [
-78,
-19
+75,
+33
 ],
 "angle": 0
 },
 "jump_attack_02": {
 "hand": [
-125,
-71
+60,
+51
 ],
 "angle": 0
 },
 "jump_attack_03": {
 "hand": [
-76,
-30
+63,
+51
 ],
 "angle": 0
 },
 "jump_attack_04": {
 "hand": [
-96,
-74
+72,
+39
 ],
 "angle": 0
 },
 "run_01": {
 "hand": [
-106,
-92
+83,
+45
 ],
 "angle": 0
 },
 "run_02": {
 "hand": [
-105,
-89
+83,
+45
 ],
 "angle": 0
 },
 "run_03": {
 "hand": [
-105,
-85
+84,
+45
 ],
 "angle": 0
 },
 "run_04": {
 "hand": [
-109,
-76
+77,
+42
 ],
 "angle": 0
 },
 "run_05": {
 "hand": [
-106,
-88
+82,
+48
 ],
 "angle": 0
 },
 "run_06": {
 "hand": [
-106,
-88
+84,
+48
 ],
 "angle": 0
 },
 "run_07": {
 "hand": [
-105,
-86
+83,
+47
 ],
 "angle": 0
 },
 "run_08": {
 "hand": [
-109,
-79
+77,
+42
 ],
 "angle": 0
 },
 "run_attack_01": {
 "hand": [
-98,
-86
+84,
+50
 ],
 "angle": 0
 },
 "run_attack_02": {
 "hand": [
-96,
-92
+84,
+69
 ],
 "angle": 0
 },
 "run_attack_03": {
 "hand": [
-87,
-100
+89,
+68
 ],
 "angle": 0
 },
 "run_attack_04": {
 "hand": [
-87,
-105
+81,
+74
 ],
 "angle": 0
 },
 "run_attack_05": {
 "hand": [
-108,
-88
+80,
+41
 ],
 "angle": 0
 }
