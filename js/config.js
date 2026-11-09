@@ -1974,31 +1974,33 @@
         staff: { label: '지팡이', img: 'assets/weapons/staff.png', grip: { x: 24, y: 9 }, baseAngle: 0, layer: 'back' },
         wand:  { label: '완드',   img: 'assets/weapons/wand.png',  grip: { x: 8, y: 4 },  baseAngle: 0, layer: 'back' },
         // 강화 등급 그림(2026-11-06, artweapons-v1, 형님 승인): +0 일반 · +3 희귀 · +6 영웅 · +9 전설 (config enchant.art 가 고름).
+        //   2026-11-09 v2(art/weapons-v2, 형님): 검 +0~+9 = 강철 → 은청 → 백금 → 빛나는 금(검정 · 보라 없음), 지팡이 +3~+9 = 얼음 → 불·얼음 쌍수정 → 3속성 금빛 후광
+        //   (나무 지팡이 +0 · 신화 +10 은 그대로). 예전 그림 = art/weapons-v1/old2
         //   그림 = 1배 assets/weapons/<이름>.png, HD = assets/hd/weapons/<이름>.webp(x1.4), 작은 화면 = assets/s055(x0.7). grip = 1배 그림 손잡이 점
         //   kind = 원소 오라(js/enchant.js)가 불티를 내는 곳(sword = 칼날, staff = 머리 쪽)
-        sword_common:    { label: '검', img: 'assets/weapons/sword_common.png',    grip: { x: 7, y: 4 },  baseAngle: 0, layer: 'back', kind: 'sword' },
-        sword_rare:      { label: '검', img: 'assets/weapons/sword_rare.png',      grip: { x: 7, y: 5 },  baseAngle: 0, layer: 'back', kind: 'sword' },
-        sword_epic:      { label: '검', img: 'assets/weapons/sword_epic.png',      grip: { x: 7, y: 6 },  baseAngle: 0, layer: 'back', kind: 'sword' },
-        sword_legendary: { label: '검', img: 'assets/weapons/sword_legendary.png', grip: { x: 6, y: 8 },  baseAngle: 0, layer: 'back', kind: 'sword' },
+        sword_common:    { label: '검', img: 'assets/weapons/sword_common.png',    grip: { x: 6, y: 5 },  baseAngle: 0, layer: 'back', kind: 'sword' },
+        sword_rare:      { label: '검', img: 'assets/weapons/sword_rare.png',      grip: { x: 6, y: 5 },  baseAngle: 0, layer: 'back', kind: 'sword' },
+        sword_epic:      { label: '검', img: 'assets/weapons/sword_epic.png',      grip: { x: 6, y: 6 },  baseAngle: 0, layer: 'back', kind: 'sword' },
+        sword_legendary: { label: '검', img: 'assets/weapons/sword_legendary.png', grip: { x: 10, y: 7 },  baseAngle: 0, layer: 'back', kind: 'sword' },
         staff_common:    { label: '지팡이', img: 'assets/weapons/staff_common.png',    grip: { x: 23, y: 7 }, baseAngle: 0, layer: 'back', kind: 'staff' },
-        staff_rare:      { label: '지팡이', img: 'assets/weapons/staff_rare.png',      grip: { x: 23, y: 9 }, baseAngle: 0, layer: 'back', kind: 'staff' },
+        staff_rare:      { label: '지팡이', img: 'assets/weapons/staff_rare.png',      grip: { x: 23, y: 8 }, baseAngle: 0, layer: 'back', kind: 'staff' },
         staff_epic:      { label: '지팡이', img: 'assets/weapons/staff_epic.png',      grip: { x: 23, y: 13 }, baseAngle: 0, layer: 'back', kind: 'staff' },
-        staff_legendary: { label: '지팡이', img: 'assets/weapons/staff_legendary.png', grip: { x: 23, y: 9 }, baseAngle: 0, layer: 'back', kind: 'staff' },
+        staff_legendary: { label: '지팡이', img: 'assets/weapons/staff_legendary.png', grip: { x: 23, y: 15 }, baseAngle: 0, layer: 'back', kind: 'staff' },
         // +10 신화(2026-11-06): mythic = 고유 효과(js/mythicfx.js) 켬
         sword_mythic:    { label: '검', img: 'assets/weapons/sword_mythic.png',    grip: { x: 6, y: 11 }, baseAngle: 0, layer: 'back', kind: 'sword', mythic: true },
         staff_mythic:    { label: '지팡이', img: 'assets/weapons/staff_mythic.png',    grip: { x: 23, y: 16 }, baseAngle: 0, layer: 'back', kind: 'staff', mythic: true },
         // 2차 갈래 전용 무기(2026-11-09, art/weapons-branch, pipeline/ai-sprite/weapons_branch.py): 마검사 = 검은 마검(sword_dark_*), 흑마법사 = 해골 지팡이(staff_dark_*)
         //   성기사 · 대마법사 = 위 기존 등급 그림 그대로(형님 2026-11-09). 고르는 곳 = enchant.artBranch. 크기 · 손잡이 규칙은 기존 묶음과 같음
-        sword_dark_common:    { label: '마검', img: 'assets/weapons/sword_dark_common.png',    grip: { x: 6, y: 4 },  baseAngle: 0, layer: 'back', kind: 'sword' },
-        sword_dark_rare:      { label: '마검', img: 'assets/weapons/sword_dark_rare.png',      grip: { x: 7, y: 4 },  baseAngle: 0, layer: 'back', kind: 'sword' },
-        sword_dark_epic:      { label: '마검', img: 'assets/weapons/sword_dark_epic.png',      grip: { x: 8, y: 4 },  baseAngle: 0, layer: 'back', kind: 'sword' },
-        sword_dark_legendary: { label: '마검', img: 'assets/weapons/sword_dark_legendary.png', grip: { x: 9, y: 4 },  baseAngle: 0, layer: 'back', kind: 'sword' },
+        sword_dark_common:    { label: '마검', img: 'assets/weapons/sword_dark_common.png',    grip: { x: 6, y: 5 },  baseAngle: 0, layer: 'back', kind: 'sword' },
+        sword_dark_rare:      { label: '마검', img: 'assets/weapons/sword_dark_rare.png',      grip: { x: 6, y: 5 },  baseAngle: 0, layer: 'back', kind: 'sword' },
+        sword_dark_epic:      { label: '마검', img: 'assets/weapons/sword_dark_epic.png',      grip: { x: 7, y: 6 },  baseAngle: 0, layer: 'back', kind: 'sword' },
+        sword_dark_legendary: { label: '마검', img: 'assets/weapons/sword_dark_legendary.png', grip: { x: 8, y: 7 },  baseAngle: 0, layer: 'back', kind: 'sword' },
         sword_dark_mythic:    { label: '마검', img: 'assets/weapons/sword_dark_mythic.png',    grip: { x: 10, y: 8 }, baseAngle: 0, layer: 'back', kind: 'sword', mythic: true },
         staff_dark_common:    { label: '해골 지팡이', img: 'assets/weapons/staff_dark_common.png',    grip: { x: 23, y: 5 },  baseAngle: 0, layer: 'back', kind: 'staff' },
         staff_dark_rare:      { label: '해골 지팡이', img: 'assets/weapons/staff_dark_rare.png',      grip: { x: 23, y: 5 },  baseAngle: 0, layer: 'back', kind: 'staff' },
-        staff_dark_epic:      { label: '해골 지팡이', img: 'assets/weapons/staff_dark_epic.png',      grip: { x: 23, y: 8 },  baseAngle: 0, layer: 'back', kind: 'staff' },
-        staff_dark_legendary: { label: '해골 지팡이', img: 'assets/weapons/staff_dark_legendary.png', grip: { x: 23, y: 9 },  baseAngle: 0, layer: 'back', kind: 'staff' },
-        staff_dark_mythic:    { label: '해골 지팡이', img: 'assets/weapons/staff_dark_mythic.png',    grip: { x: 23, y: 9 }, baseAngle: 0, layer: 'back', kind: 'staff', mythic: true }
+        staff_dark_epic:      { label: '해골 지팡이', img: 'assets/weapons/staff_dark_epic.png',      grip: { x: 23, y: 9 },  baseAngle: 0, layer: 'back', kind: 'staff' },
+        staff_dark_legendary: { label: '해골 지팡이', img: 'assets/weapons/staff_dark_legendary.png', grip: { x: 23, y: 14 },  baseAngle: 0, layer: 'back', kind: 'staff' },
+        staff_dark_mythic:    { label: '해골 지팡이', img: 'assets/weapons/staff_dark_mythic.png',    grip: { x: 23, y: 15 }, baseAngle: 0, layer: 'back', kind: 'staff', mythic: true }
       },
       // 허수아비: 없으면(null) 코드로 그린 나무 기둥. hit 그림은 「왼쪽에서 맞음」 기준, 오른쪽에서 맞으면 뒤집어 씀
       dummy: artSet === 'novice' ? null : {
