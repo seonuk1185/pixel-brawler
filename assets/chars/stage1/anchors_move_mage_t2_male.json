@@ -9,7 +9,7 @@
   "run_01": {
    "hand": [
     47,
-    80
+    79
    ],
    "angle": 150,
    "layer": "back",
@@ -18,14 +18,14 @@
      46,
      80
     ],
-    "skinPx": 233,
+    "skinPx": 156,
     "note": "run staff hold = \ub300\ub9c8\ubc95\uc0ac(\uc5ec) style (2026-11-09 \ud615\ub2d8): back layer, head trailing"
    }
   },
   "run_02": {
    "hand": [
-    49,
-    81
+    47,
+    82
    ],
    "angle": 150,
    "layer": "back",
@@ -34,13 +34,13 @@
      47,
      82
     ],
-    "skinPx": 165,
+    "skinPx": 243,
     "note": "run staff hold = \ub300\ub9c8\ubc95\uc0ac(\uc5ec) style (2026-11-09 \ud615\ub2d8): back layer, head trailing"
    }
   },
   "run_03": {
    "hand": [
-    48,
+    49,
     79
    ],
    "angle": 150,
@@ -50,7 +50,7 @@
      48,
      79
     ],
-    "skinPx": 228,
+    "skinPx": 152,
     "note": "run staff hold = \ub300\ub9c8\ubc95\uc0ac(\uc5ec) style (2026-11-09 \ud615\ub2d8): back layer, head trailing"
    }
   },
@@ -66,14 +66,14 @@
      48,
      80
     ],
-    "skinPx": 198,
+    "skinPx": 179,
     "note": "run staff hold = \ub300\ub9c8\ubc95\uc0ac(\uc5ec) style (2026-11-09 \ud615\ub2d8): back layer, head trailing"
    }
   },
   "run_05": {
    "hand": [
     47,
-    80
+    79
    ],
    "angle": 150,
    "layer": "back",
@@ -82,14 +82,14 @@
      47,
      81
     ],
-    "skinPx": 206,
+    "skinPx": 166,
     "note": "run staff hold = \ub300\ub9c8\ubc95\uc0ac(\uc5ec) style (2026-11-09 \ud615\ub2d8): back layer, head trailing"
    }
   },
   "run_06": {
    "hand": [
-    49,
-    82
+    50,
+    81
    ],
    "angle": 150,
    "layer": "back",
@@ -98,14 +98,14 @@
      48,
      82
     ],
-    "skinPx": 198,
+    "skinPx": 239,
     "note": "run staff hold = \ub300\ub9c8\ubc95\uc0ac(\uc5ec) style (2026-11-09 \ud615\ub2d8): back layer, head trailing"
    }
   },
   "run_07": {
    "hand": [
-    50,
-    76
+    49,
+    75
    ],
    "angle": 150,
    "layer": "back",
@@ -114,13 +114,13 @@
      49,
      77
     ],
-    "skinPx": 205,
+    "skinPx": 136,
     "note": "run staff hold = \ub300\ub9c8\ubc95\uc0ac(\uc5ec) style (2026-11-09 \ud615\ub2d8): back layer, head trailing"
    }
   },
   "run_08": {
    "hand": [
-    48,
+    49,
     74
    ],
    "angle": 150,
@@ -130,7 +130,7 @@
      48,
      74
     ],
-    "skinPx": 225,
+    "skinPx": 175,
     "note": "run staff hold = \ub300\ub9c8\ubc95\uc0ac(\uc5ec) style (2026-11-09 \ud615\ub2d8): back layer, head trailing"
    }
   },
