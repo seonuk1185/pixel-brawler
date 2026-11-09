@@ -1,0 +1,160 @@
+{
+"note": "archer (bow baked into the art): hand = bow centre (1x art px), reference for arrow / aura spot. made by aranchors.py",
+"angleUnit": "deg",
+"frames": {
+"jump_01": {
+"hand": [
+73,
+81
+],
+"angle": 0
+},
+"jump_02": {
+"hand": [
+82,
+34
+],
+"angle": 0
+},
+"jump_03": {
+"hand": [
+73,
+72
+],
+"angle": 0
+},
+"jump_04": {
+"hand": [
+80,
+55
+],
+"angle": 0
+},
+"jump_05": {
+"hand": [
+74,
+85
+],
+"angle": 0
+},
+"jump_attack_01": {
+"hand": [
+91,
+52
+],
+"angle": 0
+},
+"jump_attack_02": {
+"hand": [
+94,
+63
+],
+"angle": 0
+},
+"jump_attack_03": {
+"hand": [
+92,
+64
+],
+"angle": 0
+},
+"jump_attack_04": {
+"hand": [
+64,
+66
+],
+"angle": 0
+},
+"run_01": {
+"hand": [
+76,
+71
+],
+"angle": 0
+},
+"run_02": {
+"hand": [
+76,
+72
+],
+"angle": 0
+},
+"run_03": {
+"hand": [
+76,
+70
+],
+"angle": 0
+},
+"run_04": {
+"hand": [
+67,
+66
+],
+"angle": 0
+},
+"run_05": {
+"hand": [
+75,
+72
+],
+"angle": 0
+},
+"run_06": {
+"hand": [
+80,
+72
+],
+"angle": 0
+},
+"run_07": {
+"hand": [
+76,
+70
+],
+"angle": 0
+},
+"run_08": {
+"hand": [
+72,
+64
+],
+"angle": 0
+},
+"run_attack_01": {
+"hand": [
+75,
+70
+],
+"angle": 0
+},
+"run_attack_02": {
+"hand": [
+82,
+91
+],
+"angle": 0
+},
+"run_attack_03": {
+"hand": [
+90,
+84
+],
+"angle": 0
+},
+"run_attack_04": {
+"hand": [
+88,
+82
+],
+"angle": 0
+},
+"run_attack_05": {
+"hand": [
+74,
+67
+],
+"angle": 0
+}
+}
+}

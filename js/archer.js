@@ -570,7 +570,7 @@
       if (!hawk) hawk = { x: p.x, y: p.y - 90 * AS(), t: 0, cd: 1200, dive: null };
       var hk = hawk; hk.t += dt;
       if (!hk.dive) {
-        var tx = p.x - p.dir * 16 * AS(), ty = p.y - (p.z || 0) - 92 * AS() + Math.sin(hk.t / 260) * 5;
+        var tx = p.x - p.dir * 26 * AS(), ty = p.y - (p.z || 0) - 112 * AS() + Math.sin(hk.t / 260) * 5;
         hk.x += (tx - hk.x) * Math.min(1, dt / 160); hk.y += (ty - hk.y) * Math.min(1, dt / 160); hk.dir = p.dir;
         hk.cd -= dt;
         if (hk.cd <= 0) {
@@ -692,7 +692,7 @@
     marked.forEach(function (e) { if (e.arMarkT > 0 && alive(e)) aiDraw(ctx, 'ar_mark_mark', Math.floor(performance.now() / 120) % 4, e.x - camX, e.y - (e.az || 0) - (e.T ? e.T.height : 60) - 10, 0.8, 0.8, 0, Math.min(1, e.arMarkT / 200)); });
     if (hawk) {
       var hk = hawk, dv = hk.dive && !hk.dive.hit;
-      aiDraw(ctx, dv ? 'rg_hawk_dive' : 'rg_hawk_fly', Math.floor(hk.t / (dv ? 80 : 100)) % (dv ? 2 : 4), hk.x - camX, hk.y, 0.75 * (hk.dir || 1), 0.75, 0, 1);
+      aiDraw(ctx, dv ? 'rg_hawk_dive' : 'rg_hawk_fly', Math.floor(hk.t / (dv ? 80 : 100)) % (dv ? 2 : 4), hk.x - camX, hk.y, 0.9 * (hk.dir || 1), 0.9, 0, 1);
     }
   }
   function clear() { arrows.length = 0; fxs.length = 0; marked.length = 0; vines.length = 0; hawk = null; pasT.volley = 1500; pasT.splitIcd = 0; }
@@ -701,6 +701,6 @@
   window.Archer = {
     basicShot: basicShot, moveShot: moveShot, step: step, update: update, drawUnder: drawUnder, drawOver: drawOver, clear: clear, busy: busy,
     critAdd: critAdd, critDmg: critDmg, dmgMul: dmgMul, onHit: onHit,
-    _state: function () { return { arrows: arrows.length, fxs: fxs.length, hawk: !!hawk, marked: marked.length, br: brNow }; }
+    _state: function () { return { arrows: arrows.length, fxs: fxs.length, hawk: hawk ? [Math.round(hawk.x), Math.round(hawk.y)] : false, marked: marked.length, br: brNow }; }
   };
 })();

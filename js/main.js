@@ -3651,6 +3651,14 @@
     if (P.stat === 'nimble') return '회피 ' + (P.charges ? P.charges[Math.max(1, lv) - 1] : 2) + '번 연달아 · 쿨타임 ' + secTxt(CFG.move.dodge.cdMs) + ' → ' + secTxt(P.val[Math.max(1, lv) - 1]) + ' · 거리 +' + pctTxt(P.dist[Math.max(1, lv) - 1]);   // 날렵한 몸놀림(2026-11-08)
     if (P.stat === 'arcane') return '평타 마법 피해 +' + v + ' · 터짐 확률 ' + pctTxt(P.chance[Math.max(1, lv) - 1]);   // 마력 부여(마검사, 2026-11-08)
     if (P.stat === 'leech') return '마법 피해의 ' + (Math.round(P.val[Math.max(1, lv) - 1] * 1000) / 10) + '% 흡수 · 1초에 최대 체력 ' + (Math.round(P.capS[Math.max(1, lv) - 1] * 1000) / 10) + '%까지';   // 생명 흡수(흑마법사, 2026-11-08)
+    // 궁수(2026-11-09): 집중 · 갈래 화살 · 자동 연사 · 사냥꾼의 표식 · 필중 · 매 동료
+    var li = Math.max(1, lv) - 1;
+    if (P.stat === 'acrit') return '치명타 확률 +' + v + ' · 치명타 배율 +' + pctTxt(P.critDmg[li]);
+    if (P.stat === 'split') return '작은 화살 ' + P.n[li] + '발 · 피해 ' + v + ' · 반경 ' + P.r[li];
+    if (P.stat === 'volley') return (Math.round(P.val[li] / 100) / 10) + '초마다 빛 화살 ' + P.n[li] + '발 · 피해 ' + pctTxt(P.mul[li]);
+    if (P.stat === 'amark') return '표식 찍힌 적 피해 +' + v + ' · ' + secTxt(P.ms || 5000);
+    if (P.stat === 'deadeye') return '치명타 배율 +' + v + ' · 치명타 확률 +' + pctTxt(P.chance[li]);
+    if (P.stat === 'hawk') return (Math.round(P.val[li] / 100) / 10) + '초마다 매가 내리꽂힘 · 피해 ' + pctTxt(P.mul[li]);
     if (P.stat === 'regen') return '초당 체력 +' + (Math.round(P.val[Math.max(1, lv) - 1] * 1000) / 10) + '%';   // 신성 가호(2026-11-08): 최대 체력의 0.4~0.8%
     var k = { phys: '물리 공격 +', magic: '마법 공격 +', guard: '받는 피해 -', mpRegen: '마나 회복 +',
               grit: '체력 적으면 공격 최대 +', counter: '반격 확률 ', brand: '낙인 찍힌 적 피해 +' }[P.stat] || '';
@@ -3806,7 +3814,10 @@
     regen: '몸 둘레 금빛 기운 · 체력이 천천히 차요', eshard: '마법이 맞으면 불 · 얼음 조각이 둘레 고블린에게 튀어요',
     vortex: '둘레 고블린 가운데에 마력 소용돌이가 저절로 생겨요', shield: '고블린이 때리면 마나가 피해 일부를 대신 받아요(파란 방패)',
     brand: '화염구로 낙인을 찍은 뒤 평타 — 낙인 찍힌 적은 더 아파요', nimble: '회피를 두 번씩 좌우로 되풀이해요 — 더 멀리 · 더 자주 빠져요', echain: '마법으로 쓰러뜨리면 그 자리에서 터져 둘레를 때려요',
-    arcane: '평타에 보라 마력이 실려요 — 가끔 칼끝에서 작은 마력이 터져요', leech: '체력을 일부러 50%로 낮춰서 보여 줘요 — 마법을 맞히면 붉은 기운이 빨려 들며 체력이 차요'
+    arcane: '평타에 보라 마력이 실려요 — 가끔 칼끝에서 작은 마력이 터져요',
+    acrit: '평타 화살로 고블린을 맞혀요 — 치명타(큰 주황 숫자)가 더 자주 나요', split: '평타 화살이 맞으면 작은 화살이 둘레 고블린에게 튀어요',
+    volley: '몇 초마다 빛 화살이 저절로 날아가 꽂혀요', amark: '기술을 맞힌 고블린 머리 위에 과녁이 찍혀요 — 더 아파요',
+    deadeye: '치명타가 터지면 숫자가 훨씬 커져요', hawk: '매가 따라다니다가 고블린에게 내리꽂혀요', leech: '체력을 일부러 50%로 낮춰서 보여 줘요 — 마법을 맞히면 붉은 기운이 빨려 들며 체력이 차요'
   };
   // 2차 이름: 갈래 기술(e.branch)이면 그 갈래 이름(성기사 · 마검사 …), 아니면 지금 갈래 이름(2차 전 = 「성기사 / 마검사」) — 2026-11-08 갈래
   function t2Name(cls, e) {
