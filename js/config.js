@@ -1686,6 +1686,21 @@
     if (cls === 'knight' && who === 'male') d.raShow = { pushFirst: 1, pushFirstMs: 90, pushHold: 2 };   // 성기사 남과 같은 어깨빵 그림
     t2bSets[cls + '_t2b_' + who] = d;
   });
+  // 궁수 2차 옷(2026-11-09, 저격수 = archer_t2a · 레인저 = archer_t2b): 1차 궁수 그림 위에 Flow 로 옷만 다시 그려 같은 실루엣 · 장 수 · 발 위치.
+  //   그래서 1차 궁수 묶음을 그대로 쓰고 그림 폴더 · 손 위치 json 만 바꾼다(콤보 · 보폭 · 달리기 수치 · 기술 동작 시간 = 1차 궁수 그대로).
+  //   ARCHER_T2_DONE 에 있는 것만 진짜 그림, 없는 것은 classes.archer.tier2.branches 의 look(1차 옷 물들임) 그대로
+  var ARCHER_T2_DONE = ['t2a_male'];
+  var archerT2Sets = {};
+  ARCHER_T2_DONE.forEach(function (k) {
+    if (artSet === 'novice') return;
+    var at = k.split('_')[0], who = k.split('_')[1], name = 'archer_' + at + '_' + who;
+    var d = stage1(who, 'assets/chars/stage1/anchors_' + name + '.json', 'archer');
+    var dir = 'assets/chars/stage1/' + name + '/', from = 'assets/chars/stage1/archer_' + who + '/';
+    Object.keys(d.anims).forEach(function (n) { var A = d.anims[n]; A.frames = A.frames.map(function (f) { return f.replace(from, dir); }); });
+    d.moveAnchors = 'assets/chars/stage1/anchors_move_' + name + '.json';
+    d.t2Dir = dir;
+    archerT2Sets[name] = d;
+  });
   var characters = { male: male, female: female };
   if (knightMale) { characters.knight_male = knightMale; characters.knight_female = knightFemale; }
   if (knightT2Male) characters.knight_t2_male = knightT2Male;
@@ -1695,6 +1710,7 @@
   if (mageT2Male) characters.mage_t2_male = mageT2Male;
   if (mageT2Female) characters.mage_t2_female = mageT2Female;
   Object.keys(t2bSets).forEach(function (k) { characters[k] = t2bSets[k]; });
+  Object.keys(archerT2Sets).forEach(function (k) { characters[k] = archerT2Sets[k]; });   // 궁수 2차 옷(2026-11-09)
 
   // ---------- 적 그림 (art\stage1-enemies 에서 복사, 그림은 전부 「왼쪽을 봄」) ----------
   // playback = 그림 번호(1부터) 재생 순서, fps = 1초에 몇 칸. 순서를 늘리면 그 장면이 길어진다(예: 몽둥이 치켜든 장면 = 예고)
@@ -6025,6 +6041,13 @@
         D.anims[m] = { frames: seq(dir + m + '_', M1[m].count), fps: 14, loop: false };
       });
       D.motionAnchors = 'assets/chars/stage1/anchors_motions_' + cls + '_t2b_' + who + '.json';
+    });
+    // 궁수 2차 옷(2026-11-09): 기술 동작 = 1차 궁수와 같은 동작 · 시간, 그림만 2차 폴더, 손 위치 = anchors_motions_archer_<갈래>_<성별>.json
+    ARCHER_T2_DONE.forEach(function (k) {
+      var who = k.split('_')[1], name = 'archer_' + k, D = C.art.characters[name], M1 = C.motions['archer_' + who];
+      if (!D || !M1) return;
+      Object.keys(M1).forEach(function (m) { if (M1[m].count > 0) D.anims[m] = { frames: seq(D.t2Dir + m + '_', M1[m].count), fps: 14, loop: false }; });
+      D.motionAnchors = 'assets/chars/stage1/anchors_motions_' + name + '.json';
     });
     // 2차 전직 갈래 임시 옷(2026-11-08, classes.<직업>.tier2.branches 의 look): 그 갈래 옷 그림(「옷_성별」)이 아직 없으면
     //   1차 옷(look.base) 묶음을 그대로 빌려 쓰고 그릴 때 물들임 + 빛 테두리(entities.js Player.draw 의 def.look). 그림 · 손 위치 · 동작 = 1차 옷과 똑같음

@@ -292,10 +292,11 @@
       // 돌진이 끝났는데 적 몸 안에 멈춰 있으면(보스처럼 큰 몸) 같은 방향으로 계속 미끄러져 뚫고 나간다
       //   (안 그러면 몸끼리 밀어내기가 뒤로 확 튕겨 냄). 화면 끝에 막히면 200ms 뒤 포기
       if (t1 > m.to && !s.exitDone) {
-        var need = bodyInside(p, s.dir), xb = p.x;
+        var mdir = m.dist < 0 ? -s.dir : s.dir;   // 뒤로 빠지는 돌진(궁수 공중제비 사격, 2026-11-09) = 움직인 쪽(뒤)으로 빠져나감
+        var need = bodyInside(p, mdir), xb = p.x;
         if (need > 0.5 && s.exitT < 200) {
           s.exiting = true; s.exitT += dt;
-          p.x += s.dir * Math.min(need, m.dist / len * 0.6 * dt);
+          p.x += mdir * Math.min(need, Math.abs(m.dist) / len * 0.6 * dt);
         } else { s.exitDone = true; s.exiting = false; }
       }
     }

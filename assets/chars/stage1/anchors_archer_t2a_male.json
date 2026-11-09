@@ -1,0 +1,307 @@
+{
+"note": "archer (bow baked into the art): hand = bow centre (1x art px), reference for arrow / aura spot. made by aranchors.py",
+"angleUnit": "deg",
+"frames": {
+"attack1_01": {
+"hand": [
+77,
+41
+],
+"angle": 0
+},
+"attack1_02": {
+"hand": [
+77,
+39
+],
+"angle": 0
+},
+"attack1_03": {
+"hand": [
+76,
+40
+],
+"angle": 0
+},
+"attack1_04": {
+"hand": [
+80,
+40
+],
+"angle": 0
+},
+"attack2_01": {
+"hand": [
+84,
+43
+],
+"angle": 0
+},
+"attack2_02": {
+"hand": [
+84,
+41
+],
+"angle": 0
+},
+"attack2_03": {
+"hand": [
+78,
+44
+],
+"angle": 0
+},
+"attack2_04": {
+"hand": [
+82,
+43
+],
+"angle": 0
+},
+"attack2_05": {
+"hand": [
+78,
+42
+],
+"angle": 0
+},
+"attack3_01": {
+"hand": [
+85,
+65
+],
+"angle": 0
+},
+"attack3_02": {
+"hand": [
+76,
+40
+],
+"angle": 0
+},
+"attack3_03": {
+"hand": [
+76,
+38
+],
+"angle": 0
+},
+"attack3_04": {
+"hand": [
+76,
+49
+],
+"angle": 0
+},
+"attack3_05": {
+"hand": [
+97,
+50
+],
+"angle": 0
+},
+"attack3_06": {
+"hand": [
+104,
+64
+],
+"angle": 0
+},
+"getup_01": {
+"hand": [
+40,
+89
+],
+"angle": 0,
+"hide": true
+},
+"getup_02": {
+"hand": [
+81,
+77
+],
+"angle": 0,
+"hide": true
+},
+"getup_03": {
+"hand": [
+86,
+65
+],
+"angle": 0
+},
+"getup_04": {
+"hand": [
+79,
+41
+],
+"angle": 0
+},
+"hurt2_01": {
+"hand": [
+93,
+55
+],
+"angle": 0
+},
+"hurt2_02": {
+"hand": [
+92,
+47
+],
+"angle": 0
+},
+"hurt2_03": {
+"hand": [
+81,
+41
+],
+"angle": 0
+},
+"hurt_01": {
+"hand": [
+54,
+43
+],
+"angle": 0
+},
+"hurt_02": {
+"hand": [
+100,
+51
+],
+"angle": 0
+},
+"hurt_03": {
+"hand": [
+89,
+41
+],
+"angle": 0
+},
+"idle_01": {
+"hand": [
+78,
+41
+],
+"angle": 0
+},
+"idle_02": {
+"hand": [
+78,
+40
+],
+"angle": 0
+},
+"idle_03": {
+"hand": [
+78,
+40
+],
+"angle": 0
+},
+"idle_04": {
+"hand": [
+78,
+40
+],
+"angle": 0
+},
+"knockdown_01": {
+"hand": [
+29,
+47
+],
+"angle": 0,
+"hide": true
+},
+"knockdown_02": {
+"hand": [
+32,
+44
+],
+"angle": 0,
+"hide": true
+},
+"knockdown_03": {
+"hand": [
+27,
+111
+],
+"angle": 0,
+"hide": true
+},
+"knockdown_04": {
+"hand": [
+24,
+105
+],
+"angle": 0,
+"hide": true
+},
+"knockdown_05": {
+"hand": [
+24,
+107
+],
+"angle": 0,
+"hide": true
+},
+"walk_01": {
+"hand": [
+78,
+41
+],
+"angle": 0
+},
+"walk_02": {
+"hand": [
+76,
+41
+],
+"angle": 0
+},
+"walk_03": {
+"hand": [
+74,
+41
+],
+"angle": 0
+},
+"walk_04": {
+"hand": [
+76,
+41
+],
+"angle": 0
+},
+"walk_05": {
+"hand": [
+77,
+41
+],
+"angle": 0
+},
+"walk_06": {
+"hand": [
+76,
+41
+],
+"angle": 0
+},
+"walk_07": {
+"hand": [
+74,
+41
+],
+"angle": 0
+},
+"walk_08": {
+"hand": [
+76,
+41
+],
+"angle": 0
+}
+}
+}
