@@ -7,79 +7,114 @@
  "frames": {
   "run_01": {
    "hand": [
-    46,
-    80
+    47,
+    79
    ],
-   "angle": 165,
+   "angle": 150,
    "layer": "back",
    "check": {
-    "manual": true
+    "fromTier1": [
+     46,
+     80
+    ],
+    "skinPx": 57,
+    "note": "run staff hold = \ub300\ub9c8\ubc95\uc0ac(\uc5ec) style (2026-11-09 \ud615\ub2d8): back layer, head trailing"
    }
   },
   "run_02": {
    "hand": [
-    47,
-    82
+    48,
+    81
    ],
-   "angle": 165,
+   "angle": 150,
    "layer": "back",
    "check": {
-    "manual": true
+    "fromTier1": [
+     47,
+     82
+    ],
+    "skinPx": 41,
+    "note": "run staff hold = \ub300\ub9c8\ubc95\uc0ac(\uc5ec) style (2026-11-09 \ud615\ub2d8): back layer, head trailing"
    }
   },
   "run_03": {
    "hand": [
-    48,
+    49,
     79
    ],
-   "angle": 165,
+   "angle": 150,
    "layer": "back",
    "check": {
-    "manual": true
+    "fromTier1": [
+     48,
+     79
+    ],
+    "skinPx": 45,
+    "note": "run staff hold = \ub300\ub9c8\ubc95\uc0ac(\uc5ec) style (2026-11-09 \ud615\ub2d8): back layer, head trailing"
    }
   },
   "run_04": {
    "hand": [
-    48,
-    80
+    49,
+    79
    ],
-   "angle": 165,
+   "angle": 150,
    "layer": "back",
    "check": {
-    "manual": true
+    "fromTier1": [
+     48,
+     80
+    ],
+    "skinPx": 57,
+    "note": "run staff hold = \ub300\ub9c8\ubc95\uc0ac(\uc5ec) style (2026-11-09 \ud615\ub2d8): back layer, head trailing"
    }
   },
   "run_05": {
    "hand": [
     47,
-    81
+    78
    ],
-   "angle": 165,
+   "angle": 150,
    "layer": "back",
    "check": {
-    "manual": true
+    "fromTier1": [
+     47,
+     81
+    ],
+    "skinPx": 48,
+    "note": "run staff hold = \ub300\ub9c8\ubc95\uc0ac(\uc5ec) style (2026-11-09 \ud615\ub2d8): back layer, head trailing"
    }
   },
   "run_06": {
    "hand": [
-    48,
-    82
+    49,
+    81
    ],
-   "angle": 165,
+   "angle": 150,
    "layer": "back",
    "check": {
-    "manual": true
+    "fromTier1": [
+     48,
+     82
+    ],
+    "skinPx": 62,
+    "note": "run staff hold = \ub300\ub9c8\ubc95\uc0ac(\uc5ec) style (2026-11-09 \ud615\ub2d8): back layer, head trailing"
    }
   },
   "run_07": {
    "hand": [
     49,
-    77
+    75
    ],
-   "angle": 165,
+   "angle": 150,
    "layer": "back",
    "check": {
-    "manual": true
+    "fromTier1": [
+     49,
+     77
+    ],
+    "skinPx": 47,
+    "note": "run staff hold = \ub300\ub9c8\ubc95\uc0ac(\uc5ec) style (2026-11-09 \ud615\ub2d8): back layer, head trailing"
    }
   },
   "run_08": {
@@ -87,10 +122,15 @@
     48,
     74
    ],
-   "angle": 165,
+   "angle": 150,
    "layer": "back",
    "check": {
-    "manual": true
+    "fromTier1": [
+     48,
+     74
+    ],
+    "skinPx": 52,
+    "note": "run staff hold = \ub300\ub9c8\ubc95\uc0ac(\uc5ec) style (2026-11-09 \ud615\ub2d8): back layer, head trailing"
    }
   },
   "jump_01": {
