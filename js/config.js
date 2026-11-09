@@ -264,7 +264,7 @@
       motion_cast_forward: { count: 5, ms: [70, 90, 70, 90, 120], active: [2] },                         // 2 투수처럼 던짐
       motion_cast_sky:     { count: 6, ms: [70, 110, 140, 60, 160, 120], active: [3] }                   // 3 앞 아래로 탁 가리킴
     },
-    // 궁수(2026-11-09, Flow 그림 art\archer-t1): shoot = 무릎 꿇고 힘 모아 쏘기(4장 = 놓는 장은 활이 안 보여서 기술마다 motionSeq 로 건너뜀),
+    // 궁수(2026-11-09, Flow 그림 art\archer-t1): shoot = 무릎 꿇고 힘 모아 쏘기(5번째 장 = 시위를 놓는 순간, 2026-11-09 다시 그려 활이 보임),
     //   sky = 하늘로 쏘기(2 하늘 조준 · 3 놓음), leap = 뒤로 공중제비 쏘기(1 뜀 · 2 거꾸로 · 3 공중 조준 · 4 착지)
     archer_male: {
       motion_shoot: { count: 6, ms: [80, 110, 120, 160, 90, 130], active: [3] },
@@ -544,7 +544,7 @@
       desc: '무릎 꿇고 힘을 모아 바람 화살을 쏴요. 줄 위의 적을 모두 꿰뚫고 밀어내요(누운 적도 맞아요)',
       lv5: { extra: 1, say: '화살 2발' },
       darken: { ms: 420, alpha: 0.35 }, iframes: [0, 420],
-      motionSeq: [0, 1, 2, 3, 3, 5], motionMs: [60, 80, 80, 150, 90, 120],
+      motionSeq: [0, 1, 2, 3, 4, 5], motionMs: [60, 80, 80, 150, 90, 120],
       arc: { kind: 'pierce', frame: 4, x: 30, y: -34, speed: 560, range: 320, w: 60, h: 26, depth: 24, gapMs: 140, hit: AR_PIERCE },
       trail: { frames: [3, 4], everyMs: 35, lifeMs: 170, alpha: 0.35, color: '#a8ffd8' },
       fx: [ { frame: 0, type: 'dust' } ]
@@ -594,7 +594,7 @@
       desc: '터지는 화살을 쏴요. 처음 맞은 적(또는 날아간 끝)에서 크게 터져 둘레 적을 모두 넘어뜨려요(누운 적도 맞아요)',
       lv5: { area: 1.3, say: '폭발 크기 +30%' },
       darken: { ms: 520, alpha: 0.4 }, iframes: [0, 420],
-      motionSeq: [0, 1, 2, 3, 3, 5], motionMs: [60, 80, 90, 180, 90, 120],
+      motionSeq: [0, 1, 2, 3, 4, 5], motionMs: [60, 80, 90, 180, 90, 120],
       arc: { kind: 'bomb', frame: 4, x: 30, y: -34, speed: 430, range: 280, r: 60, depth: 40, hit: AR_BOOM },
       fx: [ { frame: 0, type: 'dust' } ]
     },
@@ -604,7 +604,7 @@
       desc: '(2차) 무릎 꿇고 가장 센 앞쪽 적을 조준해요. 잠깐 뒤 은빛 빛줄기가 화면 끝까지 꿰뚫어요. 조준한 적은 늘 치명타, 같은 줄 적도 맞아요',
       lv5: { area: 1.25, say: '빛줄기 굵기 +25%' },
       darken: { ms: 1000, alpha: 0.55 }, iframes: [0, 900], zoom: { k: 1.05, ms: 900 },
-      motionSeq: [0, 1, 2, 3, 3, 3, 5], motionMs: [60, 80, 90, 260, 260, 120, 140],
+      motionSeq: [0, 1, 2, 3, 3, 4, 5], motionMs: [60, 80, 90, 260, 260, 120, 140],
       arc: { kind: 'snipe', frame: 2, aim: { range: 460, depth: 80 }, lockMs: 470, x: 30, y: -34, len: 480, w: 18, depth: 24, hit: SN_SNIPE, line: SN_SNIPE_LINE, chainPad: 500 }
     },
     ballista: {
@@ -612,7 +612,7 @@
       desc: '(2차) 거대한 강철 화살을 쏴요. 화살은 천천히 날아가며 줄 위 적을 모두 꿰뚫고 앞으로 밀고 가요(누운 적도 맞아요)',
       lv5: { area: 1.3, say: '화살 크기 +30%' },
       darken: { ms: 900, alpha: 0.5 }, iframes: [0, 700], zoom: { k: 1.05, ms: 700 },
-      motionSeq: [0, 1, 2, 3, 3, 5], motionMs: [60, 80, 100, 320, 100, 140],
+      motionSeq: [0, 1, 2, 3, 4, 5], motionMs: [60, 80, 100, 320, 100, 140],
       arc: { kind: 'ballista', frame: 4, x: 30, y: -34, speed: 300, range: 460, w: 90, h: 44, depth: 34, push: 1, hit: SN_BALLISTA }
     },
     rapid: {
@@ -653,7 +653,7 @@
       desc: '(2차) 바람을 감은 화살이 큰 회오리가 되어 천천히 앞으로 나아가요. 둘레 적을 빨아들여 여러 번 때리고 끝에 터뜨려요',
       lv5: { area: 1.3, say: '회오리 크기 +30%' },
       darken: { ms: 900, alpha: 0.45 }, iframes: [0, 700],
-      motionSeq: [0, 1, 2, 3, 3, 5], motionMs: [60, 80, 90, 220, 90, 120],
+      motionSeq: [0, 1, 2, 3, 4, 5], motionMs: [60, 80, 90, 220, 90, 120],
       arc: { kind: 'twister', frame: 4, x: 50, speed: 80, ms: 2000, r: 46, depth: 40, tickMs: 250, pullR: 140, pull: 110, hit: RG_TWIST, last: RG_TWIST_LAST }
     },
     barrage: {
