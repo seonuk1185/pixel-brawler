@@ -64,7 +64,7 @@
   // 2차 전직 기술(2026-11-08, config SKILL_TREE 의 tier: 2): 그 직업 2차 Lv(config classes.<직업>.tier2.lv, 기사 = 30) 이 돼야 2차 전직(성기사)
   //   tier2Lv(직업) = 2차 전직 Lv(없으면 0) / openLv(직업, 기술) = 그 기술이 열리는 Lv = unlock 과 2차 Lv 중 큰 것(2차 기술만)
   function tier2Lv(cls) { var c = CFG.classes && CFG.classes[cls], t = c && c.tier2; return t ? t.lv || 0 : 0; }
-  function openLv(cls, e) { var u = e.unlock || 0; return e.tier === 2 ? Math.max(u, tier2Lv(cls)) : u; }
+  function openLv(cls, e) { var u = e.unlock || 0; return e.tier === 2 ? Math.max(u, tier2Lv(cls)) : e.tier === 3 ? Math.max(u, tier3LvOf(cls, e.branch)) : u; }
   // ---------- 2차 전직 갈래 (2026-11-08, config classes.<직업>.tier2.branches · SKILL_TREE 의 branch) ----------
   //   저장칸 tier2Branch = 고른 갈래 key('a' / 'b'). 2차 Lv(25)이 되면 고르기 화면(main.js openBranchChoice) → chooseBranch(key), 한 번 고르면 못 바꿈
   //   branchOf(직업) = 지금 갈래: 고른 것 > (2차 Lv 이 됐는데 아직 안 고름 = 예전 저장 · 고르기 화면이 뜨기 전) 첫 갈래(a) > 2차 전 = null
@@ -85,13 +85,35 @@
   // 갈래 맛(2026-11-08): config skills.branchFx[직업][갈래].names[기술] → { name, twist, tag, br, color, tw }
   //   brOn = 갈래 맛이 켜졌나: 2차 Lv(tier2) 이 된 뒤의 지금 갈래(그 전 = null — ?lv=20&branch=a 시험처럼 갈래가 정해져 있어도 2차 전엔 원래대로)
   function brOn(cls) { var t = tier2Lv(cls); return t && G.lv >= t ? branchOf(cls) : null; }
+  // ---------- 3차 전직 (2026-11-10, config classes.<직업>.tier2.branches[갈래].tier3 · SKILL_TREE 의 tier: 3) ----------
+  //   갈래마다 3차가 하나(성기사 → 검성 · 대마법사 → 현자 …). tier3.soon = 아직 안 만듦(없는 것으로 봄)
+  //   t3On(직업) = 3차가 켜졌나: 2차 갈래가 정해짐(brOn) + 그 갈래 3차가 있음 + Lv >= tier3.lv. 저장칸 tier3(1) = 전직 화면을 봤음(화면을 다시 안 띄움).
+  //     예전 저장(Lv50 넘음)은 그대로 3차로 봄(2차 갈래와 같은 길) + 처음 한 번 전직 화면이 뜸
+  //   시험: ?t3=0 = Lv50 이 넘어도 3차 끔(2차와 비교) · ?t3=1 = 전직 화면 건너뜀(이미 함)
+  var urlT3 = !CFG.demo && /^[01]$/.test(params.get('t3') || '') ? params.get('t3') : null;
+  //   공개 스위치(2026-11-10): config tier3Enabled = false 면 3차 전체가 없는 것으로 봄(전직 화면 · 3차 기술 · 3차 옷 · 3차 맛 전부 안 나옴). 시험 = 주소 ?t3=1 만 켬
+  var T3_ON = !!CFG.tier3Enabled || urlT3 === '1';
+  function tier3Of(cls, b) { if (!T3_ON) return null; var d = branchDef(cls, b || branchOf(cls)), t = d && d.tier3; return t && !t.soon ? t : null; }
+  function tier3LvOf(cls, b) { var t = tier3Of(cls, b); return t ? t.lv || 50 : 999; }
+  function t3On(cls) { if (urlT3 === '0') return false; var b = brOn(cls), t = b && tier3Of(cls, b); return !!t && G.lv >= (t.lv || 50); }
+  function tier3Info(cls) {
+    var b = branchOf(cls), t = tier3Of(cls, b), c = CFG.classes && CFG.classes[cls], T2 = c && c.tier2;
+    if (!t) return null;
+    var bd = branchDef(cls, b);
+    return { lv: t.lv || 50, name: t.name, outfit: t.outfit || (bd && bd.outfit) || (T2 && T2.outfit), desc: t.desc || '', key: b, look: t.look || null, from: bd ? bd.name : '', on: t3On(cls) };
+  }
   function brSkillOf(cls, id) {
-    var F = SK.branchFx && SK.branchFx[cls], b = brOn(cls), G2 = F && b && F[b], n = G2 && G2.names && G2.names[id];
+    var F = SK.branchFx && SK.branchFx[cls], b = brOn(cls), G2 = F && b && F[b];
+    var T3 = G2 && G2.t3 && t3On(cls) ? G2.t3 : null, n3 = T3 && T3.names && T3.names[id], n = G2 && G2.names && G2.names[id];
+    if (n3) {   // 3차 맛(2026-11-10): 3차 이름 · 덤 + 갈래 덤 위에 3차 덤을 덮음(크기 등)
+      var tw = {}, k; for (k in (G2.tw || {})) tw[k] = G2.tw[k]; for (k in (T3.tw || {})) tw[k] = T3.tw[k];
+      return { name: n3[0], twist: n3[1], tag: T3.tag, br: b, color: T3.color || G2.color, tw: tw, t3: true };
+    }
     return n ? { name: n[0], twist: n[1], tag: G2.tag, br: b, color: G2.color, tw: G2.tw } : null;
   }
-  function recK0() { return (SK.branchFx && SK.branchFx.recK) || 1.25; }
-  // 늘 켜진 기술 추천 갈래 배율: 지금 갈래 = e.rec 이면 recK(값 x 1.25), 아니면 1
-  function recMul(cls, e) { return e && e.rec && brOn(cls) === e.rec ? recK0() : 1; }
+  function recK0(cls) { var F = SK.branchFx || {}; return (cls && t3On(cls) && F.recK3) || F.recK || 1.25; }
+  // 늘 켜진 기술 추천 갈래 배율: 지금 갈래 = e.rec 이면 recK(값 x 1.25, 3차 뒤 recK3 = 1.35), 아니면 1
+  function recMul(cls, e) { return e && e.rec && brOn(cls) === e.rec ? recK0(cls) : 1; }
   function brKey(cls, test) { var b = branchOf(cls); return b || (test && branchList(cls) ? branchList(cls)[0].key : null); }
   function brVis(cls, e, test) { if (!e || !e.branch) return true; var b = brKey(cls, test); return !b || b === e.branch; }
   function brOk(cls, e, test) { return !e || !e.branch || brKey(cls, test) === e.branch; }
@@ -135,7 +157,7 @@
     L.forEach(function (e) { byId[e.id] = e; });
     var B = {
       cls: cls, test: !!test,
-      list: function () { return L.filter(function (e) { return brVis(cls, e, test); }); },   // 2차 갈래(2026-11-08): 다른 갈래 기술은 안 보임
+      list: function () { return L.filter(function (e) { return brVis(cls, e, test) && (e.tier !== 3 || !!tier3Of(cls, e.branch)); }); },   // 3차 기술(2026-11-10): 그 갈래 3차가 없거나 꺼져 있으면 안 보임   // 2차 갈래(2026-11-08): 다른 갈래 기술은 안 보임
       entry: function (id) { return byId[id] || null; },
       // 그 기술 최고 Lv(2026-11-08): 기술마다 maxLv(날렵한 몸놀림 = 1), 없으면 config skills.maxLv(5)
       maxLv: function (id) { return skMax(byId[id]); },
@@ -143,19 +165,23 @@
       isActive: function (id) { var e = byId[id]; return !!(e && !e.soon && !e.passive && SK[cls] && SK[cls][id]); },
       // 열렸나: 시험 책 = 준비 중 빼고 전부, 저장 책 = 그 레벨이 됨(unlock 0 = 전직 즉시)
       //   2차 기술(tier 2, 2026-11-08) = 2차 전직 Lv 도 돼야 함(openLv). 2차 전 기술 창 = 「2차 전직 후 LvN」(main.js)
-      unlocked: function (id) { var e = byId[id]; return !!e && !e.soon && brOk(cls, e, test) && (test || id === BASIC || G.lv >= openLv(cls, e)); },
+      unlocked: function (id) { var e = byId[id]; return !!e && !e.soon && brOk(cls, e, test) && (test || id === BASIC || G.lv >= openLv(cls, e)) && (e.tier !== 3 || test || t3On(cls)); },   // 3차 기술(2026-11-10) = 3차가 켜져야(?t3=0 이면 잠김)
       // 2차 전직 갈래(2026-11-08): 지금 갈래 key(2차 전 = null) · 그 기술 갈래 이름(갈래 기술 아니면 null)
       branch: function () { return branchOf(cls); },
       // 갈래 맛(2026-11-08, config skills.branchFx): 지금 갈래에서 바뀐 1차 기술 { name, twist, tag, br } (2차 전 · 해당 없음 = null)
       brSkill: function (id) { return brSkillOf(cls, id); },
       // 늘 켜진 기술 추천 갈래(rec): { br, name(갈래 이름), on(지금 그 갈래), k(배율) } 또는 null
-      rec: function (id) { var e = byId[id], b = e && e.rec ? branchDef(cls, e.rec) : null; return b ? { br: e.rec, name: b.name, on: brOn(cls) === e.rec, k: recK0() } : null; },
+      rec: function (id) { var e = byId[id], b = e && e.rec ? branchDef(cls, e.rec) : null; return b ? { br: e.rec, name: b.name, on: brOn(cls) === e.rec, k: recK0(cls) } : null; },
       recK: function (id) { return recMul(cls, byId[id]); },
       branchName: function (id) { var e = byId[id], b = e && e.branch ? branchDef(cls, e.branch) : null; return b ? b.name : null; },
       openLv: function (id) { var e = byId[id]; return e ? openLv(cls, e) : 0; },
       // 2차 전직을 했나(2026-11-08): 이 직업에 2차가 있고 그 Lv 가 됨
       tier2: function () { var t = tier2Lv(cls); return !!t && G.lv >= t; },
       tier2Lv: function () { return tier2Lv(cls); },
+      // 3차 전직(2026-11-10): 했나 · 그 Lv · 정보(이름 · 옷 · 설명)
+      tier3: function () { return t3On(cls); },
+      tier3Lv: function () { return tier3LvOf(cls); },
+      tier3Info: function () { return tier3Info(cls); },
       lv: function (id) {
         if (!B.unlocked(id)) return 0;
         if (id === BASIC) return Math.max(1, Math.min(B.maxLv(id), st.lv[id] || 1));   // 기본기 = 늘 Lv1 이상
@@ -222,8 +248,8 @@
       },
       // 빈 칸에 배운 쓰는 기술을 순서대로 끼움. 2026-11-07: 레벨업 · 전직 때는 안 부름(저절로 끼우기 없음) → 시험 책 · 시험 자동 조종(testSetup)만
       fill: function () {
-        var changed = false;
-        L.forEach(function (e) {
+        var changed = false, L3 = !test && t3On(cls) ? L.filter(function (e) { return e.tier === 3; }).concat(L.filter(function (e) { return e.tier !== 3; })) : L;   // 3차(2026-11-10): 3차 기술부터 칸에
+        L3.forEach(function (e) {
           if (!B.isActive(e.id) || !B.learned(e.id) || B.bar(true).indexOf(e.id) >= 0) return;
           for (var i = 0; i < B.slots(true); i++) if (!B.at(i)) { var j = st.bar.indexOf(e.id); if (j >= 0) st.bar[j] = null; st.bar[i] = e.id; changed = true; return; }
         });
@@ -362,6 +388,7 @@
     xp: 0,
     cls: CFG.classes[cur['class']] && cur['class'] !== 'novice' ? cur['class'] : null,   // 전직한 직업(없으면 null = 견습)
     branch: null,       // 2차 전직 갈래(2026-11-08, 저장칸 tier2Branch). 아래에서 읽음
+    tier3: !!cur.tier3, // 3차 전직 화면을 봤나(2026-11-10, 저장칸 tier3 = 1)
     stats: zero(),      // 올린 능력치
     pts: 0,             // 안 쓴 점수
     noSave: false,      // ?lv=N 시험 중이면 true(저장 안 함)
@@ -510,6 +537,7 @@
         ids.forEach(function (id) { if (b.pts() > 0 && b.add(id)) any = true; });
         if (!any) break;
       }
+      if (t3On(cls)) G.sk.bar = [];   // 3차(2026-11-10): 3차 기술부터 다시 끼움(fill 이 3차 먼저)
       b.fill();   // 배운 쓰는 기술을 빈 칸에(시험 자동 조종)
       var o = {}; treeOf(cls).forEach(function (e) { if (b.learned(e.id)) o[e.id] = b.lv(e.id); });
       return { lv: o, pts: b.pts(), bar: b.bar(true) };
@@ -521,6 +549,12 @@
     brOn: function (cls) { return brOn(cls || G.cls); },                      // 갈래 맛이 켜진 갈래(2차 Lv 뒤만)   // 갈래 맛(2026-11-08): 바뀐 1차 기술 이름 · 덤
     recMul: function (cls, e) { return recMul(cls || G.cls, e); },        // 추천 갈래 늘 켜진 기술 배율
     tier2Info: function (cls) { return tier2Info(cls || G.cls); },
+    // ---------- 3차 전직 (2026-11-10) ----------
+    tier3Info: function (cls) { return tier3Info(cls || G.cls); },
+    t3On: function (cls) { return t3On(cls || G.cls); },
+    // 전직 화면을 띄워야 하나: 그 갈래에 3차가 있음 + 3차 Lv 이 됨 + 2차 갈래를 고름 + 아직 화면을 안 봄(?t3=1 시험 = 본 것으로)
+    needTier3: function () { return !!(G.cls && G.branch && !G.tier3 && urlT3 !== '1' && t3On(G.cls)); },
+    doTier3: function () { if (!G.cls || G.tier3) return false; G.tier3 = true; G.save(); return true; },
     // 고르기 화면을 띄워야 하나: 갈래가 있는 직업 + 2차 Lv 이 됨 + 아직 안 고름(?lv 시험에 ?branch 를 붙였으면 고른 것으로 봄)
     needBranch: function () { return !!(G.cls && branchList(G.cls) && !G.branch && G.lv >= tier2Lv(G.cls)); },
     // 갈래 고르기(한 번만): 다른 갈래 기술에 써 둔 점수는 돌려받고(예전 저장의 성기사 기술 등) 칸에서도 뺌 → 저장
@@ -537,7 +571,7 @@
     },
     save: function () {
       if (G.noSave) return;
-      data.slots[data.slot] = { lv: G.lv, xp: G.xp, 'class': G.cls, tier2Branch: G.cls && G.branch ? G.branch : undefined, stats: G.stats, pts: G.pts, skills: G.cls ? G.sk : undefined, club: G.club || undefined, modes: MSsaved,
+      data.slots[data.slot] = { lv: G.lv, xp: G.xp, 'class': G.cls, tier2Branch: G.cls && G.branch ? G.branch : undefined, tier3: G.cls && G.tier3 ? 1 : undefined, stats: G.stats, pts: G.pts, skills: G.cls ? G.sk : undefined, club: G.club || undefined, modes: MSsaved,
         wpn: G.cls ? G.wpn : undefined, stones: G.stones, crys: G.crys, dg: G.dg };
       try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch (e) {}
     },

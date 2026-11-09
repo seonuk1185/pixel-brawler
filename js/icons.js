@@ -217,6 +217,17 @@
     pcloud: function (g) { g.disc(8, 14, 5, '#3a6a2a'); g.disc(15, 12, 6, '#4a7a30'); g.disc(12, 17, 5, '#2a5a1a'); g.px(13, 11, VEN); g.px(8, 14, VEN); g.outline(); g.rect(4, 3, 4, 5, '#8ae05a'); g.rect(5, 2, 2, 1, K.b1); },
     ppool: function (g) { g.ellipse(12, 18, 10, 3, function (v) { return v < 0.5 ? VEN : VEND; }); g.px(8, 16, '#e0ffc0'); g.px(15, 17, '#e0ffc0'); g.rect(10, 4, 4, 6, '#8ae05a'); g.rect(11, 3, 2, 1, K.b1); g.outline(); },
     perupt: function (g) { g.poly([[5, 22], [9, 6], [12, 12], [15, 2], [19, 22]], function (x, y) { return y < 10 ? '#e0ffc0' : y < 16 ? VEN : VEND; }); g.outline(); g.disc(12, 8, 2, '#5a2a7a'); g.spark(4, 6, true, VEN); },
+    // 3차(2026-11-10): 검성 = 금빛 칼 · 성검 / 현자 = 불 · 얼음 · 번개가 섞인 원소
+    sswave: function (g) { g.ring(9, 12, 7, 9, 290, 430, K.g1); g.ring(15, 12, 7, 9, 290, 430, K.g0); g.outline(); g.spark(20, 12, true, K.g1); },
+    ssaura: function (g) { g.ring(12, 13, 8, 9, 0, 359, K.g2); g.line(12, 3, 12, 14, K.s0); g.line(10, 5, 14, 5, K.g1); g.line(5, 12, 9, 20, K.s1); g.line(19, 12, 15, 20, K.s1); g.outline(); g.spark(4, 4, false, K.g0); },
+    ssrain: function (g) { [[6, 2], [12, 5], [18, 1]].forEach(function (q) { g.line(q[0], q[1], q[0], q[1] + 10, K.s0); g.line(q[0] - 2, q[1] + 2, q[0] + 2, q[1] + 2, K.g1); }); g.rect(3, 19, 18, 2, K.g2); g.outline(); g.spark(12, 18, true, K.g0); },
+    ssflash: function (g) { g.line(1, 13, 22, 11, K.wht); g.line(1, 14, 22, 12, K.g1); g.line(4, 10, 20, 9, K.g0); g.outline(); g.spark(12, 12, true, K.g0); },
+    ssjudge: function (g) { g.line(12, 1, 12, 17, K.s0); g.line(11, 1, 11, 16, K.s1); g.line(8, 5, 16, 5, K.g1); g.rect(10, 6, 4, 2, K.g2); g.ring(12, 20, 6, 8, 180, 360, K.g1); g.outline(); g.spark(5, 3, false, K.g0); g.spark(19, 3, false, K.g0); },
+    sgorb: function (g) { g.disc(12, 12, 7, function (d) { return d < 2 ? K.wht : d < 4 ? K.f1 : K.i2; }); g.ring(12, 12, 8, 9, 30, 160, K.f2); g.ring(12, 12, 8, 9, 210, 340, K.i1); g.outline(); g.spark(20, 4, false, K.g0); },
+    sgcycle: function (g) { g.disc(12, 4, 3, K.f2); g.disc(5, 17, 3, K.i2); g.disc(19, 17, 3, K.g1); g.ring(12, 12, 7, 8, 0, 359, '#c8b8ff'); g.outline(); g.px(12, 12, K.wht); },
+    sgstorm: function (g) { g.rect(5, 6, 4, 14, K.f2); g.rect(10, 3, 4, 17, K.i2); g.rect(15, 7, 4, 13, K.g1); g.rect(3, 20, 18, 2, K.g2); g.outline(); g.spark(12, 2, true, K.wht); },
+    sgnova: function (g) { g.ring(12, 15, 8, 10, 0, 359, K.g1); g.disc(12, 15, 4, function (d) { return d < 2 ? K.wht : K.f1; }); g.disc(4, 9, 3, K.i2); g.disc(20, 9, 3, K.f2); g.outline(); },
+    sgdoom: function (g) { g.disc(8, 7, 4, function (d) { return d < 2 ? K.wht : K.f1; }); g.line(10, 9, 15, 15, K.f2); g.disc(15, 17, 5, function (d) { return d < 3 ? '#140828' : '#6a3ad0'; }); g.ring(15, 17, 5, 7, 0, 359, K.g1); g.outline(); g.spark(20, 4, false, K.wht); },
     // ===== 궁수(2026-11-09) =====
     pshot: function (g) { g.rect(3, 11, 16, 2, MINTD); arrow(g, 2, 12, 21, 12, K.wht, K.b0); g.outline(); g.ring(8, 12, 3, 4, 0, 359, MINT); g.ring(13, 12, 3, 4, 0, 359, MINT); g.spark(20, 8, false, MINT); },
     upshot: function (g) { arrow(g, 7, 4, 12, 15, K.s1); g.outline(); g.ellipse(12, 18, 8, 2.5, MINTD); g.ellipse(12, 18, 5, 1.5, MINT); g.line(6, 14, 4, 6, MINT); g.line(18, 14, 20, 6, MINT); g.spark(12, 3, false, MINT); },
@@ -721,6 +732,11 @@
     sstorm: ['암영 십자참', 'assassin', 'active', 'shadow'], smoon: ['월영참', 'assassin', 'active', 'shadow'],
     pdarts: ['독침 부채', 'assassin', 'active', 'venom'], pplague: ['역병 전염', 'assassin', 'passive', 'venom'], pcloud: ['독구름', 'assassin', 'active', 'venom'],
     ppool: ['맹독 웅덩이', 'assassin', 'active', 'venom'], perupt: ['역병 폭발', 'assassin', 'active', 'venom'],
+    // 3차(2026-11-10): 검성(기사) · 현자(법사)
+    sswave: ['성검 파도', 'knight', 'active', 'holy'], ssaura: ['검성의 경지', 'knight', 'passive', 'holy'], ssrain: ['천검 강림', 'knight', 'active', 'holy'],
+    ssflash: ['일섬', 'knight', 'active', 'holy'], ssjudge: ['천상의 심판', 'knight', 'active', 'holy'],
+    sgorb: ['원소 융합탄', 'mage', 'active', 'fire'], sgcycle: ['원소 순환', 'mage', 'passive', 'arcane'], sgstorm: ['삼원소 폭풍', 'mage', 'active', 'storm'],
+    sgnova: ['원소 대폭발', 'mage', 'active', 'fire'], sgdoom: ['종말의 별', 'mage', 'active', 'arcane'],
     // 궁수(2026-11-09): 1차 = 바람(wind) · 저격수 = snipe · 레인저 = wild
     pshot: ['관통 화살', 'archer', 'active', 'wind'], upshot: ['솟구치는 화살', 'archer', 'active', 'wind'], multi: ['부채꼴 화살', 'archer', 'active', 'wind'],
     rain: ['화살비', 'archer', 'active', 'wind'], leap: ['공중제비 사격', 'archer', 'active', 'wind'], burst: ['폭발 화살', 'archer', 'active', 'fire'],

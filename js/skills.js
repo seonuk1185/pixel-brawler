@@ -127,6 +127,7 @@
     if (o.tornado && o.tornado.at == null) o.tornado = cp(o.tornado, { at: st(o.tornado.frame) });
     if (o.arc && o.arc.at == null) o.arc = cp(o.arc, { at: st(o.arc.frame) });   // 궁수 기술(2026-11-09, js/archer.js)
     if (o.asn && o.asn.at == null) o.asn = cp(o.asn, { at: st(o.asn.frame) });   // 암살자 기술(2026-11-09, js/assassin.js)
+    if (o.t3 && o.t3.at == null) o.t3 = cp(o.t3, { at: st(o.t3.frame), cutAt: o.t3.cutFrame != null ? st(o.t3.cutFrame) : null });   // 3차 기술(2026-11-10, js/tier3.js)
     // 2차 갈래 B(2026-11-08): 마력 검기 · 마검 소환 · 마검 해방 / 어둠의 구체 · 저주의 늪 · 악령 회오리 · 심연의 문
     ['awave', 'swords', 'dorb', 'swamp', 'spirits', 'abyss'].forEach(function (k) { if (o[k] && o[k].at == null) o[k] = cp(o[k], { at: st(o[k].frame) }); });
     if (o.cleave && o.cleave.at == null) o.cleave = cp(o.cleave, { at: st(o.cleave.frame), strikeAt: st(o.cleave.strike) });                     // 칼날 폭풍 회오리(2026-11-07)                         // 성검 낙뢰(2차)
@@ -150,6 +151,7 @@
       if (o.cleave) mx(o.cleave.strikeAt + 120); if (o.dorb) mx(o.dorb.at); if (o.swamp) mx(o.swamp.at); if (o.spirits) mx(o.spirits.at); if (o.abyss) mx(o.abyss.at);
       if (o.arc) mx(o.arc.at + (o.arc.chainPad || 0));   // 궁수(2026-11-09)
       if (o.asn) mx(o.asn.at + (o.asn.chainPad || 0));   // 암살자(2026-11-09)
+      if (o.t3) mx(Math.max(o.t3.at, o.t3.cutAt || 0) + (o.t3.chainPad || 0));   // 3차(2026-11-10)
       if (o.quake) mx(o.quake.at); if (o.leap) mx(o.leap.at[1]); if (o.finale) mx(o.finale.at); if (o.strikes) mx(o.strikes.at[o.strikes.at.length - 1]);
       o.chainAt = o.chainFrom != null ? st(o.chainFrom) : Math.min(o.ms - 1, last + pad);
     }
@@ -353,6 +355,7 @@
     if (d.judge) judgeStep(p, d, s, t0, t1);
     branchAdvance(p, d, s, t0, t1);
     if (d.asn && window.Assassin) Assassin.step(p, d, s, t0, t1);   // 암살자 기술(2026-11-09, js/assassin.js)
+    if (d.t3 && window.Tier3) Tier3.step(p, d, s, t0, t1);         // 3차 기술(2026-11-10, js/tier3.js)
     if (d.arc && window.Archer) Archer.step(p, d, s, t0, t1);   // 궁수 기술(2026-11-09, js/archer.js)                                                                          // 2차 갈래 B 기술(2026-11-08)                                                                // 천둥 심판(대마법사, 2026-11-08)
     if (d.shot) {
       var nShot = 1 + ((s.L.lv5 && s.L.lv5.extra) || 0);
@@ -4719,6 +4722,7 @@
     meteorStep(dt); aiFxStep(dt);                                     // AI 그림 효과(2026-11-08)
     brStep(dt);                                                        // 갈래 맛 덤(2026-11-08)
     if (window.Assassin) Assassin.update(dt);                          // 암살자 단검 · 기술 · 독 · 늘 켜진 기술(2026-11-09)
+    if (window.Tier3) Tier3.update(dt);                                // 3차 기술 · 늘 켜진 기술(2026-11-10)
     if (window.Archer) Archer.update(dt);                              // 궁수 화살 · 기술 · 늘 켜진 기술(2026-11-09)
     [bolts, rings, ghosts, arts, waves, parts, glows, pillars].forEach(function (L) {
       for (var i = L.length - 1; i >= 0; i--) { L[i].t += dt; if (L[i].t >= L[i].life) L.splice(i, 1); }
@@ -4770,6 +4774,7 @@
     drawGravUnder(ctx, camX); drawFrostUnder(ctx, camX); drawCragUnder(ctx, camX); drawJudgeMark(ctx, camX, p);   // 중력 구체 바닥 · 빙결 폭풍 땅 · 천둥 심판 과녁(2026-11-08)
     drawAiFx(ctx, camX, 'under');   // AI 그림 효과 바닥(2026-11-08)
     if (window.Assassin) Assassin.drawUnder(ctx, camX);   // 암살자 웅덩이 · 연기(2026-11-09)
+    if (window.Tier3) Tier3.drawUnder(ctx, camX);         // 3차 마법진(2026-11-10)
     if (window.Archer) Archer.drawUnder(ctx, camX);   // 궁수 덫 · 표시(2026-11-09)
     var s = p && p.state === 'skill' && p.sk, K = s && (s.K || s.d.strikes);
     if (!K) return;
@@ -4884,6 +4889,7 @@
     drawFrozen(ctx, camX); drawFrosts(ctx, camX); drawVortexes(ctx, camX); drawGravs(ctx, camX); drawJudges(ctx, camX); drawEshards(ctx, camX);   // 법사 새 기술(2026-11-08)
     drawAiFx(ctx, camX, 'over');  // AI 그림 효과(2026-11-08)
     if (window.Assassin) Assassin.drawOver(ctx, camX);   // 암살자 단검 · 효과 · 분신(2026-11-09)
+    if (window.Tier3) Tier3.drawOver(ctx, camX);         // 3차 효과(2026-11-10)
     if (window.Archer) Archer.drawOver(ctx, camX);   // 궁수 화살 · 효과(2026-11-09)
     drawJudgeCharge(ctx, camX);   // 천둥 심판 모으기(2026-11-08 AI 그림)
     waves.forEach(function (w) { if (!w.ground) drawWave(ctx, camX, w); });
@@ -5109,9 +5115,9 @@
     infuseMul: infuseMul, infuseHit: infuseHit, leechHit: leechHit, curseMul: curseMul,   // 갈래 B 늘 켜진 기술 · 저주(2026-11-08, main.js onHit)
     gritBonus: gritBonus, tryCounter: tryCounter, shieldSplit: shieldSplit, shieldHit: shieldHit, brandMul: brandMul, brandMark: brandMark,
     brHit: brHit, brStun: brStun, brDefend: brDefend, brName: brName, _br: function () { return { now: brNow, bursts: brBursts.length, cursed: brCursed.length, mpLeft: brMpLeft }; },   // 갈래 맛 덤(2026-11-08, main.js onHit · onPlayerHit)
-    busy: function () { return dorbs.length + abysses.length + crosses.length > 0; },   // 2026-11-09 미리보기 액자: 늦게 터지는 효과(어둠의 구체 · 심연의 문 · 심판의 십자)가 남았으면 아직 다시 시작 안 함
+    busy: function () { return dorbs.length + abysses.length + crosses.length > 0 || !!(window.Tier3 && Tier3.busy()); },   // 2026-11-09 미리보기 액자: 늦게 터지는 효과(어둠의 구체 · 심연의 문 · 심판의 십자)가 남았으면 아직 다시 시작 안 함
     hidden: hidden, test: TEST, _ai: function (g) { if (g) { var im = aiImg[g] && aiImg[g].fr[0]; return im ? { w: im.width, h: im.height, k: im._k, f: im._f, pv: aiImg[g].pv } : null; } return { loaded: Object.keys(aiImg).length, hd: Object.keys(aiImg).filter(function (g) { return aiImg[g].fr[0] && aiImg[g].fr[0]._hd; }).length, live: aiFxs.length }; }, _fx: function () { return { blades: blades.length, flames: flames.length, beams: beams.length, arcs: arcs.length, shield: !!shieldFx, crosses: crosses.length, shards: shardFx.length, pulls: pulls.length, gravs: gravs.length, eshards: eshFx.length, vortexes: vortexes.length, chains: chainQ.length, frosts: frosts.length, crags: crags.length, cragRows: cragRows.length, judges: judges.length, b: branchFx() }; },
-    clear: function () { if (window.Assassin) Assassin.clear(); if (window.Archer) Archer.clear(); brClear(); branchClear(); aiFxs.length = 0; gravs.length = 0; eshFx.length = 0; eshT = 0; vortexes.length = 0; vortexT = 0; chainQ.length = 0; chainN = 0; frosts.length = 0; cragRows.length = 0; crags.length = 0; judges.length = 0; jbolts.length = 0; crosses.length = 0; aegisT = 0; shardFx.length = 0; shardQ.length = 0; shardN = 0; pulls.length = 0; tornados.length = 0; blades.length = 0; flames.length = 0; beams.length = 0; arcs.length = 0; shieldFx = null; gritOn = false; curLv = 1; meteors.length = 0; pillars.length = 0; echoes.length = 0; bright = 1; noMpT = 0; bolts.length = 0; rings.length = 0; ghosts.length = 0; arts.length = 0; waves.length = 0; parts.length = 0; glows.length = 0; flash = null; },
+    clear: function () { if (window.Tier3) Tier3.clear(); if (window.Assassin) Assassin.clear(); if (window.Archer) Archer.clear(); brClear(); branchClear(); aiFxs.length = 0; gravs.length = 0; eshFx.length = 0; eshT = 0; vortexes.length = 0; vortexT = 0; chainQ.length = 0; chainN = 0; frosts.length = 0; cragRows.length = 0; crags.length = 0; judges.length = 0; jbolts.length = 0; crosses.length = 0; aegisT = 0; shardFx.length = 0; shardQ.length = 0; shardN = 0; pulls.length = 0; tornados.length = 0; blades.length = 0; flames.length = 0; beams.length = 0; arcs.length = 0; shieldFx = null; gritOn = false; curLv = 1; meteors.length = 0; pillars.length = 0; echoes.length = 0; bright = 1; noMpT = 0; bolts.length = 0; rings.length = 0; ghosts.length = 0; arts.length = 0; waves.length = 0; parts.length = 0; glows.length = 0; flash = null; },
     // 화면 번쩍(콤보 마무리 타도 씀): { color, alpha, ms }
     flash: function (f) { doFlash(f); },
     // 파편·둥근 빛(소품 나뭇조각·음식 반짝임도 씀, props.js)

@@ -1481,6 +1481,116 @@
       }
     }
   };
+  // ---------- 3차 전직 기술 (2026-11-10, Lv50 · 갈래마다 하나: 성기사 → 검성 · 대마법사 → 현자) ----------
+  //   t3 = 3차 기술 진행(js/tier3.js Tier3.step, 암살자 asn · 궁수 arc 와 같은 짜임). t3 안 거리 값은 화면 도트(AS 0.55 기준)
+  //   효과 그림 = 전부 AI 도트 그림(art/skill-fx/t3_* + art/ultimate 의 천상의 심판 · 종말의 별 그림, 게임 = assets/fx/aifx/t3_*)
+  //   데미지 = 2차 같은 자리 기술의 약 1.2~1.4배(한 적이 다 맞을 때 「합」), 쿨타임은 조금 김. 필살(Lv58) = 화면 안 모든 적
+  //   나머지 3차 6개(마검왕 · 심연술사 · 신궁 · 숲의 수호자 · 그림자 군주 · 역병술사)도 여기에 같은 모양으로 넣으면 됨(pipeline/ai-sprite/t3/README.txt)
+  // ---- 검성(기사 3차) ----
+  // 성검 파도(50 ↔ 칼날 폭풍 5.7): 거대한 금빛 검기 세 줄기(가운데 · 위 · 아래 줄)가 화면을 가로지름 2.3 x 3 = 6.9 (꿰뚫음)
+  var SS_WAVE = { dmg: 2.3, hitstop: 0.9, knock: 1.4, shake: 1.6, spark: 1.3, big: true, hitsDown: true, flash: { color: '#fff4c0', alpha: 0.18, ms: 80 } };
+  // 검성의 경지(52, 늘 켜짐): 몇 초마다 금빛 영검이 저절로 가까운 적에게 날아가 꽂힘(이 값 x passive.mul)
+  var SS_AURA = { dmg: 1.8, hitstop: 0.5, knock: 0.8, shake: 0.7, spark: 1.1, big: true, hitsDown: true, noRage: true, noMp: true, numStyle: 'push', t3Auto: true };
+  // 천검 강림(53 ↔ 성검 낙뢰 6.2): 화면 안 적마다 하늘에서 금빛 검 0.75 x 6 + 마지막 큰 검 3.0 = 7.5
+  var SS_RAIN = { dmg: 0.75, hitstop: 0.3, knock: 0.2, shake: 0.6, spark: 1.0, hitsDown: true, noRage: true, noJuggle: true };
+  var SS_RAIN_LAST = { dmg: 3.0, hitstop: 1.8, knock: 2.0, shake: 2.6, knockdown: true, stunMs: 300, spark: 1.6, big: true, hitsDown: true, flash: { color: '#fff0b0', alpha: 0.35, ms: 140 } };
+  // 일섬(55 ↔ 심판의 십자 5.6): 한 줄로 꿰뚫고 지나감(지나가며 1.0) → 잠깐 뒤 지나간 길 전체가 갈라짐 7.6 = 8.6
+  var SS_FLASH_PASS = { dmg: 1.0, hitstop: 0.4, knock: 0.2, shake: 0.6, spark: 1.0, hitsDown: true, noJuggle: true };
+  var SS_FLASH_CUT = { dmg: 7.6, hitstop: 3.0, knock: 2.4, shake: 4.0, knockdown: true, stunMs: 400, spark: 2.0, big: true, hitsDown: true, crit: true,
+                       flash: { color: '#ffffff', alpha: 0.55, ms: 180 }, slowMs: 320 };
+  // 천상의 심판(58 필살 ↔ 2차 필살 7.7): 하늘에서 작은 빛 0.5 x 5 → 거대한 성검이 꽂힘 2.0 + 충격파 13 = 17.5 (화면 안 모든 적)
+  var SS_JUDGE_PRE = { dmg: 0.5, hitstop: 0.2, knock: 0.1, shake: 0.5, spark: 0.8, hitsDown: true, noRage: true, noJuggle: true };
+  var SS_JUDGE_HIT = { dmg: 2.0, hitstop: 1.2, knock: 0.6, shake: 2.0, spark: 1.4, big: true, hitsDown: true, noJuggle: true };
+  var SS_JUDGE_WAVE = { dmg: 13, hitstop: 3.4, knock: 3.0, shake: 6.0, knockdown: true, stunMs: 700, spark: 2.4, big: true, hitsDown: true, launch: 1.0,
+                        flash: { color: '#fffbe0', alpha: 0.85, ms: 320 }, slowMs: 520 };
+  // ---- 현자(법사 3차) ----
+  // 원소 융합탄(50 ↔ 메테오): 불 · 얼음 · 번개가 섞인 구슬이 나아가며 닿은 적 1.2 → 끝에서 큰 원소 폭발 5.4 = 6.6
+  var SG_ORB = { dmg: 1.2, hitstop: 0.5, knock: 0.4, shake: 0.8, spark: 1.1, big: true, hitsDown: true, noJuggle: true };
+  var SG_ORB_BOOM = { dmg: 5.4, hitstop: 2.2, knock: 2.4, shake: 3.2, knockdown: true, spark: 1.7, big: true, hitsDown: true, flash: { color: '#fff0d0', alpha: 0.4, ms: 150 }, slowMs: 200 };
+  // 원소 순환(52, 늘 켜짐): 몇 초마다 화면 안 적 하나에 원소 폭발이 저절로(이 값 x passive.mul)
+  var SG_CYCLE = { dmg: 2.0, hitstop: 0.6, knock: 0.9, shake: 0.9, spark: 1.1, big: true, hitsDown: true, noRage: true, noMp: true, numStyle: 'push', t3Auto: true };
+  // 삼원소 폭풍(53 ↔ 불기둥): 화면 안 적 발밑마다 마법진 → 원소 기둥 4.4 + 남은 기둥 1.0 x 2 = 6.4 (한 적은 보통 기둥 하나)
+  var SG_PILLAR = { dmg: 4.4, hitstop: 1.8, knock: 0.6, shake: 2.4, launch: 1.1, spark: 1.6, big: true, hitsDown: true, flash: { color: '#fff4e0', alpha: 0.3, ms: 120 } };
+  var SG_PILLAR_TICK = { dmg: 1.0, hitstop: 0.3, knock: 0.1, shake: 0.5, spark: 0.8, hitsDown: true, noRage: true, noJuggle: true, noMp: true };
+  // 원소 대폭발(55 ↔ 빙결 폭풍): 발밑 큰 마법진 → 양옆으로 원소 폭발이 세 번씩 퍼져 나감 3.4 x 보통 2번 + 가운데 2.4 = 9.2
+  var SG_NOVA_C = { dmg: 2.4, hitstop: 1.2, knock: 1.6, shake: 2.0, spark: 1.4, big: true, hitsDown: true };
+  var SG_NOVA = { dmg: 3.4, hitstop: 1.4, knock: 1.8, shake: 2.4, knockdown: true, spark: 1.5, big: true, hitsDown: true, flash: { color: '#fff0d0', alpha: 0.22, ms: 100 } };
+  // 종말의 별(58 필살 ↔ 천둥 심판 · 2차 필살 9.0): 블랙홀이 빨아들이며 0.4 x 6 → 마지막 대폭발 12.5 = 14.9 (화면 안 모든 적)
+  var SG_DOOM_TICK = { dmg: 0.4, hitstop: 0.15, knock: 0.05, shake: 0.6, spark: 0.7, hitsDown: true, noRage: true, noJuggle: true, noMp: true };
+  var SG_DOOM_BOOM = { dmg: 12.5, hitstop: 3.4, knock: 3.0, shake: 6.0, knockdown: true, stunMs: 700, spark: 2.4, big: true, hitsDown: true, launch: 1.0,
+                       flash: { color: '#fff8e8', alpha: 0.85, ms: 320 }, slowMs: 520 };
+  var T3_SKILLS = {
+    knight: {
+      sswave: {
+        name: '성검 파도', icon: '파', mp: 34, cooldownMs: 11000, damageStyle: 'skill_holy', motion: 'motion_spin', sfx: 'skSpin',
+        desc: '(3차) 한 바퀴 돌며 거대한 금빛 검기 세 줄기를 날려요. 검기는 가운데 · 위 · 아래 줄을 나란히 화면 끝까지 가르며 닿는 적을 모두 꿰뚫어요',
+        lv5: { n: 5, say: '검기 3 → 5줄기' },
+        darken: { ms: 700, alpha: 0.45 }, iframes: [0, 600], zoom: { k: 1.03, ms: 500 },
+        t3: { kind: 'sswave', frame: 5, n: 3, lanes: [0, -22, 22, -40, 40], gapMs: 70, x: 30, speed: 560, range: 420, w: 60, depth: 22, hit: SS_WAVE, chainPad: 200 }
+      },
+      ssrain: {
+        name: '천검 강림', icon: '강', mp: 40, cooldownMs: 15000, damageStyle: 'skill_holy', motion: 'motion_upper', sfx: 'skHoly',
+        motionSeq: [0, 1, 2, 2, 3], motionMs: [110, 60, 520, 300, 160],
+        desc: '(3차) 칼을 하늘로 치켜들면 화면 안 모든 적 위로 금빛 검이 비처럼 쏟아져요. 마지막에 거대한 성검이 한 번 더 꽂혀 넘어뜨려요',
+        lv5: { n: 8, say: '쏟아지는 검 6 → 8번' },
+        darken: { ms: 1600, alpha: 0.55 }, iframes: [0, 1000], zoom: { k: 1.04, ms: 1000 },
+        t3: { kind: 'ssrain', frame: 2, n: 6, gapMs: 150, fallMs: 160, hit: SS_RAIN, last: SS_RAIN_LAST, chainPad: 900 }
+      },
+      ssflash: {
+        name: '일섬', icon: '섬', mp: 44, cooldownMs: 16000, damageStyle: 'skill_holy', motion: 'motion_dash', sfx: 'skDash',
+        motionSeq: [0, 1, 2, 3, 3, 4, 5], motionMs: [140, 60, 60, 120, 380, 120, 160],
+        desc: '(3차) 눈에 안 보이게 앞으로 쏘아 나가며 한 줄의 적을 꿰뚫어요. 칼을 거두는 순간 지나간 길 전체가 거대한 금빛 섬광으로 갈라져요(아주 큰 한 방, 늘 치명타)',
+        lv5: { dist: 1.3, say: '거리 +30%' },
+        darken: { ms: 1100, alpha: 0.55 }, iframes: [0, 900], zoom: { k: 1.05, ms: 800 },
+        move: { frames: [1, 2], dist: 300 },
+        trail: { frames: [1, 3], everyMs: 22, lifeMs: 260, alpha: 0.5, color: '#ffe9a0' },
+        t3: { kind: 'ssflash', frame: 1, cutFrame: 4, depth: 34, hit: SS_FLASH_PASS, cut: SS_FLASH_CUT, chainPad: 300 },
+        female: { motionSeq: [0, 1, 1, 2, 2, 4, 5], motionMs: [90, 60, 60, 120, 380, 120, 150] }
+      },
+      ssjudge: {
+        name: '천상의 심판', icon: '심', mp: 60, cooldownMs: 40000, damageStyle: 'skill_holy', motion: 'motion_upper', sfx: 'charge',
+        motionSeq: [0, 1, 2, 2, 2, 3], motionMs: [160, 80, 700, 600, 500, 220],
+        desc: '(3차 필살) 칼을 하늘로 치켜들면 하늘이 갈라지고 거대한 성검이 내려와 땅에 꽂혀요. 화면 안 모든 적이 금빛 충격파에 휩쓸려 날아가요',
+        lv5: { area: 1.25, say: '충격파 크기 +25%' },
+        darken: { ms: 2600, alpha: 0.75 }, iframes: [0, 2200], zoom: { k: 1.08, ms: 2000 },
+        t3: { kind: 'ssjudge', frame: 2, n: 5, gapMs: 110, pre: SS_JUDGE_PRE, hit: SS_JUDGE_HIT, wave: SS_JUDGE_WAVE, x: 110, chainPad: 1600 }
+      }
+    },
+    mage: {
+      sgorb: {
+        name: '원소 융합탄', icon: '융', mp: 34, cooldownMs: 11000, damageStyle: 'skill_fire', motion: 'motion_cast_forward', sfx: 'charge',
+        desc: '(3차) 불 · 얼음 · 번개를 하나로 뭉친 구슬을 앞으로 보내요. 지나가며 닿은 적을 때리고, 끝에서 거대한 원소 폭발로 둘레 적을 넘어뜨려요',
+        lv5: { area: 1.3, say: '폭발 크기 +30%' },
+        darken: { ms: 700, alpha: 0.45 }, iframes: [0, 500], zoom: { k: 1.03, ms: 500 },
+        t3: { kind: 'sgorb', frame: 3, x: 34, y: -46, speed: 330, range: 300, w: 46, depth: 30, r: 92, bdepth: 50, hit: SG_ORB, boom: SG_ORB_BOOM, chainPad: 250 },
+        female: { t3: { kind: 'sgorb', frame: 2, x: 30, y: -44, speed: 330, range: 300, w: 46, depth: 30, r: 92, bdepth: 50, hit: SG_ORB, boom: SG_ORB_BOOM, chainPad: 250 } }
+      },
+      sgstorm: {
+        name: '삼원소 폭풍', icon: '폭', mp: 40, cooldownMs: 15000, damageStyle: 'skill_fire', motion: 'motion_cast_sky', sfx: 'skHoly',
+        desc: '(3차) 화면 안 적들 발밑마다 원소 마법진이 그려지고, 잠깐 뒤 불 · 얼음 · 번개가 뒤엉킨 기둥이 솟구쳐 띄워요',
+        lv5: { n: 10, say: '기둥 7 → 10개' },
+        darken: { ms: 1400, alpha: 0.55 }, iframes: [0, 900], zoom: { k: 1.04, ms: 900 },
+        t3: { kind: 'sgstorm', frame: 3, n: 7, gapMs: 70, markMs: 380, r: 40, depth: 34, ticks: 2, tickMs: 200, hit: SG_PILLAR, tick: SG_PILLAR_TICK, chainPad: 900 }
+      },
+      sgnova: {
+        name: '원소 대폭발', icon: '대', mp: 44, cooldownMs: 16000, damageStyle: 'skill_fire', motion: 'motion_cast_sky', sfx: 'charge',
+        desc: '(3차) 발밑에 거대한 마법진을 펼쳐요. 마법진이 빛나면 원소 폭발이 양옆으로 세 번씩 퍼져 나가며 둘레를 쓸어 버려요',
+        lv5: { n: 4, say: '퍼지는 폭발 3 → 4번' },
+        darken: { ms: 1300, alpha: 0.55 }, iframes: [0, 900], zoom: { k: 1.04, ms: 900 },
+        t3: { kind: 'sgnova', frame: 3, n: 3, step: 82, gapMs: 140, r: 62, depth: 46, cr: 70, center: SG_NOVA_C, hit: SG_NOVA, chainPad: 700 }
+      },
+      sgdoom: {
+        name: '종말의 별', icon: '종', mp: 60, cooldownMs: 40000, damageStyle: 'skill_fire', motion: 'motion_cast_sky', sfx: 'charge',
+        motionMs: [160, 240, 900, 120, 700, 220],
+        desc: '(3차 필살) 하늘에 마법진을 열어 별을 떨어뜨려요. 떨어진 자리에 블랙홀이 생겨 적을 빨아들이며 깎고, 끝에 화면 전체가 터져요',
+        lv5: { area: 1.25, say: '블랙홀 · 폭발 크기 +25%' },
+        darken: { ms: 2800, alpha: 0.78 }, iframes: [0, 2200], zoom: { k: 1.08, ms: 2200 },
+        t3: { kind: 'sgdoom', frame: 1, x: 130, ticks: 6, tickMs: 160, pull: 140, tick: SG_DOOM_TICK, boom: SG_DOOM_BOOM, chainPad: 1900 },
+        female: { motionMs: [110, 230, 880, 100, 700, 200] }
+      }
+    }
+  };
+  Object.keys(T3_SKILLS).forEach(function (c) { Object.keys(T3_SKILLS[c]).forEach(function (k) { SKILLS[c][k] = T3_SKILLS[c][k]; }); });
 
   // ---------- 기술 책 (성장 4단계, 2026-11-06, 기획\성장시스템-설계안.md) : 직업마다 11개 = 쓰는 기술(active) 7 + 늘 켜진 기술(passive) 4 (2026-11-06 기사 칼날 폭풍 넣음) ----------
   // 순서 = 기술 창에 나오는 순서. unlock = 그 레벨이 되면 열림(0 = 전직 즉시). 전직 뒤 대략 2레벨마다 하나 → Lv23 에 다 열림(기사·법사 11개)
@@ -1518,7 +1628,12 @@
                     wave: ['성검기', '맞은 적 잠깐 기절 · 쓸 때 체력 1% 회복 + 금빛 보호막(최대 체력 3%, 3초)'],
                     spin: ['심판 회전베기', '맞은 적 잠깐 기절 · 쓸 때 체력 1% 회복 + 금빛 보호막(최대 체력 3%, 3초)'],
                     slam: ['신성 내려찍기', '맞은 적 잠깐 기절 · 쓸 때 체력 1% 회복 + 금빛 보호막(최대 체력 3%, 3초)'],
-                    thrust: ['성창 찌르기', '맞은 적 잠깐 기절 · 쓸 때 체력 1% 회복 + 금빛 보호막(최대 체력 3%, 3초)'] } },
+                    thrust: ['성창 찌르기', '맞은 적 잠깐 기절 · 쓸 때 체력 1% 회복 + 금빛 보호막(최대 체력 3%, 3초)'] },
+           // 3차 맛(2026-11-10, 검성 Lv50 뒤): 1차 · 2차 기술 이름이 한 번 더 바뀌고 크기 +20%(tw 를 갈래 tw 위에 덮음). 그림은 갈래 그림 그대로(크게)
+           t3: { tag: '검성', color: '#fff0a0', tw: { area: 1.2 },
+                 names: { dash: ['검성 돌진', '(3차 검성) 효과 · 판정 크기 +20% · 맞은 적 잠깐 기절 · 쓸 때 체력 1% 회복 + 금빛 보호막(최대 체력 3%, 3초)'], upper: ['천공 올려베기', '(3차 검성) 효과 · 판정 크기 +20% · 맞은 적 잠깐 기절 · 쓸 때 체력 1% 회복 + 금빛 보호막(최대 체력 3%, 3초)'], wave: ['천검기', '(3차 검성) 효과 · 판정 크기 +20% · 맞은 적 잠깐 기절 · 쓸 때 체력 1% 회복 + 금빛 보호막(최대 체력 3%, 3초)'], spin: ['검성 회전베기', '(3차 검성) 효과 · 판정 크기 +20% · 맞은 적 잠깐 기절 · 쓸 때 체력 1% 회복 + 금빛 보호막(최대 체력 3%, 3초)'],
+                          slam: ['천벌 내려찍기', '(3차 검성) 효과 · 판정 크기 +20% · 맞은 적 잠깐 기절 · 쓸 때 체력 1% 회복 + 금빛 보호막(최대 체력 3%, 3초)'], thrust: ['천창 찌르기', '(3차 검성) 효과 · 판정 크기 +20% · 맞은 적 잠깐 기절 · 쓸 때 체력 1% 회복 + 금빛 보호막(최대 체력 3%, 3초)'], storm: ['성검 폭풍', '(3차 검성) 효과 · 판정 크기 +20% · 맞은 적 잠깐 기절 · 쓸 때 체력 1% 회복 + 금빛 보호막(최대 체력 3%, 3초)'], holy: ['천뢰 성검', '(3차 검성) 효과 · 판정 크기 +20% · 맞은 적 잠깐 기절 · 쓸 때 체력 1% 회복 + 금빛 보호막(최대 체력 3%, 3초)'],
+                          cross: ['천상의 십자', '(3차 검성) 효과 · 판정 크기 +20% · 맞은 적 잠깐 기절 · 쓸 때 체력 1% 회복 + 금빛 보호막(최대 체력 3%, 3초)'], charge: ['검성 돌격', '(3차 검성) 효과 · 판정 크기 +20% · 맞은 적 잠깐 기절 · 쓸 때 체력 1% 회복 + 금빛 보호막(최대 체력 3%, 3초)'] } } },
       b: { tag: '마력', color: '#b46aff', tw: { burstMs: 450, burstDmg: 0.35, burstR: 36, burstD: 26, burstIcd: 300, mpPerHit: 1, mpCap: 4 },
            names: { dash: ['마력 돌진', '맞은 자리에 0.45초 뒤 작은 마력 터짐 · 맞히면 마나 1 돌려받음(한 번에 4까지)'],
                     upper: ['마력 올려베기', '맞은 자리에 0.45초 뒤 작은 마력 터짐 · 맞히면 마나 1 돌려받음(한 번에 4까지)'],
@@ -1531,7 +1646,12 @@
       a: { tag: '원소', color: '#ffe08a', tw: { area: 1.2 },
            names: { fireball: ['대화염구', '더 크고 화려하게 · 효과 · 범위 +20%'], rise: ['대지 융기', '더 크고 화려하게 · 효과 · 범위 +20%'],
                     bolt: ['천뢰', '더 크고 화려하게 · 효과 · 범위 +20%'], ice: ['대빙하 균열', '더 크고 화려하게 · 효과 · 범위 +20%'],
-                    blink: ['원소 도약', '더 크고 화려하게 · 효과 · 범위 +20%'], gravity: ['대중력 구체', '더 크고 화려하게 · 효과 · 범위 +20%'] } },
+                    blink: ['원소 도약', '더 크고 화려하게 · 효과 · 범위 +20%'], gravity: ['대중력 구체', '더 크고 화려하게 · 효과 · 범위 +20%'] },
+           // 3차 맛(2026-11-10, 현자 Lv50 뒤): 이름이 한 번 더 바뀌고 크기 +20% → +40%
+           t3: { tag: '현자', color: '#fff4d0', tw: { area: 1.4 },
+                 names: { fireball: ['현자의 화염구', '(3차 현자) 더 크고 화려하게 · 효과 · 범위 +40%'], rise: ['대지 붕괴', '(3차 현자) 더 크고 화려하게 · 효과 · 범위 +40%'], bolt: ['천벌 번개', '(3차 현자) 더 크고 화려하게 · 효과 · 범위 +40%'], ice: ['절대 빙하', '(3차 현자) 더 크고 화려하게 · 효과 · 범위 +40%'],
+                          blink: ['차원 도약', '(3차 현자) 더 크고 화려하게 · 효과 · 범위 +40%'], gravity: ['붕괴의 구체', '(3차 현자) 더 크고 화려하게 · 효과 · 범위 +40%'], meteor: ['대운석', '(3차 현자) 더 크고 화려하게 · 효과 · 범위 +40%'], pillar: ['원소 불기둥', '(3차 현자) 더 크고 화려하게 · 효과 · 범위 +40%'],
+                          frost: ['절대 빙결', '(3차 현자) 더 크고 화려하게 · 효과 · 범위 +40%'], judgment: ['천벌의 뇌정', '(3차 현자) 더 크고 화려하게 · 효과 · 범위 +40%'] } } },
       b: { tag: '어둠', color: '#a040d0', tw: { curseMs: 3000, dotMs: 500, dotDmg: 0.05, weak: 0.1, steal: 0.02, stealCap: 0.02 },
            names: { fireball: ['흑염구', '맞은 적에 저주 3초(0.5초마다 작은 피해 · 그 적의 공격 -10%) · 준 피해의 2% 체력 흡수'],
                     rise: ['저주 융기', '맞은 적에 저주 3초(0.5초마다 작은 피해 · 그 적의 공격 -10%) · 준 피해의 2% 체력 흡수'],
@@ -1571,7 +1691,9 @@
                     ablink: ['독그림자 걸음', '맞은 적에 독 1겹(0.5초마다 작은 피해, 3초)'], asmoke: ['독 연막탄', '맞은 적에 독 1겹(0.5초마다 작은 피해, 3초)'] } }
     },
     // 늘 켜진 기술 추천 갈래(SKILL_TREE 의 rec): 그 갈래면 효과 x recK(+25%). 마력 소용돌이는 「몇 초마다」라 시간이 1/recK 로 짧아짐(recInv)
-    recK: 1.25
+    recK: 1.25,
+    // 3차 전직 뒤(2026-11-10): 추천 갈래 늘 켜진 기술 배율이 한 번 더 오름(1.25 → 1.35)
+    recK3: 1.35
   };
   // 마력 터짐 한 번(마검사 갈래 덤)
   var BR_BURST = { dmg: 1, hitstop: 0.25, knock: 0.2, shake: 0.4, spark: 0.8, hitsDown: true, noRage: true, noJuggle: true, numStyle: 'push', brBurst: true };
@@ -1629,7 +1751,17 @@
         passive: { stat: 'arcane', val: [0.1, 0.12, 0.14, 0.17, 0.2], chance: [0.18, 0.2, 0.22, 0.25, 0.3], icdMs: 450, r: 46, depth: 30, hit: INFUSE_BURST } },
       { id: 'rift', unlock: 31, tier: 2, branch: 'b', short: '순간 돌진해 베고 균열이 터져요' },
       { id: 'msword', unlock: 35, tier: 2, branch: 'b', short: '마력 검 여섯 자루가 차례로 꽂혀요' },
-      { id: 'unleash', unlock: 39, tier: 2, branch: 'b', short: '검은 기운이 땅을 타고 밀려가요' }
+      { id: 'unleash', unlock: 39, tier: 2, branch: 'b', short: '검은 기운이 땅을 타고 밀려가요' },
+      // ---- 검성(3차 전직, 성기사 갈래 a, 2026-11-10) ----
+      // tier: 3 = 3차 전직(config classes.<직업>.tier2.branches[갈래].tier3, Lv50)을 한 뒤에만 열림 + 그 기술 Lv(unlock)가 돼야 함. branch = 그 갈래만
+      //   passive.stat 't3auto'(저절로 공격) = val(ms) 마다 금빛 영검(art) 하나가 가까운 적에게 날아가 꽂힘. mul = 데미지 배율(SS_AURA), n = 한 번에 몇 자루
+      { id: 'sswave', unlock: 50, tier: 3, branch: 'a', short: '거대한 금빛 검기 세 줄기' },
+      { id: 'ssaura', unlock: 52, tier: 3, branch: 'a', recInv: true, short: '몇 초마다 금빛 영검이 저절로 날아가요', name: '검성의 경지', icon: '경',
+        desc: '검성의 기운이 몸 둘레를 맴돌아요. 몇 초마다 금빛 영검이 저절로 가까운 적에게 날아가 꽂혀요(Lv 오르면 더 자주 · 더 많이)',
+        passive: { stat: 't3auto', val: [3200, 2900, 2600, 2300, 2000], n: [1, 1, 2, 2, 3], mul: [1, 1.1, 1.2, 1.35, 1.5], find: 320, findDepth: 90, art: 'ss_sword', hit: SS_AURA } },
+      { id: 'ssrain', unlock: 53, tier: 3, branch: 'a', short: '화면 안 적 위로 금빛 검이 쏟아져요' },
+      { id: 'ssflash', unlock: 55, tier: 3, branch: 'a', short: '꿰뚫고 지나간 길이 통째로 갈라져요' },
+      { id: 'ssjudge', unlock: 58, tier: 3, branch: 'a', short: '하늘에서 거대한 성검이 내리꽂혀요' }
     ],
     // 2026-11-09 궁수(새 직업, 기사 · 법사와 같은 짜임): 쓰는 기술 1차 6 + 2차 갈래마다 4 / 늘 켜진 기술 1차 7 + 2차 갈래마다 1. 3렙마다 늘 켜진 기술, 그 사이 쓰는 기술
     //   rec: 저격수 a = 한 방 · 치명타(활 숙련 · 집중 · 사냥꾼의 표식), 레인저 b = 몹 떼 · 저절로 공격(갈래 화살 · 자동 연사 · 바람의 가호)
@@ -1787,7 +1919,15 @@
         passive: { stat: 'leech', val: [0.03, 0.035, 0.04, 0.045, 0.05], capS: [0.03, 0.035, 0.04, 0.045, 0.05] } },
       { id: 'swamp', unlock: 31, tier: 2, branch: 'b', short: '늪 안 적이 느려지고 더 아파요' },
       { id: 'wraith', unlock: 35, tier: 2, branch: 'b', short: '악령 떼가 화면 전체를 휩쓸어요' },
-      { id: 'abyss', unlock: 39, tier: 2, branch: 'b', short: '검은 문이 빨아들이고 터져요' }
+      { id: 'abyss', unlock: 39, tier: 2, branch: 'b', short: '검은 문이 빨아들이고 터져요' },
+      // ---- 현자(3차 전직, 대마법사 갈래 a, 2026-11-10): passive 't3auto' = 몇 초마다 화면 안 적 하나에 원소 폭발(art = echain_boom) ----
+      { id: 'sgorb', unlock: 50, tier: 3, branch: 'a', short: '불 · 얼음 · 번개 융합 구슬이 터져요' },
+      { id: 'sgcycle', unlock: 52, tier: 3, branch: 'a', recInv: true, short: '몇 초마다 원소 폭발이 저절로 터져요', name: '원소 순환', icon: '순',
+        desc: '불 · 얼음 · 번개가 몸 둘레를 돌아요. 몇 초마다 화면 안 적 하나에 원소 폭발이 저절로 터져 둘레까지 때려요(Lv 오르면 더 자주 · 더 많이)',
+        passive: { stat: 't3auto', val: [3200, 2900, 2600, 2300, 2000], n: [1, 1, 2, 2, 3], mul: [1, 1.1, 1.2, 1.35, 1.5], find: 340, findDepth: 100, art: 'sg_cycle', r: 46, hit: SG_CYCLE } },
+      { id: 'sgstorm', unlock: 53, tier: 3, branch: 'a', short: '적 발밑마다 원소 기둥이 솟아요' },
+      { id: 'sgnova', unlock: 55, tier: 3, branch: 'a', short: '마법진에서 원소 폭발이 퍼져 나가요' },
+      { id: 'sgdoom', unlock: 58, tier: 3, branch: 'a', short: '별이 떨어져 블랙홀 · 대폭발' }
     ]
   };
 
@@ -1972,6 +2112,27 @@
     if (cls === 'knight' && who === 'male') d.raShow = { pushFirst: 1, pushFirstMs: 90, pushHold: 2 };   // 성기사 남과 같은 어깨빵 그림
     t2bSets[cls + '_t2b_' + who] = d;
   });
+  // 3차 전직 옷(2026-11-10, 검성 = knight_t3 · 현자 = mage_t3): 그 갈래 2차 옷 그림(갈래 a = knight_t2 / mage_t2) 위에 옷만 다시 그린 것
+  //   (pipeline/ai-sprite/t3, Higgsfield) → 장 수 · 파일 이름 · 발 위치가 2차 옷과 같다. 그래서 2차 옷과 똑같이 1차 옷 묶음을 빌려 쓰고 그림 폴더 · 손 위치 json 만 바꿈.
+  //   T3_DONE 에 있는 것만 진짜 그림. 이름 = <직업>_t3<갈래(a 는 빈칸)>_<성별>, 예: 'knight_male' = knight_t3_male, 나중 갈래 b = 'knight_b_male' → knight_t3b_male
+  var T3_DONE = ['knight_male', 'knight_female', 'mage_male', 'mage_female'];
+  var T3_ANIMS = { knight: KNIGHT_T2_MALE_ANIMS, mage: MAGE_T2_MALE_ANIMS };
+  var t3Sets = {};
+  function t3Name(k) { var q = k.split('_'), br = q.length > 2 ? q[1] : ''; return q[0] + '_t3' + br + '_' + q[q.length - 1]; }
+  T3_DONE.forEach(function (k) {
+    var cls = k.split('_')[0], who = k.split('_').pop(), name = t3Name(k);
+    if (artSet === 'novice' || !T3_ANIMS[cls]) return;
+    var d = stage1(who, 'assets/chars/stage1/anchors_' + name + '.json', cls);
+    var dir = 'assets/chars/stage1/' + name + '/', from = 'assets/chars/stage1/' + cls + '_' + who + '/';
+    Object.keys(d.anims).forEach(function (n) {
+      var A = d.anims[n];
+      if (T3_ANIMS[cls].indexOf(n) >= 0) A.frames = A.frames.map(function (f) { return f.replace(from, dir); });
+    });
+    d.moveAnchors = 'assets/chars/stage1/anchors_move_' + name + '.json';
+    d.t2Dir = dir;
+    if (cls === 'knight' && who === 'male') d.raShow = { pushFirst: 1, pushFirstMs: 90, pushHold: 2 };   // 성기사 남과 같은 어깨빵 그림
+    t3Sets[name] = d;
+  });
   // 궁수 2차 옷(2026-11-09, 저격수 = archer_t2a · 레인저 = archer_t2b): 1차 궁수 그림 위에 Flow 로 옷만 다시 그려 같은 실루엣 · 장 수 · 발 위치.
   //   그래서 1차 궁수 묶음을 그대로 쓰고 그림 폴더 · 손 위치 json 만 바꾼다(콤보 · 보폭 · 달리기 수치 · 기술 동작 시간 = 1차 궁수 그대로).
   //   ARCHER_T2_DONE 에 있는 것만 진짜 그림, 없는 것은 classes.archer.tier2.branches 의 look(1차 옷 물들임) 그대로
@@ -2009,6 +2170,7 @@
   if (mageT2Male) characters.mage_t2_male = mageT2Male;
   if (mageT2Female) characters.mage_t2_female = mageT2Female;
   Object.keys(t2bSets).forEach(function (k) { characters[k] = t2bSets[k]; });
+  Object.keys(t3Sets).forEach(function (k) { characters[k] = t3Sets[k]; });   // 3차 옷(2026-11-10)
   Object.keys(archerT2Sets).forEach(function (k) { characters[k] = archerT2Sets[k]; });   // 궁수 2차 옷(2026-11-09)
   if (assassinMale) { characters.assassin_male = assassinMale; characters.assassin_female = assassinFemale; }   // 암살자(2026-11-09)
   Object.keys(assassinT2Sets).forEach(function (k) { characters[k] = assassinT2Sets[k]; });   // 암살자 2차 옷(2026-11-09)
@@ -2423,38 +2585,52 @@
       //     진짜 그림이 오면 characters 에 outfit_성별(예: knight_t2b_male)을 넣기만 하면 그 그림을 씀(look 은 무시됨)
       //   tier2.outfit · name = 예전 값(갈래 a 와 같음, 갈래가 없는 직업도 이것만 있으면 됨)
       //   앞으로 궁수(저격수 / 레인저) · 암살자(그림자 무사 / 독술사)도 여기 branches + SKILL_TREE 의 branch 만 적으면 됨(코드 그대로)
+      // 3차 전직(2026-11-10 형님 확정): 갈래마다 하나 = branches[i].tier3 { lv(50), name, outfit(「옷_성별」 그림, 없으면 2차 옷 + look), desc(전직 화면 설명), look(그림 오기 전 임시 물들임) }
+      //   soon: true = 아직 안 만듦(Lv50 이 돼도 3차 전직 없음, 기술 창에도 안 나옴). 저장칸 tier3 = 1(전직 화면을 봤음). 3차 기술 = SKILL_TREE 의 tier: 3 + branch
+      //   만드는 법 = pipeline/ai-sprite/t3/README.txt
       knight: { label: '기사(검)',   weapon: 'sword', moves: 'sword', outfit: 'knight', tier2: { lv: 25, outfit: 'knight_t2', name: '성기사',
                 branches: [
-                  { key: 'a', name: '성기사', outfit: 'knight_t2', desc: '성스러운 금빛 힘. 회오리 · 번개 칼 · 빛의 십자로 넓게 쓸고, 체력이 저절로 차요' },
+                  { key: 'a', name: '성기사', outfit: 'knight_t2', desc: '성스러운 금빛 힘. 회오리 · 번개 칼 · 빛의 십자로 넓게 쓸고, 체력이 저절로 차요',
+                    tier3: { lv: 50, name: '검성', outfit: 'knight_t3', desc: '검의 끝에 다다른 성스러운 검사. 화면을 가르는 금빛 검기 · 쏟아지는 성검 · 일섬, 필살 천상의 심판' } },
                   { key: 'b', name: '마검사', outfit: 'knight_t2b', desc: '칼에 마력을 실은 보라빛 검사. 검기 · 순간 돌진 · 마력 검으로 몰아치고, 평타가 마법으로 세져요',
-                    look: { base: 'knight', tint: '#8a3aff', k: 0.2, outline: { color: '#b46aff', alpha: 0.55, glow: true } } }
+                    look: { base: 'knight', tint: '#8a3aff', k: 0.2, outline: { color: '#b46aff', alpha: 0.55, glow: true } },
+                    tier3: { lv: 50, name: '마검왕', soon: true } }
                 ] } },
       // 법사: 무기가 성별마다 다름(남 지팡이 staff / 여 짧은 지팡이 wand)
       //   법사 2차(2026-11-08) = Lv25 대마법사: 남 = mage_t2_male, 여 = mage_t2_female / 갈래 b 흑마법사 = 그림이 올 때까지 법사 옷을 어둡게 + 검보라 빛
       mage:   { label: '법사(지팡이)', weapon: { male: 'staff', female: 'wand' }, moves: 'magic', outfit: 'mage', tier2: { lv: 25, outfit: 'mage_t2', name: '대마법사',
                 branches: [
-                  { key: 'a', name: '대마법사', outfit: 'mage_t2', desc: '불 · 얼음 · 번개를 다루는 대마법사. 운석 · 불기둥 · 얼음 폭풍 · 천둥으로 화면을 덮어요' },
+                  { key: 'a', name: '대마법사', outfit: 'mage_t2', desc: '불 · 얼음 · 번개를 다루는 대마법사. 운석 · 불기둥 · 얼음 폭풍 · 천둥으로 화면을 덮어요',
+                    tier3: { lv: 50, name: '현자', outfit: 'mage_t3', desc: '모든 원소를 하나로 다루는 현자. 융합 구슬 · 원소 기둥 · 대폭발로 화면을 덮고, 필살 종말의 별' } },
                   { key: 'b', name: '흑마법사', outfit: 'mage_t2b', desc: '어둠과 저주의 마법사. 구체 · 늪 · 악령 회오리 · 검은 문으로 적을 깎고, 준 피해로 체력을 빨아들여요',
-                    look: { base: 'mage', tint: '#1a0626', k: 0.38, outline: { color: '#8a2ad0', alpha: 0.6, glow: true } } }
+                    look: { base: 'mage', tint: '#1a0626', k: 0.38, outline: { color: '#8a2ad0', alpha: 0.6, glow: true } },
+                    tier3: { lv: 50, name: '심연술사', soon: true } }
                 ] } },
       // 궁수(2026-11-09): 활(그림에 박힘) · 평타 = 화살 3타(ARCHER) · 2차 Lv25 = 저격수 / 레인저. 2차 옷 그림은 아직 없음 → 1차 옷을 물들이고 빛 테두리(look, T2B_DONE 과 같은 방식)
       archer: { label: '궁수(활)', weapon: 'bow', moves: 'bow', outfit: 'archer', tier2: { lv: 25, outfit: 'archer_t2a', name: '저격수',
                 branches: [
                   { key: 'a', name: '저격수', outfit: 'archer_t2a', desc: '은빛 저격수. 멀리서 가장 센 적을 노려 한 줄로 꿰뚫고, 거대한 화살 · 하늘의 일격으로 큰 적을 쓰러뜨려요',
-                    look: { base: 'archer', tint: '#0c2a3a', k: 0.32, outline: { color: '#bfe6ff', alpha: 0.55, glow: true } } },
+                    look: { base: 'archer', tint: '#0c2a3a', k: 0.32, outline: { color: '#bfe6ff', alpha: 0.55, glow: true } },
+                    tier3: { lv: 50, name: '신궁', soon: true } },
                   { key: 'b', name: '레인저', outfit: 'archer_t2b', desc: '숲의 레인저. 화살 폭풍 · 덫 · 회오리로 몹 떼를 쓸고, 매 동료가 저절로 적을 공격해요',
-                    look: { base: 'archer', tint: '#5a3a08', k: 0.24, outline: { color: '#c8ff7a', alpha: 0.55, glow: true } } }
+                    look: { base: 'archer', tint: '#5a3a08', k: 0.24, outline: { color: '#c8ff7a', alpha: 0.55, glow: true } },
+                    tier3: { lv: 50, name: '숲의 수호자', soon: true } }
                 ] } },
       // 암살자(2026-11-09): 쌍단검(그림에 박힘) · 평타 = 빠른 단검 3타(ASSASSIN) · 2차 Lv25 = 그림자 무사 / 독술사. 2차 옷 그림이 오기 전엔 1차 옷 물들임(look)
       assassin: { label: '암살자(쌍단검)', weapon: 'dagger', moves: 'dagger', outfit: 'assassin', tier2: { lv: 25, outfit: 'assassin_t2a', name: '그림자 무사',
                 branches: [
                   { key: 'a', name: '그림자 무사', outfit: 'assassin_t2a', desc: '그림자를 다루는 무사. 분신 · 순간이동 난무 · 엇갈린 그림자 물결로 몰아치고, 내 그림자가 저절로 적을 베어요',
-                    look: { base: 'assassin', tint: '#0a1440', k: 0.36, outline: { color: '#6a8aff', alpha: 0.6, glow: true } } },
+                    look: { base: 'assassin', tint: '#0a1440', k: 0.36, outline: { color: '#6a8aff', alpha: 0.6, glow: true } },
+                    tier3: { lv: 50, name: '그림자 군주', soon: true } },
                   { key: 'b', name: '독술사', outfit: 'assassin_t2b', desc: '독을 다루는 검은 암살자. 독침 · 독구름 · 맹독 웅덩이로 독을 쌓아 녹이고, 쓰러진 적의 독이 둘레로 퍼져요',
-                    look: { base: 'assassin', tint: '#06140a', k: 0.34, outline: { color: '#7ae05a', alpha: 0.55, glow: true } } }
+                    look: { base: 'assassin', tint: '#06140a', k: 0.34, outline: { color: '#7ae05a', alpha: 0.55, glow: true } },
+                    tier3: { lv: 50, name: '역병술사', soon: true } }
                 ] } }
       // , axe: { label: '도끼', weapon: 'axe', moves: 'sword' }
     },
+    // 3차 전직 공개 스위치(2026-11-10): false = 일반 플레이에서 3차가 완전히 숨음(Lv50 전직 화면 없음, 3차 기술 · 옷 · 이름 바뀜 없음).
+    //   시험은 주소 ?t3=1(이번 창만). 다 만들고 형님이 공개하라고 하면 true
+    tier3Enabled: false,
     defaultClass: 'novice',
     // 전직 화면 카드(2026-11-06): 고를 수 있는 직업(위 classes 이름) + 「준비 중」 회색 카드. desc = 카드 밑 짧은 설명
     classChange: [
@@ -6331,10 +6507,10 @@
               tree: SKILL_TREE, perLv: 1, maxLv: 5, classLv: 7, slots: [2, 3, 4, 5, 7], moreLv: [10, 13, 15, 15], pcSlots: 10, pcLv: 15, noMpMs: 500,
               curve: { dmg: [1, 1.2, 1.4, 1.6, 1.85], cd: [1, 0.94, 0.88, 0.82, 0.75], mp: [1, 1.05, 1.1, 1.15, 1.2] },
               test: { pts: 24 },
-              botPlan: { knight: ['dash', 'upper', 'nimble', 'wave', 'mastery', 'spin', 'skin', 'slam', 'shards', 'thrust', 'pressure', 'grit', 'counter', 'storm', 'aegis', 'holy', 'cross', 'charge', 'arcwave', 'infuse', 'rift', 'msword', 'unleash'],
+              botPlan: { knight: ['dash', 'upper', 'nimble', 'wave', 'mastery', 'spin', 'skin', 'slam', 'shards', 'thrust', 'pressure', 'grit', 'counter', 'storm', 'aegis', 'holy', 'cross', 'charge', 'arcwave', 'infuse', 'rift', 'msword', 'unleash', 'sswave', 'ssaura', 'ssrain', 'ssflash', 'ssjudge'],
                          assassin: ['ashadow', 'arise', 'nimble', 'afan', 'amast', 'awhirl', 'akeen', 'ablink', 'aecho', 'asmoke', 'aorbit', 'avenom', 'aexec', 'sclone', 'sshade', 'sflash', 'sstorm', 'smoon', 'pdarts', 'pplague', 'pcloud', 'ppool', 'perupt'],   // 암살자(2026-11-09)
                          archer: ['pshot', 'upshot', 'nimble', 'multi', 'aim', 'rain', 'focus', 'leap', 'split', 'burst', 'volley', 'gale', 'mark', 'snipe', 'deadeye', 'ballista', 'rapid', 'skyfall', 'tempest', 'hawk', 'trap', 'twister', 'barrage'],   // 궁수(2026-11-09)
-                         mage: ['fireball', 'rise', 'nimble', 'bolt', 'amp', 'ice', 'flow', 'blink', 'eshard', 'gravity', 'vortex', 'shield', 'brand', 'meteor', 'echain', 'pillar', 'frost', 'judgment', 'darkorb', 'leech', 'swamp', 'wraith', 'abyss'] } },   // 2026-11-08 갈래 B 기술도(고른 갈래 것만 배워짐)   // 법사 다시 배치(2026-11-08)
+                         mage: ['fireball', 'rise', 'nimble', 'bolt', 'amp', 'ice', 'flow', 'blink', 'eshard', 'gravity', 'vortex', 'shield', 'brand', 'meteor', 'echain', 'pillar', 'frost', 'judgment', 'darkorb', 'leech', 'swamp', 'wraith', 'abyss', 'sgorb', 'sgcycle', 'sgstorm', 'sgnova', 'sgdoom'] } },   // 3차(2026-11-10) 도   // 2026-11-08 갈래 B 기술도(고른 갈래 것만 배워짐)   // 법사 다시 배치(2026-11-08)
 
     // ---------- 기술 효과 그림 (art\stage1\skills\fx 에서 복사 → assets/fx/skill/<이름>_01.png …, 크기·기준점은 fx.json) ----------
     // count = 장 수(0 = 그림 없음 → 기존 그림을 물들여 쓰거나 코드로 그림), fps = 1초에 장 수, pivot = 그림 속 기준점(원래 크기), loop = 반복
@@ -6442,6 +6618,18 @@
         D.anims[m] = { frames: seq(dir + m + '_', M1[m].count), fps: 14, loop: false };
       });
       D.motionAnchors = 'assets/chars/stage1/anchors_motions_' + cls + '_t2b_' + who + '.json';
+    });
+    // 3차 옷(2026-11-10): 갈래 b 와 같은 방식. 기술 동작 = 1차 옷과 같은 동작 · 시간, 그림만 3차 폴더, 손 위치 = anchors_motions_<옷>_t3_<성별>.json
+    T3_DONE.forEach(function (k) {
+      var cls = k.split('_')[0], who = k.split('_').pop(), name = t3Name(k);
+      var D = C.art.characters[name], M1 = C.motions[cls + '_' + who];
+      if (!D || !M1) return;
+      Object.keys(M1).forEach(function (m) {
+        if (!(M1[m].count > 0)) return;
+        var dir = T3_ANIMS[cls].indexOf(m) >= 0 ? D.t2Dir : 'assets/chars/stage1/' + cls + '_' + who + '/';
+        D.anims[m] = { frames: seq(dir + m + '_', M1[m].count), fps: 14, loop: false };
+      });
+      D.motionAnchors = 'assets/chars/stage1/anchors_motions_' + name + '.json';
     });
     // 궁수 2차 옷(2026-11-09): 기술 동작 = 1차 궁수와 같은 동작 · 시간, 그림만 2차 폴더, 손 위치 = anchors_motions_archer_<갈래>_<성별>.json
     ARCHER_T2_DONE.forEach(function (k) {
