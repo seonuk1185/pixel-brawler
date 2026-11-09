@@ -1642,6 +1642,61 @@
   };
   Object.keys(T3_SKILLS.knight).forEach(function (k) { SKILLS.knight[k] = T3_SKILLS.knight[k]; });
 
+  // ---- 심연술사(법사 3차 갈래 b, 2026-11-10): 검정 · 검보라 심연, 해골 · 촉수 · 블랙홀. 그림 = t3_ab_*(AI) + 2차 흑마법사 그림(darkorb · abyss) + 종말의 별 블랙홀 ----
+  //   숫자 = 현자(-12% 조정 뒤)와 같은 자리. 자동 조종 DPS 비교 뒤 쓰는 기술 · 해골 -12%(2026-11-10)
+  // 저주 해골탄(50 ↔ 원소 융합탄 6.0): 불타는 해골 셋이 줄지어 화면을 가로지름 2.0(꿰뚫음, 한 적은 보통 둘~셋) + 끝에서 심연 폭발(그림)
+  var AB_SKULL = { dmg: 1.8, hitstop: 0.8, knock: 1.0, shake: 1.4, spark: 1.2, big: true, hitsDown: true, flash: { color: '#e0b0ff', alpha: 0.16, ms: 80 } };
+  // 흡혼의 해골(52, 늘 켜짐): 몇 초마다 해골이 저절로 가까운 적에게 날아가 물어뜯음(이 값 x passive.mul) + 맞힐 때 체력 조금(heal)
+  var AB_SOUL = { dmg: 1.7, hitstop: 0.5, knock: 0.8, shake: 0.7, spark: 1.1, big: true, hitsDown: true, noRage: true, noMp: true, numStyle: 'push', t3Auto: true };
+  // 심연의 손아귀(53 ↔ 삼원소 폭풍): 화면 안 적 발밑마다 어둠 마법진 → 촉수와 손이 솟구침 3.8(띄움) + 남은 촉수 1.0 x 2 = 5.8
+  var AB_HAND = { dmg: 3.3, hitstop: 1.8, knock: 0.6, shake: 2.4, launch: 1.1, spark: 1.6, big: true, hitsDown: true, flash: { color: '#e0c0ff', alpha: 0.3, ms: 120 } };
+  var AB_HAND_TICK = { dmg: 1.0, hitstop: 0.3, knock: 0.1, shake: 0.5, spark: 0.8, hitsDown: true, noRage: true, noJuggle: true, noMp: true };
+  // 심연 파동(55 ↔ 원소 대폭발): 발밑 큰 어둠 마법진 → 가운데 2.4 → 양옆으로 심연 폭발 세 번씩 3.0(한 적은 보통 둘)
+  var AB_NOVA_C = { dmg: 2.4, hitstop: 1.2, knock: 1.6, shake: 2.0, spark: 1.4, big: true, hitsDown: true };
+  var AB_NOVA = { dmg: 2.6, hitstop: 1.4, knock: 1.8, shake: 2.4, knockdown: true, spark: 1.5, big: true, hitsDown: true, flash: { color: '#e0c0ff', alpha: 0.22, ms: 100 } };
+  // 심연의 문(58 필살 ↔ 종말의 별 14.9): 하늘 어둠 마법진 → 심연의 문이 열림 → 거대 해골이 떨어짐 → 블랙홀이 빨아들이며 0.4 x 6 → 심연 대폭발 12.5
+  var AB_GATE_TICK = SG_DOOM_TICK;
+  var AB_GATE_BOOM = { dmg: 12.5, hitstop: 3.4, knock: 3.0, shake: 6.0, knockdown: true, stunMs: 700, spark: 2.4, big: true, hitsDown: true, launch: 1.0,
+                       flash: { color: '#f0e0ff', alpha: 0.85, ms: 320 }, slowMs: 520 };
+  T3_SKILLS.mage.abhex = {
+    name: '저주 해골탄', icon: '해', mp: 34, cooldownMs: 11000, damageStyle: 'skill_dark', motion: 'motion_cast_forward', sfx: 'charge',
+    desc: '(3차) 검보라 불꽃에 휩싸인 해골 셋을 줄지어 날려요. 화면 끝까지 날아가며 닿는 적을 모두 물어뜯고, 끝에서 심연이 터져요',
+    lv5: { n: 4, say: '해골 3 → 4개' },
+    darken: { ms: 700, alpha: 0.5 }, iframes: [0, 500], zoom: { k: 1.03, ms: 500 },
+    t3: { kind: 'sswave', frame: 3, n: 3, lanes: [0, -18, 18, 0], gapMs: 110, x: 30, speed: 420, range: 380, w: 50, depth: 24, hit: AB_SKULL, chainPad: 300,
+          art: 't3_ab_skull', sx: 1.25, add: false, hitArt: 'darkorb_boom', boom: 't3_ab_burst', boomSx: 0.8, color: '#c060ff' },
+    female: { t3: { kind: 'sswave', frame: 2, n: 3, lanes: [0, -18, 18, 0], gapMs: 110, x: 28, speed: 420, range: 380, w: 50, depth: 24, hit: AB_SKULL, chainPad: 300,
+                    art: 't3_ab_skull', sx: 1.25, add: false, hitArt: 'darkorb_boom', boom: 't3_ab_burst', boomSx: 0.8, color: '#c060ff' } }
+  };
+  T3_SKILLS.mage.abmaw = {
+    name: '심연의 손아귀', icon: '손', mp: 40, cooldownMs: 15000, damageStyle: 'skill_dark', motion: 'motion_cast_sky', sfx: 'skHoly',
+    desc: '(3차) 화면 안 적들 발밑마다 어둠의 마법진이 그려지고, 잠깐 뒤 검은 촉수와 손이 솟구쳐 적을 움켜쥐고 띄워요',
+    lv5: { n: 10, say: '손아귀 7 → 10개' },
+    darken: { ms: 1400, alpha: 0.6 }, iframes: [0, 900], zoom: { k: 1.04, ms: 900 },
+    t3: { kind: 'sgstorm', frame: 3, n: 7, gapMs: 70, markMs: 380, r: 40, depth: 34, ticks: 2, tickMs: 200, hit: AB_HAND, tick: AB_HAND_TICK, chainPad: 900,
+          mark: 't3_ab_circle', markSx: 0.75, markSy: 0.75, pillar: 't3_ab_pillar', pillarSx: 1.0 }
+  };
+  T3_SKILLS.mage.abnova = {
+    name: '심연 파동', icon: '파', mp: 44, cooldownMs: 16000, damageStyle: 'skill_dark', motion: 'motion_cast_sky', sfx: 'charge',
+    desc: '(3차) 발밑에 거대한 어둠의 마법진을 펼쳐요. 마법진이 빛나면 심연 폭발이 양옆으로 세 번씩 퍼져 나가며 둘레를 삼켜요',
+    lv5: { n: 4, say: '퍼지는 폭발 3 → 4번' },
+    darken: { ms: 1300, alpha: 0.6 }, iframes: [0, 900], zoom: { k: 1.04, ms: 900 },
+    t3: { kind: 'sgnova', frame: 3, n: 3, step: 82, gapMs: 140, r: 62, depth: 46, cr: 70, center: AB_NOVA_C, hit: AB_NOVA, chainPad: 700,
+          circle: 't3_ab_circle', circleSx: 2.4, circleSy: 1.9, boom: 't3_ab_burst', boomSx: 1.0 }
+  };
+  T3_SKILLS.mage.abgate = {
+    name: '심연의 문', icon: '문', mp: 60, cooldownMs: 40000, damageStyle: 'skill_dark', motion: 'motion_cast_sky', sfx: 'charge',
+    motionMs: [160, 240, 900, 120, 700, 220],
+    desc: '(3차 필살) 하늘에 심연의 문을 열어 거대한 해골을 떨어뜨려요. 떨어진 자리에 블랙홀이 생겨 적을 빨아들이며 깎고, 끝에 심연이 화면 전체를 삼켜요',
+    lv5: { area: 1.25, say: '블랙홀 · 폭발 크기 +25%' },
+    darken: { ms: 4000, alpha: 0.82 }, iframes: [0, 2200], zoom: { k: 1.08, ms: 2200 },
+    t3: { kind: 'sgdoom', frame: 1, x: 130, ticks: 6, tickMs: 160, pull: 140, tick: AB_GATE_TICK, boom: AB_GATE_BOOM, chainPad: 1900,
+          sky: 't3_ab_circle', skySx: 1.8, rift: 'abyss_gate', riftSx: 0.9, star: 't3_ab_skull', impact: 't3_ab_burst', impactSx: 1.4,
+          boom: 't3_ab_burst', boomSx: 2.0, hitBoom: 'darkorb_boom', hitBoomSx: 0.6 },
+    female: { motionMs: [110, 230, 880, 100, 700, 200] }
+  };
+  Object.keys(T3_SKILLS.mage).forEach(function (k) { SKILLS.mage[k] = T3_SKILLS.mage[k]; });
+
   // ---------- 기술 책 (성장 4단계, 2026-11-06, 기획\성장시스템-설계안.md) : 직업마다 11개 = 쓰는 기술(active) 7 + 늘 켜진 기술(passive) 4 (2026-11-06 기사 칼날 폭풍 넣음) ----------
   // 순서 = 기술 창에 나오는 순서. unlock = 그 레벨이 되면 열림(0 = 전직 즉시). 전직 뒤 대략 2레벨마다 하나 → Lv23 에 다 열림(기사·법사 11개)
   //   두 번째 쓰는 기술은 Lv8(전직 바로 다음 레벨): 3판(도착 Lv7) 도중에 열려 「기술이 생겼다」를 빨리 느끼게(자동 조종 시험으로 정함)
@@ -1712,7 +1767,12 @@
                     bolt: ['흑뢰', '맞은 적에 저주 3초(0.5초마다 작은 피해 · 그 적의 공격 -10%) · 준 피해의 2% 체력 흡수'],
                     ice: ['흑빙 균열', '맞은 적에 저주 3초(0.5초마다 작은 피해 · 그 적의 공격 -10%) · 준 피해의 2% 체력 흡수'],
                     blink: ['그림자 이동', '맞은 적에 저주 3초(0.5초마다 작은 피해 · 그 적의 공격 -10%) · 준 피해의 2% 체력 흡수'],
-                    gravity: ['심연 중력', '맞은 적에 저주 3초(0.5초마다 작은 피해 · 그 적의 공격 -10%) · 준 피해의 2% 체력 흡수'] } }
+                    gravity: ['심연 중력', '맞은 적에 저주 3초(0.5초마다 작은 피해 · 그 적의 공격 -10%) · 준 피해의 2% 체력 흡수'] },
+           // 3차 맛(2026-11-10, 심연술사 Lv50 뒤): 이름이 한 번 더 바뀌고 크기 +20%(저주 · 흡수 덤은 그대로)
+           t3: { tag: '심연', color: '#c060ff', tw: { area: 1.2 },
+                 names: { fireball: ['심연의 업화구', '(3차 심연술사) 효과 · 범위 +20% · 저주 3초 · 준 피해의 2% 체력 흡수'], rise: ['망자의 융기', '(3차 심연술사) 효과 · 범위 +20% · 저주 3초 · 준 피해의 2% 체력 흡수'], bolt: ['심연 뇌격', '(3차 심연술사) 효과 · 범위 +20% · 저주 3초 · 준 피해의 2% 체력 흡수'], ice: ['저주 빙관', '(3차 심연술사) 효과 · 범위 +20% · 저주 3초 · 준 피해의 2% 체력 흡수'],
+                          blink: ['심연 보행', '(3차 심연술사) 효과 · 범위 +20% · 저주 3초 · 준 피해의 2% 체력 흡수'], gravity: ['사멸 중력', '(3차 심연술사) 효과 · 범위 +20% · 저주 3초 · 준 피해의 2% 체력 흡수'], darkorb: ['심연의 구체', '(3차 심연술사) 효과 · 범위 +20% · 저주 3초 · 준 피해의 2% 체력 흡수'], swamp: ['망자의 늪', '(3차 심연술사) 효과 · 범위 +20% · 저주 3초 · 준 피해의 2% 체력 흡수'],
+                          wraith: ['망령 대행진', '(3차 심연술사) 효과 · 범위 +20% · 저주 3초 · 준 피해의 2% 체력 흡수'], abyss: ['심연 대문', '(3차 심연술사) 효과 · 범위 +20% · 저주 3초 · 준 피해의 2% 체력 흡수'] } } }
     },
     // 궁수(2026-11-09): 저격수 a = 은빛 · 얼음(치명타 확률 +acrit, 맞은 적 slowMs 동안 느려짐) / 레인저 b = 숲 · 바람(맞으면 작은 가시 화살 thorns 마리에게 튐 · 맞은 적 vineMs 동안 가시 지속 피해)
     //   덤 처리 = js/archer.js(onHit). 그림 = AI 그림을 갈래 색으로 다시 칠한 것(art/skill-fx/ar_*_a|b, archer_brfx.py)
@@ -1989,7 +2049,16 @@
         passive: { stat: 't3auto', val: [3200, 2900, 2600, 2300, 2000], n: [1, 1, 2, 2, 3], mul: [1, 1.1, 1.2, 1.35, 1.5], find: 340, findDepth: 100, art: 'sg_cycle', r: 46, hit: SG_CYCLE } },
       { id: 'sgstorm', unlock: 53, tier: 3, branch: 'a', short: '적 발밑마다 원소 기둥이 솟아요' },
       { id: 'sgnova', unlock: 55, tier: 3, branch: 'a', short: '마법진에서 원소 폭발이 퍼져 나가요' },
-      { id: 'sgdoom', unlock: 58, tier: 3, branch: 'a', short: '별이 떨어져 블랙홀 · 대폭발' }
+      { id: 'sgdoom', unlock: 58, tier: 3, branch: 'a', short: '별이 떨어져 블랙홀 · 대폭발' },
+      // ---- 심연술사(3차 전직, 흑마법사 갈래 b, 2026-11-10): passive 't3auto' = 몇 초마다 해골이 날아가 물어뜯음 + 맞히면 체력 조금(heal) ----
+      { id: 'abhex', unlock: 50, tier: 3, branch: 'b', short: '불타는 해골 셋이 줄지어 날아가요' },
+      { id: 'absoul', unlock: 52, tier: 3, branch: 'b', recInv: true, short: '몇 초마다 해골이 저절로 물어뜯어요', name: '흡혼의 해골', icon: '흡',
+        desc: '검보라 해골들이 몸 둘레를 맴돌아요. 몇 초마다 해골이 저절로 가까운 적에게 날아가 물어뜯고, 맞힐 때마다 체력이 조금 차요(Lv 오르면 더 자주 · 더 많이)',
+        passive: { stat: 't3auto', val: [3200, 2900, 2600, 2300, 2000], n: [1, 1, 2, 2, 3], mul: [1, 1.1, 1.2, 1.35, 1.5], heal: [0.004, 0.005, 0.006, 0.007, 0.008],
+                   find: 340, findDepth: 100, art: 'ab_skull', fly: 't3_ab_skull', hitArt: 'darkorb_boom', flySx: 0.75, hitSx: 0.45, hit: AB_SOUL } },
+      { id: 'abmaw', unlock: 53, tier: 3, branch: 'b', short: '적 발밑에서 촉수와 손이 솟아요' },
+      { id: 'abnova', unlock: 55, tier: 3, branch: 'b', short: '어둠 마법진에서 심연 폭발이 퍼져요' },
+      { id: 'abgate', unlock: 58, tier: 3, branch: 'b', short: '심연의 문 · 해골 · 블랙홀 · 대폭발' }
     ]
   };
 
@@ -2177,7 +2246,7 @@
   // 3차 전직 옷(2026-11-10, 검성 = knight_t3 · 현자 = mage_t3): 그 갈래 2차 옷 그림(갈래 a = knight_t2 / mage_t2) 위에 옷만 다시 그린 것
   //   (pipeline/ai-sprite/t3, Higgsfield) → 장 수 · 파일 이름 · 발 위치가 2차 옷과 같다. 그래서 2차 옷과 똑같이 1차 옷 묶음을 빌려 쓰고 그림 폴더 · 손 위치 json 만 바꿈.
   //   T3_DONE 에 있는 것만 진짜 그림. 이름 = <직업>_t3<갈래(a 는 빈칸)>_<성별>, 예: 'knight_male' = knight_t3_male, 나중 갈래 b = 'knight_b_male' → knight_t3b_male
-  var T3_DONE = ['knight_male', 'knight_female', 'mage_male', 'mage_female', 'knight_b_male', 'knight_b_female'];   // 마검왕(2026-11-10)
+  var T3_DONE = ['knight_male', 'knight_female', 'mage_male', 'mage_female', 'knight_b_male', 'knight_b_female', 'mage_b_male', 'mage_b_female'];   // 마검왕 · 심연술사(2026-11-10)
   var T3_ANIMS = { knight: KNIGHT_T2_MALE_ANIMS, mage: MAGE_T2_MALE_ANIMS };
   var t3Sets = {};
   function t3Name(k) { var q = k.split('_'), br = q.length > 2 ? q[1] : ''; return q[0] + '_t3' + br + '_' + q[q.length - 1]; }
@@ -2666,7 +2735,7 @@
                     tier3: { lv: 50, name: '현자', outfit: 'mage_t3', desc: '모든 원소를 하나로 다루는 현자. 융합 구슬 · 원소 기둥 · 대폭발로 화면을 덮고, 필살 종말의 별' } },
                   { key: 'b', name: '흑마법사', outfit: 'mage_t2b', desc: '어둠과 저주의 마법사. 구체 · 늪 · 악령 회오리 · 검은 문으로 적을 깎고, 준 피해로 체력을 빨아들여요',
                     look: { base: 'mage', tint: '#1a0626', k: 0.38, outline: { color: '#8a2ad0', alpha: 0.6, glow: true } },
-                    tier3: { lv: 50, name: '심연술사', soon: true } }
+                    tier3: { lv: 50, name: '심연술사', outfit: 'mage_t3b', desc: '심연을 부리는 검은 술사. 불타는 해골 · 솟구치는 촉수 · 심연 파동으로 화면을 삼키고, 필살 심연의 문' } }
                 ] } },
       // 궁수(2026-11-09): 활(그림에 박힘) · 평타 = 화살 3타(ARCHER) · 2차 Lv25 = 저격수 / 레인저. 2차 옷 그림은 아직 없음 → 1차 옷을 물들이고 빛 테두리(look, T2B_DONE 과 같은 방식)
       archer: { label: '궁수(활)', weapon: 'bow', moves: 'bow', outfit: 'archer', tier2: { lv: 25, outfit: 'archer_t2a', name: '저격수',
@@ -6574,7 +6643,7 @@
               botPlan: { knight: ['dash', 'upper', 'nimble', 'wave', 'mastery', 'spin', 'skin', 'slam', 'shards', 'thrust', 'pressure', 'grit', 'counter', 'storm', 'aegis', 'holy', 'cross', 'charge', 'arcwave', 'infuse', 'rift', 'msword', 'unleash', 'sswave', 'ssaura', 'ssrain', 'ssflash', 'ssjudge', 'mkcross', 'mkblades', 'mkrain', 'mkrift', 'mkking'],
                          assassin: ['ashadow', 'arise', 'nimble', 'afan', 'amast', 'awhirl', 'akeen', 'ablink', 'aecho', 'asmoke', 'aorbit', 'avenom', 'aexec', 'sclone', 'sshade', 'sflash', 'sstorm', 'smoon', 'pdarts', 'pplague', 'pcloud', 'ppool', 'perupt'],   // 암살자(2026-11-09)
                          archer: ['pshot', 'upshot', 'nimble', 'multi', 'aim', 'rain', 'focus', 'leap', 'split', 'burst', 'volley', 'gale', 'mark', 'snipe', 'deadeye', 'ballista', 'rapid', 'skyfall', 'tempest', 'hawk', 'trap', 'twister', 'barrage'],   // 궁수(2026-11-09)
-                         mage: ['fireball', 'rise', 'nimble', 'bolt', 'amp', 'ice', 'flow', 'blink', 'eshard', 'gravity', 'vortex', 'shield', 'brand', 'meteor', 'echain', 'pillar', 'frost', 'judgment', 'darkorb', 'leech', 'swamp', 'wraith', 'abyss', 'sgorb', 'sgcycle', 'sgstorm', 'sgnova', 'sgdoom'] } },   // 3차(2026-11-10) 도   // 2026-11-08 갈래 B 기술도(고른 갈래 것만 배워짐)   // 법사 다시 배치(2026-11-08)
+                         mage: ['fireball', 'rise', 'nimble', 'bolt', 'amp', 'ice', 'flow', 'blink', 'eshard', 'gravity', 'vortex', 'shield', 'brand', 'meteor', 'echain', 'pillar', 'frost', 'judgment', 'darkorb', 'leech', 'swamp', 'wraith', 'abyss', 'sgorb', 'sgcycle', 'sgstorm', 'sgnova', 'sgdoom', 'abhex', 'absoul', 'abmaw', 'abnova', 'abgate'] } },   // 3차(2026-11-10) 도   // 2026-11-08 갈래 B 기술도(고른 갈래 것만 배워짐)   // 법사 다시 배치(2026-11-08)
 
     // ---------- 기술 효과 그림 (art\stage1\skills\fx 에서 복사 → assets/fx/skill/<이름>_01.png …, 크기·기준점은 fx.json) ----------
     // count = 장 수(0 = 그림 없음 → 기존 그림을 물들여 쓰거나 코드로 그림), fps = 1초에 장 수, pivot = 그림 속 기준점(원래 크기), loop = 반복

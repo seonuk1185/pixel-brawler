@@ -234,6 +234,12 @@
     mkrain: function (g) { [[6, 2], [12, 4], [18, 1]].forEach(function (q) { g.line(q[0], q[1], q[0], q[1] + 11, K.s2); g.line(q[0] - 2, q[1] + 2, q[0] + 2, q[1] + 2, K.p1); }); g.rect(3, 19, 18, 2, K.p3); g.outline(); g.spark(12, 18, true, K.p0); },
     mkrift: function (g) { g.line(2, 18, 8, 12, K.p1); g.line(8, 12, 13, 16, K.p1); g.line(13, 16, 21, 6, K.p1); g.disc(19, 8, 3, function (d) { return d < 2 ? K.p0 : K.p2; }); g.outline(); g.spark(6, 6, false, K.p0); },
     mkking: function (g) { g.line(12, 1, 12, 17, K.s2); g.line(11, 1, 11, 16, K.s3); g.line(8, 5, 16, 5, K.p1); g.px(12, 5, K.r1); g.ring(12, 20, 6, 8, 180, 360, K.p1); g.outline(); g.spark(5, 3, false, K.p0); g.spark(19, 3, false, K.p0); },
+    // 3차 심연술사(2026-11-10): 검정 · 검보라 해골 · 촉수 · 문
+    abhex: function (g) { g.disc(15, 11, 5, function (d) { return d < 3 ? K.p0 : K.p2; }); g.rect(13, 10, 2, 2, K.ink); g.rect(16, 10, 2, 2, K.ink); g.line(2, 9, 9, 10, K.p1); g.line(3, 13, 9, 12, K.p2); g.outline(); g.spark(20, 4, false, K.p1); },
+    absoul: function (g) { g.ring(12, 13, 8, 9, 0, 359, K.p2); g.disc(12, 8, 4, function (d) { return d < 2 ? K.p0 : K.p1; }); g.px(11, 8, K.ink); g.px(13, 8, K.ink); g.disc(5, 17, 2, K.p1); g.disc(19, 17, 2, K.p1); g.outline(); g.px(12, 18, K.r1); },
+    abmaw: function (g) { g.line(6, 21, 7, 8, K.p3); g.line(11, 21, 12, 4, K.p2); g.line(16, 21, 17, 7, K.p3); g.px(6, 7, K.p0); g.px(12, 3, K.p0); g.px(17, 6, K.p0); g.ellipse(12, 21, 9, 2, K.p2); g.outline(); },
+    abnova: function (g) { g.ring(12, 15, 8, 10, 0, 359, K.p1); g.disc(12, 15, 4, function (d) { return d < 2 ? K.p0 : K.p3; }); g.disc(4, 9, 3, K.p2); g.disc(20, 9, 3, K.p2); g.outline(); },
+    abgate: function (g) { g.rect(7, 4, 10, 16, K.p3); g.rect(9, 6, 6, 13, '#140828'); g.disc(12, 12, 3, function (d) { return d < 1 ? K.p0 : K.p1; }); g.rect(5, 20, 14, 2, K.p2); g.outline(); g.spark(20, 3, false, K.p0); },
     // ===== 궁수(2026-11-09) =====
     pshot: function (g) { g.rect(3, 11, 16, 2, MINTD); arrow(g, 2, 12, 21, 12, K.wht, K.b0); g.outline(); g.ring(8, 12, 3, 4, 0, 359, MINT); g.ring(13, 12, 3, 4, 0, 359, MINT); g.spark(20, 8, false, MINT); },
     upshot: function (g) { arrow(g, 7, 4, 12, 15, K.s1); g.outline(); g.ellipse(12, 18, 8, 2.5, MINTD); g.ellipse(12, 18, 5, 1.5, MINT); g.line(6, 14, 4, 6, MINT); g.line(18, 14, 20, 6, MINT); g.spark(12, 3, false, MINT); },
@@ -745,6 +751,8 @@
     sgnova: ['원소 대폭발', 'mage', 'active', 'fire'], sgdoom: ['종말의 별', 'mage', 'active', 'arcane'],
     mkcross: ['마검 십자참', 'knight', 'active', 'arcane'], mkblades: ['떠도는 마검', 'knight', 'passive', 'arcane'], mkrain: ['마검 폭우', 'knight', 'active', 'arcane'],
     mkrift: ['차원 붕괴', 'knight', 'active', 'arcane'], mkking: ['마검왕 강림', 'knight', 'active', 'arcane'],
+    abhex: ['저주 해골탄', 'mage', 'active', 'dark'], absoul: ['흡혼의 해골', 'mage', 'passive', 'dark'], abmaw: ['심연의 손아귀', 'mage', 'active', 'dark'],
+    abnova: ['심연 파동', 'mage', 'active', 'dark'], abgate: ['심연의 문', 'mage', 'active', 'dark'],   // 심연술사(3차, 2026-11-10)
     // 궁수(2026-11-09): 1차 = 바람(wind) · 저격수 = snipe · 레인저 = wild
     pshot: ['관통 화살', 'archer', 'active', 'wind'], upshot: ['솟구치는 화살', 'archer', 'active', 'wind'], multi: ['부채꼴 화살', 'archer', 'active', 'wind'],
     rain: ['화살비', 'archer', 'active', 'wind'], leap: ['공중제비 사격', 'archer', 'active', 'wind'], burst: ['폭발 화살', 'archer', 'active', 'fire'],
