@@ -4,99 +4,99 @@
 "frames": {
 "attack1_01": {
 "hand": [
-74,
+73,
 70
 ],
 "angle": 0
 },
 "attack1_02": {
 "hand": [
-73,
+71,
 69
 ],
 "angle": 0
 },
 "attack1_03": {
 "hand": [
-72,
-61
+70,
+59
 ],
 "angle": 0
 },
 "attack1_04": {
 "hand": [
-70,
-75
+69,
+76
 ],
 "angle": 0
 },
 "attack2_01": {
 "hand": [
 74,
-73
+72
 ],
 "angle": 0
 },
 "attack2_02": {
 "hand": [
 78,
-71
+69
 ],
 "angle": 0
 },
 "attack2_03": {
 "hand": [
-74,
-73
+73,
+74
 ],
 "angle": 0
 },
 "attack2_04": {
 "hand": [
-78,
-68
+77,
+66
 ],
 "angle": 0
 },
 "attack2_05": {
 "hand": [
 72,
-72
+71
 ],
 "angle": 0
 },
 "attack3_01": {
 "hand": [
 70,
-91
+90
 ],
 "angle": 0
 },
 "attack3_02": {
 "hand": [
-71,
-73
+70,
+72
 ],
 "angle": 0
 },
 "attack3_03": {
 "hand": [
-70,
-73
+69,
+74
 ],
 "angle": 0
 },
 "attack3_04": {
 "hand": [
-69,
-79
+68,
+78
 ],
 "angle": 0
 },
 "attack3_05": {
 "hand": [
-87,
-85
+86,
+86
 ],
 "angle": 0
 },
@@ -109,16 +109,16 @@
 },
 "getup_01": {
 "hand": [
-49,
-99
+48,
+100
 ],
 "angle": 0,
 "hide": true
 },
 "getup_02": {
 "hand": [
-74,
-94
+73,
+93
 ],
 "angle": 0,
 "hide": true
@@ -126,49 +126,49 @@
 "getup_03": {
 "hand": [
 80,
-85
+84
 ],
 "angle": 0
 },
 "getup_04": {
 "hand": [
 71,
-77
+78
 ],
 "angle": 0
 },
 "hurt2_01": {
 "hand": [
 73,
-82
+80
 ],
 "angle": 0
 },
 "hurt2_02": {
 "hand": [
 71,
-80
+78
 ],
 "angle": 0
 },
 "hurt2_03": {
 "hand": [
 71,
-81
+83
 ],
 "angle": 0
 },
 "hurt_01": {
 "hand": [
-58,
-87
+59,
+88
 ],
 "angle": 0
 },
 "hurt_02": {
 "hand": [
-80,
-84
+79,
+85
 ],
 "angle": 0
 },
@@ -181,35 +181,35 @@
 },
 "idle_01": {
 "hand": [
-71,
-77
+70,
+78
 ],
 "angle": 0
 },
 "idle_02": {
 "hand": [
-70,
-75
+69,
+77
 ],
 "angle": 0
 },
 "idle_03": {
 "hand": [
-69,
-75
+68,
+77
 ],
 "angle": 0
 },
 "idle_04": {
 "hand": [
 69,
-77
+78
 ],
 "angle": 0
 },
 "knockdown_01": {
 "hand": [
-57,
+55,
 58
 ],
 "angle": 0,
@@ -217,8 +217,8 @@
 },
 "knockdown_02": {
 "hand": [
-60,
-67
+58,
+68
 ],
 "angle": 0,
 "hide": true
@@ -226,14 +226,14 @@
 "knockdown_03": {
 "hand": [
 67,
-106
+108
 ],
 "angle": 0,
 "hide": true
 },
 "knockdown_04": {
 "hand": [
-50,
+47,
 100
 ],
 "angle": 0,
@@ -241,8 +241,8 @@
 },
 "knockdown_05": {
 "hand": [
-44,
-106
+41,
+105
 ],
 "angle": 0,
 "hide": true
@@ -250,7 +250,7 @@
 "walk_01": {
 "hand": [
 71,
-71
+70
 ],
 "angle": 0
 },
@@ -277,29 +277,29 @@
 },
 "walk_05": {
 "hand": [
-70,
-77
+69,
+78
 ],
 "angle": 0
 },
 "walk_06": {
 "hand": [
 70,
-76
+77
 ],
 "angle": 0
 },
 "walk_07": {
 "hand": [
 67,
-74
+75
 ],
 "angle": 0
 },
 "walk_08": {
 "hand": [
-68,
-76
+67,
+75
 ],
 "angle": 0
 }
