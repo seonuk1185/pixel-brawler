@@ -228,6 +228,12 @@
     sgstorm: function (g) { g.rect(5, 6, 4, 14, K.f2); g.rect(10, 3, 4, 17, K.i2); g.rect(15, 7, 4, 13, K.g1); g.rect(3, 20, 18, 2, K.g2); g.outline(); g.spark(12, 2, true, K.wht); },
     sgnova: function (g) { g.ring(12, 15, 8, 10, 0, 359, K.g1); g.disc(12, 15, 4, function (d) { return d < 2 ? K.wht : K.f1; }); g.disc(4, 9, 3, K.i2); g.disc(20, 9, 3, K.f2); g.outline(); },
     sgdoom: function (g) { g.disc(8, 7, 4, function (d) { return d < 2 ? K.wht : K.f1; }); g.line(10, 9, 15, 15, K.f2); g.disc(15, 17, 5, function (d) { return d < 3 ? '#140828' : '#6a3ad0'; }); g.ring(15, 17, 5, 7, 0, 359, K.g1); g.outline(); g.spark(20, 4, false, K.wht); },
+    // 신궁(궁수 3차 a, 2026-11-10): 은빛 · 얼음 화살
+    dvlance: function (g) { [6, 12, 18].forEach(function (y) { g.line(2, y, 19, y, K.i1); g.px(20, y, K.wht); g.px(19, y - 1, K.i0); g.px(19, y + 1, K.i0); }); g.outline(); g.spark(4, 3, false, K.i0); },
+    dveye: function (g) { g.ellipse(12, 12, 8, 5, K.i3); g.disc(12, 12, 3, function (d) { return d < 1.5 ? K.wht : K.i1; }); g.outline(); g.line(3, 21, 20, 4, K.i0); g.px(20, 4, K.wht); },
+    dvrain: function (g) { [[5, 1], [11, 4], [17, 0]].forEach(function (q) { g.line(q[0], q[1], q[0], q[1] + 11, K.i0); g.px(q[0], q[1] + 12, K.wht); g.px(q[0] - 1, q[1] + 11, K.i1); g.px(q[0] + 1, q[1] + 11, K.i1); }); g.rect(3, 20, 18, 2, K.i3); g.outline(); },
+    dvpierce: function (g) { g.line(1, 12, 20, 12, K.i0); g.line(1, 11, 20, 11, K.i1); g.px(21, 11, K.wht); g.px(22, 12, K.wht); g.disc(19, 12, 4, function (d) { return d < 2 ? K.wht : K.i2; }); g.outline(); g.spark(5, 5, false, K.i0); },
+    dvsky: function (g) { g.line(12, 1, 12, 18, K.i0); g.line(11, 1, 11, 17, K.i1); g.px(12, 19, K.wht); g.px(11, 18, K.wht); g.line(9, 2, 12, 5, K.i2); g.line(15, 2, 12, 5, K.i2); g.ring(12, 20, 6, 8, 180, 360, K.i1); g.outline(); g.spark(4, 4, false, K.wht); g.spark(20, 4, false, K.wht); },
     // 마검왕(2026-11-10): 보라 · 검정 마력 검
     mkcross: function (g) { g.line(3, 3, 20, 20, K.p1); g.line(3, 20, 20, 3, K.p1); g.line(4, 3, 21, 20, K.p0); g.outline(); g.spark(12, 12, true, K.p0); },
     mkblades: function (g) { g.ring(12, 13, 8, 9, 0, 359, K.p2); g.line(12, 2, 12, 12, K.s1); g.line(4, 13, 9, 20, K.s2); g.line(20, 13, 15, 20, K.s2); g.px(12, 9, K.r1); g.outline(); },
@@ -749,6 +755,8 @@
     ssflash: ['일섬', 'knight', 'active', 'holy'], ssjudge: ['천상의 심판', 'knight', 'active', 'holy'],
     sgorb: ['원소 융합탄', 'mage', 'active', 'fire'], sgcycle: ['원소 순환', 'mage', 'passive', 'arcane'], sgstorm: ['삼원소 폭풍', 'mage', 'active', 'storm'],
     sgnova: ['원소 대폭발', 'mage', 'active', 'fire'], sgdoom: ['종말의 별', 'mage', 'active', 'arcane'],
+    dvlance: ['빙결 삼연시', 'archer', 'active', 'snipe'], dveye: ['신궁의 눈', 'archer', 'passive', 'snipe'], dvrain: ['천궁 유성우', 'archer', 'active', 'snipe'],
+    dvpierce: ['천궁 관통', 'archer', 'active', 'snipe'], dvsky: ['천궁의 심판', 'archer', 'active', 'snipe'],   // 신궁(3차, 2026-11-10)
     mkcross: ['마검 십자참', 'knight', 'active', 'arcane'], mkblades: ['떠도는 마검', 'knight', 'passive', 'arcane'], mkrain: ['마검 폭우', 'knight', 'active', 'arcane'],
     mkrift: ['차원 붕괴', 'knight', 'active', 'arcane'], mkking: ['마검왕 강림', 'knight', 'active', 'arcane'],
     abhex: ['저주 해골탄', 'mage', 'active', 'dark'], absoul: ['흡혼의 해골', 'mage', 'passive', 'dark'], abmaw: ['심연의 손아귀', 'mage', 'active', 'dark'],

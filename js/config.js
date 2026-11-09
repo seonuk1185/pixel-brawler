@@ -1696,6 +1696,63 @@
     female: { motionMs: [110, 230, 880, 100, 700, 200] }
   };
   Object.keys(T3_SKILLS.mage).forEach(function (k) { SKILLS.mage[k] = T3_SKILLS.mage[k]; });
+  // ---- 신궁(궁수 3차 갈래 a, 2026-11-10): 검은 옷 + 은빛 · 얼음 화살. 그림 = t3_dv_*(AI: 거대한 얼음 화살 · 얼음 터짐 · 하늘에서 내리꽂히는 빛 화살) ----
+  //   숫자 = 검성 자리에서 시작 → 자동 조종 DPS(Lv55 15 · 20판)가 저격수보다 낮아 약 +33% 올림(2026-11-10). 궁수 맞히기 = Tier3 의 hitT(wk = 활) → main.js onHit(치명타 · 저격수 갈래 덤 그대로)
+  // 빙결 삼연시(50 ↔ 저격 6.0): 거대한 얼음 화살 셋이 가운데 · 위 · 아래 줄을 화면 끝까지 꿰뚫음 2.7 x 3 = 8.1
+  var DV_ARROW = { dmg: 3.6, hitstop: 0.9, knock: 1.4, shake: 1.6, spark: 1.3, big: true, hitsDown: true, flash: { color: '#e8f6ff', alpha: 0.16, ms: 80 } };
+  // 신궁의 눈(52, 늘 켜짐): 몇 초마다 얼음 화살이 저절로 가까운 적에게 날아가 꽂힘(이 값 x passive.mul)
+  var DV_EYE = { dmg: 2.4, hitstop: 0.5, knock: 0.8, shake: 0.7, spark: 1.1, big: true, hitsDown: true, noRage: true, noMp: true, numStyle: 'push', t3Auto: true };
+  // 천궁 유성우(53 ↔ 대포 화살 4.6 · 속사): 화면 안 적마다 하늘에서 빛 화살 0.85 x 6 + 마지막 큰 화살 3.0 = 8.1
+  var DV_RAIN = { dmg: 1.15, hitstop: 0.3, knock: 0.2, shake: 0.6, spark: 1.0, hitsDown: true, noRage: true, noJuggle: true };
+  var DV_RAIN_LAST = { dmg: 4.0, hitstop: 1.8, knock: 2.0, shake: 2.6, knockdown: true, stunMs: 300, spark: 1.6, big: true, hitsDown: true, flash: { color: '#e8f6ff', alpha: 0.35, ms: 140 } };
+  // 천궁 관통(55 ↔ 저격 6.0 + 대포 화살): 거대한 얼음 화살 하나가 한 줄을 꿰뚫고(2.0) 끝에서 얼음이 크게 터짐 6.6 = 8.6
+  var DV_PIERCE = { dmg: 2.7, hitstop: 0.8, knock: 1.0, shake: 1.2, spark: 1.2, big: true, hitsDown: true, noJuggle: true, crit: true };
+  var DV_PIERCE_BOOM = { dmg: 8.8, hitstop: 2.4, knock: 2.6, shake: 3.4, knockdown: true, spark: 1.8, big: true, hitsDown: true, flash: { color: '#e8f6ff', alpha: 0.45, ms: 160 }, slowMs: 220 };
+  // 천궁의 심판(58 필살 ↔ 천공의 일격 8.5 + 2.0): 하늘에서 작은 빛 0.5 x 5 → 거대한 빛 화살이 꽂힘 2.0 + 얼음 충격파 13 = 17.5 (화면 안 모든 적)
+  var DV_SKY_PRE = SS_JUDGE_PRE;
+  var DV_SKY_HIT = SS_JUDGE_HIT;
+  var DV_SKY_WAVE = { dmg: 15, hitstop: 3.4, knock: 3.0, shake: 6.0, knockdown: true, stunMs: 700, spark: 2.4, big: true, hitsDown: true, launch: 1.0,
+                      flash: { color: '#eaf8ff', alpha: 0.85, ms: 320 }, slowMs: 520 };
+  T3_SKILLS.archer = {
+    dvlance: {
+      name: '빙결 삼연시', icon: '삼', mp: 20, cooldownMs: 9000, damageStyle: 'skill_snipe', motion: 'motion_shoot', sfx: 'bowHeavy',
+      desc: '(3차) 시위를 세 번 당겨 거대한 얼음 화살 셋을 날려요. 가운데 · 위 · 아래 줄을 나란히 화면 끝까지 꿰뚫고, 끝에서 얼음이 부서져요',
+      lv5: { n: 5, say: '화살 3 → 5발' },
+      darken: { ms: 700, alpha: 0.45 }, iframes: [0, 600], zoom: { k: 1.03, ms: 500 },
+      t3: { kind: 'sswave', frame: 3, n: 3, lanes: [0, -20, 20, -36, 36], gapMs: 90, x: 30, speed: 620, range: 440, w: 56, depth: 22, hit: DV_ARROW, chainPad: 250,
+            art: 't3_dv_arrow', sx: 1.35, hitArt: 't3_dv_burst', boom: 't3_dv_burst', boomSx: 0.7, color: '#bfe6ff' }
+    },
+    dvrain: {
+      name: '천궁 유성우', icon: '유', mp: 24, cooldownMs: 12000, damageStyle: 'skill_snipe', motion: 'motion_sky', sfx: 'bowHeavy',
+      motionMs: [80, 110, 150, 520, 300, 140],
+      desc: '(3차) 하늘로 빛의 화살을 쏘아 올려요. 화면 안 모든 적 위로 은빛 화살이 유성처럼 쏟아지고, 마지막에 거대한 화살이 한 번 더 꽂혀 넘어뜨려요',
+      lv5: { n: 8, say: '쏟아지는 화살 6 → 8번' },
+      darken: { ms: 1600, alpha: 0.55 }, iframes: [0, 1000], zoom: { k: 1.04, ms: 1000 },
+      t3: { kind: 'ssrain', frame: 3, n: 6, gapMs: 150, fallMs: 160, hit: DV_RAIN, last: DV_RAIN_LAST, chainPad: 900,
+            fall: 't3_dv_fall', fallSx: 0.75, impact: 't3_dv_burst', impactSx: 0.45, bigHit: 't3_dv_burst', bigSx: 0.9, color: '#bfe6ff' }
+    },
+    dvpierce: {
+      name: '천궁 관통', icon: '관', mp: 24, cooldownMs: 12000, damageStyle: 'skill_snipe', motion: 'motion_shoot', sfx: 'bowHeavy',
+      motionMs: [80, 110, 260, 300, 90, 130],
+      desc: '(3차) 온 힘으로 시위를 당겨 거대한 얼음 화살 하나를 쏴요. 한 줄의 적을 모두 꿰뚫고(늘 치명타), 끝에서 얼음이 크게 터져 둘레를 넘어뜨려요',
+      lv5: { area: 1.3, say: '터짐 크기 +30%' },
+      darken: { ms: 900, alpha: 0.5 }, iframes: [0, 700], zoom: { k: 1.04, ms: 700 },
+      t3: { kind: 'sgorb', frame: 3, x: 36, y: -44, speed: 560, range: 340, w: 70, depth: 26, r: 96, bdepth: 50, hit: DV_PIERCE, boom: DV_PIERCE_BOOM, chainPad: 250,
+            art: 't3_dv_arrow', artSx: 2.2, hitArt: 't3_dv_burst', hitSx: 0.45, boomArt: 't3_dv_burst', boomSx: 1.8, cols: ['#e8f6ff', '#5ac8f0'], snd: ['iceHit', 'bowHeavy'] }
+    },
+    dvsky: {
+      name: '천궁의 심판', icon: '심', mp: 60, cooldownMs: 40000, damageStyle: 'skill_snipe', motion: 'motion_sky', sfx: 'charge',
+      motionMs: [100, 140, 700, 600, 500, 200],
+      desc: '(3차 필살) 하늘 높이 화살을 쏘아 올리면 하늘이 열리고 거대한 빛의 화살이 내리꽂혀요. 화면 안 모든 적이 얼음 충격파에 휩쓸려 날아가요',
+      lv5: { area: 1.25, say: '충격파 크기 +25%' },
+      darken: { ms: 3400, alpha: 0.75 }, iframes: [0, 2200], zoom: { k: 1.08, ms: 2000 },
+      t3: { kind: 'ssjudge', frame: 2, n: 5, gapMs: 110, pre: DV_SKY_PRE, hit: DV_SKY_HIT, wave: DV_SKY_WAVE, x: 110, chainPad: 1600,
+            sword: 't3_dv_fall', swordSx: 2.6, swordLoop: true, impact: 't3_dv_burst', impactSx: 1.8, boom: 't3_dv_burst', boomSx: 2.6,
+            hitArt: 't3_dv_burst', hitSx: 0.6, cols: ['#ffffff', '#bfe6ff', '#5ac8f0'], flash: '#eaf8ff' }
+    }
+  };
+  Object.keys(T3_SKILLS.archer).forEach(function (k) { SKILLS.archer[k] = T3_SKILLS.archer[k]; });
+
 
   // ---------- 기술 책 (성장 4단계, 2026-11-06, 기획\성장시스템-설계안.md) : 직업마다 11개 = 쓰는 기술(active) 7 + 늘 켜진 기술(passive) 4 (2026-11-06 기사 칼날 폭풍 넣음) ----------
   // 순서 = 기술 창에 나오는 순서. unlock = 그 레벨이 되면 열림(0 = 전직 즉시). 전직 뒤 대략 2레벨마다 하나 → Lv23 에 다 열림(기사·법사 11개)
@@ -1780,7 +1837,12 @@
       a: { tag: '저격', color: '#bfe6ff', tw: { acrit: 0.15, slowMs: 1200, slowK: 0.65 },
            names: { pshot: ['은빛 관통 화살', '치명타 확률 +15% · 맞은 적 1.2초 느려짐'], upshot: ['은빛 솟구침', '치명타 확률 +15% · 맞은 적 1.2초 느려짐'],
                     multi: ['저격 부채꼴', '치명타 확률 +15% · 맞은 적 1.2초 느려짐'], rain: ['은빛 화살비', '치명타 확률 +15% · 맞은 적 1.2초 느려짐'],
-                    leap: ['저격 공중제비', '치명타 확률 +15% · 맞은 적 1.2초 느려짐'], burst: ['빙결 폭발 화살', '치명타 확률 +15% · 맞은 적 1.2초 느려짐'] } },
+                    leap: ['저격 공중제비', '치명타 확률 +15% · 맞은 적 1.2초 느려짐'], burst: ['빙결 폭발 화살', '치명타 확률 +15% · 맞은 적 1.2초 느려짐'] },
+           // 3차 맛(2026-11-10, 신궁 Lv50 뒤): 이름이 한 번 더 바뀌고 크기 +20%(archer.js 가 s.area 를 씀). 저격수 덤(치명타 · 느려짐) 그대로
+           t3: { tag: '신궁', color: '#e8f6ff', tw: { area: 1.2 },
+                 names: { pshot: ['신궁 관통 화살', '(3차 신궁) 효과 · 범위 +20% · 치명타 확률 +15% · 맞은 적 1.2초 느려짐'], upshot: ['천공 솟구침', '(3차 신궁) 효과 · 범위 +20% · 치명타 확률 +15% · 맞은 적 1.2초 느려짐'], multi: ['신궁 부채꼴', '(3차 신궁) 효과 · 범위 +20% · 치명타 확률 +15% · 맞은 적 1.2초 느려짐'], rain: ['은하 화살비', '(3차 신궁) 효과 · 범위 +20% · 치명타 확률 +15% · 맞은 적 1.2초 느려짐'],
+                          leap: ['신궁 공중제비', '(3차 신궁) 효과 · 범위 +20% · 치명타 확률 +15% · 맞은 적 1.2초 느려짐'], burst: ['절대빙결 폭발 화살', '(3차 신궁) 효과 · 범위 +20% · 치명타 확률 +15% · 맞은 적 1.2초 느려짐'], snipe: ['신궁 저격', '(3차 신궁) 효과 · 범위 +20% · 치명타 확률 +15% · 맞은 적 1.2초 느려짐'], ballista: ['천공 대포 화살', '(3차 신궁) 효과 · 범위 +20% · 치명타 확률 +15% · 맞은 적 1.2초 느려짐'],
+                          rapid: ['신속 연사', '(3차 신궁) 효과 · 범위 +20% · 치명타 확률 +15% · 맞은 적 1.2초 느려짐'], skyfall: ['천공의 대일격', '(3차 신궁) 효과 · 범위 +20% · 치명타 확률 +15% · 맞은 적 1.2초 느려짐'] } } },
       b: { tag: '숲', color: '#b8ff7a', tw: { thorns: 1, thornDmg: 0.3, vineMs: 2000, vineTick: 500, vineDmg: 0.06 },
            names: { pshot: ['덩굴 관통 화살', '맞으면 가시 화살이 둘레 적 하나에게 튐 · 맞은 적에 가시 2초(0.5초마다 작은 피해)'],
                     upshot: ['돌개바람 솟구침', '맞으면 가시 화살이 둘레 적 하나에게 튐 · 맞은 적에 가시 2초(0.5초마다 작은 피해)'],
@@ -1923,6 +1985,15 @@
       { id: 'ballista', unlock: 31, tier: 2, branch: 'a', short: '거대한 화살이 밀고 꿰뚫어요' },
       { id: 'rapid', unlock: 35, tier: 2, branch: 'a', short: '바람 화살 여덟 발 연사' },
       { id: 'skyfall', unlock: 39, tier: 2, branch: 'a', short: '하늘에서 거대한 빛 화살' },
+      // ---- 신궁(3차 전직, 저격수 갈래 a, 2026-11-10): passive 't3auto' = 몇 초마다 얼음 화살이 저절로 날아가 꽂힘(art 'dv_arrow') ----
+      { id: 'dvlance', unlock: 50, tier: 3, branch: 'a', short: '거대한 얼음 화살 세 발이 꿰뚫어요' },
+      { id: 'dveye', unlock: 52, tier: 3, branch: 'a', recInv: true, short: '몇 초마다 얼음 화살이 저절로 날아가요', name: '신궁의 눈', icon: '눈',
+        desc: '신궁의 눈이 둘레를 살펴요. 몇 초마다 얼음 화살이 저절로 가까운 적에게 날아가 꽂혀요(Lv 오르면 더 자주 · 더 많이)',
+        passive: { stat: 't3auto', val: [3200, 2900, 2600, 2300, 2000], n: [1, 1, 2, 2, 3], mul: [1, 1.1, 1.2, 1.35, 1.5], find: 340, findDepth: 100, art: 'dv_arrow',
+                   fly: 't3_dv_arrow', flySx: 0.5, hitArt: 't3_dv_burst', hitSx: 0.35, hit: DV_EYE } },
+      { id: 'dvrain', unlock: 53, tier: 3, branch: 'a', short: '화면 안 적 위로 빛 화살이 쏟아져요' },
+      { id: 'dvpierce', unlock: 55, tier: 3, branch: 'a', short: '거대한 화살이 꿰뚫고 얼음이 터져요' },
+      { id: 'dvsky', unlock: 58, tier: 3, branch: 'a', short: '하늘에서 거대한 빛 화살이 내리꽂혀요' },
       // ---- 레인저(2차 갈래 b) ----
       { id: 'tempest', unlock: 25, tier: 2, branch: 'b', short: '앞으로 나아가는 화살 폭풍' },
       // passive.stat 'hawk'(저절로 공격) = 매 동료가 따라다니며 val(ms) 마다 가까운 적에게 내리꽂힘. mul = 데미지 배율(RG_HAWK)
@@ -2292,6 +2363,21 @@
     d.t2Dir = dir;
     archerT2Sets[name] = d;
   });
+  // 3차 옷 — 무기가 그림에 박힌 직업(궁수 · 암살자, 2026-11-10): 그 갈래 2차 옷 그림 위에 옷 + 무기만 다시 그림(pipeline/ai-sprite/t3)
+  //   → 2차처럼 1차 옷 묶음을 그대로 쓰고 그림 폴더 · 손 위치 json 만 바꿈. 이름 '<직업>_<갈래>_<성별>' → 묶음 '<직업>_t3<갈래>_<성별>'
+  //   (신궁 = archer_t3a · 숲의 수호자 = archer_t3b · 그림자 군주 = assassin_t3a · 역병술사 = assassin_t3b). 여기에 넣은 것만 진짜 그림
+  var T3_BAKED_DONE = ['archer_a_male', 'archer_a_female'];   // 신궁(2026-11-10)
+  var t3BakedSets = {};
+  T3_BAKED_DONE.forEach(function (k) {
+    if (artSet === 'novice') return;
+    var q = k.split('_'), cls = q[0], br = q[1], who = q[2], name = cls + '_t3' + br + '_' + who;
+    var d = stage1(who, 'assets/chars/stage1/anchors_' + name + '.json', cls);
+    var dir = 'assets/chars/stage1/' + name + '/', from = 'assets/chars/stage1/' + cls + '_' + who + '/';
+    Object.keys(d.anims).forEach(function (n) { var A = d.anims[n]; A.frames = A.frames.map(function (f) { return f.replace(from, dir); }); });
+    d.moveAnchors = 'assets/chars/stage1/anchors_move_' + name + '.json';
+    d.t2Dir = dir;
+    t3BakedSets[name] = d;
+  });
   var characters = { male: male, female: female };
   if (knightMale) { characters.knight_male = knightMale; characters.knight_female = knightFemale; }
   if (knightT2Male) characters.knight_t2_male = knightT2Male;
@@ -2305,6 +2391,7 @@
   Object.keys(archerT2Sets).forEach(function (k) { characters[k] = archerT2Sets[k]; });   // 궁수 2차 옷(2026-11-09)
   if (assassinMale) { characters.assassin_male = assassinMale; characters.assassin_female = assassinFemale; }   // 암살자(2026-11-09)
   Object.keys(assassinT2Sets).forEach(function (k) { characters[k] = assassinT2Sets[k]; });   // 암살자 2차 옷(2026-11-09)
+  Object.keys(t3BakedSets).forEach(function (k) { characters[k] = t3BakedSets[k]; });   // 3차 옷 궁수 · 암살자(2026-11-10)
 
   // ---------- 적 그림 (art\stage1-enemies 에서 복사, 그림은 전부 「왼쪽을 봄」) ----------
   // playback = 그림 번호(1부터) 재생 순서, fps = 1초에 몇 칸. 순서를 늘리면 그 장면이 길어진다(예: 몽둥이 치켜든 장면 = 예고)
@@ -2742,7 +2829,7 @@
                 branches: [
                   { key: 'a', name: '저격수', outfit: 'archer_t2a', desc: '은빛 저격수. 멀리서 가장 센 적을 노려 한 줄로 꿰뚫고, 거대한 화살 · 하늘의 일격으로 큰 적을 쓰러뜨려요',
                     look: { base: 'archer', tint: '#0c2a3a', k: 0.32, outline: { color: '#bfe6ff', alpha: 0.55, glow: true } },
-                    tier3: { lv: 50, name: '신궁', soon: true } },
+                    tier3: { lv: 50, name: '신궁', outfit: 'archer_t3a', desc: '하늘의 활을 쥔 검은 신궁. 거대한 얼음 화살 · 쏟아지는 빛 화살 · 한 줄 관통, 필살 천궁의 심판' } },
                   { key: 'b', name: '레인저', outfit: 'archer_t2b', desc: '숲의 레인저. 화살 폭풍 · 덫 · 회오리로 몹 떼를 쓸고, 매 동료가 저절로 적을 공격해요',
                     look: { base: 'archer', tint: '#5a3a08', k: 0.24, outline: { color: '#c8ff7a', alpha: 0.55, glow: true } },
                     tier3: { lv: 50, name: '숲의 수호자', soon: true } }
@@ -6642,7 +6729,7 @@
               test: { pts: 24 },
               botPlan: { knight: ['dash', 'upper', 'nimble', 'wave', 'mastery', 'spin', 'skin', 'slam', 'shards', 'thrust', 'pressure', 'grit', 'counter', 'storm', 'aegis', 'holy', 'cross', 'charge', 'arcwave', 'infuse', 'rift', 'msword', 'unleash', 'sswave', 'ssaura', 'ssrain', 'ssflash', 'ssjudge', 'mkcross', 'mkblades', 'mkrain', 'mkrift', 'mkking'],
                          assassin: ['ashadow', 'arise', 'nimble', 'afan', 'amast', 'awhirl', 'akeen', 'ablink', 'aecho', 'asmoke', 'aorbit', 'avenom', 'aexec', 'sclone', 'sshade', 'sflash', 'sstorm', 'smoon', 'pdarts', 'pplague', 'pcloud', 'ppool', 'perupt'],   // 암살자(2026-11-09)
-                         archer: ['pshot', 'upshot', 'nimble', 'multi', 'aim', 'rain', 'focus', 'leap', 'split', 'burst', 'volley', 'gale', 'mark', 'snipe', 'deadeye', 'ballista', 'rapid', 'skyfall', 'tempest', 'hawk', 'trap', 'twister', 'barrage'],   // 궁수(2026-11-09)
+                         archer: ['pshot', 'upshot', 'nimble', 'multi', 'aim', 'rain', 'focus', 'leap', 'split', 'burst', 'volley', 'gale', 'mark', 'snipe', 'deadeye', 'ballista', 'rapid', 'skyfall', 'dvlance', 'dveye', 'dvrain', 'dvpierce', 'dvsky', 'tempest', 'hawk', 'trap', 'twister', 'barrage'],   // 궁수(2026-11-09)
                          mage: ['fireball', 'rise', 'nimble', 'bolt', 'amp', 'ice', 'flow', 'blink', 'eshard', 'gravity', 'vortex', 'shield', 'brand', 'meteor', 'echain', 'pillar', 'frost', 'judgment', 'darkorb', 'leech', 'swamp', 'wraith', 'abyss', 'sgorb', 'sgcycle', 'sgstorm', 'sgnova', 'sgdoom', 'abhex', 'absoul', 'abmaw', 'abnova', 'abgate'] } },   // 3차(2026-11-10) 도   // 2026-11-08 갈래 B 기술도(고른 갈래 것만 배워짐)   // 법사 다시 배치(2026-11-08)
 
     // ---------- 기술 효과 그림 (art\stage1\skills\fx 에서 복사 → assets/fx/skill/<이름>_01.png …, 크기·기준점은 fx.json) ----------
@@ -6774,6 +6861,13 @@
     // 암살자 2차 옷(2026-11-09): 궁수 2차와 같은 방식
     ASSASSIN_T2_DONE.forEach(function (k) {
       var who = k.split('_')[1], name = 'assassin_' + k, D = C.art.characters[name], M1 = C.motions['assassin_' + who];
+      if (!D || !M1) return;
+      Object.keys(M1).forEach(function (m) { if (M1[m].count > 0) D.anims[m] = { frames: seq(D.t2Dir + m + '_', M1[m].count), fps: 14, loop: false }; });
+      D.motionAnchors = 'assets/chars/stage1/anchors_motions_' + name + '.json';
+    });
+    // 3차 옷 궁수 · 암살자(2026-11-10): 2차와 같은 방식(기술 동작 = 1차와 같은 동작 · 시간, 그림만 3차 폴더)
+    T3_BAKED_DONE.forEach(function (k) {
+      var q = k.split('_'), cls = q[0], who = q[2], name = cls + '_t3' + q[1] + '_' + who, D = C.art.characters[name], M1 = C.motions[cls + '_' + who];
       if (!D || !M1) return;
       Object.keys(M1).forEach(function (m) { if (M1[m].count > 0) D.anims[m] = { frames: seq(D.t2Dir + m + '_', M1[m].count), fps: 14, loop: false }; });
       D.motionAnchors = 'assets/chars/stage1/anchors_motions_' + name + '.json';

@@ -34,7 +34,16 @@
     // 마검왕(기사 3차 갈래 b, 2026-11-10): 거대 마검(칼끝 = 아래) · X자 마력 베기 · 마력 대폭발
     t3_mk_sword:        { n: 4, pv: [28.0, 120], fps: 12 },     // 56x120 거대 마검(칼끝 = 아래, 반복)
     t3_mk_x:            { n: 4, pv: [46.0, 36.5], fps: 14 },    // 92x73 X자 마력 베기(날아갈 땐 1 · 2장 반복)
-    t3_mk_boom:         { n: 6, pv: [75.0, 32.5], fps: 14 }     // 150x65 마력 대폭발
+    t3_mk_boom:         { n: 6, pv: [75.0, 32.5], fps: 14 },    // 150x65 마력 대폭발
+    // 심연술사(법사 3차 갈래 b, 2026-11-10): 해골 · 촉수 기둥 · 어둠 마법진 · 심연 폭발 (빠져 있던 등록, 신궁 작업 때 넣음)
+    t3_ab_skull:        { n: 4, pv: [32.0, 16.5], fps: 12 },    // 64x33 반복
+    t3_ab_pillar:       { n: 6, pv: [62.5, 120], fps: 14 },     // 125x120
+    t3_ab_circle:       { n: 4, pv: [50.0, 24.5], fps: 12 },    // 100x49
+    t3_ab_burst:        { n: 5, pv: [70.0, 60.5], fps: 14 },    // 140x121
+    // 신궁(궁수 3차 갈래 a, 2026-11-10): 거대한 얼음 화살(오른쪽 봄) · 얼음 터짐 · 하늘에서 내리꽂히는 빛 화살(촉 = 아래)
+    t3_dv_arrow:        { n: 4, pv: [60.0, 23.0], fps: 14 },    // 120x46 반복
+    t3_dv_burst:        { n: 5, pv: [55.0, 48.0], fps: 14 },    // 110x96
+    t3_dv_fall:         { n: 4, pv: [54.0, 110], fps: 12 }      // 108x110 반복
   };
   (function reg() { var S = window.Skills && Skills._api; if (S) S.addAifx(AFX); })();
 
@@ -195,10 +204,10 @@
       if (S.fired || t1 < C.at) return; S.fired = 1;
       var k = K(), ar = s.area || 1, boom = stOf(C.boom, d), mul = s.mul;
       shoot({ p: p, x: p.x + p.dir * C.x * k, y: p.y + C.y * k, z: p.y, dir: p.dir, speed: C.speed * k, range: C.range * k, w: C.w * k, depth: C.depth,
-              st: stOf(C.hit, d), mul: mul, art: 't3_sgorb_orb', sx: 1.05, hitArt: 'echain_boom', hitSx: 0.35,
+              st: stOf(C.hit, d), mul: mul, art: C.art || 't3_sgorb_orb', sx: C.artSx || 1.05, hitArt: C.hitArt || 'echain_boom', hitSx: C.hitSx || 0.35,   // 신궁 천궁 관통(2026-11-10): 그림을 config 에서
               onEnd: function (a) {
                 var R = C.r * k * ar;
-                spawn('t3_sgorb_boom', a.x, a.y + 6 * k, { sx: 1.25 * ar });
+                spawn(C.boomArt || 't3_sgorb_boom', a.x, a.y + 6 * k, { sx: (C.boomSx || 1.25) * ar });
                 hitArea(boom, p, a.x, a.z, R, C.bdepth * ar, mul, {});
                 wave(a.x, a.z, R * 1.3, { flat: 0.3, w: 5, ms: 420, color: '#fff0d0', glow: '#ff9a3a', ground: true });
                 api().doFlash({ color: '#fff0d0', alpha: 0.3, ms: 130 }); H().hitstop(50); shake(2.2, 320);
@@ -422,10 +431,10 @@
 
   // ---------- 늘 켜진 기술 't3auto'(저절로 공격) · 몸 둘레 기운 ----------
   //   passive = { val = 몇 ms 마다, n = 한 번에 몇 개, mul = 데미지 배율, find · findDepth = 찾는 둘레, art = 'ss_sword'(금빛 영검이 날아감) | 'sg_cycle'(원소 폭발), r = 폭발 반지름 }
-  var AUTO_IDS = ['ssaura', 'sgcycle', 'mkblades', 'absoul'], autoT = {}, auraOn = null;   // 마검왕 떠도는 마검(2026-11-10)
+  var AUTO_IDS = ['ssaura', 'sgcycle', 'mkblades', 'absoul', 'dveye'], autoT = {}, auraOn = null;   // 마검왕 떠도는 마검(2026-11-10)
   function passiveStep(p, dt) {
     auraOn = null;
-    if (!p || p.state === 'dead' || (p.classKey !== 'knight' && p.classKey !== 'mage')) return;
+    if (!p || p.state === 'dead' || !p.classKey || p.classKey === 'novice') return;
     AUTO_IDS.forEach(function (id) {
       var q = pas(p, id);
       if (!q) { autoT[id] = 1200; return; }
@@ -465,7 +474,8 @@
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
     for (var i = 0; i < n; i++) {
       var a = now / (sw ? 700 : 560) + i * Math.PI * 2 / n, ox = Math.cos(a) * 26 * k, oy = Math.sin(a) * 9 * k - (sw ? 14 * k : 0);
-      if (auraOn === 'ab_skull') aiDraw(ctx, 't3_ab_skull', Math.floor(now / 90 + i) % 4, p.x + ox - camX, cy + oy, p.dir * 0.32, 0.32, 0, 0.75);
+      if (auraOn === 'dv_arrow') aiDraw(ctx, 't3_dv_arrow', Math.floor(now / 80 + i) % 4, p.x + ox - camX, cy + oy - 6 * k, 0.28, 0.28, -Math.PI / 2, 0.75);   // 신궁: 얼음 화살이 맴돎
+      else if (auraOn === 'ab_skull') aiDraw(ctx, 't3_ab_skull', Math.floor(now / 90 + i) % 4, p.x + ox - camX, cy + oy, p.dir * 0.32, 0.32, 0, 0.75);
       else if (auraOn === 'mk_sword') aiDraw(ctx, 'msword_sword', Math.floor(now / 90 + i) % 4, p.x + ox - camX, cy + oy, 0.55, 0.55, -Math.PI / 2, 0.7);
       else if (sw) aiDraw(ctx, 't3_ssslash_sword', 1, p.x + ox - camX, cy + oy, 0.32, 0.32, -Math.PI / 2, 0.55);
       else aiDraw(ctx, 't3_sgorb_orb', Math.floor(now / 70 + i) % 4, p.x + ox - camX, cy + oy, 0.32, 0.32, 0, 0.7);

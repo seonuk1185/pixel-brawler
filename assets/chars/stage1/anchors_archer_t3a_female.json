@@ -1,0 +1,752 @@
+{
+ "note": "2nd-job branch b \uc2e0\uad81(\uc5ec). Same format as anchors_archer_t2a_female.json: hand = [x,y] grip in the 176x136 frame, angle deg (0 = right, + = clockwise). Values = branch-a anchors, hand nudged by local silhouette matching; check.manual = read by eye.",
+ "angleUnit": "deg",
+ "frameSize": [
+  176,
+  136
+ ],
+ "frames": {
+  "attack1_01": {
+   "hand": [
+    69,
+    49
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     67,
+     49
+    ],
+    "shift": [
+     2,
+     0
+    ],
+    "match": 0.941,
+    "match0": 0.917
+   }
+  },
+  "attack1_02": {
+   "hand": [
+    74,
+    47
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     73,
+     48
+    ],
+    "shift": [
+     1,
+     -1
+    ],
+    "match": 0.959,
+    "match0": 0.946
+   }
+  },
+  "attack1_03": {
+   "hand": [
+    76,
+    52
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     75,
+     52
+    ],
+    "shift": [
+     1,
+     0
+    ],
+    "match": 0.966,
+    "match0": 0.946
+   }
+  },
+  "attack1_04": {
+   "hand": [
+    71,
+    47
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     71,
+     49
+    ],
+    "shift": [
+     0,
+     -2
+    ],
+    "match": 0.938,
+    "match0": 0.926
+   }
+  },
+  "attack2_01": {
+   "hand": [
+    63,
+    50
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     63,
+     50
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.948,
+    "match0": 0.946
+   }
+  },
+  "attack2_02": {
+   "hand": [
+    59,
+    53
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     59,
+     53
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.859,
+    "match0": 0.859
+   }
+  },
+  "attack2_03": {
+   "hand": [
+    78,
+    50
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     77,
+     51
+    ],
+    "shift": [
+     1,
+     -1
+    ],
+    "match": 0.916,
+    "match0": 0.898
+   }
+  },
+  "attack2_04": {
+   "hand": [
+    78,
+    55
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     76,
+     55
+    ],
+    "shift": [
+     2,
+     0
+    ],
+    "match": 0.97,
+    "match0": 0.928
+   }
+  },
+  "attack2_05": {
+   "hand": [
+    69,
+    52
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     69,
+     52
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.953,
+    "match0": 0.939
+   }
+  },
+  "attack3_01": {
+   "hand": [
+    68,
+    72
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     68,
+     72
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.914,
+    "match0": 0.91
+   }
+  },
+  "attack3_02": {
+   "hand": [
+    95,
+    63
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     94,
+     62
+    ],
+    "shift": [
+     1,
+     1
+    ],
+    "match": 0.946,
+    "match0": 0.936
+   }
+  },
+  "attack3_03": {
+   "hand": [
+    88,
+    56
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     88,
+     56
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.96,
+    "match0": 0.955
+   }
+  },
+  "attack3_04": {
+   "hand": [
+    84,
+    53
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     81,
+     53
+    ],
+    "shift": [
+     3,
+     0
+    ],
+    "match": 0.94,
+    "match0": 0.89
+   }
+  },
+  "attack3_05": {
+   "hand": [
+    82,
+    58
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     80,
+     56
+    ],
+    "shift": [
+     2,
+     2
+    ],
+    "match": 0.958,
+    "match0": 0.926
+   }
+  },
+  "attack3_06": {
+   "hand": [
+    64,
+    56
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     64,
+     56
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.855,
+    "match0": 0.848
+   }
+  },
+  "getup_01": {
+   "hand": [
+    42,
+    109
+   ],
+   "angle": 0,
+   "hide": true,
+   "check": {
+    "note": "weapon not drawn (dropped/hidden); hand = drop point on the ground (same as 1st tier)"
+   }
+  },
+  "getup_02": {
+   "hand": [
+    81,
+    110
+   ],
+   "angle": 0,
+   "hide": true,
+   "check": {
+    "note": "weapon not drawn (dropped/hidden); hand = drop point on the ground (same as 1st tier)"
+   }
+  },
+  "getup_03": {
+   "hand": [
+    91,
+    85
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     91,
+     85
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.941,
+    "match0": 0.941
+   }
+  },
+  "getup_04": {
+   "hand": [
+    56,
+    53
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     57,
+     52
+    ],
+    "shift": [
+     -1,
+     1
+    ],
+    "match": 0.885,
+    "match0": 0.862
+   }
+  },
+  "hurt2_01": {
+   "hand": [
+    86,
+    67
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     86,
+     67
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.958,
+    "match0": 0.958
+   }
+  },
+  "hurt2_02": {
+   "hand": [
+    84,
+    57
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     84,
+     54
+    ],
+    "shift": [
+     0,
+     3
+    ],
+    "match": 0.972,
+    "match0": 0.944
+   }
+  },
+  "hurt2_03": {
+   "hand": [
+    76,
+    52
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     75,
+     50
+    ],
+    "shift": [
+     1,
+     2
+    ],
+    "match": 0.974,
+    "match0": 0.946
+   }
+  },
+  "hurt_01": {
+   "hand": [
+    66,
+    49
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     63,
+     47
+    ],
+    "shift": [
+     3,
+     2
+    ],
+    "match": 0.983,
+    "match0": 0.954
+   }
+  },
+  "hurt_02": {
+   "hand": [
+    80,
+    61
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     81,
+     58
+    ],
+    "shift": [
+     -1,
+     3
+    ],
+    "match": 0.973,
+    "match0": 0.955
+   }
+  },
+  "hurt_03": {
+   "hand": [
+    79,
+    51
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     79,
+     51
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.958,
+    "match0": 0.955
+   }
+  },
+  "idle_01": {
+   "hand": [
+    71,
+    51
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     71,
+     51
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.954,
+    "match0": 0.947
+   }
+  },
+  "idle_02": {
+   "hand": [
+    71,
+    50
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     71,
+     50
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.95,
+    "match0": 0.942
+   }
+  },
+  "idle_03": {
+   "hand": [
+    72,
+    50
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     72,
+     50
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.951,
+    "match0": 0.95
+   }
+  },
+  "idle_04": {
+   "hand": [
+    68,
+    48
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     68,
+     48
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.902,
+    "match0": 0.899
+   }
+  },
+  "knockdown_01": {
+   "hand": [
+    53,
+    62
+   ],
+   "angle": 0,
+   "hide": true,
+   "check": {
+    "note": "weapon not drawn (dropped/hidden); hand = drop point on the ground (same as 1st tier)"
+   }
+  },
+  "knockdown_02": {
+   "hand": [
+    76,
+    56
+   ],
+   "angle": 0,
+   "hide": true,
+   "check": {
+    "note": "weapon not drawn (dropped/hidden); hand = drop point on the ground (same as 1st tier)"
+   }
+  },
+  "knockdown_03": {
+   "hand": [
+    48,
+    94
+   ],
+   "angle": 0,
+   "hide": true,
+   "check": {
+    "note": "weapon not drawn (dropped/hidden); hand = drop point on the ground (same as 1st tier)"
+   }
+  },
+  "knockdown_04": {
+   "hand": [
+    53,
+    92
+   ],
+   "angle": 0,
+   "hide": true,
+   "check": {
+    "note": "weapon not drawn (dropped/hidden); hand = drop point on the ground (same as 1st tier)"
+   }
+  },
+  "knockdown_05": {
+   "hand": [
+    38,
+    110
+   ],
+   "angle": 0,
+   "hide": true,
+   "check": {
+    "note": "weapon not drawn (dropped/hidden); hand = drop point on the ground (same as 1st tier)"
+   }
+  },
+  "walk_01": {
+   "hand": [
+    73,
+    52
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     73,
+     50
+    ],
+    "shift": [
+     0,
+     2
+    ],
+    "match": 0.958,
+    "match0": 0.947
+   }
+  },
+  "walk_02": {
+   "hand": [
+    57,
+    51
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     59,
+     50
+    ],
+    "shift": [
+     -2,
+     1
+    ],
+    "match": 0.856,
+    "match0": 0.806
+   }
+  },
+  "walk_03": {
+   "hand": [
+    68,
+    51
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     68,
+     51
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.948,
+    "match0": 0.912
+   }
+  },
+  "walk_04": {
+   "hand": [
+    70,
+    51
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     70,
+     51
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.95,
+    "match0": 0.92
+   }
+  },
+  "walk_05": {
+   "hand": [
+    73,
+    52
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     73,
+     52
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.933,
+    "match0": 0.926
+   }
+  },
+  "walk_06": {
+   "hand": [
+    71,
+    52
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     71,
+     52
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.919,
+    "match0": 0.917
+   }
+  },
+  "walk_07": {
+   "hand": [
+    53,
+    53
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     59,
+     52
+    ],
+    "shift": [
+     -6,
+     1
+    ],
+    "match": 0.794,
+    "match0": 0.742
+   }
+  },
+  "walk_08": {
+   "hand": [
+    67,
+    49
+   ],
+   "angle": 0,
+   "check": {
+    "fromTier1": [
+     67,
+     49
+    ],
+    "shift": [
+     0,
+     0
+    ],
+    "match": 0.892,
+    "match0": 0.888
+   }
+  }
+ }
+}
