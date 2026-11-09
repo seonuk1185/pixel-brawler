@@ -1383,7 +1383,7 @@
   //   갈래 a(성기사 · 대마법사) 그림 위에 Flow 로 옷만 다시 그려 같은 실루엣에 맞춘 것 → 장 수 · 발 위치 · 손 위치가 갈래 a 와 같다.
   //   그래서 1차 옷 묶음을 그대로 쓰고 그림 폴더 · 손 위치 json 만 바꾼다(콤보 · 보폭 · 달리기 수치 · 기술 동작 시간 = 1차 옷 그대로).
   //   T2B_DONE 에 있는 것만 진짜 그림, 없는 것은 classes.<직업>.tier2.branches 의 look(1차 옷 물들임) 그대로
-  var T2B_DONE = ['knight_male', 'knight_female', 'mage_male'];
+  var T2B_DONE = ['knight_male', 'knight_female', 'mage_male', 'mage_female'];
   var T2B_ANIMS = { knight: KNIGHT_T2_MALE_ANIMS, mage: MAGE_T2_MALE_ANIMS };
   var t2bSets = {};
   T2B_DONE.forEach(function (k) {
