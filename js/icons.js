@@ -233,6 +233,11 @@
     dveye: function (g) { g.ellipse(12, 12, 8, 5, K.i3); g.disc(12, 12, 3, function (d) { return d < 1.5 ? K.wht : K.i1; }); g.outline(); g.line(3, 21, 20, 4, K.i0); g.px(20, 4, K.wht); },
     // 숲의 수호자(3차 궁수 b, 2026-11-10): 잎 · 덩굴 · 정령 매
     // 그림자 군주(암살자 3차 a, 2026-11-10): 검정 + 남색 그림자
+    plwave: function (g) { g.ring(9, 12, 7, 9, 290, 430, VEND); g.ring(14, 12, 7, 9, 290, 430, VEN); g.outline(); g.disc(19, 18, 2, '#5a2a7a'); g.spark(20, 6, false, '#e0ffc0'); },
+    plwisp: function (g) { g.disc(13, 10, 5, function (d) { return d < 3 ? '#e0ffc0' : VEN; }); g.line(8, 12, 3, 18, VEND); g.line(9, 14, 5, 20, VEN); g.px(11, 9, '#1a2a08'); g.px(14, 9, '#1a2a08'); g.outline(); },
+    plbloom: function (g) { g.ellipse(12, 19, 9, 3, VEND); g.poly([[8, 19], [10, 6], [12, 12], [14, 4], [16, 19]], function (x, y) { return y < 9 ? '#e0ffc0' : VEN; }); g.outline(); g.spark(5, 6, false, VEN); },
+    plnova: function (g) { g.ellipse(12, 17, 10, 4, VEND); g.disc(12, 14, 4, function (d) { return d < 2 ? '#e0ffc0' : VEN; }); g.disc(4, 10, 3, VEN); g.disc(20, 10, 3, VEN); g.outline(); },
+    pldoom: function (g) { g.disc(12, 12, 9, function (d) { return d < 3 ? '#e0ffc0' : d < 6 ? VEN : '#2a0a3a'; }); g.disc(10, 11, 1, '#1a2a08'); g.disc(14, 11, 1, '#1a2a08'); g.outline(); g.spark(4, 4, true, VEN); },
     smwave: function (g) { g.ring(9, 12, 7, 9, 290, 430, NAVYD); g.ring(14, 12, 7, 9, 290, 430, NAVY); g.outline(); g.spark(20, 12, false, '#c0d8ff'); },
     smshade: function (g) { g.ring(12, 13, 8, 9, 0, 359, NAVYD); g.line(5, 6, 10, 11, NAVY); g.line(19, 6, 14, 11, NAVY); g.line(12, 20, 12, 15, '#c0d8ff'); g.outline(); g.px(12, 13, '#c0d8ff'); },
     smrain: function (g) { [[6, 2], [12, 5], [18, 1]].forEach(function (q) { g.line(q[0], q[1], q[0], q[1] + 10, NAVY); g.px(q[0], q[1] + 10, '#c0d8ff'); }); g.rect(3, 19, 18, 2, NAVYD); g.outline(); },
@@ -767,6 +772,8 @@
     ssflash: ['일섬', 'knight', 'active', 'holy'], ssjudge: ['천상의 심판', 'knight', 'active', 'holy'],
     sgorb: ['원소 융합탄', 'mage', 'active', 'fire'], sgcycle: ['원소 순환', 'mage', 'passive', 'arcane'], sgstorm: ['삼원소 폭풍', 'mage', 'active', 'storm'],
     sgnova: ['원소 대폭발', 'mage', 'active', 'fire'], sgdoom: ['종말의 별', 'mage', 'active', 'arcane'],
+    plwave: ['역병 물결', 'assassin', 'active', 'venom'], plwisp: ['역병 정령', 'assassin', 'passive', 'venom'], plbloom: ['역병의 꽃', 'assassin', 'active', 'venom'],
+    plnova: ['역병 폭주', 'assassin', 'active', 'venom'], pldoom: ['역병의 종말', 'assassin', 'active', 'venom'],   // 역병술사(2026-11-10)
     smwave: ['그림자 초승달', 'assassin', 'active', 'shadow'], smshade: ['군주의 그림자 칼날', 'assassin', 'passive', 'shadow'], smrain: ['그림자 칼날비', 'assassin', 'active', 'shadow'],
     smflash: ['그림자 섬광', 'assassin', 'active', 'shadow'], smjudge: ['그림자 군주 강림', 'assassin', 'active', 'shadow'],   // 그림자 군주(2026-11-10)
     fgwind: ['대풍 화살', 'archer', 'active', 'wild'], fgspirit: ['숲의 정령 매', 'archer', 'passive', 'wild'], fgroots: ['가시나무 대지', 'archer', 'active', 'wild'],

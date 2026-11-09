@@ -1692,7 +1692,7 @@
     darken: { ms: 4000, alpha: 0.82 }, iframes: [0, 2200], zoom: { k: 1.08, ms: 2200 },
     t3: { kind: 'sgdoom', frame: 1, x: 130, ticks: 6, tickMs: 160, pull: 140, tick: AB_GATE_TICK, boom: AB_GATE_BOOM, chainPad: 1900,
           sky: 't3_ab_circle', skySx: 1.8, rift: 'abyss_gate', riftSx: 0.9, star: 't3_ab_skull', impact: 't3_ab_burst', impactSx: 1.4,
-          boom: 't3_ab_burst', boomSx: 2.0, hitBoom: 'darkorb_boom', hitBoomSx: 0.6 },
+          boomArt: 't3_ab_burst', boomSx: 2.0, hitBoom: 'darkorb_boom', hitBoomSx: 0.6 },   // 2026-11-10 고침: 그림 키를 boom → boomArt(같은 이름 boom 이 판정 값 AB_GATE_BOOM 을 덮어써 마지막 대폭발이 피해 1 이었음)
     female: { motionMs: [110, 230, 880, 100, 700, 200] }
   };
   Object.keys(T3_SKILLS.mage).forEach(function (k) { SKILLS.mage[k] = T3_SKILLS.mage[k]; });
@@ -1864,6 +1864,61 @@
     }
   };
   Object.keys(T3_SM).forEach(function (k) { T3_SKILLS.assassin = T3_SKILLS.assassin || {}; T3_SKILLS.assassin[k] = T3_SM[k]; SKILLS.assassin[k] = T3_SM[k]; });
+  // ---- 역병술사(암살자 3차 갈래 b, 2026-11-10): 검정 긴 코트 · 독초록 단검(두건 안 씀). 그림 = t3_pl_*(AI: 역병 물결 · 역병 터짐 · 역병 정령 · 역병 소용돌이) + 독술사 ps_*(독구름 · 웅덩이 · 분출) ----
+  //   독술사 = 독 겹 쌓기(js/assassin.js asPsn: 맞은 적에 독 겹, 0.5초마다 겹 x 작은 피해) → 3차는 화면 전체에 독을 퍼뜨림. 맞는 기술마다 asPsn 겹을 쌓음(독 피해가 덧붙음)
+  //   숫자 = 그림자 군주 자리에서 조금 낮게(독 지속 피해가 따로 붙으므로). 2026-11-10 자동 조종 DPS 비교(15판 -14%) 뒤 +25% · 역병 물결 쿨타임 9 → 8초
+  // 역병 물결(50 ↔ 독침 부채): 거대한 역병 물결 셋이 가운데 · 위 · 아래 줄을 꿰뚫음 3.0 x 3 + 독 2겹씩
+  var PL_WAVE = { dmg: 3.8, hitstop: 0.7, knock: 1.2, shake: 1.4, spark: 1.1, big: true, hitsDown: true, asPsn: 2, flash: { color: '#c8ffb0', alpha: 0.12, ms: 80 } };
+  // 역병 정령(52, 늘 켜짐): 몇 초마다 역병 정령이 저절로 가까운 적에게 날아가 터짐(이 값 x passive.mul) + 독 2겹
+  var PL_WISP = { dmg: 2.6, hitstop: 0.4, knock: 0.6, shake: 0.6, spark: 1.0, big: true, hitsDown: true, noRage: true, noMp: true, numStyle: 'push', t3Auto: true, asPsn: 2 };
+  // 역병의 꽃(53 ↔ 독구름): 화면 안 적 발밑마다 독 웅덩이 → 맹독 분출(띄움) 4.6 + 남은 독 1.2 x 2 + 독 겹
+  var PL_BLOOM = { dmg: 5.8, hitstop: 1.6, knock: 0.6, shake: 2.2, launch: 1.1, spark: 1.5, big: true, hitsDown: true, asPsn: 3, flash: { color: '#d8ffc0', alpha: 0.25, ms: 120 } };
+  var PL_BLOOM_TICK = { dmg: 1.4, hitstop: 0.3, knock: 0.1, shake: 0.5, spark: 0.8, hitsDown: true, noRage: true, noJuggle: true, noMp: true, asPsn: 1 };
+  // 역병 폭주(55 ↔ 맹독 웅덩이): 발밑 큰 독 웅덩이 → 가운데 터짐 2.4 → 양옆으로 역병 폭발이 세 번씩 퍼져 나감 3.0 (한 적은 보통 2번) + 독 겹
+  var PL_NOVA_C = { dmg: 2.8, hitstop: 1.2, knock: 1.6, shake: 2.0, spark: 1.4, big: true, hitsDown: true, asPsn: 2 };
+  var PL_NOVA = { dmg: 3.8, hitstop: 1.4, knock: 1.8, shake: 2.4, knockdown: true, spark: 1.5, big: true, hitsDown: true, asPsn: 2, flash: { color: '#d8ffc0', alpha: 0.2, ms: 100 } };
+  // 역병의 종말(58 필살 ↔ 역병 폭발): 하늘 독구름 → 역병 정령이 떨어짐 → 역병 소용돌이가 빨아들이며 0.4 x 6(독 1겹씩) → 화면 전체 대폭발 12.5
+  var PL_DOOM_TICK = { dmg: 0.4, hitstop: 0.15, knock: 0.05, shake: 0.6, spark: 0.7, hitsDown: true, noRage: true, noJuggle: true, noMp: true, asPsn: 1 };
+  var PL_DOOM_BOOM = { dmg: 12.5, hitstop: 3.4, knock: 3.0, shake: 6.0, knockdown: true, stunMs: 700, spark: 2.4, big: true, hitsDown: true, launch: 1.0, asPsn: 3,
+                       flash: { color: '#e0ffd0', alpha: 0.85, ms: 320 }, slowMs: 520 };
+  var T3_PL = {
+    plwave: {
+      name: '역병 물결', icon: '물', mp: 20, cooldownMs: 8000, damageStyle: 'skill_poison', motion: 'motion_spin', sfx: 'poison',
+      desc: '(3차) 몸을 돌려 거대한 역병 물결 셋을 날려요. 가운데 · 위 · 아래 줄을 나란히 화면 끝까지 꿰뚫고, 맞은 적마다 독을 두 겹씩 쌓아요',
+      lv5: { n: 5, say: '물결 3 → 5개' },
+      darken: { ms: 700, alpha: 0.5 }, iframes: [0, 600], zoom: { k: 1.03, ms: 500 },
+      t3: { kind: 'sswave', frame: 3, n: 3, lanes: [0, -20, 20, -36, 36], gapMs: 80, x: 26, speed: 560, range: 440, w: 58, depth: 22, hit: PL_WAVE, chainPad: 250,
+            art: 't3_pl_wave', sx: 0.95, add: false, hitArt: 't3_pl_burst', hitSx: 0.4, boom: 't3_pl_burst', boomSx: 0.8, color: '#8ae05a' }
+    },
+    plbloom: {
+      name: '역병의 꽃', icon: '꽃', mp: 24, cooldownMs: 12000, damageStyle: 'skill_poison', motion: 'motion_throw', sfx: 'daggerThrow',
+      desc: '(3차) 독병을 흩뿌리면 화면 안 적들 발밑마다 독 웅덩이가 피어나고, 잠깐 뒤 맹독이 솟구쳐 띄워요. 맞은 적에 독이 세 겹씩 쌓여요',
+      lv5: { n: 10, say: '분출 7 → 10개' },
+      darken: { ms: 1300, alpha: 0.55 }, iframes: [0, 900], zoom: { k: 1.04, ms: 900 },
+      t3: { kind: 'sgstorm', frame: 3, n: 7, gapMs: 70, markMs: 380, r: 40, depth: 34, ticks: 2, tickMs: 220, hit: PL_BLOOM, tick: PL_BLOOM_TICK, chainPad: 900,
+            mark: 'ps_cloud_pool', markSx: 0.8, markSy: 0.8, pillar: 'ps_cloud_erupt', pillarSx: 0.8 }
+    },
+    plnova: {
+      name: '역병 폭주', icon: '폭', mp: 24, cooldownMs: 12000, damageStyle: 'skill_poison', motion: 'motion_spin', sfx: 'poison',
+      desc: '(3차) 발밑에 거대한 독 웅덩이를 펼쳐요. 웅덩이가 끓어오르면 역병 폭발이 양옆으로 세 번씩 퍼져 나가며 둘레를 독으로 덮어요',
+      lv5: { n: 4, say: '퍼지는 폭발 3 → 4번' },
+      darken: { ms: 1300, alpha: 0.55 }, iframes: [0, 900], zoom: { k: 1.04, ms: 900 },
+      t3: { kind: 'sgnova', frame: 3, n: 3, step: 82, gapMs: 140, r: 62, depth: 46, cr: 70, center: PL_NOVA_C, hit: PL_NOVA, chainPad: 700,
+            circle: 'ps_cloud_pool', circleSx: 2.6, circleSy: 1.3, boom: 't3_pl_burst', boomSx: 1.1 }
+    },
+    pldoom: {
+      name: '역병의 종말', icon: '종', mp: 60, cooldownMs: 40000, damageStyle: 'skill_poison', motion: 'motion_spin', sfx: 'charge',
+      motionMs: [80, 120, 900, 120, 700, 200],
+      desc: '(3차 필살) 하늘이 독구름으로 뒤덮이고 역병 정령이 떨어져요. 떨어진 자리에 역병 소용돌이가 생겨 적을 빨아들이며 독을 쌓고, 끝에 화면 전체가 맹독으로 터져요',
+      lv5: { area: 1.25, say: '소용돌이 · 폭발 크기 +25%' },
+      darken: { ms: 4000, alpha: 0.78 }, iframes: [0, 2200], zoom: { k: 1.08, ms: 2200 },
+      t3: { kind: 'sgdoom', frame: 1, x: 130, ticks: 6, tickMs: 160, pull: 140, tick: PL_DOOM_TICK, boom: PL_DOOM_BOOM, chainPad: 1900,
+            sky: 'ps_cloud_cloud', skySx: 1.6, rift: 'ps_cloud_puff', riftSx: 1.3, star: 't3_pl_wisp', impact: 't3_pl_burst', impactSx: 1.8,
+            hole: 't3_pl_vortex', boomArt: 't3_pl_burst', boomSx: 1.8, hitBoom: 'ps_cloud_erupt', hitBoomSx: 0.5 }
+    }
+  };
+  Object.keys(T3_PL).forEach(function (k) { T3_SKILLS.assassin[k] = T3_PL[k]; SKILLS.assassin[k] = T3_PL[k]; });
+
 
 
   // ---------- 기술 책 (성장 4단계, 2026-11-06, 기획\성장시스템-설계안.md) : 직업마다 11개 = 쓰는 기술(active) 7 + 늘 켜진 기술(passive) 4 (2026-11-06 기사 칼날 폭풍 넣음) ----------
@@ -1986,7 +2041,12 @@
       b: { tag: '독', color: '#8ae05a', tw: { psn: 1 },
            names: { ashadow: ['독아 습격', '맞은 적에 독 1겹(0.5초마다 작은 피해, 3초)'], arise: ['독칼 올려치기', '맞은 적에 독 1겹(0.5초마다 작은 피해, 3초)'],
                     afan: ['독 단검 부채', '맞은 적에 독 1겹(0.5초마다 작은 피해, 3초)'], awhirl: ['독안개 회오리', '맞은 적에 독 1겹(0.5초마다 작은 피해, 3초)'],
-                    ablink: ['독그림자 걸음', '맞은 적에 독 1겹(0.5초마다 작은 피해, 3초)'], asmoke: ['독 연막탄', '맞은 적에 독 1겹(0.5초마다 작은 피해, 3초)'] } }
+                    ablink: ['독그림자 걸음', '맞은 적에 독 1겹(0.5초마다 작은 피해, 3초)'], asmoke: ['독 연막탄', '맞은 적에 독 1겹(0.5초마다 작은 피해, 3초)'] },
+           // 3차 맛(2026-11-10, 역병술사 Lv50 뒤): 이름이 한 번 더 바뀌고 크기 +20%(독 덤은 그대로)
+           t3: { tag: '역병술사', color: '#a8f07a', tw: { area: 1.2 },
+                 names: { ashadow: ['역병 습격', '(3차 역병술사) 효과 · 판정 크기 +20% · 맞은 적에 독 1겹(0.5초마다 작은 피해, 3초)'], arise: ['역병 올려치기', '(3차 역병술사) 효과 · 판정 크기 +20% · 맞은 적에 독 1겹(0.5초마다 작은 피해, 3초)'], afan: ['역병 단검 부채', '(3차 역병술사) 효과 · 판정 크기 +20% · 맞은 적에 독 1겹(0.5초마다 작은 피해, 3초)'], awhirl: ['역병 회오리', '(3차 역병술사) 효과 · 판정 크기 +20% · 맞은 적에 독 1겹(0.5초마다 작은 피해, 3초)'],
+                          ablink: ['역병 그림자 걸음', '(3차 역병술사) 효과 · 판정 크기 +20% · 맞은 적에 독 1겹(0.5초마다 작은 피해, 3초)'], asmoke: ['역병 연막탄', '(3차 역병술사) 효과 · 판정 크기 +20% · 맞은 적에 독 1겹(0.5초마다 작은 피해, 3초)'], pdarts: ['역병 독침 폭풍', '(3차 역병술사) 효과 · 판정 크기 +20% · 맞은 적에 독 1겹(0.5초마다 작은 피해, 3초)'], pcloud: ['역병 구름', '(3차 역병술사) 효과 · 판정 크기 +20% · 맞은 적에 독 1겹(0.5초마다 작은 피해, 3초)'],
+                          ppool: ['역병의 늪', '(3차 역병술사) 효과 · 판정 크기 +20% · 맞은 적에 독 1겹(0.5초마다 작은 피해, 3초)'], perupt: ['대역병 폭발', '(3차 역병술사) 효과 · 판정 크기 +20% · 맞은 적에 독 1겹(0.5초마다 작은 피해, 3초)'] } } }
     },
     // 늘 켜진 기술 추천 갈래(SKILL_TREE 의 rec): 그 갈래면 효과 x recK(+25%). 마력 소용돌이는 「몇 초마다」라 시간이 1/recK 로 짧아짐(recInv)
     recK: 1.25,
@@ -2192,7 +2252,16 @@
                    art: 'sm_blade', fly: 't3_sm_blade', flySx: 0.7, flyAdd: false, hitArt: 't3_sm_burst', hitSx: 0.4, glow: '#6a8aff', hit: SM_SHADE } },
       { id: 'smrain', unlock: 53, tier: 3, branch: 'a', short: '화면 안 적 위로 그림자 칼날이 쏟아져요' },
       { id: 'smflash', unlock: 55, tier: 3, branch: 'a', short: '꿰뚫고 지나간 길이 그림자로 갈라져요' },
-      { id: 'smjudge', unlock: 58, tier: 3, branch: 'a', short: '거대한 그림자 칼날 · 초승달이 화면을 휩쓸어요' }
+      { id: 'smjudge', unlock: 58, tier: 3, branch: 'a', short: '거대한 그림자 칼날 · 초승달이 화면을 휩쓸어요' },
+      // ---- 역병술사(3차 전직, 독술사 갈래 b, 2026-11-10): passive 't3auto' = 몇 초마다 역병 정령(t3_pl_wisp)이 저절로 날아가 터지며 독 2겹 ----
+      { id: 'plwave', unlock: 50, tier: 3, branch: 'b', short: '거대한 역병 물결 셋이 꿰뚫고 독을 쌓아요' },
+      { id: 'plwisp', unlock: 52, tier: 3, branch: 'b', recInv: true, short: '몇 초마다 역병 정령이 저절로 날아가요', name: '역병 정령', icon: '령',
+        desc: '역병 정령들이 몸 둘레를 맴돌아요. 몇 초마다 역병 정령이 저절로 가까운 적에게 날아가 터지며 독을 두 겹 쌓아요(Lv 오르면 더 자주 · 더 많이)',
+        passive: { stat: 't3auto', val: [3200, 2900, 2600, 2300, 2000], n: [1, 1, 2, 2, 3], mul: [1, 1.1, 1.2, 1.35, 1.5], find: 300, findDepth: 90,
+                   art: 'pl_wisp', fly: 't3_pl_wisp', flySx: 0.55, hitArt: 't3_pl_burst', hitSx: 0.4, glow: '#8ae05a', hit: PL_WISP } },
+      { id: 'plbloom', unlock: 53, tier: 3, branch: 'b', short: '적 발밑마다 맹독이 솟구쳐요' },
+      { id: 'plnova', unlock: 55, tier: 3, branch: 'b', short: '독 웅덩이에서 역병 폭발이 퍼져 나가요' },
+      { id: 'pldoom', unlock: 58, tier: 3, branch: 'b', short: '역병 소용돌이 · 화면 전체 맹독 대폭발' }
     ],
     // 2026-11-08 형님 승인: 법사도 기사처럼 다시 배치(아래 mage 순서 = 기술 창 순서) + 2차 전직 Lv25 대마법사(tier: 2)
     //   새 기술 원소 파편 · 중력 구체 · 마력 소용돌이(1차) / 원소 연쇄 · 빙결 폭풍 · 천둥 심판(2차) → 법사 17개(쓰는 기술 10 + 늘 켜진 기술 7). 1차 법사 = 원소 낙인(Lv24)까지
@@ -2506,7 +2575,7 @@
   // 3차 옷 — 무기가 그림에 박힌 직업(궁수 · 암살자, 2026-11-10): 그 갈래 2차 옷 그림 위에 옷 + 무기만 다시 그림(pipeline/ai-sprite/t3)
   //   → 2차처럼 1차 옷 묶음을 그대로 쓰고 그림 폴더 · 손 위치 json 만 바꿈. 이름 '<직업>_<갈래>_<성별>' → 묶음 '<직업>_t3<갈래>_<성별>'
   //   (신궁 = archer_t3a · 숲의 수호자 = archer_t3b · 그림자 군주 = assassin_t3a · 역병술사 = assassin_t3b). 여기에 넣은 것만 진짜 그림
-  var T3_BAKED_DONE = ['archer_a_male', 'archer_a_female', 'archer_b_male', 'archer_b_female', 'assassin_a_male', 'assassin_a_female'];   // + 그림자 군주(2026-11-10)   // + 숲의 수호자(2026-11-10)   // 신궁(2026-11-10)
+  var T3_BAKED_DONE = ['archer_a_male', 'archer_a_female', 'archer_b_male', 'archer_b_female', 'assassin_a_male', 'assassin_a_female', 'assassin_b_male', 'assassin_b_female'];   // + 역병술사(2026-11-10)   // + 그림자 군주(2026-11-10)   // + 숲의 수호자(2026-11-10)   // 신궁(2026-11-10)
   var t3BakedSets = {};
   T3_BAKED_DONE.forEach(function (k) {
     if (artSet === 'novice') return;
@@ -2982,7 +3051,7 @@
                     tier3: { lv: 50, name: '그림자 군주', outfit: 'assassin_t3a', desc: '그림자를 다스리는 군주. 화면을 가르는 그림자 초승달 · 쏟아지는 그림자 칼날 · 그림자 섬광, 필살 그림자 군주 강림' } },
                   { key: 'b', name: '독술사', outfit: 'assassin_t2b', desc: '독을 다루는 검은 암살자. 독침 · 독구름 · 맹독 웅덩이로 독을 쌓아 녹이고, 쓰러진 적의 독이 둘레로 퍼져요',
                     look: { base: 'assassin', tint: '#06140a', k: 0.34, outline: { color: '#7ae05a', alpha: 0.55, glow: true } },
-                    tier3: { lv: 50, name: '역병술사', soon: true } }
+                    tier3: { lv: 50, name: '역병술사', outfit: 'assassin_t3b', desc: '역병을 부리는 검은 암살자. 화면을 덮는 역병 물결 · 맹독 분출 · 역병 폭주로 독을 쌓고, 필살 역병의 종말' } }
                 ] } }
       // , axe: { label: '도끼', weapon: 'axe', moves: 'sword' }
     },
@@ -6868,7 +6937,7 @@
               curve: { dmg: [1, 1.2, 1.4, 1.6, 1.85], cd: [1, 0.94, 0.88, 0.82, 0.75], mp: [1, 1.05, 1.1, 1.15, 1.2] },
               test: { pts: 24 },
               botPlan: { knight: ['dash', 'upper', 'nimble', 'wave', 'mastery', 'spin', 'skin', 'slam', 'shards', 'thrust', 'pressure', 'grit', 'counter', 'storm', 'aegis', 'holy', 'cross', 'charge', 'arcwave', 'infuse', 'rift', 'msword', 'unleash', 'sswave', 'ssaura', 'ssrain', 'ssflash', 'ssjudge', 'mkcross', 'mkblades', 'mkrain', 'mkrift', 'mkking'],
-                         assassin: ['ashadow', 'arise', 'nimble', 'afan', 'amast', 'awhirl', 'akeen', 'ablink', 'aecho', 'asmoke', 'aorbit', 'avenom', 'aexec', 'sclone', 'sshade', 'sflash', 'sstorm', 'smoon', 'smwave', 'smshade', 'smrain', 'smflash', 'smjudge', 'pdarts', 'pplague', 'pcloud', 'ppool', 'perupt'],   // 암살자(2026-11-09) + 그림자 군주(2026-11-10)
+                         assassin: ['ashadow', 'arise', 'nimble', 'afan', 'amast', 'awhirl', 'akeen', 'ablink', 'aecho', 'asmoke', 'aorbit', 'avenom', 'aexec', 'sclone', 'sshade', 'sflash', 'sstorm', 'smoon', 'smwave', 'smshade', 'smrain', 'smflash', 'smjudge', 'pdarts', 'pplague', 'pcloud', 'ppool', 'perupt', 'plwave', 'plwisp', 'plbloom', 'plnova', 'pldoom'],   // 암살자(2026-11-09) + 그림자 군주(2026-11-10)
                          archer: ['pshot', 'upshot', 'nimble', 'multi', 'aim', 'rain', 'focus', 'leap', 'split', 'burst', 'volley', 'gale', 'mark', 'snipe', 'deadeye', 'ballista', 'rapid', 'skyfall', 'dvlance', 'dveye', 'dvrain', 'dvpierce', 'dvsky', 'tempest', 'hawk', 'trap', 'twister', 'barrage', 'fgwind', 'fgspirit', 'fgroots', 'fgstorm', 'fgjudge'],   // 궁수(2026-11-09)
                          mage: ['fireball', 'rise', 'nimble', 'bolt', 'amp', 'ice', 'flow', 'blink', 'eshard', 'gravity', 'vortex', 'shield', 'brand', 'meteor', 'echain', 'pillar', 'frost', 'judgment', 'darkorb', 'leech', 'swamp', 'wraith', 'abyss', 'sgorb', 'sgcycle', 'sgstorm', 'sgnova', 'sgdoom', 'abhex', 'absoul', 'abmaw', 'abnova', 'abgate'] } },   // 3차(2026-11-10) 도   // 2026-11-08 갈래 B 기술도(고른 갈래 것만 배워짐)   // 법사 다시 배치(2026-11-08)
 

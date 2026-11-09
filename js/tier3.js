@@ -54,7 +54,12 @@
     t3_sm_wave:         { n: 4, pv: [66.5, 55.0], fps: 14 },    // 133x110 거대한 그림자 초승달(오른쪽으로 날아감, 반복)
     t3_sm_burst:        { n: 4, pv: [55.0, 34.5], fps: 16 },    // 110x69 그림자 베기 터짐
     t3_sm_blade:        { n: 4, pv: [32.0, 8.5], fps: 12 },     // 64x17 날아가는 그림자 단검(오른쪽, 반복)
-    t3_sm_line:         { n: 4, pv: [150.0, 58.0], fps: 14 }    // 300x116 긴 가로 그림자 베기
+    t3_sm_line:         { n: 4, pv: [150.0, 58.0], fps: 14 },   // 300x116 긴 가로 그림자 베기
+    // 역병술사(2026-11-10, art/skill-fx/t3_pl, 자홍 바탕): 역병 물결 · 역병 터짐 · 역병 정령 · 역병 소용돌이
+    t3_pl_wave:         { n: 4, pv: [62.0, 55.0], fps: 14 },    // 124x110 거대한 역병 물결(오른쪽으로, 반복)
+    t3_pl_burst:        { n: 5, pv: [60.0, 39.0], fps: 14 },    // 120x78 역병 터짐
+    t3_pl_wisp:         { n: 4, pv: [28.0, 13.5], fps: 12 },    // 56x27 역병 정령(오른쪽으로, 반복)
+    t3_pl_vortex:       { n: 5, pv: [62.5, 59.0], fps: 12 }     // 125x118 역병 소용돌이(0 생김 · 1 커짐 · 2 가득 · 3 번쩍 · 4 흩어짐)
   };
   (function reg() { var S = window.Skills && Skills._api; if (S) S.addAifx(AFX); })();
 
@@ -376,7 +381,7 @@
       }
       if (o.stage === 3 && o.t >= holeEnd) {   // 대폭발
         o.stage = 4;
-        spawn(D.boom || 't3_sgorb_boom', cx, gy - 40 * k, { sx: (D.boomSx || 1.7) * ar3, life: 300, fade: 110 }); spawn('t3_doom_hole', cx, gy - 44 * k, { sx: 1.6 * ar3, from: 3, fps: 10, add: true });
+        spawn(D.boomArt || 't3_sgorb_boom', cx, gy - 40 * k, { sx: (D.boomSx || 1.7) * ar3, life: 300, fade: 110 }); spawn(D.hole || 't3_doom_hole', cx, gy - 44 * k, { sx: 1.6 * ar3, from: 3, fps: 10, add: !D.hole });   // boomArt = 터짐 그림(boom = 판정 값), hole = 소용돌이 그림(역병술사 2026-11-10)
         screenFoes(p, o.boom).forEach(function (t, i) {
           if (hitT(o.boom, t, t.x, mid(t), t.x >= cx ? 1 : -1, o.mul, p) && i < 10) spawn(D.hitBoom || 't3_sgorb_boom', t.x, mid(t), { sx: D.hitBoomSx || 0.6, delay: 40 + i * 30 });
         });
@@ -427,7 +432,7 @@
     }
     if (o.kind === 'doom' && o.stage >= 3 && o.stage < 4) {   // 블랙홀(0 · 1 = 생김 → 2 반복 → 끝무렵 3 · 4)
       var e = o.t - 1150, end = 300 + o.C.ticks * o.C.tickMs, fi = e < 120 ? 0 : e < 240 ? 1 : e > end - 100 ? 3 : 2;
-      aiDraw(ctx, 't3_doom_hole', fi, o.x - camX, o.z - 44 * k, 1.5 * o.ar * (1 + 0.04 * Math.sin(now / 90)), 1.5 * o.ar, now / 400, 0.95);
+      aiDraw(ctx, o.C.hole || 't3_doom_hole', fi, o.x - camX, o.z - 44 * k, 1.5 * o.ar * (1 + 0.04 * Math.sin(now / 90)), 1.5 * o.ar, now / 400, 0.95);
     }
     if (o.kind === 'auto') {
       var w = clamp(o.t / o.ms, 0, 1), tx = alive(o.tgt) ? o.tgt.x : o.x1, ty = alive(o.tgt) ? mid(o.tgt) : o.y1;
@@ -442,7 +447,7 @@
 
   // ---------- 늘 켜진 기술 't3auto'(저절로 공격) · 몸 둘레 기운 ----------
   //   passive = { val = 몇 ms 마다, n = 한 번에 몇 개, mul = 데미지 배율, find · findDepth = 찾는 둘레, art = 'ss_sword'(금빛 영검이 날아감) | 'sg_cycle'(원소 폭발), r = 폭발 반지름 }
-  var AUTO_IDS = ['ssaura', 'sgcycle', 'mkblades', 'absoul', 'dveye', 'fgspirit', 'smshade'], autoT = {}, auraOn = null;   // + 그림자 군주 그림자 칼날(2026-11-10)   // 마검왕 떠도는 마검(2026-11-10)
+  var AUTO_IDS = ['ssaura', 'sgcycle', 'mkblades', 'absoul', 'dveye', 'fgspirit', 'smshade', 'plwisp'], autoT = {}, auraOn = null;   // + 그림자 군주 그림자 칼날(2026-11-10)   // 마검왕 떠도는 마검(2026-11-10)
   function passiveStep(p, dt) {
     auraOn = null;
     if (!p || p.state === 'dead' || !p.classKey || p.classKey === 'novice') return;
@@ -488,6 +493,7 @@
       if (auraOn === 'dv_arrow') aiDraw(ctx, 't3_dv_arrow', Math.floor(now / 80 + i) % 4, p.x + ox - camX, cy + oy - 6 * k, 0.28, 0.28, -Math.PI / 2, 0.75);   // 신궁: 얼음 화살이 맴돎
       else if (auraOn === 'fg_hawk') aiDraw(ctx, 't3_fg_hawk', Math.floor(now / 90 + i) % 4, p.x + ox - camX, cy + oy - 10 * k, (Math.sin(a) > 0 ? 1 : -1) * 0.34, 0.34, 0, 0.8);   // 숲의 수호자: 정령 매가 맴돎
       else if (auraOn === 'sm_blade') { ctx.save(); ctx.globalCompositeOperation = 'source-over'; aiDraw(ctx, 't3_sm_blade', Math.floor(now / 90 + i) % 4, p.x + ox - camX, cy + oy - 4 * k, 0.5, 0.5, a + Math.PI / 2, 0.85); ctx.restore(); }   // 그림자 군주: 그림자 단검이 맴돎
+      else if (auraOn === 'pl_wisp') aiDraw(ctx, 't3_pl_wisp', Math.floor(now / 90 + i) % 4, p.x + ox - camX, cy + oy, (Math.sin(a) > 0 ? 1 : -1) * 0.34, 0.34, 0, 0.8);   // 역병술사: 역병 정령이 맴돎
       else if (auraOn === 'ab_skull') aiDraw(ctx, 't3_ab_skull', Math.floor(now / 90 + i) % 4, p.x + ox - camX, cy + oy, p.dir * 0.32, 0.32, 0, 0.75);
       else if (auraOn === 'mk_sword') aiDraw(ctx, 'msword_sword', Math.floor(now / 90 + i) % 4, p.x + ox - camX, cy + oy, 0.55, 0.55, -Math.PI / 2, 0.7);
       else if (sw) aiDraw(ctx, 't3_ssslash_sword', 1, p.x + ox - camX, cy + oy, 0.32, 0.32, -Math.PI / 2, 0.55);
