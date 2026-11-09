@@ -1728,6 +1728,223 @@
    },
    "anchors": "archer_female/anchors_move_archer_female.json",
    "hd": "archer_female (hd webp, f 1.1)"
+  },
+  "assassin_male": {
+   "run": {
+    "frames": 8,
+    "loop": true,
+    "ms": [
+     62,
+     120,
+     90,
+     90,
+     59,
+     119,
+     90,
+     90
+    ],
+    "loopMs": 720,
+    "strideLoop": 257,
+    "speedAtLoopMs": 357,
+    "travelPerFrame": [
+     22,
+     43,
+     32.1,
+     32.1,
+     21,
+     42.5,
+     32.1,
+     32.1
+    ],
+    "flightFrames": [
+     3,
+     7
+    ],
+    "headTopY": [
+     35,
+     37,
+     34,
+     29,
+     32,
+     36,
+     36,
+     32
+    ],
+    "feetBottomY": [
+     130,
+     130,
+     130,
+     127,
+     130,
+     130,
+     130,
+     126
+    ],
+    "note": "Move the body travelPerFrame[i] px while frame i is shown (= speed * ms[i]) and the planted foot does not slide. To run faster/slower keep the ms RATIOS and scale all ms by the same factor (speed = strideLoop / loopMs).",
+    "enter": "from idle/walk start at frame 0 (contact); stop -> idle (or walk_01)"
+   },
+   "jump": {
+    "frames": 5,
+    "phases": {
+     "takeoff": 0,
+     "rise": 1,
+     "apex": 2,
+     "fall": 3,
+     "land": 4
+    },
+    "ms": {
+     "takeoff": 80,
+     "land": 100
+    },
+    "drive": "code-driven arc: show 0 for ms.takeoff on the ground, then lift off; 1 while rising (vz up, z < 70% of max), 2 around the top (|vz| small or z >= 70% of max), 3 while falling, 4 for ms.land after touching down, then idle. Frames 1-3 are drawn with their centre of mass at the idle centre of mass, but never with the feet below y=130 (so at z=0 the feet touch the ground). Frames 0 and 4 stand on y=130.",
+    "comY": [
+     88,
+     56,
+     82,
+     67,
+     90
+    ],
+    "feetBottomY": [
+     130,
+     130,
+     126,
+     130,
+     130
+    ],
+    "suggested": {
+     "jumpHeight": 70,
+     "airTimeMs": 560
+    }
+   },
+   "run_attack": {
+    "kind": "slide",
+    "frames": 5,
+    "sequence": {
+     "entry": [
+      0
+     ],
+     "pushLoop": [
+      1,
+      2
+     ],
+     "finish": [
+      3
+     ],
+     "recover": [
+      4
+     ]
+    },
+    "ms": {
+     "entry": 70,
+     "pushLoop": 90,
+     "finish": 120,
+     "recover": 170
+    },
+    "active": [
+     1,
+     2,
+     3
+    ],
+    "multiHit": {
+     "everyMs": 90,
+     "frames": [
+      1,
+      2
+     ],
+     "note": "loop frames 1-2 while sliding / charging forward; the enemy in contact is PUSHED along with the hero (move it with the hero) and takes a small hit each tick (~90 ms)"
+    },
+    "finishHit": {
+     "frame": 3,
+     "effect": "launch / knock down"
+    },
+    "bodyTravel": {
+     "pushLoopSpeed": 330,
+     "loopTimeMs": [
+      300,
+      500
+     ],
+     "note": "the game moves the body forward during the push loop (frames are drawn in place); slow down to 0 on finish"
+    },
+    "reach": {
+     "1": {
+      "x0": -37,
+      "x1": 58,
+      "yTop": -60,
+      "yBot": 0
+     },
+     "2": {
+      "x0": -37,
+      "x1": 55,
+      "yTop": -59,
+      "yBot": 0
+     },
+     "3": {
+      "x0": -41,
+      "x1": 48,
+      "yTop": -63,
+      "yBot": 0
+     }
+    },
+    "pushHold": 2,
+    "finishShow": 3,
+    "note_assassin": "assassin: dashing slash (slide, then cut)"
+   },
+   "jump_attack": {
+    "frames": 4,
+    "sequence": {
+     "windup": [
+      0
+     ],
+     "strike": [
+      1
+     ],
+     "follow": [
+      2
+     ],
+     "recover": [
+      3
+     ]
+    },
+    "ms": [
+     70,
+     90,
+     120,
+     110
+    ],
+    "active": [
+     1,
+     2
+    ],
+    "startFrom": "any airborne moment (apex or fall); keep the jump arc running; if the hero lands during 0-2, cut to jump frame 4 (land)",
+    "reach": {
+     "1": {
+      "x0": -35,
+      "x1": 61,
+      "yTop": -90,
+      "yBot": -17
+     },
+     "2": {
+      "x0": -32,
+      "x1": 56,
+      "yTop": -89,
+      "yBot": -11
+     }
+    },
+    "comY": [
+     74,
+     82,
+     82,
+     75
+    ],
+    "feetBottomY": [
+     130,
+     113,
+     119,
+     130
+    ]
+   },
+   "anchors": "assassin_male/anchors_move_assassin_male.json",
+   "hd": "assassin_male (hd webp, f 1.1)"
   }
  }
 }
