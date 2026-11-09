@@ -4,121 +4,121 @@
 "frames": {
 "attack1_01": {
 "hand": [
-76,
-76
+74,
+70
 ],
 "angle": 0
 },
 "attack1_02": {
 "hand": [
-76,
-75
+73,
+69
 ],
 "angle": 0
 },
 "attack1_03": {
 "hand": [
-75,
-70
+72,
+61
 ],
 "angle": 0
 },
 "attack1_04": {
 "hand": [
-72,
-78
+70,
+75
 ],
 "angle": 0
 },
 "attack2_01": {
 "hand": [
-73,
-80
+74,
+73
 ],
 "angle": 0
 },
 "attack2_02": {
 "hand": [
-77,
-75
+78,
+71
 ],
 "angle": 0
 },
 "attack2_03": {
 "hand": [
-71,
-80
+74,
+73
 ],
 "angle": 0
 },
 "attack2_04": {
 "hand": [
-73,
-77
+78,
+68
 ],
 "angle": 0
 },
 "attack2_05": {
 "hand": [
-70,
-81
+72,
+72
 ],
 "angle": 0
 },
 "attack3_01": {
 "hand": [
-76,
-95
+70,
+91
 ],
 "angle": 0
 },
 "attack3_02": {
 "hand": [
-76,
-68
+71,
+73
 ],
 "angle": 0
 },
 "attack3_03": {
 "hand": [
-73,
-67
+70,
+73
 ],
 "angle": 0
 },
 "attack3_04": {
 "hand": [
-73,
-75
+69,
+79
 ],
 "angle": 0
 },
 "attack3_05": {
 "hand": [
-90,
-84
+87,
+85
 ],
 "angle": 0
 },
 "attack3_06": {
 "hand": [
-98,
-94
+94,
+93
 ],
 "angle": 0
 },
 "getup_01": {
 "hand": [
 49,
-98
+99
 ],
 "angle": 0,
 "hide": true
 },
 "getup_02": {
 "hand": [
-72,
-93
+74,
+94
 ],
 "angle": 0,
 "hide": true
@@ -126,35 +126,35 @@
 "getup_03": {
 "hand": [
 80,
-87
+85
 ],
 "angle": 0
 },
 "getup_04": {
 "hand": [
-70,
-82
+71,
+77
 ],
 "angle": 0
 },
 "hurt2_01": {
 "hand": [
-75,
-80
+73,
+82
 ],
 "angle": 0
 },
 "hurt2_02": {
 "hand": [
-73,
-76
+71,
+80
 ],
 "angle": 0
 },
 "hurt2_03": {
 "hand": [
-72,
-78
+71,
+81
 ],
 "angle": 0
 },
@@ -168,56 +168,56 @@
 "hurt_02": {
 "hand": [
 80,
-81
+84
 ],
 "angle": 0
 },
 "hurt_03": {
 "hand": [
-78,
-81
+77,
+82
 ],
 "angle": 0
 },
 "idle_01": {
 "hand": [
-72,
-78
+71,
+77
 ],
 "angle": 0
 },
 "idle_02": {
 "hand": [
-71,
-79
+70,
+75
 ],
 "angle": 0
 },
 "idle_03": {
 "hand": [
-70,
-78
+69,
+75
 ],
 "angle": 0
 },
 "idle_04": {
 "hand": [
-72,
-78
+69,
+77
 ],
 "angle": 0
 },
 "knockdown_01": {
 "hand": [
-60,
-60
+57,
+58
 ],
 "angle": 0,
 "hide": true
 },
 "knockdown_02": {
 "hand": [
-59,
+60,
 67
 ],
 "angle": 0,
@@ -226,80 +226,80 @@
 "knockdown_03": {
 "hand": [
 67,
-107
+106
 ],
 "angle": 0,
 "hide": true
 },
 "knockdown_04": {
 "hand": [
-52,
-101
+50,
+100
 ],
 "angle": 0,
 "hide": true
 },
 "knockdown_05": {
 "hand": [
-51,
-112
+44,
+106
 ],
 "angle": 0,
 "hide": true
 },
 "walk_01": {
 "hand": [
-72,
-76
+71,
+71
 ],
 "angle": 0
 },
 "walk_02": {
 "hand": [
-70,
-76
+68,
+74
 ],
 "angle": 0
 },
 "walk_03": {
 "hand": [
-67,
-69
+66,
+70
 ],
 "angle": 0
 },
 "walk_04": {
 "hand": [
 70,
-76
+74
 ],
 "angle": 0
 },
 "walk_05": {
 "hand": [
-72,
-79
+70,
+77
 ],
 "angle": 0
 },
 "walk_06": {
 "hand": [
-71,
+70,
 76
 ],
 "angle": 0
 },
 "walk_07": {
 "hand": [
-68,
-72
+67,
+74
 ],
 "angle": 0
 },
 "walk_08": {
 "hand": [
-70,
-78
+68,
+76
 ],
 "angle": 0
 }

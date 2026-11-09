@@ -4,77 +4,77 @@
 "frames": {
 "motion_leap_01": {
 "hand": [
-69,
-83
+66,
+84
 ],
 "angle": 0
 },
 "motion_leap_02": {
 "hand": [
-66,
-50
+62,
+51
 ],
 "angle": 0
 },
 "motion_leap_03": {
 "hand": [
-72,
+74,
 82
 ],
 "angle": 0
 },
 "motion_leap_04": {
 "hand": [
-71,
-59
+69,
+58
 ],
 "angle": 0
 },
 "motion_leap_05": {
 "hand": [
-67,
-94
+65,
+93
 ],
 "angle": 0
 },
 "motion_leap_06": {
 "hand": [
 71,
-79
+76
 ],
 "angle": 0
 },
 "motion_shoot_01": {
 "hand": [
-70,
-80
+68,
+67
 ],
 "angle": 0
 },
 "motion_shoot_02": {
 "hand": [
-79,
-90
+76,
+87
 ],
 "angle": 0
 },
 "motion_shoot_03": {
 "hand": [
-80,
-74
+78,
+76
 ],
 "angle": 0
 },
 "motion_shoot_04": {
 "hand": [
-81,
-73
+77,
+75
 ],
 "angle": 0
 },
 "motion_shoot_05": {
 "hand": [
-80,
+77,
 75
 ],
 "angle": 0
@@ -82,49 +82,49 @@
 "motion_shoot_06": {
 "hand": [
 70,
-78
+76
 ],
 "angle": 0
 },
 "motion_sky_01": {
 "hand": [
-73,
+71,
 77
 ],
 "angle": 0
 },
 "motion_sky_02": {
 "hand": [
-70,
-66
+71,
+59
 ],
 "angle": 0
 },
 "motion_sky_03": {
 "hand": [
-71,
-77
+74,
+66
 ],
 "angle": 0
 },
 "motion_sky_04": {
 "hand": [
-71,
-74
+75,
+71
 ],
 "angle": 0
 },
 "motion_sky_05": {
 "hand": [
-71,
+70,
 77
 ],
 "angle": 0
 },
 "motion_sky_06": {
 "hand": [
-74,
-77
+72,
+78
 ],
 "angle": 0
 }
